@@ -52,5 +52,5 @@ cd claude-code-dissection/book && mdbook serve
 - 每本书的 `DESIGN.md` 是**全局不变量**，记录核心主张和章节规划，写作阶段不得修改
 - `book/src/SUMMARY.md` 是 mdBook 必须文件，新增章节必须同步更新
 - `plans/batch.md` 是全书写作批次计划，记录各章工作量估算和分批执行顺序
-- Mermaid 图表通过各书 `book/src/theme/` 下的本地 JS 文件加载，非 mdBook 原生支持
+
 
