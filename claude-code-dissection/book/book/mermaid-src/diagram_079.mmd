@@ -1,0 +1,15 @@
+graph TD
+    A["选择模型"]
+    B{"用户指定<br/>模型?"}
+    C["使用指定<br/>模型"]
+    D{"Fast Mode<br/>启用?"}
+    E["根据 Effort<br/>选择最便宜"]
+    F["根据 Effort<br/>选择标准"]
+    A --> B
+    B -->|YES| C
+    B -->|NO| D
+    D -->|YES| E
+    D -->|NO| F
+    style E fill:#ccffcc
+    style F fill:#fff4e6
+    style C fill:#ffffcc

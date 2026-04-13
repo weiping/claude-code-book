@@ -1,0 +1,392 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 1 章：运行时 Harness 全景——总体架构解析 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第1章运行时-harness-全景总体架构解析"><a class="header" href="#第1章运行时-harness-全景总体架构解析">第1章：运行时 Harness 全景——总体架构解析</a></h1>
+<blockquote>
+<p><em>"A harness doesn't do the work. It holds the horses together."</em></p>
+</blockquote>
+<blockquote>
+<p>2000 个文件、565 个 <code>.tsx</code>、59 个工具——运行 <code>claude</code> 时，谁来管理这 11 个子系统的初始化顺序？哪个子系统先启动，哪个后启动，如果顺序错了会发生什么？本章拆解 Harness 模式如何用"单入口组装 + 显式依赖方向"解决这个协调问题。</p>
+</blockquote>
+<p>2000 个文件，565 个 <code>.tsx</code>，59 个工具，113 个命令——你运行 <code>claude</code>，背后跑着的不是一个 CLI wrapper，而是一套需要协调 11 个子系统的运行时框架。</p>
+<p>这产生了一个真实的工程问题：<strong>当子系统数量超过 5 个，它们的初始化顺序、依赖方向、扩展接口就会成为系统复杂性的主要来源</strong>。工具系统需要在 REPL 之前就绪；权限系统需要知道哪些工具存在；Bootstrap 状态需要在所有子系统之前初始化……谁来管理这条依赖链？</p>
+<p>这个问题很难，因为它有两个相互矛盾的目标：<strong>可扩展性</strong>（新增工具只需几行代码）和<strong>可控性</strong>（初始化顺序不能出错）。本章解析 Claude Code 的解法——Harness 模式——以及这个选择带来了什么，放弃了什么。</p>
+<p>读完这章，你能用同样的分析框架审视自己的 CLI 工具，识别其中隐含的依赖混乱。</p>
+<h2 id="11-harness-模式如何解决子系统协调问题"><a class="header" href="#11-harness-模式如何解决子系统协调问题">1.1 Harness 模式如何解决子系统协调问题？</a></h2>
+<p>先看 Claude Code 选择的答案：<strong>单入口组装</strong>。</p>
+<p><code>src/main.tsx</code> 是物理入口，但它的职责不是实现功能，而是<strong>把其他模块组装起来</strong>。看它的三个核心 import：</p>
+<pre><code class="language-typescript">// src/main.tsx:35
+import { launchRepl } from './replLauncher.tsx';
+// src/main.tsx:46
+import { getTools } from './tools.ts';
+// src/main.tsx:88
+import { filterCommandsForRemoteMode, getCommands } from './commands.ts';
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:35,46,88</code></p>
+<p>这三行背后是三个独立子系统的入口。<code>main.tsx</code> 不实现 REPL、不实现任何工具、不实现任何命令——它只负责把这些子系统接在一起，并管理它们的初始化顺序。</p>
+<p>"Harness"的工程含义由此清晰：一个<strong>不承载业务逻辑的协调层</strong>。它解决的核心问题是：当 A 依赖 B、B 依赖 C 时，谁来保证初始化顺序？答案是——专门负责"组装"的那一层。</p>
+<h3 id="为什么不选-plugin-架构"><a class="header" href="#为什么不选-plugin-架构">为什么不选 Plugin 架构？</a></h3>
+<p>Plugin 架构也能解决多子系统协调，但有一个关键差异：</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>Harness（单入口组装）</th><th>Plugin 架构</th></tr></thead><tbody>
+<tr><td>初始化控制</td><td>入口文件显式管理顺序</td><td>依赖注册/发现机制</td></tr>
+<tr><td>依赖方向</td><td>静态，编译期可见</td><td>动态，运行期注册</td></tr>
+<tr><td>调试难度</td><td>低（依赖链可追踪）</td><td>高（注册顺序隐式）</td></tr>
+<tr><td>扩展成本</td><td>改 <code>tools.ts</code> 或 <code>commands.ts</code></td><td>实现 Plugin 接口并注册</td></tr>
+</tbody></table>
+</div>
+<p><strong>核心权衡</strong>：Claude Code 的工具集在启动时就已确定（部分依据 feature flag 和用户类型），不需要运行时动态发现。<strong>当扩展集合在编译期已知时，Harness 比 Plugin 架构的依赖链更透明、更易调试。</strong></p>
+<h2 id="12-依赖方向如何决定模块组织"><a class="header" href="#12-依赖方向如何决定模块组织">1.2 依赖方向如何决定模块组织？</a></h2>
+<p>11 个子系统不是平等的——它们有严格的依赖方向，这个方向直接决定了本书的章节顺序。</p>
+<p><strong>图 1-1：Claude Code 模块依赖关系图</strong></p>
+<pre><code class="language-mermaid">graph TD
+    main["main.tsx\n（Harness 入口）"]
+    bootstrap["bootstrap/state.ts\n（全局状态）"]
+    REPL["screens/REPL.tsx\n（UI 层）"]
+    QE["QueryEngine.ts\n（多轮编排）"]
+    Q["query.ts\n（原子循环）"]
+    Tool["Tool.ts\n（工具接口）"]
+    tools["tools.ts\n（工具集合）"]
+    perm["utils/permissions/\n（权限系统）"]
+    mcp["services/mcp/\n（MCP 集成）"]
+    ink["ink/\n（TUI 层）"]
+    swarm["tasks/ + swarm/\n（多智能体）"]
+
+    main --&gt; bootstrap
+    main --&gt; REPL
+    main --&gt; tools
+    REPL --&gt; QE
+    QE --&gt; Q
+    Q --&gt; Tool
+    tools --&gt; Tool
+    Tool --&gt; perm
+    Tool --&gt; mcp
+    swarm --&gt; Tool
+    REPL --&gt; ink
+    bootstrap -.-&gt;|被所有模块依赖| Q
+    bootstrap -.-&gt; Tool
+    bootstrap -.-&gt; perm
+</code></pre>
+<p>箭头表示"依赖"：被指向的模块必须先初始化。图中有几个值得注意的关键点：</p>
+<p><strong><code>bootstrap/state.ts</code> 是无处不在的依赖</strong>（虚线）。它是全局状态的单一来源，连 <code>query.ts</code> 里也有：</p>
+<pre><code class="language-typescript">// src/QueryEngine.ts:184
+export class QueryEngine {
+  private config: QueryEngineConfig
+  private mutableMessages: Message[]
+  private abortController: AbortController
+  // ...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:184</code></p>
+<p><code>QueryEngine</code> 的内部状态（消息历史、abort 控制器）完全独立，但它仍然需要通过 <code>bootstrap/state.ts</code> 访问会话 ID、成本计数等跨模块共享状态（详见第5章）。</p>
+<p><strong><code>Tool</code> 接口是工具层的统一抽象</strong>。无论 <code>BashTool</code>、<code>FileEditTool</code> 还是 MCPTool，都实现同一个接口：</p>
+<pre><code class="language-typescript">// src/Tool.ts:362
+export type Tool&lt;
+  Input extends AnyObject = AnyObject,
+  Output = unknown,
+  P extends ToolProgressData = ToolProgressData,
+&gt; = {
+  call(args, context, canUseTool, parentMessage, onProgress?): Promise&lt;ToolResult&lt;Output&gt;&gt;
+  description(input, options): Promise&lt;string&gt;
+  readonly inputSchema: Input
+  isEnabled(): boolean
+  isReadOnly(input): boolean
+  // ...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/Tool.ts:362</code></p>
+<p>这个接口设计让 <code>query.ts</code> 可以调用任意工具而无需关心实现类型——这是第11章的主题。</p>
+<p><strong>图 1-2：工具调用数据流</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant User as 用户输入
+    participant REPL as REPL
+    participant QE as QueryEngine
+    participant Q as query.ts
+    participant API as Claude API
+    participant T as Tool（任意工具）
+
+    User-&gt;&gt;REPL: 输入文本
+    REPL-&gt;&gt;QE: submitMessage()
+    QE-&gt;&gt;Q: query()
+    Q-&gt;&gt;API: 流式请求
+    API--&gt;&gt;Q: tool_use block
+    Q-&gt;&gt;T: tool.call()
+    T--&gt;&gt;Q: ToolResult
+    Q-&gt;&gt;API: tool_result 回填
+    API--&gt;&gt;Q: 继续流式输出
+    Q--&gt;&gt;QE: yield 事件流
+    QE--&gt;&gt;REPL: 更新 UI
+</code></pre>
+<p>这条链路上，每一层的职责边界都是清晰的：<code>query.ts</code> 负责单轮原子循环（第8章），<code>QueryEngine</code> 负责多轮编排（第9章），<code>REPL</code> 负责 UI 状态（第2篇）。</p>
+<h2 id="13-哪些模块被排除以及为什么"><a class="header" href="#13-哪些模块被排除以及为什么">1.3 哪些模块被排除，以及为什么？</a></h2>
+<p>这个问题本身是一个架构决策：<strong>重建源码的完整度直接影响分析的可靠性</strong>。</p>
+<p>Claude Code v2.1.88 的重建版本约 60-70% 完整，以下模块是有意排除的分析范围：</p>
+<div class="table-wrapper"><table><thead><tr><th>模块</th><th>路径</th><th>排除原因</th></tr></thead><tbody>
+<tr><td>KAIROS（Assistant 模式）</td><td><code>src/assistant/</code></td><td>feature flag <code>KAIROS</code> 门控，多为空实现</td></tr>
+<tr><td>SSH 远程</td><td><code>src/ssh/</code></td><td>最小实现（2 文件），仅接口骨架</td></tr>
+<tr><td>Proactive 建议</td><td><code>src/proactive/</code></td><td>最小实现（2 文件）</td></tr>
+<tr><td>Coordinator 模式</td><td><code>src/coordinator/</code></td><td>feature flag <code>COORDINATOR_MODE</code> 门控</td></tr>
+<tr><td>Voice 模式</td><td><code>src/voice/</code></td><td>1 个接口文件</td></tr>
+</tbody></table>
+</div>
+<p>以 KAIROS 为例，在 <code>src/main.tsx:80</code> 可以看到它的加载方式：</p>
+<pre><code class="language-typescript">// src/main.tsx:80
+const assistantModule = feature('KAIROS')
+  ? require('./assistant/index.js') as typeof import('./assistant/index.js')
+  : null;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:80</code></p>
+<p><code>feature('KAIROS')</code> 在普通用户的 Bun 构建中返回 <code>false</code>，整个 <code>require</code> 分支被编译期死代码消除——这意味着即使分析源码，也只能看到一个空壳（详见第4章）。</p>
+<p><strong>分析一个只有接口没有实现的模块不会产生有用的工程洞察，只会产生推断性结论。</strong> 这是为什么这些模块被显式排除，而不是"假装分析"。</p>
+<p>完整的 feature flag 分类见附录 B。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="单入口组装single-entry-assembly"><a class="header" href="#单入口组装single-entry-assembly">单入口组装（Single-Entry Assembly）</a></h3>
+<p><strong>解决的问题</strong>：多子系统 CLI 的初始化顺序和依赖关系难以管理。</p>
+<p><strong>核心做法</strong>：入口文件只负责 import 和连接，不承载任何业务逻辑；被依赖的模块总是先于依赖方初始化。</p>
+<p><strong>前置条件</strong>：子系统数量 ≥ 5，且扩展集合在启动时已知（不需要运行时动态发现）。</p>
+<p><strong>源码证据</strong>：<code>src/main.tsx:35,46,88</code> — 连续三个 import 分别引入 REPL、工具集、命令集，<code>main.tsx</code> 自身不实现任何一个。</p>
+<h3 id="接口统一interface-unification"><a class="header" href="#接口统一interface-unification">接口统一（Interface Unification）</a></h3>
+<p><strong>解决的问题</strong>：多种扩展形态（本地工具、MCP 工具、Skill 工具）需要统一调度，调用方不应依赖具体实现类型。</p>
+<p><strong>核心做法</strong>：定义 <code>Tool</code> 接口，所有扩展点实现该接口；<code>query.ts</code> 只依赖接口，不依赖实现。</p>
+<p><strong>前置条件</strong>：扩展点种类 &gt; 3，且需要被同一调度器统一处理。</p>
+<p><strong>源码证据</strong>：<code>src/Tool.ts:362</code> — <code>Tool</code> 类型定义了 <code>call</code>/<code>description</code>/<code>inputSchema</code> 等核心方法，BashTool/MCPTool/SkillTool 全部实现该接口。</p>
+<h3 id="显式排除explicit-exclusion"><a class="header" href="#显式排除explicit-exclusion">显式排除（Explicit Exclusion）</a></h3>
+<p><strong>解决的问题</strong>：不完整的实现分析会产生误导性结论，且浪费读者时间。</p>
+<p><strong>核心做法</strong>：识别 stub 模块（feature flag 门控 + 空实现），在架构文档中显式标注排除原因，指向查找完整信息的路径。</p>
+<p><strong>前置条件</strong>：项目有已知的未完成功能模块。</p>
+<p><strong>源码证据</strong>：<code>src/main.tsx:80</code> — <code>feature('KAIROS') ? require('./assistant/index.js') : null</code>，Bun 编译时整个分支物理消失。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-把业务逻辑写进-maintsx入口变上帝对象"><a class="header" href="#-把业务逻辑写进-maintsx入口变上帝对象">❌ 把业务逻辑写进 main.tsx，入口变"上帝对象"</a></h3>
+<p>每个新功能都往 <code>main.tsx</code> 里加，半年后入口文件超过 800 行，每次 PR 都有合并冲突。</p>
+<p><strong>识别信号</strong>：<code>main.tsx</code> 里出现了 <code>if (args[0] === '/help') { ... }</code> 这类业务判断。</p>
+<p><strong>正确做法</strong>：入口只做三件事——初始化 bootstrap 状态、聚合子系统（<code>getTools()</code>/<code>getCommands()</code>）、启动 REPL。Claude Code 的 <code>main.tsx</code> 的业务逻辑几乎为零（<code>src/main.tsx:35,46,88</code>）。</p>
+<h3 id="-让-harness-直接依赖具体工具类而非接口"><a class="header" href="#-让-harness-直接依赖具体工具类而非接口">❌ 让 Harness 直接依赖具体工具类而非接口</a></h3>
+<pre><code class="language-typescript">// ❌ 错误
+import { BashTool } from './tools/BashTool/BashTool.ts'
+import { FileEditTool } from './tools/FileEditTool/FileEditTool.ts'
+const tools = [new BashTool(), new FileEditTool()]  // 入口直接 new 具体类
+</code></pre>
+<p><strong>后果</strong>：添加工具必须改 main.tsx，顺序依赖变成隐式约定，测试时无法 mock。</p>
+<p><strong>正确做法</strong>：通过 <code>getTools()</code> 聚合函数获取 <code>Tool[]</code>，Harness 只依赖接口（<code>src/tools.ts:193</code>）。</p>
+<h3 id="-忽视初始化顺序在-bootstrap-就绪前访问全局状态"><a class="header" href="#-忽视初始化顺序在-bootstrap-就绪前访问全局状态">❌ 忽视初始化顺序，在 Bootstrap 就绪前访问全局状态</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：REPL 在 bootstrap 前初始化
+const repl = initREPL()   // getOriginalCwd() 此时返回 undefined
+initBootstrap()            // 太晚了
+</code></pre>
+<p>依赖方向图（图 1-1）不只是文档，它决定了代码里的 import 顺序——被依赖的模块必须先初始化。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>画依赖方向图，而不是功能分组图</strong>：按"谁依赖谁"而非"功能属于哪类"来组织模块关系图，依赖方向决定初始化顺序</li>
+<li><strong>识别你的 <code>main.ts</code> 里有没有业务逻辑</strong>：如果有，考虑拆分——入口文件应只做连接，不做业务</li>
+<li><strong>在扩展集合已知时选 Harness，在需要运行时发现时选 Plugin</strong>：两者解决不同场景，不是优劣之分</li>
+<li><strong>登记项目的 stub 模块</strong>：用表格记录未完成实现，标注排除原因，避免文档读者分析空壳代码</li>
+<li><strong>按依赖方向排列文档章节</strong>：被依赖的概念先讲，这是理解系统的最快路径</li>
+</ul>
+<hr />
+<p><em>第1章建立了全书的模块地图，以及 Harness 模式背后的设计理由。第2章将深入 Claude Code 最有争议的技术选型：为什么用 React 渲染 CLI 界面？<code>bun:bundle</code> 的 <code>feature()</code> 为什么是架构级决策而非普通的环境变量开关？</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../preface.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part1/ch02.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../preface.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part1/ch02.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

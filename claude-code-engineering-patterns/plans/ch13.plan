@@ -1,0 +1,293 @@
+# 第 13 章写作计划
+
+**批次**：批次 4a（来自 plans/batch.md）
+**章节**：ch13 — 第13章：MCP 工具协议——把第三方工具变成一等公民
+**风格**：hunter（模式猎人）
+
+---
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示 Model Context Protocol 如何让外部服务注册为 Claude Code 工具，分析 `src/services/mcp/client.ts`（3348行）中工具注册、调用、错误处理的完整链路，并对比协议化扩展（MCP）与插件化扩展的架构差异。读者读完后能理解 MCP 的工程设计意图，并能在自己的 Agent 系统中做有依据的扩展机制选型。
+
+---
+
+## 通用约束
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个可渲染的 Mermaid 流程图或 ASCII 架构图
+- 跨章节引用使用"详见第 X 章"格式，不重复解释
+- 使用"我们"而非"用户"/"读者"建立对话感
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现"介绍了…"等空洞表述
+- 不得对源码中没有依据的设计意图做无标注的猜测（必须标注「（推断）」）
+- 不得重复已在其他章节详细讲解的内容（用交叉引用代替）
+
+**排除范围**：
+- OAuth 认证实现细节（src/services/mcp/auth.ts 私有实现）
+- Tool 接口契约定义（第10章）
+- 插件系统详细实现（第37-39章）
+- src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
+
+---
+
+## ⛔ 风格专属写作要求
+
+> STYLE_ID = hunter
+
+**开篇格式**：模式预告（150-200字，⛔不引源码）
+- 触发句：在 Claude Code 中，一个外部进程（MCP 服务器）可以注册任意数量的工具，AI 调用它们的方式与调用内置 BashTool 完全相同——没有"二等公民"
+- 模式名预告：「协议化工具扩展」（Protocol-based Tool Extension）
+- 价值承诺：识别这个模式，你就能在自己的 Agent 系统中设计一套"不需要重启、不需要代码注入"的工具扩展机制
+
+**章末结构**：模式提炼（3个命名模式）+ 你能做什么
+
+**风格专属必须**：≥2处实例（注册链路 + 调用链路），适用范围表，与业界模式对话（GoF 代理模式、EIP 服务激活器）
+
+**通用写作铁律**：⛔源码第一、⛔代码无裸露、⛔数据驱动、⛔术语标准化、⛔开篇最后写
+
+---
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/services/mcp/client.ts | 工具注册(1765-1830行)、callMCPTool(1863行)、isMcpSessionExpiredError(193行) | 1760-1890 |
+| 2 | src/tools/MCPTool/MCPTool.ts | MCPTool 基础结构（MCP工具的接口适配）| 全文 |
+| 3 | src/services/mcp/client.ts | ensureConnectedClient(1688行)、getMcpServerConnectionBatchSize(552行) | 550-560, 1688-1710 |
+
+验证文件存在：
+```bash
+ls src/services/mcp/client.ts src/tools/MCPTool/MCPTool.ts
+```
+
+---
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用实际存在 | 所有节 | ☑ |
+| A2 | 推断有标注 | 有"（推断）"标注 | 模式剖析、权衡节 | ☑ |
+| A3 | 不引用排除范围 | 不引auth.ts私有实现、第10/37-39章 | 排除范围已列出 | ☑ |
+| A4 | 不重复其他章内容 | Tool接口→第10章，插件系统→第37章 | 交叉引用 | ☑ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无"介绍了"等 | 全章 | ☑ |
+| B2 | 数据驱动 | 用具体数字（如 MAX_SESSION_RETRIES = 1）| 节13.3 | ☑ |
+| B3 | 术语标准化 | MCP（Model Context Protocol）首次标注 | 节13.1 | ☑ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | hunter递进 | 全章骨架 | ☑ |
+| C2 | hunter专属结构 | 按spec结构 | 全章骨架 | ☑ |
+| C3 | 核心主张可提炼 | "协议化工具扩展" | 模式剖析 | ☑ |
+| C4 | 设计权衡有说明 | 协议化vs插件化 | 节13.5、权衡节 | ☑ |
+| C5 | 章末行动建议 | 5-8条 | 你能做什么 | ☑ |
+| C6 | 章节间链接 | 前→第10章，后→第37章 | 开篇、章末 | ☑ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染达标 | ≥2图 | 节13.2注册图+节13.5对比表 | ☑ |
+| D2 | 图表标注格式 | 上标题下说明 | 所有图 | ☑ |
+| D3 | 代码≤25行 | 前后说明 | 所有代码 | ☑ |
+| D4 | 源码注释引用 | 先引注释 | 节13.2 | ☑ |
+| D5 | hunter专属图表 | 适用范围表+模式框 | 节13.5+章末 | ☑ |
+
+### E. 风格符合性组（⛔最高优先级）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | hunter开篇格式 | 模式预告150-200字，不引源码 | 开篇 | ☑ |
+| E2 | 读者对话感 | "我们"，有设问 | 全章 | ☑ |
+| E3 | 关键信息突出 | 加粗，表格对比 | 关键结论 | ☑ |
+
+---
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+模式预告：MCP 协议让第三方服务以"工具"的身份加入 Claude Code，与 BashTool、FileReadTool 平等参与工具调用——这种"协议化工具扩展"模式是如何实现的？
+
+### 节 13.1：问题
+- 核心主张：**扩展 AI 工具库有两种根本不同的方式：代码注入（插件）和协议通信（MCP）——它们的安全边界和维护成本截然不同**
+- 源码锚点：`src/services/mcp/client.ts:54`（MCPTool 导入，暗示 MCP 工具最终适配了同一接口）
+- 概念层次：
+  - 定义：MCP（Model Context Protocol）= 用标准 JSON-RPC 协议让外部进程注册工具
+  - 设计意图：为什么用独立进程？— 进程隔离，MCP 服务器崩溃不影响主进程
+  - 实际案例：一个用户自定义的 MCP 服务器注册 3 个工具，AI 如何看到和调用它们
+- 权衡分析：协议化 vs 代码注入——性能、安全性、开发复杂度的三角权衡
+- 包含元素：**图13-1** — Mermaid 架构图，MCP服务器进程 ↔ Claude Code 进程的通信边界
+- 估计字数：600-800字（散文≥60%）
+- 对应spec场景：C1、协议化vs插件化（ch13_protocol_vs_plugin）
+
+### 节 13.2：源码实例1 — 工具注册链路
+- 核心主张：**MCP 工具注册的核心是"对象展开适配"——把 MCP 工具描述展开到一个 `{...MCPTool, ...自定义实现}` 的对象中，就成了标准 Tool**
+- 源码锚点：
+  - `src/services/mcp/client.ts:1770`（`...MCPTool,` — 展开 MCPTool 基础实现）
+  - `src/services/mcp/client.ts:1772`（`name: skipPrefix ? tool.name : fullyQualifiedName,` — 工具名适配）
+  - `src/services/mcp/client.ts:1773`（`mcpInfo: { serverName, toolName },` — 追踪溯源信息）
+  - `src/services/mcp/client.ts:1817`（checkPermissions 返回 passthrough，说明 MCP 工具需要权限检查）
+- 概念层次：
+  - 定义：工具适配 = `{ ...MCPTool, name, mcpInfo, description, inputJSONSchema, call }` 对象展开
+  - 设计意图：为什么用对象展开而非 extends？— 与 buildTool() 机制一致，运行时展开，不需要 class
+  - 实际案例：一个 MCP 工具的完整属性列表（name/isMcp/checkPermissions/call）
+- 权衡分析：为什么 inputJSONSchema 而非 inputSchema（Zod）？— MCP 工具的输入 schema 由外部服务器提供，是 JSON Schema 格式，不是 Zod
+- 包含元素：工具注册代码片段（client.ts:1770-1820，选最有代表性的≤20行）带引入+解读
+- 估计字数：900-1100字（散文≥60%）
+- 对应spec场景：A1、E1、MCP注册链路（ch13_tool_registration）
+
+### 节 13.3：源码实例2 — 工具调用链路
+- 核心主张：**MCP 工具的 call() 有重试机制（MAX_SESSION_RETRIES=1）和懒加载连接（ensureConnectedClient）——这两个设计保证了工具调用的容错性**
+- 源码锚点：
+  - `src/services/mcp/client.ts:1863`（`const mcpResult = await callMCPToolWithUrlElicitationRetry({`）
+  - `src/services/mcp/client.ts:1688`（`export async function ensureConnectedClient(`）— 懒加载
+  - `src/services/mcp/client.ts:193`（`export function isMcpSessionExpiredError(`）— 错误类型判断
+- 概念层次：
+  - 定义：call() = 懒加载连接 + 重试1次 + 错误分类
+  - 设计意图：ensureConnectedClient 为什么是懒加载？— MCP 服务器可能在工具调用时才启动
+  - 实际案例：Session 过期错误（isMcpSessionExpiredError）触发重试的完整路径
+- 权衡分析：为什么重试次数限制为1（MAX_SESSION_RETRIES=1）而非更多？— 避免在服务器不稳定时无限重试，快速失败原则
+- 包含元素：call 函数中的重试循环代码片段（≤20行）带引入+解读
+- 估计字数：700-900字（散文≥60%）
+- 对应spec场景：A1、E1（多实例）
+
+### 节 13.4：模式剖析
+- 核心主张：**协议化工具扩展的核心是"适配器包裹"——外部服务的能力通过标准接口描述，适配器在运行时把它包裹成本地工具对象**
+- 源码锚点：`src/services/mcp/client.ts:1770`（展开适配的关键行）
+- 估计字数：500-700字（散文≥70%）
+- 对应spec场景：C2
+
+### 节 13.5：适用范围
+
+**适用范围表**：
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 需要进程隔离的第三方工具 | ✓ | MCP 天然提供进程边界 | 代码插件（但无隔离）|
+| 用其他语言实现的工具（Python/Go）| ✓ | JSON-RPC 与语言无关 | N/A |
+| 需要快速迭代、不重启主进程更新工具 | ✓ | 重新连接 MCP 服务器即可刷新工具列表 | 热重载插件 |
+| 工具逻辑需要访问主进程内存状态 | ✗ | MCP 是进程隔离的，无法直接访问 | 内置工具（buildTool）|
+| 低延迟工具（<5ms）| ✗（谨慎）| 进程间通信增加延迟（推断）| 内置工具 |
+
+- 估计字数：400-600字
+- 对应spec场景：D5
+
+### 节 13.6：权衡与局限
+- 核心主张：**协议化扩展的代价是"协议开销"——每次工具调用都经过 JSON 序列化/反序列化 + 进程间通信**
+- 源码锚点：`src/services/mcp/client.ts:552`（getMcpServerConnectionBatchSize，控制并发连接数）
+- 估计字数：500-700字
+- 对应spec场景：C4
+
+### 节 13.7：与已知模式的对话
+- 核心主张：**这个模式与 GoF 代理模式（Proxy）有形似之处，但本质更接近 EIP 服务激活器（Service Activator）**
+- 概念层次：
+  - 与代理模式：相同——包装远程资源，提供本地接口；不同——代理是同进程的透明包装，MCP 适配器明确处理进程边界和序列化
+  - 与 EIP 服务激活器：相同——把外部服务请求路由到本地处理；不同——EIP 中服务激活器是单向的，MCP call() 是请求-响应的双向
+- 估计字数：500-700字
+- 对应spec场景：与已知模式对话
+
+### 章末：模式提炼
+
+**模式命名框 1**：
+```
+模式名称：协议化工具扩展（Protocol-based Tool Extension）
+问题：Agent 需要调用外部服务的能力，但不能将外部代码注入主进程
+解决方案：用标准协议（JSON-RPC）让外部服务描述工具能力，适配器在运行时包装成本地 Tool 对象
+前置条件：有标准的工具能力描述协议（inputSchema、description、call 接口）
+源码锚点：src/services/mcp/client.ts:1770 (展开适配)
+```
+
+**模式命名框 2**：
+```
+模式名称：懒加载容错连接（Lazy Fault-Tolerant Connection）
+问题：外部服务（MCP 服务器）可能在工具调用时才可用，早期连接会失败
+解决方案：ensureConnectedClient 在每次调用时懒加载连接，失败时重试一次
+前置条件：调用者能接受首次调用的连接延迟
+源码锚点：src/services/mcp/client.ts:1688 (ensureConnectedClient)
+```
+
+### 章末：你能做什么
+1. 用进程隔离（MCP 或任何 JSON-RPC 协议）而非代码注入实现第三方工具扩展，保护主进程安全
+2. 为远程工具调用实现懒加载连接，避免启动时就要求所有服务可用
+3. 用 `{ ...baseToolDef, ...customOverrides }` 对象展开模式适配外部工具到统一接口，而非 class 继承
+4. 为工具调用实现 1 次重试（快速失败原则），区分可重试错误（会话过期）和不可重试错误
+5. 用 inputJSONSchema（JSON Schema）而非 Zod 处理外部服务的输入验证，因为外部服务不了解 Zod
+6. 实现 mcpInfo 这样的溯源字段，让权限系统能按服务器名称区分工具的来源
+
+---
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图13-1 | MCP 工具扩展架构 | Mermaid flowchart | Claude Code进程 ↔ MCP服务器进程，JSON-RPC边界 | 13.1 |
+| 图13-2 | 工具注册与调用链路 | Mermaid sequenceDiagram | 连接→注册→调用→结果的完整序列 | 13.2/13.3 |
+
+---
+
+## 写作顺序
+
+1. ⛔ 重新读取完整 spec + DESIGN.md
+2. 读取前置文件
+3. 写节13.1（问题节，含图13-1）
+4. 写节13.2（实例1：注册链路）
+5. 写节13.3（实例2：调用链路，含图13-2序列图）
+6. 写节13.4（模式剖析）
+7. 写节13.5（适用范围表）
+8. 写节13.6（权衡与局限）
+9. 写节13.7（与已知模式对话）
+10. 写章末模式命名框+你能做什么
+11. 最后补写开篇
+
+---
+
+## 写作前 checklist
+
+```bash
+sed -n '54p' src/services/mcp/client.ts     # MCPTool 导入
+sed -n '193p' src/services/mcp/client.ts    # isMcpSessionExpiredError
+sed -n '552p' src/services/mcp/client.ts    # getMcpServerConnectionBatchSize
+sed -n '1688p' src/services/mcp/client.ts   # ensureConnectedClient
+sed -n '1770p' src/services/mcp/client.ts   # ...MCPTool,
+sed -n '1817p' src/services/mcp/client.ts   # MCPTool requires permission
+sed -n '1863p' src/services/mcp/client.ts   # callMCPToolWithUrlElicitationRetry
+```
+
+---
+
+## ⛔ Spec 一致性声明
+
+| # | 提取项 | 写入 plan | 对应节 |
+|---|--------|----------|--------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用约束→必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用约束→禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属→必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属→禁止 |
+| 6 | 章节结构 | ✓ | 章节骨架 |
+| 7 | 源码引用格式 | ✓ | 所有节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | Spec验收A组 |
+| 12 | 验收场景·B | ✓ | Spec验收B组 |
+| 13 | 验收场景·C | ✓ | Spec验收C组 |
+| 14 | 验收场景·D | ✓ | Spec验收D组 |
+| 15 | 验收场景·E | ✓ | Spec验收E组 |
+| 16 | 排除范围 | ✓ | 通用约束→排除范围 |
+
+**⛔ 所有项目均已勾选 ✓，plan 审查通过。**

@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant Main as main.tsx
+    participant BuildFunc as buildEffectiveSystemPrompt
+    participant GlobalState as 全局状态
+    participant API as Claude API
+    Main->>BuildFunc: 启动时调用一次
+    BuildFunc->>BuildFunc: 检查优先级<br/>选中最高可用
+    BuildFunc->>GlobalState: setMainLoopSystemPrompt()
+    GlobalState->>GlobalState: 缓存结果
+    loop 每轮对话
+        API->>GlobalState: 需要系统提示
+        GlobalState->>API: getMainLoopSystemPrompt()
+        API->>API: 使用缓存的提示
+    end
+    Note over GlobalState: 用户执行 /set system-prompt
+    GlobalState->>GlobalState: setMainLoopSystemPrompt(新值)
+    GlobalState->>API: 下一次请求使用新提示

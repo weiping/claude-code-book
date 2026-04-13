@@ -1,0 +1,19 @@
+graph LR
+    subgraph 只读智能体
+        A["Explore\nhaiku 模型\n快速搜索"]
+        B["Plan\ninherit 模型\n架构设计"]
+        C["Verification\ninherit 模型\n对抗性验证"]
+        D["ClaudeCodeGuide\ninherit 模型\n文档查询"]
+    end
+
+    subgraph 读写智能体
+        E["GeneralPurpose\ninherit 模型\n全部工具"]
+    end
+
+    C -->|"VERDICT\nPASS/FAIL/PARTIAL"| F["主智能体"]
+    B -->|"设计方案"| F
+    A -->|"搜索结果"| F
+    E -->|"执行结果"| F
+
+    C -.- Note1["5 种禁用工具\nAgent/Edit/Write\nNotebookEdit/ExitPlan"]
+    E -.- Note2["无禁用工具\n可读写"]

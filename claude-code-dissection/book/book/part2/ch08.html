@@ -1,0 +1,415 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 8 章：query.ts——单轮对话的原子循环 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第8章queryts单轮对话的原子循环"><a class="header" href="#第8章queryts单轮对话的原子循环">第8章：query.ts——单轮对话的原子循环</a></h1>
+<blockquote>
+<p><em>"A generator is not a coroutine. It's a promise that keeps its word."</em></p>
+</blockquote>
+<blockquote>
+<p><code>src/query.ts</code> 第219行是全书最重要的函数签名：<code>export async function* query()</code>——它是 async generator，而不是普通 async 函数。为什么？因为一次 LLM 调用可能产生几十个中间事件（流式 token、工具执行、进度更新），调用方需要逐个处理，而不是等所有事件完成后一次性处理。这个设计决定了整个 Claude Code 的实时交互感。</p>
+</blockquote>
+<p><code>src/query.ts</code> 第 219 行：</p>
+<pre><code class="language-typescript">export async function* query(params: QueryParams): AsyncGenerator&lt;...&gt;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:219</code></p>
+<p>这是 <code>async function*</code>——异步生成器函数，而不是普通的 <code>async function</code>。这个选择不是随意的。理解它，是理解整个 Claude Code 主循环的钥匙。</p>
+<p><code>query</code> 是一次 LLM 调用的<strong>原子单元</strong>：接收消息历史，发送流式请求，处理 tool_use block，执行工具，收集结果，回填，循环——直到 LLM 停止输出 tool_use。每次用户输入，<code>QueryEngine</code> 调用一次 <code>query</code>，等待它完成，再把结果合并到对话历史。</p>
+<p>这章解析这个原子单元的内部机制：generator 的设计理由、stop_reason 为什么不可信、streaming 期间工具执行的并发设计、以及降级重试是怎么工作的。</p>
+<h2 id="81-为什么用-async-generator-而不是-async-函数"><a class="header" href="#81-为什么用-async-generator-而不是-async-函数">8.1 为什么用 async generator 而不是 async 函数？</a></h2>
+<p>先看 <code>query</code> 的返回类型：</p>
+<pre><code class="language-typescript">// src/query.ts:219
+export async function* query(
+  params: QueryParams,
+): AsyncGenerator&lt;
+  | StreamEvent
+  | RequestStartEvent
+  | Message
+  | TombstoneMessage
+  | ToolUseSummaryMessage,
+  Terminal
+&gt;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:219</code></p>
+<p><code>AsyncGenerator&lt;YieldType, ReturnType&gt;</code>——它既能 yield 中间值（<code>StreamEvent</code>、<code>Message</code> 等），最终也能 return 一个值（<code>Terminal</code>，包含停止原因和最终使用量统计）。</p>
+<p>普通 <code>async function</code> 只能在最后 return 一次。如果用它实现 <code>query</code>，调用方（<code>QueryEngine</code>）要么等整个 LLM 响应完成才能处理（体验差，无法实时显示），要么需要通过 callback 回调中间状态（代码耦合高）。</p>
+<p><strong>generator 的优势</strong>：每次 LLM 流式输出一个 token，或者一个工具执行完成，<code>query</code> 就 yield 一个事件。<code>QueryEngine</code> 在 <code>for await</code> 循环里消费这些事件，立即更新 UI——用户看到实时输出，而不是等待整个响应完成后一次性刷新。</p>
+<pre><code>stream token → yield StreamEvent → REPL 更新界面
+tool 完成 → yield Message → REPL 更新进度
+所有工具完成 → LLM 继续 → yield 更多 StreamEvent
+LLM 停止 → return Terminal
+</code></pre>
+<p>这种"边产生边消费"的模式让 <code>QueryEngine</code> 能在不知道 <code>query</code> 内部实现的情况下，实时响应每一个事件。</p>
+<h3 id="为什么不用-observablerxjs"><a class="header" href="#为什么不用-observablerxjs">为什么不用 Observable（RxJS）？</a></h3>
+<p>Observable 能做同样的事，但引入了额外的操作符语义（map/filter/merge 等）和订阅/取消模式。<strong>async generator 是语言内置的，不需要额外依赖，<code>for await</code> 语法也更直观</strong>。且 generator 可以用 <code>yield*</code> 组合（<code>query</code> 内部用 <code>yield*</code> 委托给 <code>queryLoop</code>），无需订阅-合并的复杂操作。</p>
+<h2 id="82-stop_reason-不可信queryts-用什么信号判断工具调用"><a class="header" href="#82-stop_reason-不可信queryts-用什么信号判断工具调用">8.2 stop_reason 不可信——query.ts 用什么信号判断工具调用？</a></h2>
+<p><code>query</code> 的主体委托给 <code>queryLoop</code>（<code>src/query.ts:241</code>）——一个可能迭代多次的内部函数：</p>
+<p><strong>源码参考：</strong> <code>src/query.ts:241</code>（<code>async function* queryLoop</code>）</p>
+<p><strong>图 8-1：单轮循环完整流程</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    start["queryLoop 开始\n初始化 toolUseBlocks = []"]
+    request["yield stream_request_start\n发送流式 API 请求"]
+    stream["消费流式响应\n每个 token → yield StreamEvent"]
+    detect{检测到\ntool_use block?}
+    tool_exec["执行工具\n（可能并发）"]
+    collect["收集 tool_result\n构建回填消息"]
+    follow_up{needsFollowUp?}
+    done["return Terminal\n（停止原因 + 使用量）"]
+    next_iter["下一次迭代\n（携带 tool_result 重新请求）"]
+
+    start --&gt; request
+    request --&gt; stream
+    stream --&gt; detect
+    detect --&gt;|是| tool_exec
+    detect --&gt;|否| follow_up
+    tool_exec --&gt; collect
+    collect --&gt; follow_up
+    follow_up --&gt;|是| next_iter
+    next_iter --&gt; request
+    follow_up --&gt;|否| done
+</code></pre>
+<h3 id="stop_reason-为什么不可信"><a class="header" href="#stop_reason-为什么不可信">stop_reason 为什么不可信？</a></h3>
+<p>源码中有一段关键注释：</p>
+<p><code>needsFollowUp</code> 标志（<code>src/query.ts:558</code>）控制是否需要继续迭代：</p>
+<pre><code class="language-typescript">// src/query.ts:554
+// Note: stop_reason === 'tool_use' is unreliable -- it's not always set correctly.
+// Set during streaming whenever a tool_use block arrives — the sole
+// loop-exit signal. If false after streaming, we're done (modulo stop-hook retry).
+const toolUseBlocks: ToolUseBlock[] = []
+let needsFollowUp = false      // src/query.ts:558
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:554</code>（注释）、<code>src/query.ts:558</code>（needsFollowUp 初始化）</p>
+<p><strong>设计要点</strong>：<code>query.ts</code> 不依赖 API 响应的 <code>stop_reason === 'tool_use'</code> 来决定是否有工具调用。它在 streaming 期间<strong>实时检测</strong> <code>tool_use</code> block 的到达，把每个 block 追加到 <code>toolUseBlocks</code> 数组——这是判断"需要执行工具"的唯一信号。</p>
+<p>为什么 <code>stop_reason</code> 不可信？注释没有给出具体原因，但结合 API 行为推断（推断）：在极端情况下（响应被截断、streaming 错误恢复等），<code>stop_reason</code> 字段可能缺失或不正确。通过在 streaming 中累积 <code>toolUseBlocks</code> 数组来判断，比依赖一个可能不准确的字段更可靠。</p>
+<h2 id="83-streaming-期间工具执行并发还是串行"><a class="header" href="#83-streaming-期间工具执行并发还是串行">8.3 streaming 期间工具执行——并发还是串行？</a></h2>
+<p>这是本章最重要的设计决策：</p>
+<pre><code class="language-typescript">// src/query.ts:561
+const useStreamingToolExecution = config.gates.streamingToolExecution
+let streamingToolExecutor = useStreamingToolExecution
+  ? new StreamingToolExecutor(
+      toolUseContext.options.tools,
+      canUseTool,
+      toolUseContext,
+    )
+  : null
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:561</code></p>
+<p><code>useStreamingToolExecution</code> 是一个 feature gate（不是 flag，而是运行时配置项）。当它为 <code>true</code> 时，<code>StreamingToolExecutor</code> 会在 <strong>streaming 还未结束时</strong>就开始执行已经到达的 <code>tool_use</code> block。</p>
+<p><strong>图 8-2：streaming 期间工具执行时序</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant API as Claude API
+    participant Q as query.ts
+    participant SE as StreamingToolExecutor
+    participant T as Tool（BashTool等）
+
+    API-&gt;&gt;Q: 流式输出开始
+    API-&gt;&gt;Q: token: "I'll run..."
+    API-&gt;&gt;Q: tool_use block: bash（ls -la）
+    Q-&gt;&gt;SE: startExecution(bash, ls -la)
+    Note over SE,T: 工具开始执行（并发）
+    API-&gt;&gt;Q: token: "to check..."
+    API-&gt;&gt;Q: token: "the files."
+    T--&gt;&gt;SE: 执行完成（ls 结果）
+    API-&gt;&gt;Q: 流式输出结束
+    Q-&gt;&gt;Q: stream 结束，收集所有 tool_result
+    Q-&gt;&gt;API: 回填 tool_result，继续对话
+</code></pre>
+<p><strong>并发执行的收益</strong>：工具执行时间（BashTool 可能需要 2-10 秒）与 LLM 输出后续 token 的时间<strong>并行</strong>，减少端到端延迟。</p>
+<p><strong>并发执行的风险</strong>：如果 LLM 在 streaming 中途发生错误需要重试，已经开始执行的工具结果需要丢弃（<code>streamingToolExecutor.discard()</code>），防止旧的 <code>tool_use_id</code> 对应的结果"泄漏"到重试请求中。源码在异常处理中有明确的 discard 逻辑（<code>src/query.ts:731</code>）。</p>
+<h2 id="84-模型切换重试时为什么必须清空中间状态"><a class="header" href="#84-模型切换重试时为什么必须清空中间状态">8.4 模型切换重试时，为什么必须清空中间状态？</a></h2>
+<p>当主模型失败时，<code>withRetry</code> 层会抛出 <code>FallbackTriggeredError</code>：</p>
+<pre><code class="language-typescript">// src/services/api/withRetry.ts:160
+export class FallbackTriggeredError extends Error {
+  constructor(
+    public readonly originalModel: string,
+    public readonly fallbackModel: string,
+  ) {
+    super(`Model fallback triggered: ${originalModel} -&gt; ${fallbackModel}`)
+    this.name = 'FallbackTriggeredError'
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/services/api/withRetry.ts:160</code></p>
+<p><code>queryLoop</code> 捕获这个异常，切换模型，重置状态，重新发起请求：</p>
+<pre><code class="language-typescript">// src/query.ts:894
+} catch (innerError) {
+  if (innerError instanceof FallbackTriggeredError &amp;&amp; fallbackModel) {
+    currentModel = fallbackModel         // 切换到降级模型
+    attemptWithFallback = true
+    // 清除所有未完成的工具结果，防止 tool_use_id 不匹配
+    assistantMessages.length = 0
+    toolResults.length = 0
+    toolUseBlocks.length = 0
+    needsFollowUp = false
+    // 丢弃 streaming 期间已开始执行的工具，防止旧 tool_use_ids 泄漏
+    if (streamingToolExecutor) {
+      streamingToolExecutor.discard()
+      streamingToolExecutor = new StreamingToolExecutor(...)
+    }
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:894</code></p>
+<p>关键是 <code>streamingToolExecutor.discard()</code>——如果 streaming 期间已经开始执行的工具有结果，这些结果对应的是<strong>失败请求的</strong> <code>tool_use_id</code>，在重试请求中不再有效。必须丢弃，否则会产生 "orphan tool_results"（孤立的工具结果，没有对应的 <code>tool_use</code> block）。这是 <code>src/query.ts:731</code> 注释的原话："This prevents orphan tool_results (with old tool_use_ids) from being yielded after the fallback response arrives."</p>
+<p><strong>源码参考：</strong> <code>src/query.ts:731</code>（discard 原因注释）、<code>src/query.ts:904</code>（catch 块状态清零：<code>assistantMessages.length = 0</code>）</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="流式-generator-编排streaming-generator-orchestration"><a class="header" href="#流式-generator-编排streaming-generator-orchestration">流式 Generator 编排（Streaming Generator Orchestration）</a></h3>
+<p><strong>解决的问题</strong>：长时间的 LLM 调用需要实时向调用方暴露进度，但调用方不应知道内部实现细节。</p>
+<p><strong>核心做法</strong>：用 async generator yield 每个事件（token、工具结果、状态变化），调用方用 <code>for await</code> 逐事件消费；最终 return 汇总结果。</p>
+<p><strong>前置条件</strong>：调用方需要处理中间状态（UI 实时更新、进度显示），且整个调用时间不可预测。</p>
+<p><strong>源码证据</strong>：<code>src/query.ts:219</code> — <code>async function* query()</code> 返回 <code>AsyncGenerator&lt;StreamEvent | Message | ..., Terminal&gt;</code>，每个事件类型对应一种中间状态。</p>
+<h3 id="基于内容的流终止信号content-based-stream-termination-signal"><a class="header" href="#基于内容的流终止信号content-based-stream-termination-signal">基于内容的流终止信号（Content-Based Stream Termination Signal）</a></h3>
+<p><strong>解决的问题</strong>：API 的 <code>stop_reason</code> 字段不可靠，但需要准确判断是否有工具调用需要处理。</p>
+<p><strong>核心做法</strong>：在 streaming 期间实时累积 <code>toolUseBlocks</code> 数组，用数组长度而非 <code>stop_reason</code> 决定是否需要工具调用；streaming 结束后检查数组而非字段。</p>
+<p><strong>前置条件</strong>：依赖的外部信号不可靠，需要从内容本身提取更可靠的信号。</p>
+<p><strong>源码证据</strong>：<code>src/query.ts:554</code> — 注释明确说明 <code>stop_reason === 'tool_use'</code> 不可靠，使用 <code>toolUseBlocks</code> 数组作为"唯一循环退出信号"。</p>
+<h3 id="降级重试fallback-retry"><a class="header" href="#降级重试fallback-retry">降级重试（Fallback Retry）</a></h3>
+<p><strong>解决的问题</strong>：主模型不可用时需要平滑切换到备用模型，但重试时必须清除可能使请求不一致的中间状态。</p>
+<p><strong>核心做法</strong>：通过特殊异常类型（<code>FallbackTriggeredError</code>）触发降级；捕获时清除所有依赖旧模型响应的状态（工具结果、孤立消息）；丢弃并发执行中的工具结果。</p>
+<p><strong>前置条件</strong>：有备用模型，且备用模型可以处理相同的请求。</p>
+<p><strong>源码证据</strong>：<code>src/query.ts:894</code> — 捕获 <code>FallbackTriggeredError</code> 后，<code>assistantMessages.length = 0</code>、<code>streamingToolExecutor.discard()</code> 确保重试时状态干净。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-以为-generator-可以被随时中断忘记-abort-信号需要主动检查"><a class="header" href="#-以为-generator-可以被随时中断忘记-abort-信号需要主动检查">❌ 以为 generator 可以被随时中断，忘记 abort 信号需要主动检查</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：没有检查 abort 信号，即使用户 Ctrl+C 也继续执行
+for await (const event of query(params)) {
+  processEvent(event)  // 如果 abort 了，这里仍然在执行
+}
+</code></pre>
+<p><code>query()</code> 是 async generator，中止必须通过 <code>params.abortSignal</code> 主动传入。调用方必须检查 abort 信号：</p>
+<pre><code class="language-typescript">for await (const event of query({...params, signal: abortController.signal})) {
+  if (params.signal?.aborted) break
+}
+</code></pre>
+<h3 id="-在降级重试时没有丢弃-streaming-工具执行结果"><a class="header" href="#-在降级重试时没有丢弃-streaming-工具执行结果">❌ 在降级重试时没有丢弃 streaming 工具执行结果</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：降级切换模型时，旧模型的 tool_use_id 对应的结果还留着
+// 这会导致 "orphan tool_results" 错误——工具结果找不到对应的 tool_use 块
+catch (err) {
+  if (err instanceof FallbackTriggeredError) {
+    currentModel = err.fallbackModel
+    // 忘记了：streamingToolExecutor.discard()
+  }
+}
+</code></pre>
+<p><strong>正确做法</strong>：捕获 <code>FallbackTriggeredError</code> 时必须清除所有中间状态（<code>src/query.ts:894</code>），包括 <code>assistantMessages.length = 0</code>、<code>streamingToolExecutor.discard()</code>。</p>
+<h3 id="-依赖-stop_reason--tool_use-来判断是否需要工具执行"><a class="header" href="#-依赖-stop_reason--tool_use-来判断是否需要工具执行">❌ 依赖 stop_reason === 'tool_use' 来判断是否需要工具执行</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：stop_reason 不可靠
+if (response.stop_reason === 'tool_use') {
+  executeTools()
+}
+</code></pre>
+<p><code>src/query.ts:554</code> 有明确注释："stop_reason === 'tool_use' is unreliable"。应该通过 streaming 期间实时累积的 <code>toolUseBlocks</code> 数组（<code>src/query.ts:558</code>）来判断是否有工具需要执行。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用 async generator 替代回调</strong>：当函数需要产生多个中间结果时，generator 比 <code>onProgress</code> 回调更简洁，且错误处理统一</li>
+<li><strong>不要依赖外部 API 的状态字段</strong>：从响应内容本身提取可靠信号（如 <code>toolUseBlocks</code> 数组），而非依赖可能不准确的元数据字段</li>
+<li><strong>降级重试时必须清除状态</strong>：切换模型重试前，清除所有依赖旧请求的中间状态——"孤立工具结果"是一类常见的、难以调试的错误</li>
+<li><strong>并发执行需要对应的取消路径</strong>：<code>StreamingToolExecutor.discard()</code> 是必不可少的——任何并发启动的操作都需要一个干净的取消路径</li>
+</ul>
+<hr />
+<p><em>第8章解析了 <code>query.ts</code> 的单轮原子循环。第9章将进入 <code>QueryEngine</code>——多轮对话的编排层：是什么在跨轮次维护对话历史，abort 信号怎么从 REPL 传到 query.ts 深处？</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part2/ch07.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part2/ch09.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part2/ch07.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part2/ch09.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

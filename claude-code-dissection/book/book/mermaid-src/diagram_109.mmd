@@ -1,0 +1,11 @@
+graph TB
+    A["主进程"]
+    B["子进程<br/>沙箱"]
+    C["可访问<br/>console, JSON"]
+    D["禁止<br/>require,<br/>process"]
+    E["受限通信<br/>Mailbox"]
+    A -->|fork| B
+    B --> C
+    B --> D
+    B -->|IPC| E
+    E -->|限制消息类型| A

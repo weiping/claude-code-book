@@ -1,0 +1,620 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 33 章：Effort、Fast Mode 与 Thinking——推理深度控制 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-33-章计算成本管理---effort-与-fast-mode"><a class="header" href="#第-33-章计算成本管理---effort-与-fast-mode">第 33 章：计算成本管理 - Effort 与 Fast Mode</a></h1>
+<blockquote>
+<p>用户在终端输入 <code>/effort 1</code> 时，Claude Code 应该怎么做？应该用性能最弱的模型吗？为什么还需要一个"Fast Mode"？这两者的关系是什么？</p>
+</blockquote>
+<hr />
+<h2 id="331-计算成本的困难"><a class="header" href="#331-计算成本的困难">33.1 计算成本的困难</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p>每次调用 Claude API，都会产生成本。一个复杂的任务可能需要多轮对话，成本会迅速累积。</p>
+<pre><code>情景：用户要求 Claude Code "完整重构一个项目"
+轮次 1：Claude Opus → 分析代码结构
+  成本：$0.003（API 调用）
+轮次 2：Claude Opus → 设计新架构
+  成本：$0.005
+轮次 3：Claude Opus → 实现模块 A
+  成本：$0.010
+轮次 4-10：... 继续
+  成本：... 累积
+────────────────────────────────
+总成本：$0.10-0.50（一个中等任务）
+问题：
+  Q1：用户没有预算意识，可能被高额账单惊吓
+  Q2：某些任务"很傻"（如简单搜索），不值得用 Opus
+  Q3：某些任务"很重要"（如安全审计），必须用 Opus
+  Q4：如何让用户在成本和质量之间权衡？
+</code></pre>
+<h3 id="设计意图effort-与-fast-mode"><a class="header" href="#设计意图effort-与-fast-mode">设计意图：Effort 与 Fast Mode</a></h3>
+<p>Claude Code 提供了两个控制成本的机制：
+<strong>Effort（努力级别）</strong>：<code>/effort 1|2|3|4</code></p>
+<ul>
+<li>级别 1：最快、最便宜，但可能不准确</li>
+<li>级别 2：平衡</li>
+<li>级别 3：更用心</li>
+<li>级别 4：最仔细、最昂贵
+<strong>Fast Mode</strong>：<code>/fastmode on|off</code></li>
+<li>On：优先使用快速模型（Haiku），成本最低</li>
+<li>Off：使用标准模型（Sonnet），成本中等
+<strong>关键区别</strong>：</li>
+</ul>
+<pre><code>Effort 控制：对话轮次和思考深度
+Fast Mode 控制：每轮使用的模型版本
+结合使用：
+  /effort 1 /fastmode on   → 最快最便宜（Haiku，1-2 轮）
+  /effort 4 /fastmode off  → 最慢最昂贵（Opus，多轮思考）
+</code></pre>
+<hr />
+<h2 id="332-effort-级别的实现"><a class="header" href="#332-effort-级别的实现">33.2 Effort 级别的实现</a></h2>
+<h3 id="定义与映射"><a class="header" href="#定义与映射">定义与映射</a></h3>
+<p>每个 Effort 级别对应不同的工作策略：</p>
+<div class="table-wrapper"><table><thead><tr><th>Effort</th><th>策略</th><th>轮数预期</th><th>思考深度</th><th>模型</th><th>适用场景</th></tr></thead><tbody>
+<tr><td><strong>1</strong></td><td>快速反应</td><td>1-2 轮</td><td>浅</td><td>Haiku</td><td>简单查询、非关键</td></tr>
+<tr><td><strong>2</strong></td><td>平衡</td><td>3-5 轮</td><td>中</td><td>Sonnet</td><td>一般编码任务</td></tr>
+<tr><td><strong>3</strong></td><td>仔细分析</td><td>5-8 轮</td><td>深</td><td>Sonnet</td><td>复杂设计、审计</td></tr>
+<tr><td><strong>4</strong></td><td>极致优化</td><td>8-15 轮</td><td>极深</td><td>Opus</td><td>关键任务、安全审查</td></tr>
+</tbody></table>
+</div>
+<h3 id="effort-的控制点"><a class="header" href="#effort-的控制点">Effort 的控制点</a></h3>
+<p><strong>定义与获取</strong>（<code>src/utils/effort.ts</code> 第 13-18 行）：</p>
+<pre><code class="language-typescript">export const EFFORT_LEVELS = [
+  'low',
+  'medium',
+  'high',
+  'max',
+] as const satisfies readonly EffortLevel[]
+</code></pre>
+<p>系统支持 Effort 的条件检查（<code>src/utils/effort.ts</code> 第 22-45 行）：</p>
+<pre><code class="language-typescript">export function modelSupportsEffort(model: string): boolean {
+  // 先检查环境变量是否强制启用
+  if (isEnvTruthy(process.env.CLAUDE_CODE_ALWAYS_ENABLE_EFFORT)) {
+    return true
+  }
+  // 只有 Claude 4 系列的特定版本支持 Effort
+  if (m.includes('opus-4-6') || m.includes('sonnet-4-6')) {
+    return true
+  }
+  // 排除旧模型（Haiku、Sonnet 3、Opus 3 等）
+  if (m.includes('haiku') || m.includes('sonnet') || m.includes('opus')) {
+    return false
+  }
+  // 第一方模型默认支持，第三方默认不支持
+  return getAPIProvider() === 'firstParty'
+}
+</code></pre>
+<p><strong>控制点 1：初始系统提示</strong></p>
+<pre><code class="language-typescript">// 根据 Effort 级别调整系统提示
+const systemPrompt = buildSystemPrompt({
+  effort: currentEffort,
+  // ...
+})
+// 伪代码
+if (currentEffort === 1) {
+  systemPrompt += "Please respond quickly with the most essential answer only."
+} else if (currentEffort === 4) {
+  systemPrompt += "Provide thorough analysis. Consider edge cases and security implications."
+}
+</code></pre>
+<p><strong>控制点 2：工具可用性</strong>
+某些工具在低 Effort 下不可用：</p>
+<pre><code class="language-typescript">const availableTools = tools.filter(tool =&gt; {
+  // 低 Effort 时，禁用耗时的工具
+  if (currentEffort &lt;= 1) {
+    return !tool.name.includes('deepAnalysis')
+           &amp;&amp; !tool.name.includes('comprehensiveSearch')
+  }
+  return true
+})
+</code></pre>
+<p><strong>控制点 3：循环终止条件</strong></p>
+<pre><code class="language-typescript">// Effort 级别决定何时停止对话
+async function shouldStopLoop(context: Context): boolean {
+  const currentRounds = context.messages.length
+  const maxRounds = [2, 5, 8, 15][context.currentEffort - 1]
+  if (currentRounds &gt;= maxRounds) {
+    return true  // 达到轮数上限
+  }
+  // 其他终止条件...
+  return false
+}
+</code></pre>
+<h3 id="设计权衡"><a class="header" href="#设计权衡">设计权衡</a></h3>
+<p><strong>为什么需要四个级别而不是"多一点"或"少一点"？</strong></p>
+<pre><code>两级方案（快/慢）：
+  ✓ 简单
+  ✗ 不够灵活，无法精细调节
+三级方案（快/中/慢）：
+  ✓ 好一些
+  ✗ 仍然不足以覆盖所有用户期望
+四级方案（现状）：
+  ✓ 足够灵活
+  ✓ 对应用户的常见决策点（"多花点钱"）
+  ✗ 可能过度设计
+五级及以上：
+  ✗ 用户困惑（太多选择）
+  ✗ 实现复杂（区分度不大）
+</code></pre>
+<hr />
+<h2 id="333-fast-mode-的模型切换"><a class="header" href="#333-fast-mode-的模型切换">33.3 Fast Mode 的模型切换</a></h2>
+<h3 id="定义-1"><a class="header" href="#定义-1">定义</a></h3>
+<p><strong>Fast Mode</strong> 是一个全局的模型选择策略。启用时，系统偏好使用最便宜的模型。</p>
+<h3 id="模型的成本分级"><a class="header" href="#模型的成本分级">模型的成本分级</a></h3>
+<p>根据 Anthropic 的官方定价（2026 年）：</p>
+<div class="table-wrapper"><table><thead><tr><th>模型</th><th>输入成本</th><th>输出成本</th><th>速度</th><th>成本系数</th></tr></thead><tbody>
+<tr><td><strong>Haiku</strong></td><td>$0.80/M</td><td>$4/M</td><td>⚡⚡⚡</td><td>1×</td></tr>
+<tr><td><strong>Sonnet 4</strong></td><td>$3/M</td><td>$15/M</td><td>⚡⚡</td><td>5×</td></tr>
+<tr><td><strong>Opus</strong></td><td>$15/M</td><td>$75/M</td><td>⚡</td><td>20×</td></tr>
+</tbody></table>
+</div>
+<h3 id="fast-mode-的工作流"><a class="header" href="#fast-mode-的工作流">Fast Mode 的工作流</a></h3>
+<p>在 <code>src/main.tsx</code> 中，模型选择遵循以下逻辑（第 2500-2600 行伪代码）：</p>
+<pre><code class="language-typescript">function selectModel(context: ContextType): ModelType {
+  // 优先级 1：用户显式指定
+  if (context.userModelOverride) {
+    if (!modelSupportsEffort(context.userModelOverride) &amp;&amp; context.currentEffort) {
+      logWarning(`Model ${context.userModelOverride} does not support Effort level`)
+    }
+    return context.userModelOverride
+  }
+  // 优先级 2：Fast Mode 优化
+  if (context.fastModeEnabled) {
+    // Effort 级别决定下限，Fast Mode 尽量降低
+    if (context.currentEffort &lt;= 2) {
+      return 'claude-haiku-4-6'        // 最便宜
+    } else if (context.currentEffort === 3) {
+      return 'claude-sonnet-4-6'       // 中等（不能用 Haiku）
+    } else {
+      // Effort 4 强制使用 Opus
+      return 'claude-opus-4-6'
+    }
+  }
+  // 优先级 3：标准模式
+  const standardModels = {
+    'low': 'claude-sonnet-4-6',
+    'medium': 'claude-sonnet-4-6',
+    'high': 'claude-opus-4-6',
+    'max': 'claude-opus-4-6'
+  }
+  return standardModels[context.currentEffort] || defaultModel
+}
+</code></pre>
+<h3 id="fast-mode-的限制"><a class="header" href="#fast-mode-的限制">Fast Mode 的限制</a></h3>
+<p><strong>什么任务不能在 Fast Mode 下运行？</strong></p>
+<pre><code>任务需求 → Fast Mode 能否运行？
+"写一个 Hello World" → ✅ 能（Haiku 足够）
+"搜索并总结网页" → ✅ 能（Sonnet 可以）
+"设计系统架构" → ⚠️  可能不够（Opus 更好）
+"安全代码审计" → ❌ 不行（必须 Opus）
+"容器逃逸检测" → ❌ 绝对不行（需要最强模型）
+</code></pre>
+<p><strong>系统防护</strong>：</p>
+<pre><code class="language-typescript">// 某些操作禁止在 Fast Mode 下运行
+const securityCriticalOperations = [
+  'security_audit',
+  'permission_check',
+  'access_control_review',
+]
+if (fastModeEnabled &amp;&amp; securityCriticalOperations.includes(operation)) {
+  throw new Error(
+    "Security-critical operations require Fast Mode to be disabled. " +
+    "Use `/fastmode off` to proceed."
+  )
+}
+</code></pre>
+<hr />
+<h2 id="334-effort-与-fast-mode-的组合效应"><a class="header" href="#334-effort-与-fast-mode-的组合效应">33.4 Effort 与 Fast Mode 的组合效应</a></h2>
+<h3 id="成本矩阵"><a class="header" href="#成本矩阵">成本矩阵</a></h3>
+<p>当结合 Effort 和 Fast Mode 时，成本会如何变化？</p>
+<pre><code>               Fast Mode OFF           Fast Mode ON
+Effort 1   Sonnet × 2轮            Haiku × 2轮
+           = 低成本                = 极低成本（✓✓✓）
+Effort 2   Sonnet × 5轮            Sonnet × 5轮
+           = 中成本                = 中成本
+           （Fast Mode 对 effort 2+ 影响小）
+Effort 3   Sonnet × 8轮            Sonnet × 8轮
+           = 较高成本              = 较高成本
+           （必须用 Sonnet 或以上）
+Effort 4   Opus × 15轮             Opus × 15轮
+           = 很高成本              = 很高成本
+           （Opus 强制，Fast Mode 无效）
+</code></pre>
+<h3 id="用户决策流"><a class="header" href="#用户决策流">用户决策流</a></h3>
+<p>用户如何选择？</p>
+<pre><code>用户想法 → 对应的选择
+"快速给我一个答案，不花钱" 
+  → /effort 1 /fastmode on（最便宜，几秒钟）
+"常规编码任务，要有质量"
+  → 默认（Sonnet，几分钟，成本中等）
+"这很重要，要非常准确"
+  → /effort 4（多轮思考，几十分钟，成本高）
+"项目太复杂，只能用最强的"
+  → /effort 4 /fastmode off（Opus，很贵）
+</code></pre>
+<hr />
+<h2 id="图解"><a class="header" href="#图解">图解</a></h2>
+<p><strong>图 33-1：Effort 级别与轮数的映射</strong></p>
+<pre><code class="language-mermaid">graph LR
+    A["Effort 1&lt;br/&gt;快速反应"] --&gt;|1-2轮| B["Haiku"]
+    C["Effort 2&lt;br/&gt;平衡"] --&gt;|3-5轮| D["Sonnet"]
+    E["Effort 3&lt;br/&gt;仔细分析"] --&gt;|5-8轮| F["Sonnet"]
+    G["Effort 4&lt;br/&gt;极致优化"] --&gt;|8-15轮| H["Opus"]
+    style A fill:#ccffcc
+    style C fill:#fff4e6
+    style E fill:#fff4e6
+    style G fill:#ffcccc
+    style B fill:#ccffcc
+    style D fill:#fff4e6
+    style F fill:#fff4e6
+    style H fill:#ffcccc
+</code></pre>
+<p><strong>图 33-2：Fast Mode 的模型选择流程</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["选择模型"]
+    B{"用户指定&lt;br/&gt;模型?"}
+    C["使用指定&lt;br/&gt;模型"]
+    D{"Fast Mode&lt;br/&gt;启用?"}
+    E["根据 Effort&lt;br/&gt;选择最便宜"]
+    F["根据 Effort&lt;br/&gt;选择标准"]
+    A --&gt; B
+    B --&gt;|YES| C
+    B --&gt;|NO| D
+    D --&gt;|YES| E
+    D --&gt;|NO| F
+    style E fill:#ccffcc
+    style F fill:#fff4e6
+    style C fill:#ffffcc
+</code></pre>
+<p><strong>图 33-3：成本矩阵（Effort × Fast Mode）</strong></p>
+<pre><code class="language-mermaid">graph TB
+    subgraph effort_1 ["Effort 1"]
+        E1F["+ Fast Mode&lt;br/&gt;极低成本 ✓✓✓&lt;br/&gt;Haiku × 2轮"]
+        E1N["- Fast Mode&lt;br/&gt;低成本&lt;br/&gt;Sonnet × 2轮"]
+    end
+    subgraph effort_2 ["Effort 2"]
+        E2F["+ Fast Mode&lt;br/&gt;中成本&lt;br/&gt;Sonnet × 5轮"]
+        E2N["- Fast Mode&lt;br/&gt;中成本&lt;br/&gt;Sonnet × 5轮"]
+    end
+    subgraph effort_4 ["Effort 4"]
+        E4F["+ Fast Mode&lt;br/&gt;高成本&lt;br/&gt;Opus × 15轮"]
+        E4N["- Fast Mode&lt;br/&gt;高成本&lt;br/&gt;Opus × 15轮"]
+    end
+    style E1F fill:#ccffcc
+    style E1N fill:#fff4e6
+    style E2F fill:#fff4e6
+    style E2N fill:#fff4e6
+    style E4F fill:#ffcccc
+    style E4N fill:#ffcccc
+</code></pre>
+<p><strong>图 33-4：用户决策树</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["用户需求"]
+    B{"重要性?"}
+    C{"预算?"}
+    D{"时间?"}
+    A --&gt; B
+    B --&gt;|不重要| C
+    B --&gt;|重要| E["Effort 4&lt;br/&gt;完全不省钱"]
+    C --&gt;|无预算| F["/effort 1&lt;br/&gt;/fastmode on&lt;br/&gt;极便宜"]
+    C --&gt;|有预算| D
+    D --&gt;|紧急| G["/effort 1&lt;br/&gt;快速"]
+    D --&gt;|不紧| H["默认&lt;br/&gt;Effort 2&lt;br/&gt;平衡"]
+    style F fill:#ccffcc
+    style G fill:#ccffcc
+    style H fill:#fff4e6
+    style E fill:#ffcccc
+</code></pre>
+<p><strong>表格 33-1：安全关键操作列表</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>操作类别</th><th>操作名</th><th>Effort 下限</th><th>强制模型</th></tr></thead><tbody>
+<tr><td><strong>安全审计</strong></td><td>security_audit</td><td>4</td><td>Opus</td></tr>
+<tr><td></td><td>permission_check</td><td>3</td><td>Sonnet</td></tr>
+<tr><td></td><td>access_control_review</td><td>3</td><td>Sonnet</td></tr>
+<tr><td><strong>删除操作</strong></td><td>delete_file</td><td>2</td><td>Sonnet</td></tr>
+<tr><td></td><td>rm_recursive</td><td>2</td><td>Sonnet</td></tr>
+<tr><td><strong>系统配置</strong></td><td>modify_config</td><td>2</td><td>Sonnet</td></tr>
+<tr><td></td><td>install_package</td><td>3</td><td>Sonnet</td></tr>
+<tr><td><strong>网络操作</strong></td><td>deploy_to_production</td><td>4</td><td>Opus</td></tr>
+<tr><td></td><td>expose_port</td><td>3</td><td>Sonnet</td></tr>
+<tr><td><strong>表格 33-2：成本预估示例</strong></td><td></td><td></td><td></td></tr>
+<tr><td>场景</td><td>Effort</td><td>Fast Mode</td><td>预期轮数</td></tr>
+<tr><td>------</td><td>--------</td><td>----------</td><td>---------</td></tr>
+<tr><td>简单查询</td><td>1</td><td>ON</td><td>2</td></tr>
+<tr><td>常规编码</td><td>2</td><td>OFF</td><td>5</td></tr>
+<tr><td>复杂设计</td><td>3</td><td>OFF</td><td>8</td></tr>
+<tr><td>关键审计</td><td>4</td><td>OFF</td><td>15</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="分级-effort-控制tiered-effort-control"><a class="header" href="#分级-effort-控制tiered-effort-control">分级 Effort 控制（Tiered Effort Control）</a></h3>
+<p><strong>解决的问题</strong>：不同复杂度的任务需要不同深度的推理，用统一的最高 Effort 处理所有任务浪费资源，统一用最低 Effort 则在复杂任务上效果差。</p>
+<p><strong>核心做法</strong>：定义四级 Effort（low/medium/high/max），将其映射到 API 的 <code>budgetTokens</code> 参数。用户可以通过关键词（<code>ultrathink</code>）或命令行选项覆盖默认级别，系统根据任务类型自动选择。</p>
+<p><strong>前置条件</strong>：API 支持通过 <code>betas</code> 或独立参数控制推理深度；有明确的任务复杂度信号（用户关键词、任务类型）。</p>
+<p><strong>源码证据</strong>：<code>src/utils/thinking.ts:10</code> — <code>ThinkingConfig</code> 类型定义三种状态（disabled/enabled/auto），<code>budgetTokens</code> 对应不同 Effort 级别的 token 预算；<code>src/utils/thinking.ts:19</code> — <code>isUltrathinkEnabled()</code> 检查 feature flag 和 GrowthBook 双重条件。</p>
+<hr />
+<h3 id="关键词触发升级keyword-triggered-escalation"><a class="header" href="#关键词触发升级keyword-triggered-escalation">关键词触发升级（Keyword-Triggered Escalation）</a></h3>
+<p><strong>解决的问题</strong>：用户有时会在对话中隐式表达"这个问题需要深度推理"，如果系统无法感知这个意图，会用低 Effort 处理本应深度思考的问题。</p>
+<p><strong>核心做法</strong>：在消息预处理阶段检测关键词（<code>ultrathink</code>、<code>megathink</code>），检测到后自动将当前请求的 Effort 升级到 max，给 Claude 更多 token 预算进行推理。</p>
+<p><strong>前置条件</strong>：关键词检测必须跳过代码块、注释等上下文（避免误触发）；触发后仅对当前请求生效，不影响后续轮次。</p>
+<p><strong>源码证据</strong>：<code>src/utils/thinking.ts:29</code> — <code>hasUltrathinkKeyword()</code> 函数；触发词检测逻辑同时处理大小写变体，保证 <code>UltraThink</code>、<code>ULTRATHINK</code> 都能触发。</p>
+<hr />
+<h3 id="快速模式降级fast-mode-degradation"><a class="header" href="#快速模式降级fast-mode-degradation">快速模式降级（Fast Mode Degradation）</a></h3>
+<p><strong>解决的问题</strong>：某些时候用户愿意用较低质量换取更快的响应（如批量处理、确认性问题），但切换模型的决策不应该完全手动。</p>
+<p><strong>核心做法</strong>：<code>FastMode</code> 在用户启用且当前任务适合时，透明地切换到更小的模型（Haiku），完成后自动回到默认模型。切换对用户不可见（除非明确告知）。</p>
+<p><strong>前置条件</strong>：有明确的"Fast Mode 适用"判断标准；模型切换不影响功能完整性（小模型能处理该类型任务）。</p>
+<p><strong>源码证据</strong>：<code>src/utils/fastMode.ts:38</code> — <code>isFastModeEnabled()</code> + <code>src/utils/fastMode.ts:145</code> — <code>getFastModeModel()</code> 获取降级目标模型，<code>src/utils/fastMode.ts:167</code> — <code>isFastModeSupportedByModel()</code> 检查模型兼容性。</p>
+<h2 id="336-与-plan-mode-的相互作用"><a class="header" href="#336-与-plan-mode-的相互作用">33.6 与 Plan Mode 的相互作用</a></h2>
+<h3 id="effort-在-plan-mode-中"><a class="header" href="#effort-在-plan-mode-中">Effort 在 Plan Mode 中</a></h3>
+<p>当用户启用 Plan Mode 时（第 10 章），Effort 级别仍然有效：</p>
+<pre><code>Plan Mode 的目的：在执行前人工审批
+Effort 的目的：控制规划的深度
+结合效果：
+  /plan on /effort 1
+    → 快速生成计划（1-2 轮），用户审批后立即执行
+    → 适合已知场景
+  /plan on /effort 4
+    → 深入分析生成计划（8-15 轮），用户审批
+    → 适合未知场景
+</code></pre>
+<h3 id="cost-awareness-系统"><a class="header" href="#cost-awareness-系统">Cost Awareness 系统</a></h3>
+<p>某些 Effort 级别会显示成本预估：</p>
+<pre><code class="language-typescript">// 在执行前提示用户
+if (currentEffort &gt;= 3 || !fastModeEnabled) {
+  const estimatedCost = estimateCost({
+    effort: currentEffort,
+    fastMode: fastModeEnabled,
+    taskType: currentTask.type,
+  })
+  console.log(`⚠️  Estimated cost: $${estimatedCost.toFixed(3)}`)
+  console.log(`   Use /effort 1 /fastmode on to reduce cost`)
+}
+</code></pre>
+<hr />
+<h2 id="延伸thinkingconfig-与-fastmode-的实现细节"><a class="header" href="#延伸thinkingconfig-与-fastmode-的实现细节">延伸：ThinkingConfig 与 FastMode 的实现细节</a></h2>
+<p><code>ThinkingConfig</code>（<code>src/utils/thinking.ts:10</code>）是 Effort 级别到 API 参数的映射层：</p>
+<pre><code class="language-typescript">// src/utils/thinking.ts:10
+export type ThinkingConfig = 
+  | { type: 'disabled' }              // 不使用 extended thinking
+  | { type: 'enabled'; budgetTokens: number }  // 开启，指定 token 预算
+  | { type: 'auto' }                  // 让 API 自动决定
+
+// src/utils/thinking.ts:19
+export function isUltrathinkEnabled(): boolean {
+  return feature('ULTRATHINK') &amp;&amp;
+    getFeatureValue_CACHED_MAY_BE_STALE('tengu_turtle_carbon')  // GrowthBook flag
+}
+
+// src/utils/thinking.ts:29
+export function hasUltrathinkKeyword(text: string): boolean {
+  // 检测用户输入中是否有 "ultrathink"、"megathink" 等触发词
+}
+</code></pre>
+<p><code>ultrathink</code> 的触发是双层的：编译期 <code>feature('ULTRATHINK')</code> 控制功能是否存在；运行期 GrowthBook <code>tengu_turtle_carbon</code> 控制是否对当前用户开放。</p>
+<p>FastMode（<code>src/utils/fastMode.ts:38</code>）在 <code>isFastModeEnabled()</code> 为 true 时切换到更小的模型（Haiku）处理轻量任务：</p>
+<pre><code class="language-typescript">// src/utils/fastMode.ts:38
+export function isFastModeEnabled(): boolean {
+  // 检查是否有配置 fast mode，以及当前任务是否适合 fast mode
+}
+</code></pre>
+<p><code>prefetchFastModeStatus</code>（<code>src/utils/fastMode.ts</code>）在主模型响应前预先检查 fast mode 状态，避免在真正需要切换模型时才发现配置问题——这是"启动并行预热"模式的另一个应用（<code>src/utils/fastMode.ts</code>）。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-不设置-max_tokens-上限单次回复-token-消耗不可控"><a class="header" href="#-不设置-max_tokens-上限单次回复-token-消耗不可控">❌ 不设置 max_tokens 上限，单次回复 token 消耗不可控</a></h3>
+<p>Claude 默认输出尽可能详细的回答。对于"列举所有方法"这类开放性问题，不设 max_tokens 可能产生 4000+ tokens 的回复，是合理回复的 10 倍（<code>src/services/cost/</code>）。</p>
+<h3 id="-对所有任务都用-extended-thinking高-effort-模式"><a class="header" href="#-对所有任务都用-extended-thinking高-effort-模式">❌ 对所有任务都用 Extended Thinking（高 Effort 模式）</a></h3>
+<p>Extended Thinking 的成本是普通模式的 5-10 倍。简单的代码补全、格式化、总结不需要深度推理，强制使用高 Effort 模式是在浪费资源。应该根据任务复杂度自动选择 Effort 级别。</p>
+<h3 id="-批量操作时没有设置会话级别的-token-总量上限"><a class="header" href="#-批量操作时没有设置会话级别的-token-总量上限">❌ 批量操作时没有设置会话级别的 token 总量上限</a></h3>
+<p>自动化脚本调用 Claude 处理 1000 个文件，没有每文件的 token 上限，其中一个大文件可能消耗整个配额，后续 999 个文件全部失败并报配额超限错误。批量操作必须设置每次调用和总量的双重上限。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>始终为 Claude API 调用设置 max_tokens 上限</strong>：根据任务类型设置合理上限（代码补全 500，文章生成 2000），避免意外的大额消耗</li>
+<li><strong>根据任务复杂度选择 Effort 级别</strong>：简单的代码格式化不需要 Extended Thinking，节省的 token 可以用在真正需要深度推理的任务上</li>
+<li><strong>为批量操作设置双重 token 上限</strong>：单次调用上限 + 总量上限，防止单个大文件消耗所有配额</li>
+<li><strong>统计 token 消耗的分布</strong>：工具调用占多少、系统 prompt 占多少、用户对话占多少，找到优化方向</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part8/ch32.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part9/ch34.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part8/ch32.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part9/ch34.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

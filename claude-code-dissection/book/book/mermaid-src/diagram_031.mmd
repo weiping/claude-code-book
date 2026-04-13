@@ -1,0 +1,13 @@
+graph LR
+    subgraph "全局注册表（Plugin 模式）"
+        A1["模块 A"] -->|"import 时注册"| R["Registry 单例"]
+        A2["模块 B"] -->|"import 时注册"| R
+        A3["模块 C"] -->|"import 时注册"| R
+        R -->|"运行期查询"| T1["工具列表"]
+    end
+    subgraph "条件展开数组（Claude Code 方式）"
+        F["getAllBaseTools()"] -->|"明确包含"| C1["BashTool"]
+        F -->|"feature('X') 条件"| C2["InternalTool"]
+        F -->|"MCP 连接后"| C3["MCPTool"]
+        C1 & C2 & C3 --> T2["工具列表"]
+    end

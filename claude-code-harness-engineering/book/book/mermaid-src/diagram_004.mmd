@@ -1,0 +1,28 @@
+flowchart
+    subgraph P1["阶段一：并行预热"]
+        direction TB
+        A1["profileCheckpoint 性能打点"]
+        A2["startMdmRawRead MDM 子进程"]
+        A3["startKeychainPrefetch 密钥链读取"]
+    end
+
+    subgraph P2["阶段二：同步初始化"]
+        direction TB
+        B1["~135ms import 评估"]
+        B2["Commander.js 命令注册"]
+        B3["Feature Flag 条件导入"]
+    end
+
+    subgraph P3["阶段三：就绪确认"]
+        direction TB
+        C1["Promise.all 等待预热结果"]
+        C2["init 初始化"]
+        C3["runMigrations 版本迁移"]
+    end
+
+    P1 -->|"~0ms 触发"| P2
+    P2 -->|"~135ms 完成"| P3
+
+    style P1 fill:#e8f4f8
+    style P2 fill:#fff3e0
+    style P3 fill:#e8f5e9

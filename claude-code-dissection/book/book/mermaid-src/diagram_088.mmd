@@ -1,0 +1,22 @@
+graph TD
+    A["插件代码"]
+    B["虚拟机执行环境"]
+    C["受限 API"]
+    D["claudeCodeAPI"]
+    E["bash"]
+    F["llm"]
+    G["❌ fs"]
+    H["❌ net"]
+    I["❌ exec"]
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    D --> F
+    B --> G
+    B --> H
+    B --> I
+    style C fill:#ccffcc
+    style G fill:#ffcccc
+    style H fill:#ffcccc
+    style I fill:#ffcccc

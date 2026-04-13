@@ -1,0 +1,18 @@
+flowchart TD
+    cmd["bash 命令\n（可能是管道）"]
+    split["分割为命令部分\n（处理 &&/||/|/;）"]
+    neutral{是 SEMANTIC_NEUTRAL\n命令?}
+    skip["跳过\n（中性命令不影响分类）"]
+    known{在四个集合里?}
+    classify["标记 isSearch/isRead/isList"]
+    unknown["立即返回全 false\n（整个管道视为修改）"]
+    result["合并结果\n返回 isSearch/isRead/isList"]
+
+    cmd --> split
+    split --> neutral
+    neutral -->|是| skip
+    neutral -->|否| known
+    known -->|否| unknown
+    known -->|是| classify
+    classify --> result
+    skip --> result

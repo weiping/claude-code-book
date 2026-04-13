@@ -1,0 +1,9 @@
+graph TD
+    A["Swarm（编排层）"] -->|定义拓扑<br/>同步权限| B["Task（容器层）"]
+    B -->|提供隔离环境| C["Agent（执行层）"]
+    A1["spawnMultiAgent()"] -.->|使用| A
+    B1["InProcessTeammateTask<br/>RemoteAgentTask<br/>LocalAgentTask"] -.->|实现| B
+    C1["runAgent()"] -.->|执行| C
+    style A fill:#e6f2ff
+    style B fill:#fff4e6
+    style C fill:#ffffcc

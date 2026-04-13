@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant main as main.tsx
+    participant profiler as startupProfiler
+    participant mdm as MDM 子进程
+    participant kc as Keychain 读取
+    participant imports as 剩余 import（~135ms）
+
+    main->>profiler: profileCheckpoint('main_tsx_entry')
+    main->>mdm: startMdmRawRead()（非阻塞）
+    Note over mdm: plutil/reg query 在后台运行
+    main->>kc: startKeychainPrefetch()（非阻塞）
+    Note over kc: 两次 keychain 读取并行（~65ms）
+    main->>imports: 继续执行剩余 import（~135ms）
+    Note over imports,kc: ← 并行执行 →
+    imports-->>main: import 完成
+    main->>profiler: profileCheckpoint('main_tsx_imports_loaded')
+    Note over mdm,kc: 子进程/读取已完成（在 preAction 前 await）

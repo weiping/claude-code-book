@@ -1,0 +1,150 @@
+# 第 20 章写作计划
+
+**批次**：批次 5（第五篇：提示词工程）
+**章节**：ch20 — 第20章：CLAUDE.md 的发现、解析与注入
+**风格**：autopsy（工程师解剖）
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/claudemd.ts | 文件头注释（三种记忆类型），getMemoryFiles 函数 | 行号 1-25, 790-850 |
+| 2 | src/utils/claudemd.ts | isClaudeMdExcluded 排除逻辑 | 行号 540-560 |
+| 3 | src/utils/claudemd.ts | processMemoryFile、parseMemoryFile 解析流程 | 行号 600-700 |
+| 4 | src/utils/claudemd.ts | .claude/rules/*.md 目录扫描 | 行号 400-450 |
+| 5 | src/services/api/buildSystemPromptInput.ts | 如何将 CLAUDE.md 内容注入系统提示 | 行号 1-80 |
+| 6 | src/bootstrap/state.ts | claudeMdExcludes 配置管理 | 行号 300-350 |
+
+验证文件存在：
+```bash
+ls -l src/utils/claudemd.ts \
+      src/services/api/buildSystemPromptInput.ts \
+      src/bootstrap/state.ts
+```
+
+## 章节骨架
+
+### 开篇（必填）
+- **开篇触发点**：你在项目目录放了 CLAUDE.md，在 ~/.claude/ 又放了一份，在 /etc/claude-code/ 还有一份。Claude Code 会用哪个？如果都有，它们怎么合并？
+- **工程问题**：CLAUDE.md 是 Claude Code 的"项目宪法"，但它需要支持多层级（系统级/用户级/项目级），同时还要支持排除机制（blacklist）、缓存失效、动态更新。这个多源文件发现与合并系统是工程问题。
+- **权衡**：灵活性（支持多层级覆盖）vs 性能（缓存与失效时机）vs 安全性（排除机制）
+
+### 节 20.1：三种记忆路径与优先级
+- **核心主张**：CLAUDE.md 有三种来源：Managed（系统级）、User（用户级）、Project（项目级）。加载顺序是反向的，即 Project > User > Managed，Project 优先级最高。
+- **源码锚点**：`src/utils/claudemd.ts:1-25` — 文件头注释中的三种记忆类型定义
+- **概念层次**：定义 / 优先级逻辑 / 实际路径示例
+- **权衡分析**：为什么反向加载（后加载的优先级高）？这样可以用"后覆盖"的语义表达优先级，符合程序员直觉。
+- **包含元素**：ASCII 目录树（展示三层路径）+ 优先级表格（Managed/User/Project 的作用域与优先级）
+- **估计字数**：600-800 字
+- **对应 spec 场景**：verify_three_path_types
+
+### 节 20.2：目录层级遍历——从当前目录向上查找
+- **核心主张**：Project 记忆的发现不是一次性的，而是通过从当前工作目录向上遍历到项目根，在每个目录中查找 CLAUDE.md、.claude/CLAUDE.md 和 .claude/rules/*.md。
+- **源码锚点**：`src/utils/claudemd.ts:790-850` — getMemoryFiles 的遍历逻辑
+- **概念层次**：算法描述 / 代码实现 / 例子（多目录场景）
+- **权衡分析**：为什么从当前目录向上而非从项目根向下？CLI 工具通常从当前工作目录开始，向上查找更符合工作流直觉（如 git 查找 .git 目录）。
+- **包含元素**：伪代码展示遍历算法、具体例子（项目结构 + 扫描结果）
+- **估计字数**：600-800 字
+- **对应 spec 场景**：verify_directory_traversal
+
+### 节 20.3：排除机制——blacklist 与动态跳过
+- **核心主张**：不是所有发现的 CLAUDE.md 都被加载。通过 claudeMdExcludes 配置项（在 ~/.claude/config.yaml 或环境变量中），可以排除特定的 CLAUDE.md 文件。isClaudeMdExcluded 在加载前检查。
+- **源码锚点**：`src/utils/claudemd.ts:540-560` — isClaudeMdExcluded 函数
+- **概念层次**：排除规则格式 / 匹配逻辑 / 配置示例
+- **权衡分析**：为什么需要排除机制？某个项目的 CLAUDE.md 可能包含过时或有害的指令，需要快速跳过而无需修改文件。
+- **包含元素**：排除规则示例、配置格式示例
+- **估计字数**：400-600 字
+- **对应 spec 场景**：verify_exclusion_mechanism
+
+### 节 20.4：缓存与失效策略
+- **核心主张**：为了避免重复读取磁盘，getMemoryFiles 使用 memoize 缓存结果。缓存何时失效？当调用 setSystemPromptInjection 时，缓存被清除。
+- **源码锚点**：`src/utils/claudemd.ts:790` — `export const getMemoryFiles = memoize(...)`
+- **概念层次**：缓存设计 / 失效时机 / 性能影响
+- **权衡分析**：为什么不用时间戳失效？memoize 缓存是内存级的，只要进程不重启就有效。失效时机由 setSystemPromptInjection 显式触发（表示用户修改了系统提示）。这比时间轮询更精确。
+- **包含元素**：缓存命中/失效的时序图、性能对比（有缓存 vs 无缓存）
+- **估计字数**：400-600 字
+- **对应 spec 场景**：verify_cache_invalidation
+
+### 节 20.5：文件解析与合并
+- **核心主张**：每个发现的 CLAUDE.md 都通过 parseMemoryFile 解析，支持 @ 引用语法（include 其他文件）。所有已解析的文件最后合并成一个大字符串作为 systemPrompt 内容。
+- **源码锚点**：`src/utils/claudemd.ts:600-700` — parseMemoryFile 与合并逻辑
+- **概念层次**：解析规则 / 引用语法 / 合并顺序
+- **权衡分析**：为什么支持 @ 引用而不是简单拼接？引用语法允许模块化管理规则（一个 CLAUDE.md 可以 include 子规则文件），提高可维护性。
+- **包含元素**：@ 引用语法示例、递归解析的深度限制、循环引用检测
+- **估计字数**：500-700 字
+- **对应 spec 场景**：verify_source_citations_exist
+
+### 节 20.6：.claude/rules 目录——规则的自动扫描
+- **核心主张**：除了 CLAUDE.md，系统还自动扫描 .claude/rules/*.md 目录中的所有 Markdown 文件，将它们合并到 Project 记忆中。这支持规则的细粒度组织。
+- **源码锚点**：`src/utils/claudemd.ts:400-450` — .claude/rules/ 目录扫描逻辑
+- **概念层次**：目录结构 / 自动扫描 / 合并顺序
+- **权衡分析**：为什么需要单独的 rules 目录？允许工程师将大的 CLAUDE.md 拆分为多个主题文件（如 rules/code-style.md、rules/testing.md），每个文件专注一个规则，便于版本控制和代码审查。
+- **包含元素**：rules 目录示例结构、文件加载顺序、合并后的效果
+- **估计字数**：400-600 字
+- **对应 spec 场景**：verify_rules_directory_explained
+
+### 章末：模式提炼（必填）
+
+| 模式名 | 解决的问题 | 核心做法（一句话） | 前置条件 | 源码证据锚点 |
+|--------|-----------|-----------------|---------|------------|
+| 三层记忆分离 | 系统级/用户级/项目级指令需要独立管理 | 维护三个独立的路径（/etc/claude-code、~/.claude、project/.claude），反向加载以实现优先级 | 多层级管理需求 | `src/utils/claudemd.ts:1-25` |
+| 向上目录遍历 | 项目中多个层级都可能有规则文件 | 从当前工作目录向上遍历到项目根，在每个目录中查找 CLAUDE.md 和 .claude/rules/*.md | 项目嵌套结构 | `src/utils/claudemd.ts:790-850` |
+| Blacklist 排除 | 某些规则文件需要被跳过但不能删除 | 通过 claudeMdExcludes 配置维护黑名单，isClaudeMdExcluded 在加载前检查 | 规则文件过时或有害 | `src/utils/claudemd.ts:540-560` |
+| memoize 缓存 | 频繁查找 CLAUDE.md 会耗尽磁盘 I/O | 使用 memoize 缓存 getMemoryFiles 结果，setSystemPromptInjection 触发失效 | 高频访问的特性 | `src/utils/claudemd.ts:790` |
+| @ 引用语法 | 规则文件倾向于分散管理 | 在 CLAUDE.md 中支持 @path 语法 include 其他文件，支持递归解析 | 需要模块化规则 | `src/utils/claudemd.ts:600-700` |
+
+### 章末：用户能做什么（必填）
+
+阅读本章后，工程师能做到：
+1. **设计多层级规则系统**：在 /etc、~/.claude、项目目录分别放置系统级/用户级/项目级规则，理解加载顺序和优先级
+2. **快速排除有问题的规则**：通过 claudeMdExcludes 黑名单快速跳过出问题的 CLAUDE.md，无需删除文件
+3. **组织复杂的规则文件**：将单个大的 CLAUDE.md 拆分为 .claude/rules/*.md，用模块化方式管理编码规范、测试规范等
+4. **利用 @ 引用机制**：在 CLAUDE.md 中用 @path 语法 include 其他规则文件，支持规则复用
+5. **调试规则加载问题**：理解目录遍历顺序，当规则未生效时能快速定位问题（哪个目录的哪个文件被加载）
+6. **优化规则加载性能**：理解 memoize 缓存机制，知道修改 CLAUDE.md 后何时缓存失效
+7. **为团队设计规则模板**：在系统级路径创建 /etc/claude-code/CLAUDE.md 作为所有用户的基础规则，在用户级提供个人覆盖
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图20-1 | 三层记忆路径与优先级 | ASCII 目录树 | 展示 /etc/claude-code、~/.claude、project/ 三个层级的位置与优先级顺序 | 20.1 |
+| 图20-2 | 目录遍历与发现流程 | Mermaid flowchart | 从当前目录向上遍历，在每个目录中查找 CLAUDE.md、.claude/CLAUDE.md、.claude/rules/*.md 的流程 | 20.2 |
+| 图20-3 | 文件加载与合并顺序 | 时序图或堆栈图 | 多个 CLAUDE.md 的加载顺序，@ 引用的递归解析，最终合并结果 | 20.5 |
+| 图20-4 | .claude/rules 目录的自动扫描 | 示例目录结构 | 展示 .claude/rules/ 下的多个 *.md 文件如何被自动加载 | 20.6 |
+
+## 写作顺序
+
+1. **先写 20.1**（三层路径）— 是本章基础，理解三个来源的定义和优先级
+2. **写 20.2**（目录遍历）— Project 记忆的发现算法，紧接着 20.1 的理论
+3. **写 20.3**（排除机制）— 安全特性，实现 Managed/User 层的控制
+4. **写 20.4**（缓存策略）— 运行时性能优化，与发现算法相关
+5. **写 20.5**（文件解析）— 语言特性（@ 引用），实现规则的模块化
+6. **写 20.6**（.claude/rules）— 特定目录的自动扫描，依赖前面的解析逻辑
+7. **补写模式提炼** — 五个模式自然浮现
+8. **补写开篇** — 知道全章讲了什么后，写出"为什么重要"
+9. **补写用户能做什么** — 转化为 7-8 条行动建议
+
+## 写作前 checklist
+
+执行以下命令确认所有源码锚点存在：
+```bash
+PROJECT_ROOT="$(pwd)"
+BOOK_ROOT="${PROJECT_ROOT}/book"
+
+# 验证 ch20 的所有源码锚点
+sed -n '1,25p' "${PROJECT_ROOT}/src/utils/claudemd.ts" | grep -q "Managed\|User\|Project" && echo "✓ claudemd.ts 头部三种记忆类型注释存在" || echo "✗ 不存在"
+
+grep -n "export const getMemoryFiles" "${PROJECT_ROOT}/src/utils/claudemd.ts" | grep -q "790" && echo "✓ getMemoryFiles 在约 790 行" || grep -n "export const getMemoryFiles" "${PROJECT_ROOT}/src/utils/claudemd.ts"
+
+sed -n '540,560p' "${PROJECT_ROOT}/src/utils/claudemd.ts" | grep -q "isClaudeMdExcluded" && echo "✓ isClaudeMdExcluded 函数存在" || echo "✗ 不存在"
+
+grep -n "\.claude/rules" "${PROJECT_ROOT}/src/utils/claudemd.ts" | head -1 && echo "✓ .claude/rules 扫描逻辑存在" || echo "✗ 不存在"
+
+echo "✓ 所有 ch20 锚点检查完毕"
+```
+
+如果任何锚点不存在，重新搜索正确行号：
+```bash
+grep -n "getMemoryFiles\|isClaudeMdExcluded\|\.claude/rules" "${PROJECT_ROOT}/src/utils/claudemd.ts"
+```

@@ -1,0 +1,14 @@
+graph TB
+    A["Claude Code"]
+    B["命令<br/>auto-commit"]
+    C["钩子<br/>before_execute"]
+    D["工具<br/>CustomTool"]
+    E["权限<br/>PermissionRule"]
+    A --> B
+    A --> C
+    A --> D
+    A --> E
+    B -.->|Slash 命令| F["执行"]
+    C -.->|生命周期| F
+    D -.->|工具调用| F
+    E -.->|权限决策| F

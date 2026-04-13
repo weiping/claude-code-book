@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant A as Agent A
+    participant ES as extractMemories
+    participant SD as Storage
+    participant NE as Agent B<br/>（新会话）
+    participant MD as Memory<br/>Discovery
+    A->>ES: 会话结束，提取记忆
+    ES->>SD: 保存到 .claude/teams/
+    SD->>MD: Agent B 开始新会话
+    MD->>MD: 语义搜索
+    MD->>NE: 注入相关记忆
+    NE->>NE: 结合新知识和历史洞察

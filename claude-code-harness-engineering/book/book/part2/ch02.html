@@ -1,0 +1,386 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 2 章：点火序列 - 从 Claude Code 源码提炼的 Harness 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">从 Claude Code 源码提炼的 Harness 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-2-章点火序列"><a class="header" href="#第-2-章点火序列">第 2 章：点火序列</a></h1>
+<blockquote>
+<p>"启动不是成本，是投资。每一毫秒都在为后续的稳定运行买单。"</p>
+</blockquote>
+<p>你打开终端输入 <code>claude</code>，不到一秒就进入交互模式。这一秒内发生了什么？三条并行子进程的启动、~135 毫秒的模块加载、19 次性能打点、11 个版本迁移、Feature Flag 对模块图的裁剪——比大多数应用整个启动过程做的事情更多。而这一切都在回答同一个工程问题：<strong>不要让模型等 I/O。</strong> 读完本章，你将理解 Harness 如何在模型调用之前完成所有基础设施准备，以及 Feature Flag 如何编码"模型能力假设"。</p>
+<h2 id="问题从进程启动到模型就绪发生了什么"><a class="header" href="#问题从进程启动到模型就绪发生了什么">问题——从进程启动到模型就绪，发生了什么</a></h2>
+<p>第 1 章的六层架构全景展示了启动层的位置，但没有展开。现在让我们进入第一层内部，看看从进程启动到模型就绪，这 ~200 毫秒内发生了什么。</p>
+<p>Claude Code 的启动过程分三个阶段。源码注释精确说明了第一阶段的核心设计：</p>
+<blockquote>
+<p>"这些副作用必须在所有其他导入之前运行：</p>
+<ol>
+<li>profileCheckpoint 在重型模块评估开始前标记入口点；</li>
+<li>startMdmRawRead 触发 MDM 子进程使其与后续约 135ms 的导入并行运行；</li>
+<li>startKeychainPrefetch 触发两次 macOS 密钥链读取的并行执行，否则它们会以同步方式在 applySafeConfigEnvironmentVariables 中顺序执行（每次 macOS 启动约 65ms）。"</li>
+</ol>
+</blockquote>
+<p>这三行注释浓缩了启动层的全部设计哲学：<strong>在模块评估期间并行预热一切可能阻塞后续流程的 I/O。</strong></p>
+<p><strong>图 2-1：启动序列三阶段</strong></p>
+<pre><code class="language-mermaid">flowchart
+    subgraph P1["阶段一：并行预热"]
+        direction TB
+        A1["profileCheckpoint 性能打点"]
+        A2["startMdmRawRead MDM 子进程"]
+        A3["startKeychainPrefetch 密钥链读取"]
+    end
+
+    subgraph P2["阶段二：同步初始化"]
+        direction TB
+        B1["~135ms import 评估"]
+        B2["Commander.js 命令注册"]
+        B3["Feature Flag 条件导入"]
+    end
+
+    subgraph P3["阶段三：就绪确认"]
+        direction TB
+        C1["Promise.all 等待预热结果"]
+        C2["init 初始化"]
+        C3["runMigrations 版本迁移"]
+    end
+
+    P1 --&gt;|"~0ms 触发"| P2
+    P2 --&gt;|"~135ms 完成"| P3
+
+    style P1 fill:#e8f4f8
+    style P2 fill:#fff3e0
+    style P3 fill:#e8f5e9
+</code></pre>
+<p>阶段一几乎零成本——三条子进程启动语句只触发 I/O，不等结果。阶段二是主要耗时——~135 毫秒的 JavaScript 模块评估。阶段三在 preAction 钩子中执行，用 <code>Promise.all</code> 收割阶段一种下的并行结果。因为子进程在 ~135 毫秒的 import 期间已经完成，<code>Promise.all</code> 几乎是免费的。</p>
+<p>这三个阶段的时间分配揭示了一个关键洞察：<strong>启动时间不是线性累加的。</strong> 阶段一的三个 I/O 操作与阶段二的模块评估并行执行，总启动时间约等于阶段二的时间，而非三者之和。这就是并行预热的威力——用零额外等待时间消除了 ~65 毫秒的顺序 I/O 成本。</p>
+<h2 id="黄金法则并行预热一切可能阻塞模型的-io"><a class="header" href="#黄金法则并行预热一切可能阻塞模型的-io">黄金法则——并行预热一切可能阻塞模型的 I/O</a></h2>
+<p>启动序列的核心原则可以用一句话概括：</p>
+<p><strong>不要让模型等 I/O。所有可能阻塞后续流程的 I/O 操作，都必须在模块评估期间并行启动。</strong></p>
+<p>这个原则的源码证据藏在 <code>keychainPrefetch.ts</code> 的注释中。这段注释是一份精算报告：密钥链的两次读取——"Claude Code-credentials"（OAuth 令牌）约 32 毫秒、"Claude Code"（遗留 API 密钥）约 33 毫秒——如果顺序执行，总计约 65 毫秒。而如果提前触发，让子进程在 ~135 毫秒的 import 评估期间并行运行，收割时"几乎免费"。</p>
+<p><strong>原则 2.1：预热先于等待</strong> — 如果一个 I/O 操作的结果在后续一定会被使用，不要等到需要时才启动。提前触发，并行收割。</p>
+<p>这个原则的适用条件很明确：操作之间没有依赖关系。MDM 配置读取不依赖密钥链读取，密钥链读取不依赖 import 评估。三者天然可以并行。但有一个微妙的约束——<strong>并行操作的 import 链必须保持最小化</strong>。注释明确警告：密钥链预获取故意不引入 <code>macOsKeychainStorage</code> 模块，因为后者会拉入 <code>execa → human-signals → cross-spawn</code> 的依赖链，带来约 58 毫秒的同步模块初始化开销。用更轻量的 <code>macOsKeychainHelpers</code> 替代，保持了 import 链的纯净。</p>
+<p>这就是并行预热的另一面：<strong>并行是免费的，但并行操作的模块依赖是有成本的。</strong> 每多引入一个模块，就增加了 import 评估的时间——这个时间是同步的、不可避免的。</p>
+<h2 id="适用场景哪些应用需要精心设计启动序列"><a class="header" href="#适用场景哪些应用需要精心设计启动序列">适用场景——哪些应用需要精心设计启动序列</a></h2>
+<p>Claude Code 不仅在启动时做了并行预热，还为此建立了一套专门的性能监控工具——<code>startupProfiler</code>。</p>
+<p><code>startupProfiler</code> 的采样策略编码了一种工程态度：启动性能值得持续监控。内部用户（Anthropic 员工）100% 上报启动耗时，外部用户 0.1% 采样。这种差异化采样说明 Anthropic 把启动性能当作产品特性来管理，而非开发时的临时调试工具。</p>
+<p>源码中 19 个 <code>profileCheckpoint</code> 调用构成了一条完整的时间线，覆盖从入口到就绪的每个关键节点。这不是事后添加的——<code>profileCheckpoint('main_tsx_entry')</code> 是 <code>main.tsx</code> 的第一条可执行语句，在所有 import 之前。</p>
+<p>那么，谁需要这种启动设计？</p>
+<ul>
+<li><strong>AI 助手和 Agent 应用</strong>——模型首次响应的延迟直接影响用户体验，用户不会等待一个"正在初始化"的提示</li>
+<li><strong>CLI 工具</strong>——命令行工具的启动速度感知尤为强烈，超过 500 毫秒用户就会觉得"慢"</li>
+<li><strong>需要认证的客户端应用</strong>——密钥链/OAuth 令牌的获取是典型的启动时 I/O 阻塞点</li>
+</ul>
+<p>如果你的应用没有"用户等待首次响应"的压力，精心设计启动序列的收益可能不大——后台批处理任务或服务端长驻进程更关注吞吐量而非冷启动时间。</p>
+<h2 id="工作原理feature-flag-如何编码模型能力假设"><a class="header" href="#工作原理feature-flag-如何编码模型能力假设">工作原理——Feature Flag 如何编码模型能力假设</a></h2>
+<p>启动层最精巧的设计不是并行预热——那只是经典的性能优化。真正独特的是 <strong>Feature Flag 对模块图的编译时裁剪</strong>。</p>
+<p>每个 <code>feature('FLAG_NAME')</code> 调用都是一条隐含断言：<strong>"模型在 X 方面还不够好，需要 Harness 脚手架。"</strong> Flag 的存在是 Harness 对模型能力的诚实评估；Flag 的移除（当模型能力增强后）是 Harness 自我精简的信号。</p>
+<p><code>feature</code> 函数来自 <code>bun:bundle</code>，这是 Bun 运行时的编译时特性。当 Flag 为 <code>false</code> 时，<code>require()</code> 调用根本不会出现在编译产物中——不仅是条件跳过，而是物理消除（Dead Code Elimination, DCE）。</p>
+<p>Claude Code 的关键 Feature Flag 清单揭示了 Anthropic 对模型能力边界的评估：</p>
+<div class="table-wrapper"><table><thead><tr><th>Feature Flag</th><th>功能</th><th>编码的能力假设</th></tr></thead><tbody>
+<tr><td><code>KAIROS</code></td><td>助手模式——自主管理完整工作流</td><td>模型还不能自主管理端到端的工作流，需要人类引导</td></tr>
+<tr><td><code>COORDINATOR_MODE</code></td><td>多智能体协调模式</td><td>单个智能体不足以处理复杂任务，需要协调层</td></tr>
+<tr><td><code>TRANSCRIPT_CLASSIFIER</code></td><td>自动权限分类</td><td>模型还不能可靠判断自身行为是否安全</td></tr>
+<tr><td><code>HISTORY_SNIP</code></td><td>历史消息裁剪</td><td>模型在长上下文下的注意力会退化</td></tr>
+<tr><td><code>OVERFLOW_TEST_TOOL</code></td><td>上下文溢出测试工具</td><td>模型可能生成超出上下文窗口的输出</td></tr>
+<tr><td><code>WEB_BROWSER_TOOL</code></td><td>内置浏览器工具</td><td>模型需要浏览实时网页但无法直接访问</td></tr>
+<tr><td><code>AGENT_TRIGGERS</code></td><td>定时触发器（Cron）</td><td>Agent 需要在无用户输入时主动执行任务</td></tr>
+<tr><td><code>WORKFLOW_SCRIPTS</code></td><td>预置工作流脚本</td><td>模型还不能自行发现最优工作流</td></tr>
+</tbody></table>
+</div>
+<p>这张表是 Harness 工程最诚实的自白。每个 Flag 的名字无关紧要，真正有意义的是 Flag 背后的假设：<strong>"如果没有这个脚手架，模型会在这个场景下失败。"</strong></p>
+<p><strong>原则 2.2：Feature Flag 编码能力假设</strong> — 每个 Feature Flag 都是对"模型在某方面还不够好"的显式断言。Flag 的存在是脚手架，Flag 的移除是里程碑。</p>
+<p>Feature Flag 在启动层的运作方式是条件导入。以 <code>KAIROS</code> 为例：如果 Flag 为 <code>true</code>，<code>require('./assistant/index.js')</code> 加载整个助手模块；如果为 <code>false</code>，变量被赋值为 <code>null</code>，助手模块的代码根本不会进入 JavaScript 引擎。这种设计的一个直接后果是：<strong>Flag 关闭时，对应功能不存在运行时开销，也不存在被意外触达的风险。</strong></p>
+<p>同样的模式贯穿整个工具编排系统。<code>src/tools.ts</code> 中的工具注册使用条件导入：<code>OVERFLOW_TEST_TOOL</code>、<code>CONTEXT_COLLAPSE</code>、<code>TERMINAL_PANEL</code>、<code>WEB_BROWSER_TOOL</code> 等——每个工具的注册都受 Feature Flag 控制。模型的工具列表会根据 Flag 状态动态变化，模型甚至不知道自己"少了"哪些工具。</p>
+<p>这与第 1 章的六层架构有什么关系？Feature Flag 是启动层的核心机制——它决定了六层架构中哪些层会被实例化、哪些工具会被注册、哪些模块会被加载。<strong>启动层是六层架构的开关板，Feature Flag 是开关。</strong></p>
+<h2 id="权衡启动序列的设计选择"><a class="header" href="#权衡启动序列的设计选择">权衡——启动序列的设计选择</a></h2>
+<p>启动序列不是"越快越好"——它是一组精心校准的权衡。</p>
+<p><strong>权衡一：最小 import 链 vs 开发便利性</strong></p>
+<p>密钥链预获取模块故意不引入 <code>macOsKeychainStorage</code>，而是用更轻量的 <code>macOsKeychainHelpers</code>。注释明确计算了代价差异：<code>macOsKeychainStorage</code> 会拉入 <code>execa → human-signals → cross-spawn</code> 的依赖链，约 58 毫秒的同步初始化开销。<strong>为了节省 58 毫秒，开发者放弃了直接调用完整 API 的便利性，转而使用一个功能子集的轻量替代。</strong></p>
+<p>这个权衡的取舍方向：在启动路径上，每毫秒都是昂贵的。开发便利性在运行时路径上可以追求，但启动路径必须极致精简。</p>
+<p><strong>权衡二：同步迁移 vs 异步迁移</strong></p>
+<p><code>runMigrations()</code> 函数区分了关键迁移和非关键迁移。关键迁移（如默认模型重置、权限配置迁移）同步执行——确保后续代码看到的配置状态是一致的。非关键迁移（如 changelog 格式迁移）用 <code>fire-and-forget</code> 异步执行，失败时静默忽略并等待下次启动重试。</p>
+<div class="table-wrapper"><table><thead><tr><th>迁移类型</th><th>执行方式</th><th>失败处理</th><th>理由</th></tr></thead><tbody>
+<tr><td>关键迁移（11 个）</td><td>同步</td><td>阻塞启动</td><td>后续代码依赖迁移后的配置状态</td></tr>
+<tr><td>非关键迁移</td><td>异步</td><td>静默忽略</td><td>不影响启动后的功能正确性</td></tr>
+</tbody></table>
+</div>
+<p><strong>权衡三：失败开放 vs 失败关闭</strong></p>
+<p>企业策略加载（<code>loadRemoteManagedSettings</code> 和 <code>loadPolicyLimits</code>）使用 <code>void</code> 前缀——即 <code>fire-and-forget</code>。这意味着如果企业策略服务不可用，系统会在没有策略限制的情况下继续启动。</p>
+<p>这与第 1 章工具默认值的 fail-closed 策略形成了有趣的对比。工具编排系统选择"失败关闭"——宁可拒绝也不误放行；启动层选择"失败开放"——宁可没有策略也不阻塞启动。<strong>两种选择都是正确的，因为代价不同：工具编排系统误放行的代价是安全事故，启动层阻塞的代价是用户无法使用产品。</strong></p>
+<p><strong>原则 2.3：权衡的代价决定方向</strong> — 选择 fail-closed 还是 fail-open，不取决于组件的重要性，而取决于失败的代价。安全场景拒绝优于放行；可用性场景启动优于等待。</p>
+<h2 id="踩坑指南启动序列中的工程陷阱"><a class="header" href="#踩坑指南启动序列中的工程陷阱">踩坑指南——启动序列中的工程陷阱</a></h2>
+<p>Claude Code 的源码注释本身就是最佳实践的教科书。从这些注释中可以提炼出三个常见的启动工程陷阱。</p>
+<p><strong>陷阱一：在 import 链中引入重模块</strong></p>
+<p><code>keychainPrefetch.ts</code> 的注释精确计算了引入 <code>macOsKeychainStorage</code> 的代价：<code>execa → human-signals → cross-spawn</code>，约 58 毫秒的同步模块初始化。在启动路径上，58 毫秒不是"微小优化"，而是总启动时间 135 毫秒的 43%。<strong>一个看似无害的 import 就能吞噬近一半的启动预算。</strong></p>
+<p>更危险的是，这种膨胀通常是渐进的：今天引入一个工具函数，明天引入一个格式化库，后天引入一个 HTTP 客户端——每次都是"只多一个"，累计后启动时间翻倍。防御方法是建立启动路径的 import 审查机制。</p>
+<p><strong>陷阱二：同步 I/O 阻塞事件循环</strong></p>
+<p>MDM 配置读取如果改用同步方式（<code>execSync</code> 而非 <code>execFile</code>），会阻塞整个事件循环约 65 毫秒——在这期间什么都不能做。Claude Code 的做法是启动异步子进程，然后在需要结果时收割。<strong>同步 I/O 在启动路径上不是"简单"，而是"懒惰"。</strong></p>
+<p><strong>陷阱三：迁移逻辑阻塞启动</strong></p>
+<p><code>runMigrations()</code> 同步执行 11 个关键迁移。如果每个迁移涉及文件 I/O 或配置写入，累计时间可能成为新的启动瓶颈。Claude Code 的防御策略是严格区分关键和非关键迁移，非关键的一律异步。如果你的应用有类似的迁移需求，这个区分应该在第一天就建立——等到迁移数量膨胀后再拆分，改造成本远高于一开始就做好。</p>
+<h2 id="实证从-profilecheckpoint-追踪启动时间线"><a class="header" href="#实证从-profilecheckpoint-追踪启动时间线">实证——从 profileCheckpoint 追踪启动时间线</a></h2>
+<p>19 个 <code>profileCheckpoint</code> 调用构成了一条完整的启动时间线。让我们追踪这条时间线，验证三阶段模型的准确性。</p>
+<p><strong>图 2-2：profileCheckpoint 启动时间线</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    ENTRY["main_tsx_entry 起点"] --&gt; IMPORTS["main_tsx_imports_loaded import完成"]
+    IMPORTS --&gt; MAIN["main_function_start main入口"]
+    MAIN --&gt; CLIENT["main_client_type_determined 客户端类型确定"]
+    CLIENT --&gt; BEFORE["main_before_run 运行前"]
+    BEFORE --&gt; AFTER["main_after_run 运行后"]
+    AFTER --&gt; PRE["preAction_start preAction开始"]
+    PRE --&gt; MDM["preAction_after_mdm MDM+密钥链收割"]
+    MDM --&gt; INIT["preAction_after_init init完成"]
+    INIT --&gt; SINKS["preAction_after_sinks 日志就绪"]
+    SINKS --&gt; MIGR["preAction_after_migrations 迁移完成"]
+    MIGR --&gt; REMOTE["preAction_after_remote_settings 企业策略加载"]
+    REMOTE --&gt; SYNC["preAction_after_settings_sync 设置同步"]
+
+    style ENTRY fill:#e8f4f8
+    style IMPORTS fill:#e8f4f8
+    style PRE fill:#fff3e0
+    style MDM fill:#fff3e0
+    style MIGR fill:#e8f5e9
+    style SYNC fill:#e8f5e9
+</code></pre>
+<p>从这条时间线可以验证三个关键观察：</p>
+<p><strong>第一，import 评估是启动的主要耗时。</strong> 从 <code>main_tsx_entry</code>（<code>src/main.tsx:12</code>）到 <code>main_tsx_imports_loaded</code>（<code>src/main.tsx:209</code>）之间的 ~135 毫秒，是整个启动过程中最长的单一段落。这 135 毫秒内，JavaScript 引擎评估了 <code>main.tsx</code> 的所有顶层 import——包括 React、Ink、Commander、lodash 等大型库。</p>
+<p><strong>第二，并行预热在 preAction 中收割几乎免费。</strong> <code>preAction_start</code>（<code>src/main.tsx:908</code>）到 <code>preAction_after_mdm</code>（<code>src/main.tsx:915</code>）之间的时间极短——因为 MDM 子进程和密钥链读取在 ~135 毫秒前就已经启动，此时早已完成。<code>Promise.all</code> 的等待时间约等于零。</p>
+<p><strong>第三，迁移和企业策略加载是 preAction 中最重的操作。</strong> <code>preAction_after_migrations</code>（<code>src/main.tsx:951</code>）和 <code>preAction_after_settings_sync</code>（<code>src/main.tsx:966</code>）之间的操作包括迁移执行、企业策略加载和设置同步。企业策略使用 <code>void</code>（fire-and-forget），所以实际的阻塞时间主要来自 11 个同步迁移。</p>
+<p>这条时间线验证了第 1 章提出的六层架构模型——启动层确实是独立的、可验证的物理边界。从 <code>main_tsx_entry</code> 到 <code>preAction_after_settings_sync</code>，每个检查点都有明确的职责，每个阶段之间的过渡都有源码级的标记。</p>
+<h2 id="本章主成分并行预热"><a class="header" href="#本章主成分并行预热">本章主成分：并行预热</a></h2>
+<p><strong>本质</strong>：在模型首次调用之前，并行预热一切可能阻塞的 I/O 操作，用编译时 Feature Flag 裁剪模块图。</p>
+<p><strong>关键机制</strong>：</p>
+<ul>
+<li>import 阶段启动副作用子进程，preAction 阶段用 <code>Promise.all</code> 收割</li>
+<li>Feature Flag 编码模型能力假设，编译时物理消除未开启模块</li>
+<li>启动路径 import 链严格最小化，避免同步模块初始化膨胀</li>
+</ul>
+<p><strong>适用边界</strong>：</p>
+<ul>
+<li>✓ 适合：需要快速首次响应的 AI 应用和 CLI 工具</li>
+<li>✓ 适合：需要在启动时获取认证凭据的客户端应用</li>
+<li>✗ 不适合：后台批处理任务（更关注吞吐量）</li>
+<li>✗ 不适合：服务端长驻进程（冷启动频率低）</li>
+</ul>
+<p><strong>与其他模式的关系</strong>：</p>
+<ul>
+<li>启动层是六层架构的第一层（详见第 1 章）</li>
+<li>Feature Flag 与压缩策略共享"模型能力假设"的设计哲学（详见第 11 章、第 15 章）</li>
+<li>启动层的 fail-open 策略与工具编排系统的 fail-closed 策略形成对比（详见第 7 章、第 9 章）</li>
+</ul>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>审视你的 AI 应用启动流程，找出所有同步 I/O 点</strong>。逐个评估：哪些可以改为异步预热？哪些可以在模块加载期间提前触发？</li>
+<li><strong>将可以并行的 I/O 操作移到应用加载阶段</strong>。用 <code>Promise.all</code> 在首次需要时收割结果。Claude Code 节省了 ~65 毫秒——你的应用可能节省更多。</li>
+<li><strong>为你的启动流程添加 profileCheckpoint 式的时间标记</strong>。在每个关键节点打点，用数据而非直觉驱动优化。</li>
+<li><strong>列出你应用中硬编码的"模型能力假设"</strong>。哪些假设应该变成 Feature Flag？哪些 Flag 应该在模型能力增强后移除？</li>
+<li><strong>检查你的 import 链中是否有隐含的重模块依赖</strong>。一个 <code>import</code> 可能拉入整个依赖树。在启动路径上，每个 import 都应该被审查。</li>
+<li><strong>评估你的迁移策略是否区分了关键和非关键操作</strong>。关键迁移同步执行，非关键迁移异步 fire-and-forget——这个区分应该在第一天建立。</li>
+<li><strong>对比你的启动时间和 Claude Code 的 ~200 毫秒目标</strong>。如果你需要 2 秒才能首次响应用户，差距可能不在模型调用，而在启动流程。</li>
+</ul>
+<hr />
+<p><strong>下一章导读</strong>：启动层在 ~200 毫秒内完成了所有准备工作，但"准备就绪"只是开始。第 3 章将进入第二层——核心循环层。我们会看到 <code>QueryEngine</code> 如何管理一个会话的完整生命周期：何时继续循环、何时压缩上下文、何时终止对话。这个状态机的设计决定了 Harness 能让模型连续工作多长时间而不"失控"。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part2/part2.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part2/ch03.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part2/part2.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part2/ch03.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,21 @@
+flowchart TD
+    start["queryLoop 开始\n初始化 toolUseBlocks = []"]
+    request["yield stream_request_start\n发送流式 API 请求"]
+    stream["消费流式响应\n每个 token → yield StreamEvent"]
+    detect{检测到\ntool_use block?}
+    tool_exec["执行工具\n（可能并发）"]
+    collect["收集 tool_result\n构建回填消息"]
+    follow_up{needsFollowUp?}
+    done["return Terminal\n（停止原因 + 使用量）"]
+    next_iter["下一次迭代\n（携带 tool_result 重新请求）"]
+
+    start --> request
+    request --> stream
+    stream --> detect
+    detect -->|是| tool_exec
+    detect -->|否| follow_up
+    tool_exec --> collect
+    collect --> follow_up
+    follow_up -->|是| next_iter
+    next_iter --> request
+    follow_up -->|否| done

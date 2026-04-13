@@ -1,0 +1,432 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 10 章：运行模式状态机——Plan、Auto、Worktree 等模式的实现 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第10章运行模式状态机planautoworktree-等模式的实现"><a class="header" href="#第10章运行模式状态机planautoworktree-等模式的实现">第10章：运行模式状态机——Plan、Auto、Worktree 等模式的实现</a></h1>
+<blockquote>
+<p><em>"A mode is not a flag. A mode is a promise about who makes decisions."</em></p>
+</blockquote>
+<blockquote>
+<p><code>claude --plan</code> 和 <code>claude --auto</code> 不只是不同的命令行参数——它们触发完全不同的工具集、权限级别、甚至 Agent 数量。六种模式（default、plan、autoEdit、acceptEdits、bypassPermissions、auto）是如何转换的？为什么 <code>auto</code> 模式只对内部用户存在，外部用户的类型系统里这个值根本不存在？</p>
+</blockquote>
+<p><code>PermissionMode</code> 类型的定义在 <code>src/types/permissions.ts:28</code>：</p>
+<pre><code class="language-typescript">export type InternalPermissionMode = ExternalPermissionMode | 'auto' | 'bubble'
+export type PermissionMode = InternalPermissionMode
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/types/permissions.ts:28</code></p>
+<p>六种模式中，有五种可以出现在用户的 <code>settings.json</code>（<code>EXTERNAL_PERMISSION_MODES</code>），一种只能由代码内部使用（<code>bubble</code>），一种对外部用户的产物<strong>类型系统里根本不存在</strong>（<code>auto</code>，被编译期 feature flag 门控）。</p>
+<p>为什么需要六种模式？为什么同一个 <code>PermissionMode</code> 类型在内部构建和外部构建里有不同的成员数量？为什么模式切换不是简单地修改一个字段，而是需要专门的 <code>handlePlanModeTransition</code> 函数？</p>
+<p>理解这些问题，就理解了 Claude Code 安全边界的设计哲学：<strong>权限决策的粒度是运行时可切换的，但切换本身有副作用，必须被显式管理</strong>。</p>
+<h2 id="101-六种模式各自解决什么问题"><a class="header" href="#101-六种模式各自解决什么问题">10.1 六种模式各自解决什么问题？</a></h2>
+<p>先看五种用户可见模式的完整定义（<code>src/types/permissions.ts:16</code>）：</p>
+<pre><code class="language-typescript">export const EXTERNAL_PERMISSION_MODES = [
+  'acceptEdits',
+  'bypassPermissions',
+  'default',
+  'dontAsk',
+  'plan',
+] as const
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/types/permissions.ts:16</code></p>
+<p>加上两种内部模式（<code>auto</code>/<code>bubble</code>），六种模式的对应关系如下：</p>
+<div class="table-wrapper"><table><thead><tr><th>模式</th><th>决策方</th><th>适用场景</th><th>UI 标识</th></tr></thead><tbody>
+<tr><td><code>default</code></td><td>用户（逐次确认）</td><td>日常使用，需要人工监督</td><td>无标识</td></tr>
+<tr><td><code>plan</code></td><td>用户（先规划再执行）</td><td>复杂任务，先审核计划</td><td>⏸ PAUSE_ICON</td></tr>
+<tr><td><code>acceptEdits</code></td><td>自动接受文件编辑</td><td>信任 Claude 的文件操作</td><td>⏵⏵</td></tr>
+<tr><td><code>dontAsk</code></td><td>完全自动（宽松）</td><td>无人值守场景</td><td>⏵⏵ 红色</td></tr>
+<tr><td><code>bypassPermissions</code></td><td>完全绕过权限检查</td><td>危险：测试/调试专用</td><td>⏵⏵ 红色</td></tr>
+<tr><td><code>auto</code></td><td>AI 分类器决定</td><td>实验：LLM 判断操作安全性</td><td>⏵⏵ 绿色（推断）</td></tr>
+<tr><td><code>bubble</code></td><td>权限向上冒泡</td><td>内部：子 Agent 将决策交给父 Agent</td><td>不显示</td></tr>
+</tbody></table>
+</div>
+<p><code>PERMISSION_MODE_CONFIG</code>（<code>src/utils/permissions/PermissionMode.ts:42</code>）为每种模式定义了 UI 标识和颜色。<code>plan</code> 模式使用 <code>PAUSE_ICON</code>（<code>src/utils/permissions/PermissionMode.ts:57</code>，值为 <code>⏸</code>），视觉上就是"暂停执行，等待用户审核计划"。<code>bypassPermissions</code> 和 <code>dontAsk</code> 使用红色（<code>error</code> 色键，<code>src/utils/permissions/PermissionMode.ts:75</code>），提醒用户这两种模式跳过了安全检查。</p>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/PermissionMode.ts:42</code>（plan 模式的 PAUSE_ICON 配置）</p>
+<h3 id="为什么需要模式而不是每次工具调用传一个参数"><a class="header" href="#为什么需要模式而不是每次工具调用传一个参数">为什么需要模式，而不是每次工具调用传一个参数？</a></h3>
+<p>如果权限决策每次都通过参数传入，那么系统里每一个工具调用都需要携带"当前决策策略"。这意味着：工具接口要加参数、QueryEngine 要透传、测试要 mock 策略……这是贯穿整个调用链的参数透传问题。</p>
+<p><strong>模式系统的设计</strong>：将"当前决策策略"提升为进程级的全局状态（在 <code>bootstrap/state.ts</code> 的 <code>toolPermissionContext.mode</code> 中），任何需要做权限判断的地方都可以直接读取，无需透传。<strong>当状态是"当前会话的全局策略"而非"单次操作的参数"时，进程级状态比参数透传更自然</strong>。</p>
+<h2 id="102-auto-模式为什么对外部用户类型系统不可见"><a class="header" href="#102-auto-模式为什么对外部用户类型系统不可见">10.2 <code>auto</code> 模式为什么对外部用户类型系统不可见？</a></h2>
+<p>这是第4章讲过的类型级 DCE（编译期死代码消除）的具体实践：</p>
+<pre><code class="language-typescript">// src/types/permissions.ts:33
+export const INTERNAL_PERMISSION_MODES = [
+  ...EXTERNAL_PERMISSION_MODES,
+  ...(feature('TRANSCRIPT_CLASSIFIER') ? (['auto'] as const) : ([] as const)),
+] as const satisfies readonly PermissionMode[]
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/types/permissions.ts:33</code></p>
+<p>当 <code>feature('TRANSCRIPT_CLASSIFIER')</code> 在外部构建中被替换为 <code>false</code> 时，<code>(['auto'] as const)</code> 分支被 DCE 删除，<code>INTERNAL_PERMISSION_MODES</code> 等于 <code>EXTERNAL_PERMISSION_MODES</code>——<strong><code>auto</code> 不只是运行时不可用，而是在外部用户的类型系统里根本不是一个合法的枚举值</strong>。</p>
+<p>这意味着外部用户的 TypeScript 代码里，<code>const mode: PermissionMode = 'auto'</code> 会报类型错误。不是运行时抛异常，而是编译时就被拒绝。</p>
+<p>对比两种隔离方式的强度：</p>
+<div class="table-wrapper"><table><thead><tr><th>隔离方式</th><th>能否被绕过</th><th>类型检查</th></tr></thead><tbody>
+<tr><td>运行期检查：<code>if (mode === 'auto') throw new Error()</code></td><td>✅ 可以（注释掉代码）</td><td>❌ TypeScript 认为 <code>'auto'</code> 是合法值</td></tr>
+<tr><td>编译期 DCE：<code>feature('TRANSCRIPT_CLASSIFIER')</code></td><td>❌ 不能（产物里无此代码）</td><td>✅ <code>'auto'</code> 根本不在类型定义里</td></tr>
+</tbody></table>
+</div>
+<p><strong>核心权衡</strong>：类型级 DCE 的代价是只能在支持 <code>bun:bundle feature()</code> 的构建环境中实现；收益是"不可见"的保证是类型系统级别的，不依赖运行时检查的正确性。</p>
+<h2 id="103-模式转移副作用为什么需要-handleplanmodetransition"><a class="header" href="#103-模式转移副作用为什么需要-handleplanmodetransition">10.3 模式转移副作用——为什么需要 handlePlanModeTransition？</a></h2>
+<p>模式不是无状态的标签——切换模式会触发副作用。<code>handlePlanModeTransition</code>（<code>src/bootstrap/state.ts:1349</code>）是 plan 模式转移的副作用管理器：</p>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:1349
+export function handlePlanModeTransition(
+  fromMode: string,
+  toMode: string,
+): void {
+  // If switching TO plan mode, clear any pending exit attachment
+  // This prevents sending both plan_mode and plan_mode_exit when user toggles quickly
+  if (toMode === 'plan' &amp;&amp; fromMode !== 'plan') {
+    STATE.needsPlanModeExitAttachment = false
+  }
+
+  // If switching out of plan mode, trigger the plan_mode_exit attachment
+  if (fromMode === 'plan' &amp;&amp; toMode !== 'plan') {
+    STATE.needsPlanModeExitAttachment = true
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:1349</code></p>
+<p>注释说明了为什么需要清除 <code>needsPlanModeExitAttachment</code>：用户快速切换时（plan→default→plan），如果不清除，会同时触发"进入 plan 模式"和"离开 plan 模式"两个通知——这是竞争条件的 UI 层体现。</p>
+<p><strong>图 10-1：Plan 模式转移状态图</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; mode_default
+
+    mode_default --&gt; plan: /plan 或 EnterPlanModeTool
+    plan --&gt; mode_default: ExitPlanModeTool
+    mode_default --&gt; acceptEdits: --permission-mode acceptEdits
+    mode_default --&gt; bypassPermissions: --dangerously-skip-permissions
+    acceptEdits --&gt; mode_default: 重置
+    plan --&gt; plan: 转移副作用清除 needsPlanModeExitAttachment
+
+    note right of plan
+        进入：清除 exit attachment
+        离开：设置 exit attachment
+    end note
+
+    note right of bypassPermissions
+        bubble 只在子 Agent 内部使用
+        auto 仅内部构建可见
+    end note
+</code></pre>
+<p>对应地，<code>handleAutoModeTransition</code>（<code>src/bootstrap/state.ts:1367</code>）处理 auto 模式的转移，但有一个特殊规则（注释在 <code>src/bootstrap/state.ts:1377</code>）：<strong>auto ↔ plan 之间的相互转移不由此函数处理</strong>（注释说明由 <code>prepareContextForPlanMode</code> 和 <code>ExitPlanMode</code> 处理），防止双重触发。</p>
+<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:1365</code>（handleAutoModeTransition 注释）</p>
+<h3 id="为什么用专门的-handlexmodetransition-而不是-setter"><a class="header" href="#为什么用专门的-handlexmodetransition-而不是-setter">为什么用专门的 handleXModeTransition 而不是 setter？</a></h3>
+<p>如果用简单的 setter（<code>setPermissionMode(newMode: PermissionMode)</code>），副作用逻辑只能写在 setter 里——一旦有多种副作用（通知、状态清零、附件标记），setter 就会变成一个大杂烩函数。</p>
+<p><strong>专门的 handleXModeTransition 函数</strong>允许将不同模式的转移副作用<strong>分别封装</strong>：<code>handlePlanModeTransition</code> 只管 plan 的副作用，<code>handleAutoModeTransition</code> 只管 auto 的。这让每个函数保持单一职责，且便于在不同的触发点（<code>EnterPlanModeTool</code>/<code>ExitPlanModeTool</code>）分别调用。</p>
+<h2 id="104-plan-v2订阅级别如何影响并行-agent-数量"><a class="header" href="#104-plan-v2订阅级别如何影响并行-agent-数量">10.4 Plan V2——订阅级别如何影响并行 Agent 数量？</a></h2>
+<p>Plan V2 是 Plan 模式的增强版，支持多个 Agent 并行探索方案：</p>
+<pre><code class="language-typescript">// src/utils/planModeV2.ts:5
+export function getPlanModeV2AgentCount(): number {
+  if (process.env.CLAUDE_CODE_PLAN_V2_AGENT_COUNT) {
+    // 环境变量覆盖（上限 10）
+    const count = parseInt(process.env.CLAUDE_CODE_PLAN_V2_AGENT_COUNT, 10)
+    if (!isNaN(count) &amp;&amp; count &gt; 0 &amp;&amp; count &lt;= 10) return count
+  }
+
+  const subscriptionType = getSubscriptionType()
+  const rateLimitTier = getRateLimitTier()
+
+  if (subscriptionType === 'max' &amp;&amp; rateLimitTier === 'default_claude_max_20x') {
+    return 3    // Max 20x 用户
+  }
+  if (subscriptionType === 'enterprise' || subscriptionType === 'team') {
+    return 3    // Enterprise/Team 用户
+  }
+  return 1      // 默认：单 Agent
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/planModeV2.ts:5</code></p>
+<div class="table-wrapper"><table><thead><tr><th>订阅级别</th><th>并行 Agent 数</th><th>优先级</th></tr></thead><tbody>
+<tr><td>环境变量 <code>CLAUDE_CODE_PLAN_V2_AGENT_COUNT</code></td><td>1-10（自定义）</td><td>最高</td></tr>
+<tr><td>Max 20x</td><td>3</td><td>次高</td></tr>
+<tr><td>Enterprise/Team</td><td>3</td><td>次高</td></tr>
+<tr><td>其他（Pro/PAYG）</td><td>1</td><td>默认</td></tr>
+</tbody></table>
+</div>
+<p>这个设计揭示了一个产品决策：<strong>并行 Agent 数量不只是技术限制，也是区分订阅级别的产品价值点</strong>。Max 20x 和 Enterprise 用户的 Plan V2 可以同时运行 3 个 Agent 并行探索方案，相比 Pro 用户的单 Agent 规划速度显著提升。</p>
+<h2 id="105-worktree-模式的现状一个诚实的注释"><a class="header" href="#105-worktree-模式的现状一个诚实的注释">10.5 Worktree 模式的现状——一个诚实的注释</a></h2>
+<p><code>src/utils/worktreeModeEnabled.ts</code> 的全文只有 12 行，但注释说的是一段值得记录的工程决策：</p>
+<pre><code class="language-typescript">/**
+ * Worktree mode is now unconditionally enabled for all users.
+ *
+ * Previously gated by GrowthBook flag 'tengu_worktree_mode', but the
+ * CACHED_MAY_BE_STALE pattern returns the default (false) on first launch
+ * before the cache is populated, silently swallowing --worktree.
+ * See https://github.com/anthropics/claude-code/issues/27044.
+ */
+export function isWorktreeModeEnabled(): boolean {
+  return true
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/worktreeModeEnabled.ts</code></p>
+<p><code>CACHED_MAY_BE_STALE</code> 模式（第9章提到过）在首次启动时返回缓存默认值 <code>false</code>，导致 <code>--worktree</code> 参数被静默丢弃。修复方式不是修复缓存逻辑，而是<strong>直接把这个 flag 变成无条件 true</strong>——用注释记录为什么这样决策，而不是只留下 <code>return true</code> 让读者困惑。</p>
+<p>这个注释是源码第一手文档的完美案例：它不只说明代码做什么，而是说明<strong>为什么这样做、什么时候变成这样、以及指向了 issue 追踪</strong>。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="分层模式枚举tiered-mode-enumeration"><a class="header" href="#分层模式枚举tiered-mode-enumeration">分层模式枚举（Tiered Mode Enumeration）</a></h3>
+<p><strong>解决的问题</strong>：内部/外部用户需要不同的模式集合，但用枚举字面量管理时类型系统无法区分。</p>
+<p><strong>核心做法</strong>：用 feature flag 条件展开枚举（<code>[...EXTERNAL, ...(feature('X') ? ['internal'] : [])]</code>），外部构建产物中内部模式被 DCE 删除，连类型定义里也不存在。</p>
+<p><strong>前置条件</strong>：有内部/外部产物区分，且某些枚举值只应在内部构建中存在。</p>
+<p><strong>源码证据</strong>：<code>src/types/permissions.ts:33</code> — <code>TRANSCRIPT_CLASSIFIER</code> DCE 让 <code>auto</code> 在外部构建的 <code>PermissionMode</code> 类型中不存在，TypeScript 会在编译时报错而非运行时抛异常。</p>
+<h3 id="转移副作用显式化explicit-transition-side-effects"><a class="header" href="#转移副作用显式化explicit-transition-side-effects">转移副作用显式化（Explicit Transition Side Effects）</a></h3>
+<p><strong>解决的问题</strong>：状态机的模式切换常常伴随副作用（通知、标记、清零），用 setter 管理时副作用逻辑会积累在单一函数里。</p>
+<p><strong>核心做法</strong>：为每种模式的进入/离开提供专门的 <code>handleXModeTransition</code> 函数，在调用处（<code>EnterPlanModeTool</code>/<code>ExitPlanModeTool</code>）显式调用，而非在 setter 里隐式触发。</p>
+<p><strong>前置条件</strong>：模式切换有可区分的、模式专属的副作用（不同模式副作用不同）。</p>
+<p><strong>源码证据</strong>：<code>src/bootstrap/state.ts:1349</code> — <code>handlePlanModeTransition</code> 的注释"This prevents sending both plan_mode and plan_mode_exit when user toggles quickly"说明副作用管理是必要的。</p>
+<h3 id="订阅级别并行扩展subscription-tiered-parallelism"><a class="header" href="#订阅级别并行扩展subscription-tiered-parallelism">订阅级别并行扩展（Subscription-Tiered Parallelism）</a></h3>
+<p><strong>解决的问题</strong>：高端用户的工作负载更重，应获得更多计算资源，但计算资源分配不应写死在代码里。</p>
+<p><strong>核心做法</strong>：根据订阅类型和限流层级动态计算并行资源配额，同时提供环境变量覆盖（上限 10），允许内部测试突破默认值。</p>
+<p><strong>前置条件</strong>：有分级订阅产品，且不同订阅的限流层级信息可在运行时获取。</p>
+<p><strong>源码证据</strong>：<code>src/utils/planModeV2.ts:5</code> — <code>getPlanModeV2AgentCount()</code> 的三层优先级：环境变量覆盖 &gt; 订阅级别路由 &gt; 默认值 1。</p>
+<h2 id="架构图"><a class="header" href="#架构图">架构图</a></h2>
+<p><strong>图 10-1：后台任务的生命周期状态机</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; Pending: 创建任务
+    Pending --&gt; Running: 开始执行
+    Running --&gt; Completed: 成功完成
+    Running --&gt; Failed: 执行出错
+    Running --&gt; Cancelled: 用户取消
+    Running --&gt; TimedOut: 超时
+    Failed --&gt; Retrying: 可重试错误
+    Retrying --&gt; Running: 重试
+    Retrying --&gt; Failed: 超过重试上限
+    Completed --&gt; [*]
+    Failed --&gt; [*]: 清理资源
+    Cancelled --&gt; [*]: 清理资源
+    TimedOut --&gt; [*]: 清理资源
+</code></pre>
+<p><strong>图 10-2：任务输出与 Ink 渲染的正确通信方式</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Task as 后台任务
+    participant State as 任务状态
+    participant Ink as Ink 渲染器
+    participant Terminal as 终端
+
+    Task-&gt;&gt;State: 更新进度 (progress: 50%)
+    State-&gt;&gt;Ink: 触发重渲染
+    Ink-&gt;&gt;Terminal: 增量更新进度条
+
+    Note over Task,Terminal: ❌ 错误做法
+    Task--xTerminal: 直接 process.stdout.write()
+    Note over Task,Terminal: 会破坏 Ink 的渲染状态
+</code></pre>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-在-plan-模式下误以为只有-isreadonlytrue-的工具才会被拦截"><a class="header" href="#-在-plan-模式下误以为只有-isreadonlytrue-的工具才会被拦截">❌ 在 Plan 模式下误以为只有 isReadOnly=true 的工具才会被拦截</a></h3>
+<p>Plan 模式不只是"只读工具才能执行"——<code>handlePlanModeTransition</code> 在模式切换时会做完整的状态重置（<code>src/utils/planModeV2.ts</code>）。如果手动修改 PermissionMode 而绕过 <code>handlePlanModeTransition</code>，会遗留上一个模式的权限记忆，让用户无法感知权限已重置。</p>
+<h3 id="-假设-auto-模式在所有构建中都存在"><a class="header" href="#-假设-auto-模式在所有构建中都存在">❌ 假设 auto 模式在所有构建中都存在</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：在 free/pro 用户的构建中，'auto' 根本不在 PermissionMode 枚举里
+if (mode === 'auto') { enableAutoClassifier() }
+</code></pre>
+<p><code>src/types/permissions.ts:33</code> 用编译期 flag 控制 <code>auto</code> 是否进入枚举——外部用户的产物里没有这个值。用字面量 <code>'auto'</code> 会导致 TypeScript 编译错误（在内部构建）或运行时行为不一致（在外部构建中永远 false）。</p>
+<h3 id="-在-plan-v2-中假设所有订阅级别可以启动相同数量的并行-agent"><a class="header" href="#-在-plan-v2-中假设所有订阅级别可以启动相同数量的并行-agent">❌ 在 Plan V2 中假设所有订阅级别可以启动相同数量的并行 Agent</a></h3>
+<p><code>getPlanModeV2AgentCount</code>（<code>src/utils/planModeV2.ts</code>）根据订阅级别返回不同的最大 Agent 数。Max 用户可以并行 10 个 Agent，Pro 用户只能并行 3 个。硬编码上限会让 Pro 用户遭遇静默失败（超出限制的 Agent 请求被拒绝）。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用 feature flag 条件展开枚举而非运行期检查</strong>：当某些枚举值只应对内部用户可见时，类型级 DCE 比运行期 if/else 更彻底</li>
+<li><strong>为每种状态的转移副作用写专门的函数</strong>：<code>handlePlanModeTransition</code> 而不是在 setter 里堆积 if/else——每种模式的副作用独立维护</li>
+<li><strong>用注释记录"为什么无条件返回 true"</strong>：<code>isWorktreeModeEnabled</code> 里的注释是工程决策文档，比只留 <code>return true</code> 有价值得多</li>
+<li><strong>环境变量覆盖 + 上限</strong>：<code>CLAUDE_CODE_PLAN_V2_AGENT_COUNT</code> 允许 1-10，上限 10 防止滥用；这是"可配置 + 有边界"的平衡点</li>
+</ul>
+<hr />
+<p><em>第10章完成了对运行模式体系的解析。第11章进入工具系统的核心——<code>Tool</code> 接口契约和 <code>buildTool</code> 工厂：60 个工具为什么能被 query.ts 统一调用，以及安全三元模型如何捕获工具执行的三个独立安全维度。</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part2/ch09.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part3/ch11.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part2/ch09.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part3/ch11.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

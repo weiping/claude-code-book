@@ -1,0 +1,411 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 2 章：技术栈选型——React/Ink + Bun + TypeScript 的工程逻辑 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第2章技术栈选型reactink--bun--typescript-的工程逻辑"><a class="header" href="#第2章技术栈选型reactink--bun--typescript-的工程逻辑">第2章：技术栈选型——React/Ink + Bun + TypeScript 的工程逻辑</a></h1>
+<blockquote>
+<p><em>"The right abstraction is worth a thousand lines of boilerplate."</em></p>
+</blockquote>
+<blockquote>
+<p>565 个 <code>.tsx</code> 文件、一个没有浏览器的终端进程——Claude Code 为什么用 React 渲染 CLI？更关键的是：<code>bun:bundle</code> 的 <code>feature()</code> 为什么能让内部代码在外部用户的产物中"物理消失"，而不只是"运行时跳过"？这两个选型决定了整个系统的安全边界。</p>
+</blockquote>
+<p>Claude Code 的 <code>src/</code> 目录里有 565 个 <code>.tsx</code> 文件。<code>.tsx</code> 意味着 JSX，意味着 React。在一个没有浏览器的终端进程里，React 能跑吗？</p>
+<p>这是一个反直觉的选择，但它背后有具体的工程理由。更重要的是，<strong>Bun 替代 Node 带来了一个架构级的能力</strong>，不是性能，而是编译期死代码消除——这直接影响了 Claude Code 如何隔离内部和外部用户的代码。</p>
+<p>本章解析三个核心选型：React/Ink、Bun + <code>bun:bundle</code>、TypeScript。每个选型都有"为什么不选 X"的具体理由，而不只是"我们选了 Y"。</p>
+<p>理解这些选型，你就能理解为什么第4章（feature flag）能做到"内部代码在普通用户构建中物理消失"——这不是运行时的 if/else，而是编译期的结构性设计。</p>
+<h2 id="21-为什么用-react-渲染-cli而不是-blessed-或-chalk"><a class="header" href="#21-为什么用-react-渲染-cli而不是-blessed-或-chalk">2.1 为什么用 React 渲染 CLI，而不是 blessed 或 chalk？</a></h2>
+<p>先明确问题：一个 AI Coding Agent 的 CLI 界面，需要什么能力？</p>
+<ul>
+<li><strong>状态管理</strong>：对话历史、权限请求状态、多个并行 Agent 的进度——界面状态随时间变化</li>
+<li><strong>条件渲染</strong>：根据运行模式（Plan/Auto/默认）显示不同 UI 元素</li>
+<li><strong>组件复用</strong>：消息气泡、进度条、权限对话框在多处出现，逻辑一致</li>
+<li><strong>焦点和事件</strong>：键盘导航、Vim 模式、命令历史</li>
+</ul>
+<p>用 <code>chalk</code> 直接渲染字符串能解决颜色问题，但无法解决状态管理。用 <code>blessed</code> 能解决布局，但组件抽象不够，状态变化时需要手动操作 DOM-like 树。</p>
+<p>Claude Code 的选择是 <strong>Ink</strong>——一个将 React 的组件模型和 reconciler 移植到终端的库。核心证据在：</p>
+<pre><code class="language-typescript">// src/ink/reconciler.ts:4
+import createReconciler from 'react-reconciler'
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/ink/reconciler.ts:4</code></p>
+<p>这一行说明 Ink 不是在 React DOM 之上叠加终端输出，而是<strong>用 <code>react-reconciler</code> 包自建了一个 host config</strong>，将 React 的虚拟 DOM 映射到终端字符网格，而非 HTML DOM。</p>
+<h3 id="自建-reconciler-意味着什么"><a class="header" href="#自建-reconciler-意味着什么">自建 reconciler 意味着什么？</a></h3>
+<p><code>react-reconciler</code> 是 React 18/19 的核心包，允许任何宿主环境实现自己的"DOM 操作"。Ink 实现了其中三个关键方法：</p>
+<pre><code class="language-typescript">// src/ink/reconciler.ts:331
+createInstance(originalType, newProps, ...): DOMElement {
+  // 将 React 组件实例映射为 Ink 的 DOMElement（终端节点）
+  const node = createNode(type)
+  for (const [key, value] of Object.entries(newProps)) {
+    applyProp(node, key, value)
+  }
+  return node
+}
+</code></pre>
+<pre><code class="language-typescript">// src/ink/reconciler.ts:426
+commitUpdate(node, _type, oldProps, newProps): void {
+  // 增量更新：只计算 diff，只修改变化的属性
+  const props = diff(oldProps, newProps)
+  // ...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/ink/reconciler.ts:331,426</code></p>
+<p><code>createInstance</code> 和 <code>commitUpdate</code> 是 host config 的核心：前者在 React 首次挂载时创建终端节点，后者在状态变化时只更新差异部分，避免全屏重绘。</p>
+<h3 id="选型对比"><a class="header" href="#选型对比">选型对比</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>React/Ink</th><th>blessed</th><th>chalk 直接渲染</th></tr></thead><tbody>
+<tr><td>状态管理</td><td>✅ React hooks</td><td>❌ 手动</td><td>❌ 无</td></tr>
+<tr><td>组件复用</td><td>✅ 组件树</td><td>⚠️ 有限</td><td>❌ 字符串拼接</td></tr>
+<tr><td>增量更新</td><td>✅ reconciler diff</td><td>⚠️ 手动</td><td>❌ 全量重绘</td></tr>
+<tr><td>布局引擎</td><td>✅ Yoga Flexbox</td><td>✅ 有</td><td>❌ 无</td></tr>
+<tr><td>维护成本</td><td>中（需维护 reconciler）</td><td>高</td><td>低（简单场景）</td></tr>
+</tbody></table>
+</div>
+<p><strong>核心权衡</strong>：React/Ink 的代价是需要自建 reconciler（第38章详细分析），但收益是获得了 React 生态的全部能力——状态管理、组件抽象、Flexbox 布局，在有状态 CLI 界面中这些能力是刚需，不是奢侈品。</p>
+<p><strong>图 2-1：Ink 的渲染链路</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    React组件["React 组件\n（TSX）"]
+    reconciler["Ink reconciler\n（react-reconciler）"]
+    DOMNode["Ink DOM 节点\n（DOMElement）"]
+    Yoga["Yoga 布局引擎\n（Flexbox 计算）"]
+    renderer["renderer.ts\n（帧渲染）"]
+    screen["screen.ts\n（字符网格）"]
+    terminal["终端输出\n（ANSI 序列）"]
+
+    React组件 --&gt;|"createInstance /\ncommitUpdate"| reconciler
+    reconciler --&gt; DOMNode
+    DOMNode --&gt; Yoga
+    Yoga --&gt;|"计算位置/尺寸"| renderer
+    renderer --&gt; screen
+    screen --&gt;|"diffAnsiCodes"| terminal
+</code></pre>
+<p>注意 <code>screen.ts</code> 层的 <code>diffAnsiCodes</code>——这是帧级别的差量更新，只输出变化的字符，而非每帧重绘全屏。</p>
+<h2 id="22-bunbundle-feature-为什么是架构级决策"><a class="header" href="#22-bunbundle-feature-为什么是架构级决策">2.2 <code>bun:bundle</code> feature() 为什么是架构级决策？</a></h2>
+<p>这是本章最重要的一节，也是理解第4章的前提。</p>
+<p><strong>问题</strong>：Claude Code 需要向 Anthropic 内部用户暴露某些功能（如 <code>REPLTool</code>、KAIROS 模式），而外部用户不应该看到这些功能的代码——不只是运行时跳过，而是<strong>代码不应出现在外部产物里</strong>。</p>
+<p>用 <code>process.env.NODE_ENV</code> 的方式行吗？不行：</p>
+<pre><code class="language-typescript">// ❌ 运行期分支——代码仍在产物中，只是运行时跳过
+if (process.env.USER_TYPE === 'ant') {
+  const internalTool = require('./internal/tool.js')
+}
+</code></pre>
+<p>即使条件永远不满足，<code>./internal/tool.js</code> 的代码仍然存在于产物中，可以被 unpack 看到。</p>
+<p>Bun 的 <code>feature()</code> API 解决了这个问题：</p>
+<pre><code class="language-typescript">// src/main.tsx:21
+import { feature } from 'bun:bundle';
+
+// src/main.tsx:80
+const assistantModule = feature('KAIROS')
+  ? require('./assistant/index.js') as typeof import('./assistant/index.js')
+  : null;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:21,80</code></p>
+<p><strong>在 Bun 编译时</strong>，<code>feature('KAIROS')</code> 被替换为字面量 <code>true</code> 或 <code>false</code>。如果是 <code>false</code>，整个三元表达式变成 <code>null</code>，<code>require('./assistant/index.js')</code> 分支被<strong>物理删除</strong>——产物中不存在这段代码，无法被 unpack 看到。</p>
+<p>这是<strong>编译期死代码消除（Dead Code Elimination, DCE）</strong>，不是运行期的 if/else。</p>
+<h3 id="两种-flag-方式的本质差异"><a class="header" href="#两种-flag-方式的本质差异">两种 flag 方式的本质差异</a></h3>
+<pre><code class="language-typescript">// 方式 A：运行期 flag（代码存在，条件可绕过）
+if (process.env.ENABLE_INTERNAL === 'true') {
+  // 此代码在外部产物中仍然存在
+}
+
+// 方式 B：编译期 flag（外部产物中代码不存在）
+const internalFeature = feature('INTERNAL_ONLY')
+  ? require('./internal/code.js')
+  : null
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>运行期 flag</th><th>编译期 <code>feature()</code></th></tr></thead><tbody>
+<tr><td>代码是否在产物中</td><td>✅ 存在</td><td>❌ 物理删除</td></tr>
+<tr><td>可否通过环境变量绕过</td><td>✅ 可以</td><td>❌ 不可能</td></tr>
+<tr><td>修改是否需要重新构建</td><td>❌ 不需要</td><td>✅ 需要</td></tr>
+<tr><td>产物体积</td><td>较大</td><td>较小</td></tr>
+</tbody></table>
+</div>
+<p><strong>核心权衡</strong>：编译期 flag 的代价是<strong>每次修改 flag 值都需要重新构建发布</strong>；收益是<strong>外部用户的产物里不包含内部代码</strong>，这对于商业产品的代码隔离是硬性需求。</p>
+<p><strong>图 2-2：编译期 DCE 的效果</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    src["src/main.tsx\nfeature('KAIROS') ? require(...) : null"]
+
+    subgraph 外部用户构建
+        ext_flag["feature('KAIROS') = false"]
+        ext_result["= null\n（require 分支物理删除）"]
+    end
+
+    subgraph 内部用户构建
+        int_flag["feature('KAIROS') = true"]
+        int_result["= require('./assistant/index.js')\n（代码包含在产物中）"]
+    end
+
+    src --&gt; ext_flag --&gt; ext_result
+    src --&gt; int_flag --&gt; int_result
+</code></pre>
+<p>第4章将详细分析所有 60+ 个 feature flag 的分类和用途。</p>
+<h2 id="23-typescript-与-bun-的构建流程"><a class="header" href="#23-typescript-与-bun-的构建流程">2.3 TypeScript 与 Bun 的构建流程</a></h2>
+<p>Claude Code 的构建命令是：</p>
+<pre><code class="language-bash">bun build src/main.tsx --outdir dist --target bun
+</code></pre>
+<p><code>--target bun</code> 是关键：它让 Bun 知道要处理 <code>bun:bundle</code> 的 <code>feature()</code> 调用（DCE），同时允许使用 Node.js 兼容的 API。如果换成 <code>--target node</code>，<code>feature()</code> 就退化为普通函数，DCE 失效。</p>
+<p>TypeScript 的配置（<code>tsconfig.json</code>）启用了严格类型检查，但实际构建走的是 Bun 的内置 TypeScript 编译器，不需要额外的 <code>tsc</code> 构建步骤——这让开发周期从"修改→tsc→bundle"缩短为"修改→bun build"。</p>
+<p><strong>代价</strong>：<code>bun:bundle</code> 是<strong>非标准 API</strong>，不在 Node.js 或任何 W3C 标准中。这意味着如果未来需要迁移到其他运行时，这个 feature flag 体系需要重写。这是 Claude Code 有意接受的技术债——为了编译期 DCE 能力，绑定 Bun 生态。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="编译期特性门控compile-time-feature-gating"><a class="header" href="#编译期特性门控compile-time-feature-gating">编译期特性门控（Compile-time Feature Gating）</a></h3>
+<p><strong>解决的问题</strong>：内部代码不应出现在外部用户的产物中，运行期条件判断无法实现物理隔离。</p>
+<p><strong>核心做法</strong>：用编译器能识别并消除的常量（如 <code>bun:bundle</code> 的 <code>feature()</code>）包裹内部代码，构建时替换为字面量 false，整个分支被 DCE 删除。</p>
+<p><strong>前置条件</strong>：有内部/外部用户的产物区分需求，且愿意接受"修改 flag 需要重新构建"的约束。</p>
+<p><strong>源码证据</strong>：<code>src/main.tsx:80</code> — <code>feature('KAIROS') ? require('./assistant/index.js') : null</code>，外部构建产物中不含 <code>assistant/index.js</code> 的任何内容。</p>
+<h3 id="声明式终端-uideclarative-terminal-ui"><a class="header" href="#声明式终端-uideclarative-terminal-ui">声明式终端 UI（Declarative Terminal UI）</a></h3>
+<p><strong>解决的问题</strong>：有状态的 CLI 界面用字符串操作实现时，状态变化触发的重绘逻辑难以维护。</p>
+<p><strong>核心做法</strong>：用 React 组件描述 UI 状态，由 reconciler 计算差量并执行最小化更新，开发者不直接操作终端 API。</p>
+<p><strong>前置条件</strong>：界面有状态（非静态输出），且组件复用需求高。</p>
+<p><strong>源码证据</strong>：<code>src/ink/reconciler.ts:426</code> — <code>commitUpdate</code> 方法计算 props diff，只更新变化的属性，而非全量重绘。</p>
+<h3 id="受控技术债controlled-technical-debt"><a class="header" href="#受控技术债controlled-technical-debt">受控技术债（Controlled Technical Debt）</a></h3>
+<p><strong>解决的问题</strong>：采用非标准 API 会引入迁移风险，但有时非标准 API 是获得关键能力的唯一路径。</p>
+<p><strong>核心做法</strong>：明确记录非标准依赖的范围和原因，在获得能力的同时接受约束。</p>
+<p><strong>前置条件</strong>：非标准 API 带来的收益（此处是编译期 DCE）明显超过迁移风险。</p>
+<p><strong>源码证据</strong>：<code>src/main.tsx:21</code> — <code>import { feature } from 'bun:bundle'</code>，一个只存在于 Bun 构建环境的 API，整个 feature flag 体系绑定于此。</p>
+<h2 id="延伸repllaunchertsxapp-与-repl-的动态组装"><a class="header" href="#延伸repllaunchertsxapp-与-repl-的动态组装">延伸：replLauncher.tsx——App 与 REPL 的动态组装</a></h2>
+<p><code>src/replLauncher.tsx</code> 是 Harness 将 Ink 组件树动态组装的桥接层：</p>
+<pre><code class="language-typescript">// src/replLauncher.tsx:12
+export async function launchRepl(
+  root: Root,
+  appProps: AppWrapperProps,
+  replProps: REPLProps,
+  renderAndRun: (root: Root, element: React.ReactNode) =&gt; Promise&lt;void&gt;
+): Promise&lt;void&gt; {
+  const { App } = await import('./components/App.js')  // 动态 import
+  const { REPL } = await import('./screens/REPL.js')   // 动态 import
+  await renderAndRun(root, &lt;App {...appProps}&gt;&lt;REPL {...replProps} /&gt;&lt;/App&gt;)
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/replLauncher.tsx:12</code></p>
+<p>为什么用动态 <code>import</code> 而不是静态 import？这是 Bun 的 lazy module loading——<code>App</code> 和 <code>REPL</code> 组件只在 <code>launchRepl</code> 被调用时才加载，主模块加载期间不评估这些组件的模块代码。这对冷启动有轻微收益，更重要的是明确标记"这两个模块是 REPL 的依赖，不是启动必须的依赖"。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-用运行期环境变量替代-feature-做内部代码门控"><a class="header" href="#-用运行期环境变量替代-feature-做内部代码门控">❌ 用运行期环境变量替代 feature() 做内部代码门控</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：代码仍然存在于外部产物中
+if (process.env.ENABLE_KAIROS === 'true') {
+  require('./assistant/index.js')  // 用户能从产物里看到这段代码
+}
+</code></pre>
+<p>任何人设置环境变量就能绕过限制，内部代码也无法从外部产物中消除。</p>
+<p><strong>正确做法</strong>：用 <code>feature('KAIROS') ? require(...) : null</code>，Bun 编译时物理删除整个分支（<code>src/main.tsx:80</code>）。</p>
+<h3 id="-bun-build-忘写---target-bun-导致-dce-失效"><a class="header" href="#-bun-build-忘写---target-bun-导致-dce-失效">❌ bun build 忘写 --target bun 导致 DCE 失效</a></h3>
+<pre><code class="language-bash">bun build src/main.tsx --outdir dist --target node  # ❌
+# feature() 不会被替换，内部代码不会物理删除
+</code></pre>
+<p><strong>验证方法</strong>：用 <code>grep -r 'assistant' dist/</code> 检查产物——正确构建时应该找不到任何 <code>assistant/</code> 相关内容。</p>
+<h3 id="-在-ink-组件里直接调用-processstdoutwrite-绕过-reconciler"><a class="header" href="#-在-ink-组件里直接调用-processstdoutwrite-绕过-reconciler">❌ 在 Ink 组件里直接调用 process.stdout.write() 绕过 reconciler</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：绕过 reconciler，终端状态不一致
+useEffect(() =&gt; { process.stdout.write('\x1b[2JHello') })
+</code></pre>
+<p><code>commitUpdate</code> 负责增量更新（<code>src/ink/reconciler.ts:426</code>），直接写终端会破坏 Ink 维护的内部 DOM 状态，下次渲染时出现错位或重复输出。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>评估自己的 CLI 是否需要 React/Ink</strong>：判断标准是界面是否有状态。静态输出（如 <code>ls</code> 风格）用 chalk 足够；有状态的交互界面（对话、进度、多视图）考虑 Ink</li>
+<li><strong>用编译期 flag 而非运行期 flag 隔离内部功能</strong>：如果你的产品有内部/外部用户区分，<code>feature()</code> 模式比环境变量更安全</li>
+<li><strong>清楚地记录绑定非标准 API 的技术债</strong>：在代码注释或 ADR 中写明"我们使用 X 是为了 Y，代价是 Z"</li>
+<li><strong>在 <code>--target bun</code> 和 <code>--target node</code> 之间有意选择</strong>：前者获得 <code>bun:bundle</code> 能力，后者保持运行时通用性</li>
+</ul>
+<hr />
+<p><em>第2章解析了 React/Ink 和 <code>bun:bundle</code> 的选型逻辑。第3章将分析 <code>main.tsx</code> 的另一个设计决策：为什么三个异步预热任务在模块加载期间（而非函数体内）启动，以及这个选择为冷启动节省了多少时间。</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part1/ch01.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part1/ch03.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part1/ch01.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part1/ch03.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant User
+    participant Parser
+    participant Validator
+    participant Sandbox
+    participant Result
+    User->>Parser: 选择 Skill + 参数
+    Parser->>Parser: 解析 Markdown
+    Parser->>Validator: 验证参数类型
+    Validator->>Sandbox: 注入参数
+    Sandbox->>Sandbox: 执行代码
+    Sandbox-->>Result: 返回结果
+    Result-->>User: 显示输出

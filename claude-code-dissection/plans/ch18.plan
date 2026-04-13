@@ -1,0 +1,74 @@
+# 第18章写作计划
+
+**批次**：批次 4
+**章节**：ch18 — Hooks 系统——生命周期拦截点
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/hooks/AsyncHookRegistry.ts | PendingAsyncHook(12行)、registerPendingAsyncHook(30行)、checkForAsyncHookResponses(113行)、finalizePendingAsyncHooks(281行) | 12-120, 270-310行 |
+| 2 | src/utils/hooks/postSamplingHooks.ts | post-sampling hook 触发时机 | 全文 |
+| 3 | src/utils/hooks/ssrfGuard.ts | isBlockedAddress(42行)、ssrfGuardedLookup(216行) | 40-230行 |
+| 4 | src/utils/hooks/hookEvents.ts | HookEvent 枚举 | 全文 |
+
+```bash
+cat src/utils/hooks/hookEvents.ts
+sed -n '30,50p' src/utils/hooks/AsyncHookRegistry.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「CLAUDE.md 里可以定义 Hooks——当 Claude 要执行某个工具时，先调用你的脚本，用脚本返回值决定是否继续。这不是配置，是一个可编程的拦截层。AsyncHookRegistry 是它的基础设施。」
+- 三个问题：1）Hooks 有哪些生命周期拦截点？2）异步 Hook 的注册和轮询机制如何工作？3）ssrfGuard 解决什么攻击场景？
+
+### 节 18.1：Hook 的生命周期拦截点——可以在哪里插入自定义逻辑？
+- 核心主张：HookEvent 枚举定义了所有可拦截的时机：PreToolUse/PostToolUse/PreSampling/PostSampling/SessionStart 等；不同时机有不同的可用信息和控制能力
+- 源码锚点：`src/utils/hooks/hookEvents.ts`（HookEvent 枚举完整列表）
+- 包含元素：Hook 事件类型表（事件名/触发时机/可用信息/控制能力）
+- 估计字数：500字
+
+### 节 18.2：AsyncHookRegistry——为什么 Hook 是异步轮询的而不是直接回调？
+- 核心主张：Hook 脚本可能是外部进程，不能保证立即返回；轮询模式（checkForAsyncHookResponses）让主循环在等待 Hook 响应期间继续处理其他事件，而非阻塞
+- 源码锚点：`src/utils/hooks/AsyncHookRegistry.ts:30`（registerPendingAsyncHook）、`src/utils/hooks/AsyncHookRegistry.ts:113`（checkForAsyncHookResponses）
+- 包含元素：Mermaid sequenceDiagram 展示 Hook 注册→轮询→响应的时序
+- 权衡分析：异步轮询 vs 同步回调 vs Promise
+- 估计字数：700字
+
+### 节 18.3：post-sampling hooks——LLM 响应之后能做什么？
+- 核心主张：post-sampling hook 在 LLM 响应接收完毕后、写入对话历史之前触发，可以审计、过滤或修改 LLM 的输出
+- 源码锚点：`src/utils/hooks/postSamplingHooks.ts`
+- 估计字数：400字
+
+### 节 18.4：ssrfGuard——为什么 Hook 需要防 SSRF 攻击？
+- 核心主张：恶意 MCP 服务器可以在工具执行中触发 Hook，让 Hook 向内网地址发请求（SSRF），ssrfGuard 通过阻止私有 IP 地址来防止这类攻击
+- 源码锚点：`src/utils/hooks/ssrfGuard.ts:42`（isBlockedAddress）、`src/utils/hooks/ssrfGuard.ts:216`（ssrfGuardedLookup）
+- 包含元素：SSRF 攻击路径示意图
+- 估计字数：400字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 异步轮询钩子（Async Poll Hook）| 外部进程 Hook 不能保证立即响应，同步等待会阻塞主循环 | 注册 Hook 时生成处理 ID，主循环定期轮询响应状态，响应到达后继续处理 | Hook 是外部进程或耗时操作，主循环不能阻塞 | `src/utils/hooks/AsyncHookRegistry.ts:30,113` |
+| 出口 SSRF 防护（Egress SSRF Guard）| Hook 可被恶意利用向内网发请求 | 所有 Hook 触发的 HTTP 请求先经过地址检查，阻止私有 IP 范围 | 允许 Hook 触发网络请求，且有潜在的恶意 Hook 输入源 | `src/utils/hooks/ssrfGuard.ts:42,216` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图18-1 | Hook 事件类型和触发时机 | 表格 | 各 HookEvent 的触发点和可用信息 | 18.1 |
+| 图18-2 | 异步 Hook 注册-轮询-响应时序 | Mermaid sequenceDiagram | 主循环与外部 Hook 进程的交互序列 | 18.2 |
+
+## 写作前 checklist
+```bash
+cat src/utils/hooks/hookEvents.ts
+sed -n '12,55p' src/utils/hooks/AsyncHookRegistry.ts
+sed -n '113,135p' src/utils/hooks/AsyncHookRegistry.ts
+cat src/utils/hooks/postSamplingHooks.ts | head -30
+sed -n '40,60p' src/utils/hooks/ssrfGuard.ts
+```
+
+## 估算
+- 目标字数：2200-2600字
+- 预计轮次：7轮（含2轮验证）

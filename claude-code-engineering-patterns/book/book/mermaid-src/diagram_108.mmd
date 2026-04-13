@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant Classifier
+    participant Permissions as permissions.ts
+    participant DenialTracking as denialTracking.ts
+    participant Storage as AppState/localDenialTracking
+
+    Classifier->>Permissions: 分类器拒绝（deny）
+    Permissions->>DenialTracking: recordDenial(state)
+    DenialTracking-->>Permissions: newState（+1/+1）
+    Permissions->>Storage: persistDenialState(newState)
+    Permissions->>DenialTracking: shouldFallbackToPrompting(newState)?
+    DenialTracking-->>Permissions: false（未达阈值）
+    Permissions-->>Caller: deny decision
+
+    Note over Permissions: 再次拒绝...
+
+    Classifier->>Permissions: 分类器拒绝（连续第3次）
+    Permissions->>DenialTracking: recordDenial(state)
+    DenialTracking-->>Permissions: newState（consecutive=3）
+    Permissions->>DenialTracking: shouldFallbackToPrompting(newState)?
+    DenialTracking-->>Permissions: true（达到阈值3）
+    Permissions-->>Caller: ask decision（降级到交互模式）

@@ -1,0 +1,9 @@
+graph TD
+    A["React 组件<br/>&lt;App /&gt;"] --> B["虚拟 DOM<br/>vdom_tree"]
+    B --> C["Reconciler<br/>Diff & Commit"]
+    C --> D["InkElement 树<br/>内部结构"]
+    D --> E["Yoga 布局引擎<br/>计算 x, y, w, h"]
+    E --> F["字符网格"]
+    F --> G["ANSI 转换<br/>颜色 + 位置"]
+    G --> H["终端输出<br/>可见字符"]
+    style H fill:#ccffcc

@@ -1,0 +1,107 @@
+# 附录 A 写作计划
+
+**类型**：附录（术语表）
+**文件**：book/src/appendix-a.md
+**风格**：参考书格式（不适用 projector 九段式，按字母/主题排序的术语条目）
+
+## 写作意图（从 DESIGN.md 提取）
+
+全书出现的核心术语及其在 Claude Code 语境下的精确定义，帮助读者快速查阅和统一理解。
+
+## 约束
+
+**必须**：
+- 覆盖全书 16 章中出现的所有核心术语
+- 每个术语有：中文名称、英文原文、简短定义（1-3 句）、首次出现的章节引用
+- 按主题分组（而非纯字母排序），更利于理解术语间的关联
+- 术语定义必须在 Claude Code 语境下精确——不是通用定义，是本书语境下的定义
+
+**禁止**：
+- 不得展示代码
+- 不得引入正文中未出现的术语
+- 不得超出 1-3 句的定义长度（这是术语表，不是百科）
+
+## 术语分组规划
+
+### 一、架构与系统
+
+| 术语 | 英文 | 首次出现 | 定义要点 |
+|------|------|---------|---------|
+| Harness | Harness | 前言 | 围绕 LLM/Agent 搭建的运行框架：提示词、工具、上下文管理、多智能体协作、反馈循环 |
+| QueryEngine | QueryEngine | ch03 | 主循环引擎，管理用户输入→API 调用→工具执行→响应输出的循环 |
+| REPL | Read-Eval-Print Loop | ch02 | Claude Code 的交互模式：读取用户输入→模型处理→输出响应→等待下一输入 |
+| Feature Flag | Feature Flag | ch15 | 编码"模型能力假设"的编译时/运行时开关，用于死代码消除 |
+| DCE | Dead Code Elimination | ch15 | Bun 编译时将 feature()=false 的代码从产物中物理消除 |
+
+### 二、上下文管理
+
+| 术语 | 英文 | 首次出现 | 定义要点 |
+|------|------|---------|---------|
+| autoCompact | autoCompact | ch11 | 上下文接近上限时触发的全量压缩策略，用一次 API 调用生成对话摘要 |
+| microCompact | microCompact | ch11 | 清除旧工具结果的轻量压缩策略，只处理 COMPACTABLE_TOOLS 白名单中的 8 类工具 |
+| snipCompact | snipCompact | ch11 | 在历史轮次边界处裁剪消息的压缩策略 |
+| CONTEXT_COLLAPSE | CONTEXT_COLLAPSE | ch11 | 投影式上下文折叠，不修改消息，而是提供一个"折叠视图" |
+| Prompt Cache | Prompt Cache | ch12 | Anthropic API 的缓存机制，相同前缀的消息可以复用之前的计算结果 |
+| CacheSafeParams | CacheSafeParams | ch12 | fork 时必须与父智能体完全相同的 5 个参数，确保 Prompt Cache 命中 |
+
+### 三、Agent 与并行
+
+| 术语 | 英文 | 首次出现 | 定义要点 |
+|------|------|---------|---------|
+| forkedAgent | forkedAgent | ch12 | 在主循环之外启动的独立 Agent 会话，隔离对话历史但共享 Prompt Cache |
+| AgentDefinition | AgentDefinition | ch13 | 智能体的定义结构（BuiltIn/Custom/Plugin），包含工具权限、模型、系统提示词等 |
+| disallowedTools | disallowedTools | ch13 | 智能体的硬性工具禁用列表——被禁用的工具不存在于智能体的工具池中 |
+| Verification Agent | Verification Agent | ch13 | 对抗性验证智能体，目标是"拼命让代码崩溃"而非确认代码能运行 |
+| Coordinator | Coordinator Mode | ch14 | 多智能体协调模式——协调器分配任务，worker 独立执行并汇报结果 |
+| BackendType | BackendType | ch14 | 队友执行后端类型：tmux / iterm2 / in-process，控制进程隔离级别 |
+| teammateMailbox | teammateMailbox | ch14 | 基于文件系统的 Agent 间消息队列，用于跨进程通信 |
+
+### 四、提示词与记忆
+
+| 术语 | 英文 | 首次出现 | 定义要点 |
+|------|------|---------|---------|
+| System Prompt | System Prompt | ch05 | 分层构建的完整系统提示词，包含静态区和动态区 |
+| DYNAMIC_BOUNDARY | DYNAMIC_BOUNDARY | ch05 | 系统提示词中静态区与动态区的分界标记 |
+| CLAUDE.md | CLAUDE.md | ch05 | 四层记忆体系：Managed → User → Project → Local |
+| MEMORY.md | MEMORY.md | ch12 | 记忆系统的入口文件（200行/25KB上限），指向详细记忆文件 |
+| omitClaudeMd | omitClaudeMd | ch13 | 子智能体省略 CLAUDE.md 加载的配置，每周节省 5-15 Gtok |
+
+### 五、安全与权限
+
+| 术语 | 英文 | 首次出现 | 定义要点 |
+|------|------|---------|---------|
+| Permission Mode | Permission Mode | ch09 | 权限模式（default/plan/auto/bypass），控制工具执行的审批流程 |
+| Hook | Hook | ch10 | 在工具执行前后插入自定义逻辑的事件系统，27 种事件类型 |
+| Stop Hook | Stop Hook | ch10 | 模型完成响应后触发的事件，用于验证、总结、记忆提取等 |
+
+### 六、工具系统
+
+| 术语 | 英文 | 首次出现 | 定义要点 |
+|------|------|---------|---------|
+| buildTool | buildTool | ch07 | 工具的工厂函数，统一接口定义 isEnabled/isAllowed/execute |
+| StreamingToolExecutor | StreamingToolExecutor | ch08 | 并发工具执行器，支持工具的流式输出 |
+| SkillTool | SkillTool | ch08 | 技能工具，延迟加载技能定义（1% 上下文预算） |
+
+## 写作顺序
+
+1. 从已完成的前 10 章 plan 中收集术语（已有 ch01-ch10 的完整分析）
+2. 从 ch11-ch16 plan 中补充术语
+3. 按上述分组整理
+4. 为每个术语写定义（1-3 句）
+5. 添加首次出现的章节引用
+
+## 格式规范
+
+每个术语条目格式：
+```
+**术语中文名**（英文原文）
+: 简短定义（1-3 句）。首次出现：第 X 章。
+```
+
+## 总字数估计
+
+约 1200-1600 字（术语表应精简，每个术语 20-40 字定义）
+
+## Spec 一致性声明
+
+DESIGN.md 中附录 A 的要求全部覆盖：全书核心术语、Claude Code 语境下的精确定义、帮助读者快速查阅。

@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant User
+    participant Agent
+    participant PermCheck
+    participant Tool
+    User->>Agent: 执行工具
+    Agent->>PermCheck: 分类权限
+    PermCheck->>Agent: 需要 READ_FILE
+    Agent->>Agent: 检查已授权？
+    alt 已授权
+        Agent->>Tool: 执行
+    else 未授权
+        Agent->>User: 请求权限
+        User-->>Agent: 批准/拒绝
+    end

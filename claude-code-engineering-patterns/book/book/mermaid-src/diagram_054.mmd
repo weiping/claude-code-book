@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant QE as QueryEngine
+    participant FTC as fetchToolsForClient
+    participant CTS as connectToServer
+    participant MCP as MCP服务器进程
+
+    QE->>FTC: 获取 MCP 工具列表
+    FTC->>CTS: ensureConnectedClient()
+    CTS-->>FTC: ConnectedMCPServer（memoized）
+    FTC->>MCP: JSON-RPC tools/list
+    MCP-->>FTC: [{name, description, inputSchema}]
+    FTC->>FTC: 每个工具执行 { ...MCPTool, name, call, ... }
+    FTC-->>QE: Tool[] （与内置工具相同接口）
+
+    QE->>QE: AI 决定调用 mcp__server__tool
+    QE->>Tool: tool.call(args, context)
+    Tool->>CTS: ensureConnectedClient()（懒加载）
+    CTS-->>Tool: ConnectedMCPServer
+    Tool->>MCP: JSON-RPC tools/call
+    MCP-->>Tool: 执行结果
+    Tool-->>QE: { data: content }

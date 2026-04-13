@@ -1,0 +1,20 @@
+flowchart TD
+    ENTRY["main_tsx_entry 起点"] --> IMPORTS["main_tsx_imports_loaded import完成"]
+    IMPORTS --> MAIN["main_function_start main入口"]
+    MAIN --> CLIENT["main_client_type_determined 客户端类型确定"]
+    CLIENT --> BEFORE["main_before_run 运行前"]
+    BEFORE --> AFTER["main_after_run 运行后"]
+    AFTER --> PRE["preAction_start preAction开始"]
+    PRE --> MDM["preAction_after_mdm MDM+密钥链收割"]
+    MDM --> INIT["preAction_after_init init完成"]
+    INIT --> SINKS["preAction_after_sinks 日志就绪"]
+    SINKS --> MIGR["preAction_after_migrations 迁移完成"]
+    MIGR --> REMOTE["preAction_after_remote_settings 企业策略加载"]
+    REMOTE --> SYNC["preAction_after_settings_sync 设置同步"]
+
+    style ENTRY fill:#e8f4f8
+    style IMPORTS fill:#e8f4f8
+    style PRE fill:#fff3e0
+    style MDM fill:#fff3e0
+    style MIGR fill:#e8f5e9
+    style SYNC fill:#e8f5e9

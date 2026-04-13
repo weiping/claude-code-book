@@ -1,0 +1,16 @@
+flowchart TD
+    Input["源码文件
+.ts / .tsx / .js"] --> Parser["解析器
+(TypeScript Compiler API)"]
+    Parser --> AST["抽象语法树
+AST"]
+    AST --> Visitor["AST Visitor
+遍历节点"]
+    Visitor --> Extract["提取信息
+函数定义、类型、引用"]
+    Extract --> Index["代码索引
+符号表"]
+    Index --> Query["查询接口
+'找到所有引用 X 的地方'"]
+    Query --> Result["分析结果
+精确到行列号"]

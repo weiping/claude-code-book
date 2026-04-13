@@ -1,0 +1,319 @@
+# 第 8 章写作计划
+
+**批次**：批次 4（来自 plans/batch.md）
+**章节**：ch08 — 先规划后执行
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示 Plan Mode 如何通过工具权限编码实现"先思考后行动"的约束。这不是一个 UI 开关——`EnterPlanModeTool` 和 `ExitPlanModeTool` 的本质是修改模型在当前会话中的可用工具集，而 `utils/plans.ts` 管理规划状态的生命周期。读完本章，你将理解 Anthropic 如何用工具权限而非提示词指令来强制执行行为约束——这是一个关键的 Harness 设计原则：能用量化约束的地方，不要用语言劝导。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个规划阶段有至少一处 `相对路径:行号` 格式的源码引用，重点锚定 `src/tools/EnterPlanModeTool/`、`src/tools/ExitPlanModeTool/` 和 `src/utils/plans.ts`
+- 包含至少一个 Mermaid 状态转换图展示 Plan Mode 生命周期
+- 跨章节引用使用"详见第 X 章"格式（至少引用第 7 章）
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- "先规划再执行"听起来像一条建议，但 Claude Code 的实现是一套机制：进入 Plan Mode 意味着写文件的工具权限被暂时撤销——模型想写代码，物理上办不到。语言劝导失败的地方，工具权限不会失败。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向前链接第 7 章（工具基座），本章是权限约束的应用实例
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/tools/EnterPlanModeTool/EnterPlanModeTool.ts | call()（77-105）、mapToolResultToToolResultBlockParam（105-145） | 行 37-145 |
+| 2 | src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts | call() 核心（246-300）、setHasExitedPlanMode（359） | 行 246-365 |
+| 3 | src/utils/plans.ts | getPlanSlug（32）、getPlansDirectory（79）、getPlanFilePath（119） | 行 32-135 |
+| 4 | src/bootstrap/state.ts | handlePlanModeTransition（1349-1365） | 行 1349-1392 |
+| 5 | src/utils/permissions/permissionSetup.ts | prepareContextForPlanMode（1462-1507） | 行 1462-1510 |
+
+验证文件存在：
+```bash
+ls src/tools/EnterPlanModeTool/EnterPlanModeTool.ts src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts src/utils/plans.ts src/bootstrap/state.ts src/utils/permissions/permissionSetup.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 8.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 8.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 引用第 7 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图，含 Plan Mode 状态机 | 图 8-1、8-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 8-1、8-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「提示词说'请先规划'，模型可以假装听了。权限撤销说'不能写文件'，模型没有选择。」
+
+### 节 8.1：问题——"先规划后执行"为什么需要机制而非指令
+- 核心主张：提示词层面的"先规划后执行"指令总会被模型跳过——因为模型可以"理解"这条指令，然后在压力下"决定"先写代码；而工具权限撤销是模型无法绕过的物理约束
+- 源码锚点：
+  - `src/tools/EnterPlanModeTool/EnterPlanModeTool.ts:77` — `call()` 修改 `toolPermissionContext.mode = 'plan'`——权限模式切换，不是提示词注入
+  - `src/tools/EnterPlanModeTool/EnterPlanModeTool.ts:119` — `mapToolResultToToolResultBlockParam` 中注入的指令："Remember: DO NOT write or edit any files yet"
+- 概念层次：定义（问题）→ 设计意图（机制 vs 指令）
+- 权衡分析：N/A
+- 包含元素：对比表（语言指令 vs 权限约束的对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：同样的"先规划"要求，用提示词写和用权限约束写，结果截然不同
+  - 解读段要点：EnterPlanModeTool 的 call() 做了两件事——切换权限模式（setAppState）和在工具结果中注入指令文本。注意两者的优先级：权限模式切换是机制层（模型物理无法写文件），注入的指令是信息层（告诉模型现在处于规划阶段）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B1
+
+### 节 8.2：黄金法则——用工具权限编码行为约束
+- 核心主张：Plan Mode 的核心原则是"能用权限约束的行为，不要用提示词劝导"——工具是否可用由 Harness 控制，模型只能在允许的工具集内行动
+- 源码锚点：
+  - `src/utils/permissions/permissionSetup.ts:1462` — `prepareContextForPlanMode`：进入规划模式时修改 `ToolPermissionContext`，而非修改系统提示词
+  - `src/bootstrap/state.ts:1349` — `handlePlanModeTransition`：记录模式转换（`needsPlanModeExitAttachment` 状态管理）
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：工具权限约束 vs 提示词劝导——权限约束绝对可靠但灵活性低（无法区分"紧急情况"）；提示词劝导更灵活但可被忽略。Claude Code 选择权限约束，接受灵活性损失，换取可靠性
+- 包含元素：对比表格（两种约束方式）
+- **⛔ 内容密度规划**：
+  - 引入段要点：prepareContextForPlanMode 不修改任何提示词——它只修改 ToolPermissionContext
+  - 解读段要点：ToolPermissionContext.mode 字段是权限系统的核心控制面（详见第 9 章），Plan Mode 就是把 mode 设为 'plan'，触发权限系统限制可用工具集
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 8.3：适用场景——哪些任务需要 Plan Mode
+- 核心主张：任何"不可逆且影响范围大"的操作都应该先规划——删除、重构、数据库迁移
+- 源码锚点：
+  - `src/tools/EnterPlanModeTool/EnterPlanModeTool.ts:37` — `searchHint: 'switch to plan mode to design an approach before coding'`——工具本身的适用场景描述
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：Plan Mode 不是所有任务都需要的——searchHint 给出了清晰的适用范围
+  - 解读段要点：searchHint 的表述"design an approach before coding"揭示了 Plan Mode 的本质——不是防止模型做坏事，而是让模型先想清楚再动手
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 8.4：工作原理——Plan Mode 的完整状态机
+- 核心主张：Plan Mode 是一个三态状态机（正常 → 规划中 → 已退出），每次状态转换都有对应的工具权限变更和磁盘操作
+- 源码锚点：
+  - `src/tools/EnterPlanModeTool/EnterPlanModeTool.ts:77` — 进入：`setAppState` 切换 mode='plan'
+  - `src/utils/plans.ts:119` — 规划中：`getPlanFilePath` 生成当前会话的计划文件路径
+  - `src/utils/plans.ts:79` — 计划目录：`getPlansDirectory` memoize（仅初始化一次）
+  - `src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts:246` — 退出：`getPlanFilePath` 读取计划文件
+  - `src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts:253` — 退出：`getPlan` 或使用 input.plan 覆盖
+  - `src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts:359` — `setHasExitedPlanMode(true)` 标记会话级已退出状态
+  - `src/bootstrap/state.ts:1349` — `handlePlanModeTransition`：记录进出转换的副作用
+  - `src/utils/plans.ts:32` — `getPlanSlug`：生成唯一计划文件名（word slug，最多重试 10 次）
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：计划文件持久化 vs 内存存储：计划内容写入磁盘（`getPlanFilePath` 指向实际文件）而非存储在内存 state 中——允许用户在批准前查看和编辑计划，代价是需要管理文件的生命周期
+- 包含元素：Mermaid 状态机图（三态转换）、表格（每个状态的权限和磁盘状态）
+- **⛔ 内容密度规划**：
+  - 引入段要点：Plan Mode 不是一个布尔开关，是一个有完整状态机的会话级机制
+  - 解读段要点：三个状态——正常（完整工具集）、规划中（受限工具集，只读+计划写入）、已退出（用户确认，恢复完整工具集）。每次转换都有对应的副作用：进入时修改权限模式，规划中生成 slug 并写计划文件，退出时读取计划文件供用户审阅
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 8.5：权衡——计划审批流的 3 个设计选择
+- 核心主张：Plan Mode 在"自动化效率"和"人工审核"之间做了三个具体权衡
+- 源码锚点：
+  - `src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts:252` — 注释解释 CCR 场景下 inputPlan 覆盖逻辑："CCR web UI may send an edited plan via permissionResult.updatedInput"
+  - `src/utils/plans.ts:25` — `MAX_SLUG_RETRIES = 10`——计划文件名冲突重试机制
+  - `src/tools/EnterPlanModeTool/EnterPlanModeTool.ts:60` — `isEnabled()` 检查 channels 限制："When --channels is active, ExitPlanMode is disabled... Disable entry too so plan mode isn't a trap"
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - 计划文件 vs 内存计划：写磁盘让用户可以在审批前编辑计划（CCR 场景下 web UI 可发送 inputPlan 覆盖磁盘内容）；代价是文件管理复杂度
+  - 进入门控：channels 模式下同时禁用 EnterPlanMode 和 ExitPlanMode——"plan mode isn't a trap"注释揭示了设计意图：如果只禁用 Exit 而不禁用 Enter，模型可能陷入无法退出的死锁
+  - word slug vs UUID：计划文件名用可读的 word slug（如 "happy-fox-42"）而非 UUID——提升了调试时的可读性，代价是需要最多 10 次重试处理冲突
+- 包含元素：对比表格（3 个权衡）
+- **⛔ 内容密度规划**：
+  - 引入段要点：三个设计选择定义了 Plan Mode 的审批流形态
+  - 解读段要点：文件持久化（审批前可编辑）、进入门控（防止死锁）、word slug（可读性优先）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 8.6：踩坑指南——Plan Mode 中的常见错误
+- 核心主张：Plan Mode 最常见的错误是在计划文件写入时遇到路径冲突和在多智能体场景中误用
+- 源码锚点：
+  - `src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts:246` — `getPlanFilePath(context.agentId)` — agent 子任务有独立的计划文件（避免多智能体写入冲突）
+  - `src/tools/EnterPlanModeTool/EnterPlanModeTool.ts:77` — `if (context.agentId) { throw new Error('EnterPlanMode tool cannot be used in agent contexts') }`
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：一处源码注释揭示了一个设计约束
+  - 解读段要点：陷阱一——在 agent 子任务中调用 EnterPlanMode（明确禁止，会抛出异常）；陷阱二——计划文件目录不存在时退出 Plan Mode 失败；陷阱三——快速切换（Enter→Exit→Enter）触发 needsPlanModeExitAttachment 状态管理问题
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 8.7：实证——从工具调用到计划文件的完整路径
+- 核心主张：一次完整的 Plan Mode 循环（进入→规划→退出）涉及 3 个工具、2 次权限模式切换、1 次文件写入
+- 源码锚点：
+  - `src/tools/EnterPlanModeTool/EnterPlanModeTool.ts:37` — EnterPlanModeTool 入口
+  - `src/utils/plans.ts:32` — getPlanSlug 生成计划文件名
+  - `src/utils/plans.ts:119` — getPlanFilePath 拼接完整路径
+  - `src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts:359` — setHasExitedPlanMode 标记退出
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 时序图（Enter→规划→Exit 的完整调用链）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一次 Plan Mode 从进入到退出的完整路径
+  - 解读段要点：调用 EnterPlanModeTool → setAppState(mode='plan') → 模型在只读工具集下探索 → 写计划到 getPlanFilePath() → 调用 ExitPlanModeTool → 读取计划文件 → 用户确认 → setHasExitedPlanMode(true)
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：Plan Mode 的本质
+- 本质：通过修改 ToolPermissionContext.mode 撤销写文件工具的权限，把"先规划"从语言劝导升级为物理约束
+- 关键机制：权限模式切换（prepareContextForPlanMode）、计划文件持久化（getPlanFilePath + word slug）、进入/退出门控
+- 适用边界：适用于不可逆操作前的强制规划阶段；简单单步任务不需要
+- 与其他模式的关系：本章是第 7 章（工具基座 checkPermissions）的应用实例；第 9 章（权限系统）展示了 ToolPermissionContext 的完整体系
+
+### 章末：用户能做什么（必填）
+1. 为你的 Agent 中不可逆操作前添加 Plan Mode 入口，强制模型先探索后行动
+2. 把"计划文件"写入磁盘而非内存，让用户可以在执行前审阅和编辑
+3. 用权限约束（而非提示词指令）来强制执行 Agent 的行为顺序
+4. 在多智能体场景中，为每个 agent 维护独立的计划文件路径（基于 agentId）
+5. 设计 Plan Mode 的进入/退出对称性——禁用 Enter 时也禁用 Exit，避免死锁
+6. 用可读的文件名（如 word slug）代替 UUID，提升计划文件的调试可读性
+7. 对照第 9 章权限系统，理解 ToolPermissionContext.mode 的完整状态空间
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图8-1 | Plan Mode 三态状态机 | Mermaid stateDiagram-v2 | 正常→规划中（EnterPlanMode 触发）→已退出（ExitPlanMode 触发），每个转换标注权限和文件状态 | 8.4 |
+| 图8-2 | 权限约束 vs 提示词劝导对比 | Mermaid graph LR | 两种方式的控制路径（Harness→权限模式 vs Harness→提示词→模型决策） | 8.2 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 8.4 节（Plan Mode 三态状态机）
+3. 写 8.2 节（黄金法则）
+4. 写 8.1 节（问题）
+5. 写 8.3 节（适用场景）
+6. 写 8.5 节（权衡）
+7. 写 8.6 节（踩坑指南）
+8. 写 8.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '37p' src/tools/EnterPlanModeTool/EnterPlanModeTool.ts   # searchHint
+sed -n '77p' src/tools/EnterPlanModeTool/EnterPlanModeTool.ts   # call() 入口
+sed -n '60p' src/tools/EnterPlanModeTool/EnterPlanModeTool.ts   # isEnabled() channels 检查
+sed -n '119p' src/tools/EnterPlanModeTool/EnterPlanModeTool.ts  # mapToolResult 指令注入
+sed -n '246p' src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts  # getPlanFilePath
+sed -n '253p' src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts  # getPlan fallback
+sed -n '359p' src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts  # setHasExitedPlanMode
+sed -n '32p' src/utils/plans.ts                                  # getPlanSlug
+sed -n '79p' src/utils/plans.ts                                  # getPlansDirectory
+sed -n '119p' src/utils/plans.ts                                 # getPlanFilePath
+sed -n '25p' src/utils/plans.ts                                  # MAX_SLUG_RETRIES
+sed -n '1349p' src/bootstrap/state.ts                           # handlePlanModeTransition
+sed -n '1462p' src/utils/permissions/permissionSetup.ts         # prepareContextForPlanMode
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch08.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

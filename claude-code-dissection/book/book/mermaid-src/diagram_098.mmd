@@ -1,0 +1,7 @@
+graph TB
+    A["React JSX<br/>flexDirection='row'"] --> B["创建 Yoga Node"]
+    B --> C["设置约束<br/>width, gap等"]
+    C --> D["calculateLayout()"]
+    D --> E["获取坐标<br/>x, y, w, h"]
+    E --> F["终端位置<br/>已确定"]
+    style F fill:#ccffcc

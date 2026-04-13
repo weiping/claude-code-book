@@ -1,0 +1,10 @@
+flowchart LR
+    subgraph Slash 命令路径
+        slash_cmd["/clear 输入"] --> slash_proc["processSlashCommand()"]
+        slash_proc --> local_msg["SystemLocalCommandMessage\n（本地消费，不进 LLM）"]
+    end
+
+    subgraph 文本提示路径
+        text_input["普通文本"] --> text_proc["processTextPrompt()"]
+        text_proc --> user_msg["UserMessage\n→ QueryEngine.submitMessage()\n→ LLM 调用"]
+    end

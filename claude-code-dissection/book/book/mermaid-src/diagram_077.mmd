@@ -1,0 +1,23 @@
+graph TB
+    subgraph star ["星形拓扑（Star）"]
+        M1["Main"]
+        M1 --- A1["Agent 1"]
+        M1 --- B1["Agent 2"]
+        M1 --- C1["Agent 3"]
+    end
+    subgraph linear ["链式拓扑（Linear）"]
+        A2["Agent 1"] --> B2["Agent 2"]
+        B2 --> C2["Agent 3"]
+        C2 --> M2["Main"]
+    end
+    subgraph mesh ["网格拓扑（Mesh）"]
+        A3["Agent 1"] ---|双向| B3["Agent 2"]
+        A3 ---|双向| C3["Agent 3"]
+        B3 ---|双向| C3
+        M3["Main"] ---|连接| A3
+        M3 ---|连接| B3
+        M3 ---|连接| C3
+    end
+    style M1 fill:#e6f2ff
+    style M2 fill:#e6f2ff
+    style M3 fill:#e6f2ff

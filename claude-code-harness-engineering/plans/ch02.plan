@@ -1,0 +1,321 @@
+# 第 2 章写作计划
+
+**批次**：批次 1（来自 plans/batch.md）
+**章节**：ch02 — 点火序列
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示 Harness 在模型调用之前如何完成所有基础设施初始化。并行启动设计将无关 I/O 操作并行化消除延迟，Feature Flag 编码"模型能力假设"——每个 flag 都是对"模型在某件事上还不够好"的断言。读完本章，读者将理解 Claude Code 为什么能在 135ms 内完成从进程启动到模型就绪的全部准备工作。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述（"介绍了…"/"描述了…"）
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字：复杂系统现象→揭示简洁原则→价值承诺）
+- 你打开终端输入claude，不到一秒就进入交互模式——这一秒内发生了比大多数应用整个启动过程更多的事情，而每一步都在回答同一个工程问题。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼（本质、关键机制、适用边界、与其他模式的关系）
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点出现
+- 每个技术分析收束为工程原则
+- 原则格式为「**原则 N.N：[原则名]** — [一句话阐述]」
+
+**风格专属禁止**：
+- 不得展示代码片段
+- 不得逐行解读源码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：用具体数字（135ms、65ms、~32ms 等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/main.tsx | 启动序列（注释 1-9 行、profileCheckpoint 12-20 行、preAction 905-966 行） | 行 1-25, 500-520, 586-620, 905-970 |
+| 2 | src/utils/startupProfiler.ts | profileCheckpoint 实现和采样策略 | 行 1-30 |
+| 3 | src/utils/settings/mdm/rawRead.ts | startMdmRawRead 异步读取 MDM 配置 | 行 1-30 |
+| 4 | src/utils/secureStorage/keychainPrefetch.ts | startKeychainPrefetch 并行密钥链读取 | 行 1-40 |
+| 5 | src/bootstrap/state.ts | 全局状态初始化函数 | 行 430-530 |
+
+验证文件存在：
+```bash
+ls src/main.tsx src/utils/startupProfiler.ts src/utils/settings/mdm/rawRead.ts src/utils/secureStorage/keychainPrefetch.ts src/bootstrap/state.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组（铁律）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处 `路径:行号` 引用存在于实际文件中 | 章节骨架各节 | ☐ |
+| A2 | 推断有标注 | 推断处有"（推断）"标注 | 章节骨架各节 | ☐ |
+| A3 | 不引用排除范围 | 无引用落在排除范围 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | 详见第 X 章引用 | 章节骨架各节 | ☐ |
+
+### B. 语言精确性组（铁律）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字替代模糊词 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次出现标注原文 | 全文 | ☐ |
+
+### C. 结构完整性组（铁律）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | projector 九段式 | 全文结构 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文结构 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句答案 | 节 2.2 黄金法则 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B 的原因 | 节 2.5 权衡 | ☐ |
+| C5 | 章末行动建议 | 5-8 条行动建议 | 章末 | ☐ |
+| C6 | 章节间链接 | 正确的详见链接 | 全文 | ☐ |
+
+### D. 图表与代码组（铁律）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | Mermaid 语法正确，≥2 图 | 图 2-1、2-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径引用 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 2-1、2-2 | ☐ |
+
+### E. 风格符合性组（⛔ 最高优先级）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们" + 预告设问 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「启动不是成本，是投资。每一毫秒都在为后续的稳定运行买单。」
+
+### 节 2.1：问题——从进程启动到模型就绪，发生了什么
+- 核心主张：Claude Code 的启动过程分三个阶段（并行预热 → 同步初始化 → 就绪确认），每个阶段都有明确的性能目标
+- 源码锚点：
+  - `src/main.tsx:1-9` — 注释列出启动前必须完成的三个副作用操作
+  - `src/main.tsx:12` — `profileCheckpoint('main_tsx_entry')` 计时起点
+  - `src/main.tsx:209` — `profileCheckpoint('main_tsx_imports_loaded')` import 完成标记
+- 概念层次：定义（启动的三个阶段）→ 设计意图（为什么需要并行）→ 实际案例（135ms import 期间发生了什么）
+- 权衡分析：N/A（本节是问题定义）
+- 包含元素：表格（三阶段时间线）、Mermaid 流程图
+- **⛔ 内容密度规划**：
+  - 引入段要点：从终端输入 claude 到看到提示符，中间发生了什么？答案揭示 Harness 工程的第一个原则
+  - 解读段要点：源码注释明确标注"remaining ~135ms of imports"——在这 135ms 的 import 评估期间，三个并行子进程已经完成了 MDM 配置读取和 macOS 密钥链读取
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B2（数据驱动——135ms 具体数字）
+
+### 节 2.2：黄金法则——并行预热一切可能阻塞模型的 I/O
+- 核心主张：启动序列的核心原则是"不要让模型等 I/O"——所有可能阻塞后续流程的 I/O 操作都必须在 import 评估期间并行启动
+- 源码锚点：
+  - `src/utils/settings/mdm/rawRead.ts:1-20` — MDM 子进程启动的注释说明"Minimal module for firing MDM subprocess reads without blocking the event loop"
+  - `src/utils/secureStorage/keychainPrefetch.ts:1-30` — 密钥链预读取注释明确计算了顺序执行成本"~65ms on every macOS startup"
+  - `src/main.tsx:912-915` — `await Promise.all([ensureMdmSettingsLoaded(), ensureKeychainPrefetchCompleted()])` 在 preAction 中等待并行结果
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：并行 vs 顺序——并行需要更复杂的模块设计（minimal import chain），但节省了 ~65ms 的用户等待时间
+- 包含元素：对比表格（顺序 vs 并行时间对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：源码注释直接计算了顺序执行的成本——密钥链两次读取每次 ~32ms+~33ms 共 ~65ms，而并行后几乎免费
+  - 解读段要点：三个并行操作的设计哲学——MDM 配置读取、密钥链预取、import 评估——三者互不依赖，天然可以并行。`Promise.all` 在 preAction 钩子中等待结果，此时子进程早已完成
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 2.3：适用场景——哪些应用需要精心设计启动序列
+- 核心主张：任何需要与模型交互的应用都应该审视启动序列——模型调用的首次延迟直接影响用户体验
+- 源码锚点：
+  - `src/utils/startupProfiler.ts:1-15` — "100% of ant users, 0.1% of external users" 采样策略
+  - `src/main.tsx:586-607` — main 函数入口的 profileCheckpoint 标记
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：Claude Code 的启动 profiler 不仅仅是调试工具，它编码了一种工程哲学——性能是特性，不是优化
+  - 解读段要点：profiler 的采样策略（100% 内部用户、0.5% 外部用户）说明 Anthropic 认为启动性能值得持续监控
+  - 散文与代码比例目标：100% 散文
+- 估计字数：300-500 字
+- 对应 spec 场景：E2
+
+### 节 2.4：工作原理——Feature Flag 如何编码模型能力假设
+- 核心主张：每个 `feature('FLAG_NAME')` 调用都是一条隐含断言——"模型在 X 方面还不够好，需要 Harness 脚手架"
+- 源码锚点：
+  - `src/main.tsx:21` — `import { feature } from 'bun:bundle'` — Feature Flag 来源
+  - `src/main.tsx:76` — `feature('COORDINATOR_MODE')` — 多智能体协调模式的 Feature Flag
+  - `src/main.tsx:80-81` — `feature('KAIROS')` — 助手模式条件导入（含两处引用：index.js 和 gate.js）
+  - `src/main.tsx:171` — `feature('TRANSCRIPT_CLASSIFIER')` — 自动权限分类的 Feature Flag
+  - `src/tools.ts:29-42` — 工具编排子系统的条件导入（OVERFLOW_TEST_TOOL、CONTEXT_COLLAPSE、TERMINAL_PANEL 等）
+- 概念层次：定义（Feature Flag 是什么）→ 设计意图（为什么在编译时编码）→ 实际案例（各 Flag 含义解读）
+- 权衡分析：编译时 Feature Flag vs 运行时配置——编译时 Flag 实现零运行时开销（死代码消除），但灵活性降低（需要重新构建才能启用功能）
+- 包含元素：表格（Feature Flag 清单及其编码的能力假设）、Mermaid 图
+- **⛔ 内容密度规划**：
+  - 引入段要点：Feature Flag 不是配置开关，是对"模型能力边界"的工程断言
+  - 解读段要点：逐一解读关键 Feature Flag——KAIROS（助手模式，编码"模型还不能自主管理完整工作流"）、COORDINATOR_MODE（协调模式，编码"单智能体不足以处理复杂任务"）、TRANSCRIPT_CLASSIFIER（自动权限，编码"模型还不能可靠判断自身行为的安全性"）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1000-1400 字
+- 对应 spec 场景：A1、C4、D1、E1
+
+### 节 2.5：权衡——启动序列的设计选择
+- 核心主张：启动序列的每个决策都是权衡——并行度 vs 代码复杂度、编译时 vs 运行时、初始化完整度 vs 启动速度
+- 源码锚点：
+  - `src/main.tsx:325-358` — `runMigrations()` 中的版本迁移逻辑，编码了向后兼容的权衡
+  - `src/main.tsx:935-966` — preAction 钩子中的初始化顺序，编码了依赖关系的权衡
+  - `src/utils/secureStorage/keychainPrefetch.ts:16-17` — 故意使用 helpers 文件而非 storage 文件以避免 ~58ms 的模块初始化开销
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - 最小 import 链 vs 便利性：keychainPrefetch 故意不引入 macOsKeychainStorage（~58ms 初始化），而是用更轻量的 helpers
+  - 迁移同步 vs 异步：runMigrations 同步执行关键迁移，migrateChangelogFromConfig 异步处理非关键迁移
+  - 失败开放 vs 失败关闭：loadRemoteManagedSettings 和 loadPolicyLimits 都用 `void`（fire-and-forget），编码了"企业策略不如启动完成重要"的权衡
+- 包含元素：对比表格（三个权衡点）
+- **⛔ 内容密度规划**：
+  - 引入段要点：启动序列不是"越快越好"——它是一组精心校准的权衡
+  - 解读段要点：三个具体权衡——import 链的模块选择（58ms 差异）、迁移的同步/异步划分、企业策略的失败开放策略
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：C4、E3
+
+### 节 2.6：踩坑指南——启动序列中的工程陷阱
+- 核心主张：启动序列中最常见的错误是引入同步 I/O 阻塞和忽视 import 链的依赖膨胀
+- 源码锚点：
+  - `src/main.tsx:1-9` — 注释的 eslint-disable 规则说明为什么允许顶层副作用
+  - `src/utils/secureStorage/keychainPrefetch.ts:24-30` — 注释详细解释了为什么避免引入 macOsKeychainStorage
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：Claude Code 的源码注释本身就是最佳实践的教科书
+  - 解读段要点：陷阱一——在 import 链中引入重模块（如 execa → human-signals → cross-spawn 的 ~58ms），陷阱二——同步 I/O 阻塞事件循环（MDM 读取如果改用同步方式会阻塞 135ms），陷阱三——迁移逻辑阻塞启动
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 2.7：实证——从 profileCheckpoint 追踪启动时间线
+- 核心主张：profileCheckpoint 的分布揭示了启动序列的真实时间结构——从 entry 到 imports_loaded 用了大部分时间，preAction 只等待并行结果
+- 源码锚点：
+  - `src/main.tsx:12` — `profileCheckpoint('main_tsx_entry')` — 起点
+  - `src/main.tsx:209` — `profileCheckpoint('main_tsx_imports_loaded')` — import 完成
+  - `src/main.tsx:586` — `profileCheckpoint('main_function_start')` — main 函数入口
+  - `src/main.tsx:849-855` — `profileCheckpoint('main_client_type_determined')` 到 `main_after_run` — 就绪
+- 概念层次：实际案例 → 验证方法
+- 权衡分析：N/A
+- 包含元素：Mermaid 时序图（profileCheckpoint 时间线）
+- **⛔ 内容密度规划**：
+  - 引入段要点：源码中 19 个 profileCheckpoint 调用构成了一条完整的时间线
+  - 解读段要点：从时间线看出三个阶段——import 评估（最长）、main 函数初始化、preAction 钩子。并行设计让 preAction 中的 `await Promise.all` 几乎免费
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：Claude Code 启动序列的本质
+- 本质：并行预热一切可能阻塞模型首次调用的 I/O 操作
+- 关键机制：import 阶段副作用启动子进程、preAction 中 Promise.all 等待结果、Feature Flag 编码能力假设
+- 适用边界：适用于需要快速首次响应的 AI 应用；不适用于后台批处理
+- 与其他模式的关系：启动序列是 Harness 控制层的第一道防线，与第 3 章（QueryEngine 循环）和第 11 章（压缩策略）共享"不让模型等"的设计原则
+
+### 章末：用户能做什么（必填）
+预规划 5-8 条行动建议：
+1. 审视你的 AI 应用启动流程，找出所有同步 I/O 点
+2. 将可以并行的 I/O 操作移到应用加载阶段，用 Promise.all 等待
+3. 为你的启动流程添加 profileCheckpoint 式的时间标记
+4. 列出你应用中硬编码的"模型能力假设"，评估哪些应该变成 Feature Flag
+5. 检查你的 import 链中是否有隐含的重模块依赖
+6. 对比你的启动时间和 Claude Code 的 135ms 目标，找出差距
+7. 评估你的迁移策略是否区分了关键和非关键操作
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图2-1 | 启动序列三阶段 | Mermaid flowchart LR | 并行预热 → 同步初始化 → 就绪确认的流程 | 2.1 |
+| 图2-2 | profileCheckpoint 时间线 | Mermaid timeline/flowchart TD | 从 main_tsx_entry 到 main_after_run 的 19 个检查点 | 2.7 |
+
+## 写作顺序
+
+1. ⛔ **确认完整 spec 与风格规则**：重新读取 ch02.spec 和 DESIGN.md
+2. 先写 2.4 节（Feature Flag 解读）——本章最具特色的内容
+3. 写 2.2 节（黄金法则）——提炼并行预热原则
+4. 写 2.1 节（问题）——铺垫
+5. 写 2.3 节（适用场景）
+6. 写 2.5 节（权衡）
+7. 写 2.6 节（踩坑指南）
+8. 写 2.7 节（实证）
+9. 写章末结构
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '12p' src/main.tsx                    # profileCheckpoint entry
+sed -n '209p' src/main.tsx                   # imports_loaded
+sed -n '912p' src/main.tsx                   # Promise.all
+sed -n '21p' src/main.tsx                    # feature import
+sed -n '76p' src/main.tsx                    # COORDINATOR_MODE
+sed -n '80p' src/main.tsx                    # KAIROS
+sed -n '171p' src/main.tsx                   # TRANSCRIPT_CLASSIFIER
+sed -n '1p' src/utils/settings/mdm/rawRead.ts  # MDM 注释
+sed -n '1p' src/utils/secureStorage/keychainPrefetch.ts  # keychain 注释
+sed -n '325p' src/main.tsx                   # runMigrations
+sed -n '586p' src/main.tsx                   # main_function_start
+sed -n '849p' src/main.tsx                   # client_type_determined
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch02.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用约束 → 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用约束 → 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属写作要求 |
+| 5 | 风格专属禁止 | ✓ | 风格专属写作要求 |
+| 6 | 章节结构 | ✓ | 章节骨架（九段式） |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | Spec 验收场景清单 |
+| 11 | 验收场景·A 源码锚点组 | ✓ | A 组 |
+| 12 | 验收场景·B 语言精确性组 | ✓ | B 组 |
+| 13 | 验收场景·C 结构完整性组 | ✓ | C 组 |
+| 14 | 验收场景·D 图表与代码组 | ✓ | D 组 |
+| 15 | 验收场景·E 风格符合性组 | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 组 4/4 + B 组 3/3 + C 组 6/6 + D 组 5/5 + E 组 3/3 = **21/21**

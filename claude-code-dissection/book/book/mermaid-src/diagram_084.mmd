@@ -1,0 +1,15 @@
+graph TB
+    A["记忆块"]
+    B["secretScanner"]
+    C{"有敏感<br/>信息?"}
+    D["拒绝保存"]
+    E["编辑/脱敏"]
+    F["保存到私人<br/>目录"]
+    G["保存到团队<br/>共享目录"]
+    A --> B --> C
+    C -->|YES| D
+    C -->|YES| E --> F
+    C -->|NO| G
+    style G fill:#ccffcc
+    style F fill:#fff4e6
+    style D fill:#ffcccc

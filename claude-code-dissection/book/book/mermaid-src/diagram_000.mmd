@@ -1,0 +1,27 @@
+graph TD
+    main["main.tsx\n（Harness 入口）"]
+    bootstrap["bootstrap/state.ts\n（全局状态）"]
+    REPL["screens/REPL.tsx\n（UI 层）"]
+    QE["QueryEngine.ts\n（多轮编排）"]
+    Q["query.ts\n（原子循环）"]
+    Tool["Tool.ts\n（工具接口）"]
+    tools["tools.ts\n（工具集合）"]
+    perm["utils/permissions/\n（权限系统）"]
+    mcp["services/mcp/\n（MCP 集成）"]
+    ink["ink/\n（TUI 层）"]
+    swarm["tasks/ + swarm/\n（多智能体）"]
+
+    main --> bootstrap
+    main --> REPL
+    main --> tools
+    REPL --> QE
+    QE --> Q
+    Q --> Tool
+    tools --> Tool
+    Tool --> perm
+    Tool --> mcp
+    swarm --> Tool
+    REPL --> ink
+    bootstrap -.->|被所有模块依赖| Q
+    bootstrap -.-> Tool
+    bootstrap -.-> perm

@@ -1,0 +1,116 @@
+# 第 28 章写作计划
+
+**批次**：批次 7b（来自 plans/batch.md）
+**章节**：ch28 — 第28章：DreamTask——后台自主执行的设计意图
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 `src/tasks/DreamTask/DreamTask.ts`（157行）代表的"Agent 主动触发后台工作"模式，以及自主任务调度与用户触发任务在架构上的本质差异。读者读完后能理解 Agent 自主性的工程边界，并能分析"主动触发 vs 被动触发"在 Agent 系统设计中的取舍。
+
+## 通用约束
+**排除范围**：LocalAgentTask（第26章）、RemoteAgentTask（第27章）、Swarm（第29-32章）、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「后台任务透明化」（Background Task Transparency）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（registerDreamTask + addDreamTurn 增量更新），适用范围表，与已知模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/tasks/DreamTask/DreamTask.ts | 全文（157行）——DreamTaskState、registerDreamTask、addDreamTurn、completeDreamTask、kill、rollbackConsolidationLock | 全文 |
+
+```bash
+ls src/tasks/DreamTask/DreamTask.ts
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：当 AI Agent 主动启动一个内存整理任务时，用户怎么知道发生了什么？DreamTask 的设计答案是：把本来看不见的后台操作"注入"到现有的任务 UI 框架中——不修改后台 Agent，只加可见性。
+
+### 节 28.1：问题
+- 核心主张：**Agent 自主触发的后台任务（如内存整理）对用户是"黑盒"——没有进度、没有状态、崩溃后不知道发生了什么；DreamTask 专门解决这个透明化问题**
+- 源码锚点：`src/tasks/DreamTask/DreamTask.ts:1`（文件头部注释："Makes the otherwise-invisible forked agent visible in the footer pill and Shift+Down dialog. The dream agent itself is unchanged — this is pure UI surfacing"）
+- 包含元素：**图28-1** — Mermaid 状态图，DreamTask 的两阶段（starting→updating）和生命周期
+- 估计字数：600-800字
+
+### 节 28.2：源码实例1 — registerDreamTask + DreamTaskState 字段语义
+- 核心主张：**DreamTaskState 的特殊字段（phase/sessionsReviewing/filesTouched/turns）反映了"整理任务"的语义——不是通用的工具调用计数，而是针对记忆整理的专属视图**
+- 源码锚点：
+  - `src/tasks/DreamTask/DreamTask.ts:26`（DreamTaskState：type 'dream', phase, sessionsReviewing, filesTouched, turns）
+  - `src/tasks/DreamTask/DreamTask.ts:12`（`const MAX_TURNS = 30`——只保留最近30轮）
+  - `src/tasks/DreamTask/DreamTask.ts:54`（registerDreamTask 函数）
+  - `src/tasks/DreamTask/DreamTask.ts:37`（filesTouched 注释："INCOMPLETE reflection... Treat as 'at least these were touched'"）
+- 概念层次：filesTouched 的不完整性说明（只捕获 Edit/Write 工具调用）、MAX_TURNS 的滚动窗口设计、phase 两态的触发条件
+- 估计字数：900-1100字
+
+### 节 28.3：源码实例2 — addDreamTurn 的增量更新 + kill 的特殊回滚
+- 核心主张：**addDreamTurn 的空操作优化（turn 为空且无新 touched 路径时直接返回原 task）和 kill 时回滚 consolidation lock，体现了"最小干扰"原则**
+- 源码锚点：
+  - `src/tasks/DreamTask/DreamTask.ts:72`（addDreamTurn，含空操作短路：turn.text===''&toolUseCount===0&newTouched.length===0→return task）
+  - `src/tasks/DreamTask/DreamTask.ts:120`（kill 函数中 rollbackConsolidationLock——kill 时需要回滚 mtime，"same path as fork-failure catch"）
+  - `src/tasks/DreamTask/DreamTask.ts:107`（completeDreamTask：notified:true immediately，注释说明原因）
+- 概念层次：空操作优化（避免无效重渲染）、kill 的 consolidation lock 回滚语义
+- 估计字数：700-900字
+
+### 节 28.4：模式剖析
+- 核心主张：**后台任务透明化的本质是"非侵入式可观测性"——不修改后台任务本身，只在任务框架层增加一个"观察者任务对象"代理其状态**
+- 估计字数：500-700字
+
+### 节 28.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| Agent 自主触发的后台操作需要 UI 可见 | ✓ | DreamTask 不改后台逻辑，纯 UI 代理 | 直接修改后台 Agent（侵入性高）|
+| 后台操作可能失败需要用户感知 | ✓ | failDreamTask 推送通知 | 静默失败（用户无感）|
+| 后台操作的输出极其复杂（需要完整分析）| ✗ | DreamTask 只保留最近30轮，信息不完整 | 完整 transcript 记录 |
+| 需要用户交互的后台任务 | ✗ | Dream 设计为自主运行，无交互接口 | 前台任务 |
+
+### 节 28.6：权衡与局限
+- filesTouched 的不完整性（只捕获特定工具调用）、MAX_TURNS=30 的信息丢失、consolidation lock 回滚的错误处理复杂性
+- 估计字数：500-700字
+
+### 节 28.7：与已知模式的对话
+- 与 GoF 观察者模式：相同——观察后台任务状态；不同——观察者不能修改被观察对象，本模式的 DreamTask 还负责更新自己的状态
+- 与 Sidecar 模式（POSA/microservice）：最接近——辅助容器透明观察主容器；DreamTask 是"状态 Sidecar"，不在网络层而在应用状态层
+
+### 章末：模式提炼
+```
+模式名称：后台任务透明化（Background Task Transparency）
+问题：Agent 自主触发的后台操作对用户不可见，出错时无法诊断
+解决方案：创建 DreamTask 代理对象，不修改后台 Agent，只将其状态转化为 UI 可读的任务对象
+前置条件：有统一的 Task UI 框架（TaskState 联合类型），后台 Agent 有回调接口注入状态更新
+源码锚点：src/tasks/DreamTask/DreamTask.ts:1 (注释说明设计意图), :54 (registerDreamTask)
+```
+
+### 章末：你能做什么
+1. 用"代理任务对象"模式透明化后台 AI 操作——不修改后台逻辑，只加可见性层
+2. 为后台操作状态实现滚动窗口（MAX_TURNS=30），而非保留全量历史
+3. 在 addXxxTurn 中实现空操作短路（所有字段未变化时直接返回原对象），避免无效 React 重渲染
+4. 为自主任务的 kill 实现"回滚"语义——任务被强制停止时，恢复任务开始前的关键状态
+5. 对"不完整的信息"诚实标注（filesTouched 注释说明"INCOMPLETE reflection"），让下游消费者知道边界
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图28-1 | DreamTask 生命周期 | Mermaid stateDiagram | starting→updating（触发：Edit/Write）→completed/failed/killed | 28.1 |
+
+## 写作前 checklist
+```bash
+sed -n '1p' src/tasks/DreamTask/DreamTask.ts    # 设计意图注释
+sed -n '12p' src/tasks/DreamTask/DreamTask.ts   # MAX_TURNS
+sed -n '26p' src/tasks/DreamTask/DreamTask.ts   # DreamTaskState
+sed -n '37p' src/tasks/DreamTask/DreamTask.ts   # filesTouched 注释
+sed -n '54p' src/tasks/DreamTask/DreamTask.ts   # registerDreamTask
+sed -n '72p' src/tasks/DreamTask/DreamTask.ts   # addDreamTurn 空操作
+sed -n '107p' src/tasks/DreamTask/DreamTask.ts  # completeDreamTask notified
+sed -n '120p' src/tasks/DreamTask/DreamTask.ts  # kill rollback
+```
+
+## ⛔ Spec 一致性声明
+所有 16 项均 ✓，plan 审查通过。

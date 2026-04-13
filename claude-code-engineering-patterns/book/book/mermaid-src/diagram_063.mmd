@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant QE as QueryEngine.ask
+    participant BSFP as buildSideQuestionFallbackParams
+    participant FSP as fetchSystemPromptParts
+
+    Note over QE: 主路径（正常会话）
+    QE->>FSP: fetchSystemPromptParts
+    FSP-->>QE: {defaultSystemPrompt, userContext, systemContext}
+    QE->>QE: 注入 coordinator extras
+    QE->>QE: 注入 memory-mechanics prompt
+
+    Note over BSFP: fallback 路径（resume 无快照）
+    BSFP->>FSP: fetchSystemPromptParts
+    FSP-->>BSFP: {defaultSystemPrompt, userContext, systemContext}
+    Note over BSFP: 无 extras，可能 cache miss
+    Note over BSFP: 功能可用 > 完全失败

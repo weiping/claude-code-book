@@ -1,0 +1,319 @@
+# 第 10 章写作计划
+
+**批次**：批次 5（来自 plans/batch.md）
+**章节**：ch10 — Harness 的神经末梢
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示 Hooks 系统如何在 6 个触发点提供外部扩展能力，以及 3 种执行方式（Agent/HTTP/提示词）如何让 Harness 行为可由外部配置文件定制，而不需要修改核心代码。读完本章，读者将理解 Hooks 是 Harness 唯一的外部可编程接口——它让 Harness 的行为可被用户配置文件"重新接线"。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- Harness 的核心代码不可修改，但它在 27 个时机点留了"钩子"——任何 shell 命令、HTTP 请求或 AI Agent 都可以挂上去，观察行为、改写决策、注入上下文。这些钩子是 Harness 向外延伸的神经末梢。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向前链接第 9 章（权限系统，Hooks 可以修改权限决策）
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（27 个触发点、4 种执行方式等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/entrypoints/sdk/coreTypes.ts | HOOK_EVENTS 完整列表（25-52） | 行 25-52 |
+| 2 | src/utils/hooks.ts | 注释（3）、execPromptHook/execAgentHook/execHttpHook imports（148-151）、4 种类型 filter（1813-1827） | 行 3-5, 148-155, 1813-1830 |
+| 3 | src/utils/hooks/execAgentHook.ts | execAgentHook（36-60）—用 Agent 执行 Hook | 行 36-130 |
+| 4 | src/utils/hooks/execHttpHook.ts | execHttpHook（123-200）—HTTP 方式 | 行 123-200 |
+| 5 | src/utils/hooks/execPromptHook.ts | execPromptHook（21-90）—提示词方式 | 行 21-90 |
+| 6 | src/utils/hooks/postSamplingHooks.ts | registerPostSamplingHook（31-32）—内部注册机制 | 全文（70行） |
+
+验证文件存在：
+```bash
+ls src/entrypoints/sdk/coreTypes.ts src/utils/hooks.ts src/utils/hooks/execAgentHook.ts src/utils/hooks/execHttpHook.ts src/utils/hooks/execPromptHook.ts src/utils/hooks/postSamplingHooks.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 10.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 10.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 链接第 9 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图 | 图 10-1、10-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 10-1、10-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「好的扩展点不是"打开代码随便改"，而是"在正确的时机、用定义好的方式注入行为"。」
+
+### 节 10.1：问题——如何在不修改 Harness 核心代码的情况下改变其行为
+- 核心主张：Harness 的核心代码在 27 个时机点预留了 Hook 接口——任何外部配置都可以通过这些接口"重新接线"，而不需要 fork 代码库
+- 源码锚点：
+  - `src/entrypoints/sdk/coreTypes.ts:25` — `HOOK_EVENTS` 数组：27 个触发点（PreToolUse/PostToolUse/Stop/SessionStart 等完整列表）
+  - `src/utils/hooks.ts:3` — 注释："Hooks are user-defined shell commands that can be executed at various points in Claude Code's lifecycle"
+- 概念层次：定义（为什么需要 Hooks）→ 设计意图
+- 权衡分析：N/A
+- 包含元素：表格（27 个触发点按类别分组）
+- **⛔ 内容密度规划**：
+  - 引入段要点：27 个触发点覆盖了 Harness 全生命周期——从 SessionStart 到 SessionEnd，从 PreToolUse 到 PostToolUse
+  - 解读段要点：HOOK_EVENTS 是一张完整的"扩展点地图"——工具调用前后（Pre/PostToolUse）、会话边界（SessionStart/End）、停止条件（Stop/StopFailure）、压缩边界（PreCompact/PostCompact）、权限决策（PermissionRequest/PermissionDenied）等
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B2
+
+### 节 10.2：黄金法则——Hook 是配置文件控制 Harness 行为的唯一接口
+- 核心主张：Hooks 是 Harness 与外部世界之间唯一的、有设计的双向接口——外部可以读取 Harness 状态（通过 Hook 的输入），也可以改变 Harness 决策（通过 Hook 的输出）
+- 源码锚点：
+  - `src/utils/hooks/postSamplingHooks.ts:31` — `registerPostSamplingHook`：内部 Hook 注册机制——与用户配置的 Hooks 并列，说明 Hooks 是 Harness 内部扩展的通用模式
+  - `src/utils/hooks.ts:1813` — `hook.type === 'command' || hook.type === 'prompt' || hook.type === 'agent' || hook.type === 'http'`：4 种 Hook 类型的统一调度
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：双向接口 vs 只读接口——Hooks 不仅能观察（读取 Harness 状态），还能改变（返回 permissionBehavior 修改权限决策，返回 additionalInput 注入上下文），代价是外部代码可能破坏 Harness 的安全约束
+- 包含元素：对比表格（只读 Hook vs 可写 Hook 的使用场景）
+- **⛔ 内容密度规划**：
+  - 引入段要点：Hook 的返回值不只是日志，还可以改变 Harness 的下一步行为
+  - 解读段要点：PostToolUse Hook 可以返回 permissionBehavior 覆盖工具执行结果；PermissionRequest Hook 可以返回 allow/deny 决策（与第 9 章权限系统联动）；PreToolUse Hook 可以返回 additionalInput 注入到工具调用上下文
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C3、C4、C6、E1
+
+### 节 10.3：适用场景——哪些场景需要 Hooks
+- 核心主张：Hooks 适合"观察并可选干预 Harness 行为"的场景——审计日志、外部权限系统集成、动态上下文注入
+- 源码锚点：
+  - `src/utils/hooks/execAgentHook.ts:36` — `execAgentHook` 注释："Execute an agent-based hook using a multi-turn LLM query"——说明 Hook 本身可以是一个完整的 AI 对话
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：列表（4 类典型场景）
+- **⛔ 内容密度规划**：
+  - 引入段要点：一个 Hook 可以是一行 shell 命令，也可以是一个完整的 AI 对话循环
+  - 解读段要点：4 类场景——审计（记录每次工具调用）、权限扩展（外部权限系统接管 PermissionRequest）、上下文注入（PreToolUse 动态添加当前环境信息）、验证（Stop Hook 用 AI Agent 验证任务是否真正完成）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 10.4：工作原理——4 种执行方式的完整机制
+- 核心主张：4 种 Hook 执行方式（command/prompt/agent/http）适合不同的场景和延迟要求
+- 源码锚点：
+  - `src/utils/hooks.ts:148` — `import { execPromptHook }` — 提示词方式
+  - `src/utils/hooks.ts:150` — `import { execAgentHook }` — Agent 方式
+  - `src/utils/hooks.ts:151` — `import { execHttpHook }` — HTTP 方式
+  - `src/utils/hooks/execPromptHook.ts:21` — `execPromptHook`：调用 Claude API（querySource: 'hook_prompt'）执行单次推理
+  - `src/utils/hooks/execAgentHook.ts:36` — `execAgentHook`：启动完整的多轮 Agent 对话，可访问对话历史和工具
+  - `src/utils/hooks/execHttpHook.ts:123` — `execHttpHook`：发送 HTTP 请求到外部服务
+  - `src/entrypoints/sdk/coreTypes.ts:25` — HOOK_EVENTS（27 个触发点）
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：command vs agent 执行：command（shell 命令）延迟最低但能力最弱；agent（完整 AI 对话）能力最强但每次调用都消耗 API tokens——Stop Hook 通常用 agent 做任务完成验证，而 PreToolUse Hook 通常用 command 做简单检查
+- 包含元素：Mermaid 架构图（4 种执行方式的调度关系）、表格（4 种方式的延迟/能力对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：4 种执行方式不是功能重叠，而是能力层次递进
+  - 解读段要点：command（最快，数毫秒）→ prompt（单次 AI 推理，~1-2秒）→ http（外部服务调用，延迟取决于网络）→ agent（完整多轮对话，可能 10-60 秒）。Stop Hook 用 agent 是因为它需要理解整个对话历史来验证任务完成——这是 command/prompt/http 都无法做到的能力
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1100-1500 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 10.5：权衡——Hooks 系统的 3 个设计代价
+- 核心主张：Hooks 的可编程性带来了强大扩展能力，但引入了延迟、安全性和可观测性三个代价
+- 源码锚点：
+  - `src/utils/hooks/execAgentHook.ts:98` — 注释："Filter out disallowed agent tools to prevent stop hook agents from spawning subagents"——Agent Hook 有工具权限限制
+  - `src/utils/hooks/execHttpHook.ts:49` — `getHttpHookPolicy`：HTTP Hook 有 URL 白名单和允许的环境变量限制
+  - `src/utils/hooks.ts:3` — 注释定义了 Hooks 的安全边界
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - Hook 延迟：每个 Hook 都在关键路径上增加延迟——command 很快，但 agent Hook 会在每次 Stop 前增加数秒延迟，直接影响用户体验
+  - Hook 安全性：Agent Hook 被限制使用工具集（不能生成子 Agent）、HTTP Hook 有 URL 白名单——防止 Hook 本身成为安全漏洞
+  - Hook 可观测性：27 个触发点分散在 5000 行代码中，调试 Hook 行为需要理解触发时机——ALWAYS_EMITTED_HOOK_EVENTS（SessionStart/Setup）设计为永远触发，其余需要配置
+- 包含元素：对比表格（3 个代价）
+- **⛔ 内容密度规划**：
+  - 引入段要点：可编程性的代价是不可预期性——Hook 可以做任何事，包括搞坏 Harness
+  - 解读段要点：延迟代价（agent Hook 的时间成本）、安全代价（Hook 的沙箱机制）、可观测代价（触发时机分散）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 10.6：踩坑指南——Hooks 中的常见错误
+- 核心主张：Hook 最常见的错误是误用 Agent Hook 做简单任务（高延迟代价）和 HTTP Hook 未配置白名单（安全漏洞）
+- 源码锚点：
+  - `src/utils/hooks/execHttpHook.ts:49` — `getHttpHookPolicy`：HTTP Hook 策略（URL 白名单 + 环境变量白名单）
+  - `src/utils/hooks/execAgentHook.ts:98` — agent 工具过滤注释
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：一个配置错误的 Hook 不会报错，它只是悄悄地产生意外行为
+  - 解读段要点：陷阱一——在高频触发点（PreToolUse）使用 agent Hook，导致每次工具调用前都要等待完整 AI 对话；陷阱二——HTTP Hook 未配置 URL 白名单，外部服务 URL 可以被对抗性提示注入覆盖；陷阱三——Hook 返回值格式错误被静默忽略，行为不符合预期
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 10.7：实证——Stop Hook 验证任务完成的完整路径
+- 核心主张：一个 Stop Hook 从触发到影响 Harness 继续/终止决策，经过了完整的 Agent 对话循环
+- 源码锚点：
+  - `src/entrypoints/sdk/coreTypes.ts:33` — `'Stop'` 在 HOOK_EVENTS 中的位置
+  - `src/utils/hooks/execAgentHook.ts:36` — execAgentHook 入口
+  - `src/utils/hooks/execAgentHook.ts:108` — 注释："You are verifying a stop condition in Claude Code"——Agent Hook 的系统提示词说明其角色
+  - `src/utils/hooks/postSamplingHooks.ts:31` — registerPostSamplingHook 内部注册
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 时序图（Stop Hook 触发→execAgentHook→AI 判断→返回决策）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一个 Stop Hook 从查询循环结束到 AI 判断"任务是否完成"的完整路径
+  - 解读段要点：queryLoop 结束→触发 Stop 事件→匹配到 agent Hook→execAgentHook 启动独立 Agent 对话（系统提示：验证停止条件）→Agent 读取 transcript→返回 shouldBlock 决策→影响 Harness 是否继续
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：Hooks 系统的本质
+- 本质：在 Harness 生命周期的 27 个预定义时机点提供双向接口——外部代码可以观察 Harness 状态，也可以改变 Harness 决策，而无需修改核心代码
+- 关键机制：4 种执行方式（command/prompt/agent/http）按能力层次递进、postSamplingHooks 内部注册机制、Hook 输出影响权限决策
+- 适用边界：适用于需要外部审计、权限扩展或上下文注入的场景；核心逻辑不应依赖 Hook，Hook 是可选的扩展层
+- 与其他模式的关系：本章是第 9 章（权限系统）的扩展接口——PermissionRequest Hook 可以接管权限决策；第 13 章（多智能体）中 Stop Hook 用于 Agent 完成验证
+
+### 章末：用户能做什么（必填）
+1. 审计日志：为 PostToolUse 事件注册 command Hook，把所有工具调用写入外部日志
+2. 外部权限：为 PermissionRequest 事件注册 http Hook，连接内部权限系统
+3. 任务验证：为 Stop 事件注册 agent Hook，用 AI 验证任务是否真正完成（而非表面完成）
+4. 上下文注入：为 PreToolUse 事件注册 prompt Hook，动态添加当前环境信息
+5. 在高频触发点（PreToolUse）只使用 command Hook，避免引入不可控延迟
+6. 为 HTTP Hook 配置 URL 白名单，防止对抗性提示注入修改目标 URL
+7. 参考 HOOK_EVENTS 的 27 个触发点，找到你需要干预的精确时机
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图10-1 | Hooks 触发点全景 | Mermaid graph TD | 27 个 HOOK_EVENTS 按生命周期阶段分组（工具调用/会话边界/权限/压缩/停止/多智能体） | 10.1 |
+| 图10-2 | 4 种执行方式对比 | Mermaid graph LR | command→prompt→agent→http 的能力/延迟对比，Stop Hook 使用 agent 路径标注 | 10.4 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 10.4 节（4 种执行方式）——本章核心
+3. 写 10.2 节（黄金法则）
+4. 写 10.1 节（问题）
+5. 写 10.3 节（适用场景）
+6. 写 10.5 节（权衡）
+7. 写 10.6 节（踩坑指南）
+8. 写 10.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '25p' src/entrypoints/sdk/coreTypes.ts                   # HOOK_EVENTS 开始
+sed -n '3p' src/utils/hooks.ts                                   # 注释
+sed -n '148p' src/utils/hooks.ts                                 # execPromptHook import
+sed -n '150p' src/utils/hooks.ts                                 # execAgentHook import
+sed -n '151p' src/utils/hooks.ts                                 # execHttpHook import
+sed -n '1813p' src/utils/hooks.ts                                # 4 种类型 filter
+sed -n '21p' src/utils/hooks/execPromptHook.ts                   # execPromptHook
+sed -n '36p' src/utils/hooks/execAgentHook.ts                    # execAgentHook
+sed -n '98p' src/utils/hooks/execAgentHook.ts                    # agent 工具过滤
+sed -n '108p' src/utils/hooks/execAgentHook.ts                   # 系统提示词注释
+sed -n '123p' src/utils/hooks/execHttpHook.ts                    # execHttpHook
+sed -n '49p' src/utils/hooks/execHttpHook.ts                     # getHttpHookPolicy
+sed -n '31p' src/utils/hooks/postSamplingHooks.ts                # registerPostSamplingHook
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch10.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

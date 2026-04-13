@@ -1,0 +1,13 @@
+flowchart TD
+    enter["shouldAutoCompact(messages, model, querySource)"] --> g1{"querySource == session_memory\n或 compact?"}
+    g1 -->|是| dead_lock["return false\n（防递归死锁）"]
+    g1 -->|否| g2{"marble_origami\n且 CONTEXT_COLLAPSE?"}
+    g2 -->|是| module_state["return false\n（防主线程状态破坏）"]
+    g2 -->|否| g3{"isAutoCompactEnabled\n== false?"}
+    g3 -->|是| disabled["return false\n（用户已禁用）"]
+    g3 -->|否| g4{"contextCollapse\n已启用?"}
+    g4 -->|是| collapse_owns["return false\n（contextCollapse 是主控）"]
+    g4 -->|否| check["calculateTokenWarningState\n实际检查 token 用量"]
+    check --> result{"isAboveAutoCompactThreshold?"}
+    result -->|是| trigger["return true\n触发压缩"]
+    result -->|否| normal["return false\n正常状态"]

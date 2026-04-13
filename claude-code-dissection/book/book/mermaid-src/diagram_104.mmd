@@ -1,0 +1,12 @@
+graph TB
+    A["语言级异步<br/>async/await"]
+    B["进程级异步<br/>Mailbox IPC"]
+    C["系统级异步<br/>事件驱动"]
+    A --> B
+    B --> C
+    D["单线程无竞态"]
+    E["进程隔离无竞态"]
+    F["子系统独立演进"]
+    A --> D
+    B --> E
+    C --> F

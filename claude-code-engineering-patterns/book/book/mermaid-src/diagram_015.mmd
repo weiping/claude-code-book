@@ -1,0 +1,24 @@
+classDiagram
+    class CommandBase {
+        +name: string
+        +description: string
+        +availability?: CommandAvailability[]
+        +isEnabled?() boolean
+        +isHidden?: boolean
+    }
+    class LocalCommand {
+        +type: local
+        +supportsNonInteractive: boolean
+        +load() Promise
+    }
+    class PromptCommand {
+        +type: prompt
+        +getPromptForCommand() Promise
+    }
+    class LocalJSXCommand {
+        +type: local-jsx
+        +load() Promise
+    }
+    CommandBase <|-- LocalCommand
+    CommandBase <|-- PromptCommand
+    CommandBase <|-- LocalJSXCommand

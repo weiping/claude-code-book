@@ -1,0 +1,447 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 28 章：DreamTask——后台自主执行的设计意图 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-28-章dreamtask后台自主执行的设计意图"><a class="header" href="#第-28-章dreamtask后台自主执行的设计意图">第 28 章：DreamTask——后台自主执行的设计意图</a></h1>
+<blockquote>
+<p>"让看不见的工作变得可见，但不干扰它的运行。"</p>
+</blockquote>
+<hr />
+<p>当 Claude Code 在会话结束后触发一次"记忆整理"——回顾历史会话、提炼关键信息、写入记忆文件——这件事在默认情况下对用户完全不可见。它在后台安静地运行，用户无法知道进度，出错也不会收到任何反馈。</p>
+<p><code>DreamTask</code> 解决的不是"如何执行整理"，而是"如何让这个整理过程可见"。文件头注释直接说明了设计意图：</p>
+<blockquote>
+<p>"Makes the otherwise-invisible forked agent visible in the footer pill and Shift+Down dialog. The dream agent itself is unchanged — this is pure UI surfacing via the existing task registry."
+（让本来不可见的派生 Agent 在状态栏 pill 和 Shift+Down 对话框中可见。Dream Agent 本身未被修改——这是通过现有任务注册表实现的纯 UI 呈现。）</p>
+</blockquote>
+<p>这就是<strong>后台任务透明化</strong>（Background Task Transparency）模式：不修改后台任务的逻辑，只在任务框架层创建一个"观察者对象"来代理其状态，让现有 UI 基础设施自动接管显示。读完本章，你将理解为什么 <code>filesTouched</code> 字段被标注为"不完整"、为什么 kill 时需要回滚锁的 mtime，以及"空操作短路"如何避免无效的 React 重渲染。</p>
+<hr />
+<h2 id="问题自主后台任务的可见性真空"><a class="header" href="#问题自主后台任务的可见性真空">问题：自主后台任务的可见性真空</a></h2>
+<p>用户触发的任务（打开文件、运行命令）天然有"触发点"——用户知道自己做了什么，等着结果就行。Agent 自主触发的后台任务（如记忆整理）没有这个触发点：用户没有主动请求，也没有界面反馈。</p>
+<p>这产生了三个问题：</p>
+<ul>
+<li><strong>无进度</strong>：用户不知道整理还在运行还是已经卡住了</li>
+<li><strong>无失败通知</strong>：任务崩溃了没有任何提示，用户以为它没运行</li>
+<li><strong>无审计</strong>：用户想知道"整理时改了哪些文件"，没有任何记录</li>
+</ul>
+<p>一个直觉上的解决方案是修改后台 Agent，让它主动推送状态。但这侵入了后台逻辑，增加了耦合，也让后台 Agent 的测试变得复杂。<code>DreamTask</code> 选择了另一条路：<strong>利用现有的 TaskState 框架，创建一个纯 UI 层的代理对象</strong>——后台 Agent 照常运行，DreamTask 只在 AppState 中注册一个 <code>type: 'dream'</code> 的状态节点，现有的任务 UI（状态栏 pill、Shift+Down 对话框）自动把它显示出来。</p>
+<p><code>DreamTaskState</code> 的类型定义在 <code>src/tasks/DreamTask/DreamTask.ts:25</code>：</p>
+<pre><code class="language-typescript">// src/tasks/DreamTask/DreamTask.ts:25-41
+export type DreamTaskState = TaskStateBase &amp; {
+  type: 'dream'
+  phase: DreamPhase         // 'starting' | 'updating'（首次 Edit/Write 后翻转）
+  sessionsReviewing: number  // 本次整理审查的会话数量
+  /**
+   * 通过 Edit/Write 工具调用观察到的路径。这是记忆 Agent 实际修改内容的
+   * 不完整反映——它遗漏了通过 bash 间接执行的写操作，只捕获我们模式匹配的
+   * 工具调用。当作"至少触碰了这些文件"，而不是"只触碰了这些文件"。
+   */
+  filesTouched: string[]
+  /** 助手文本响应，工具调用折叠为计数。Prompt 不包含在内。 */
+  turns: DreamTurn[]
+  abortController?: AbortController
+  /** 存储以供 kill 时回退 lock mtime（与 fork 失败同一路径）。 */
+  priorMtime: number
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tasks/DreamTask/DreamTask.ts:25</code></p>
+<p>注释中 <code>filesTouched</code> 的说明是这个设计最诚实的部分——它明确标注了自己是"不完整的"（INCOMPLETE），并解释了为什么不完整：后台 Agent 可能通过 bash 命令间接写入文件，这类写操作不会产生可模式匹配的工具调用事件，因此无法被 DreamTask 捕获。<strong>对不完整的信息诚实标注</strong>，让下游的 UI 消费者知道这个字段的边界，而不是错误地把它当作完整的修改记录。</p>
+<p><strong>图 28-1：DreamTask 生命周期</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; starting: registerDreamTask\n（phase=starting）
+    starting --&gt; updating: addDreamTurn\n收到首个 Edit/Write 工具调用
+    starting --&gt; starting: addDreamTurn\n纯文本响应（无工具调用）
+    updating --&gt; updating: addDreamTurn\n继续整理
+    starting --&gt; completed: completeDreamTask
+    updating --&gt; completed: completeDreamTask\n（notified=true）
+    starting --&gt; failed: failDreamTask
+    updating --&gt; failed: failDreamTask
+    starting --&gt; killed: DreamTask.kill\n+ rollbackConsolidationLock
+    updating --&gt; killed: DreamTask.kill\n+ rollbackConsolidationLock
+    completed --&gt; [*]: evictAfter 到期
+    failed --&gt; [*]: evictAfter 到期
+    killed --&gt; [*]: evictAfter 到期
+</code></pre>
+<p>两个 phase 的语义值得注意：<code>starting</code> 表示整理刚开始、还在读取历史（没有写操作）；<code>updating</code> 表示整理已经进入写入阶段（收到了第一个 Edit/Write 工具调用）。UI 层用这个 phase 区分显示文字（"正在读取历史会话"vs"正在更新记忆文件"），让用户看到更有意义的进度描述。</p>
+<hr />
+<h2 id="源码实例-1registerdreamtask-与状态初始化"><a class="header" href="#源码实例-1registerdreamtask-与状态初始化">源码实例 1：registerDreamTask 与状态初始化</a></h2>
+<p><code>registerDreamTask</code> 创建初始状态并注入到 AppState（<code>src/tasks/DreamTask/DreamTask.ts:52</code>）：</p>
+<pre><code class="language-typescript">// src/tasks/DreamTask/DreamTask.ts:52-73
+export function registerDreamTask(
+  setAppState: SetAppState,
+  opts: {
+    sessionsReviewing: number
+    priorMtime: number        // 整理锁的当前 mtime，kill 时用于回滚
+    abortController: AbortController
+  },
+): string {
+  const id = generateTaskId('dream')
+  const task: DreamTaskState = {
+    ...createTaskStateBase(id, 'dream', 'dreaming'),
+    type: 'dream',
+    status: 'running',
+    phase: 'starting',         // 初始阶段：等待第一个写操作
+    sessionsReviewing: opts.sessionsReviewing,
+    filesTouched: [],          // 初始为空：还没有写操作
+    turns: [],
+    abortController: opts.abortController,
+    priorMtime: opts.priorMtime,  // 存储以备 kill 时回滚
+  }
+  registerTask(task, setAppState)
+  return id
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tasks/DreamTask/DreamTask.ts:52</code></p>
+<p><code>priorMtime</code> 是这里最关键的字段——它存储了记忆整理锁文件（<code>consolidationLock</code>）在整理开始之前的 mtime（修改时间戳）。为什么需要这个值？</p>
+<p>记忆整理系统使用文件锁来防止并发整理：整理开始时更新锁文件的 mtime，完成时再次更新。如果整理被中断（用户强制 kill），锁文件的 mtime 会停留在"整理进行中"的状态，导致下次启动时认为整理仍在运行而跳过。<code>priorMtime</code> 记录了整理开始之前的原始 mtime，kill 时用它把锁文件恢复到整理之前的状态，让下一次会话可以重新尝试整理。</p>
+<p><code>createTaskStateBase</code> 提供的 <code>description: 'dreaming'</code> 是 UI 中显示的任务名称——这个简短的词描述了整理任务的自主性，而不是一个技术性的函数名。</p>
+<hr />
+<h2 id="源码实例-2adddreamturn-的增量更新与空操作短路"><a class="header" href="#源码实例-2adddreamturn-的增量更新与空操作短路">源码实例 2：addDreamTurn 的增量更新与空操作短路</a></h2>
+<p><code>addDreamTurn</code> 是 DreamTask 的心跳函数——每当后台 Agent 产生一个助手消息或工具调用，都会调用它更新状态（<code>src/tasks/DreamTask/DreamTask.ts:76</code>）：</p>
+<pre><code class="language-typescript">// src/tasks/DreamTask/DreamTask.ts:76-102
+export function addDreamTurn(
+  taskId: string,
+  turn: DreamTurn,
+  touchedPaths: string[],
+  setAppState: SetAppState,
+): void {
+  updateTaskState&lt;DreamTaskState&gt;(taskId, setAppState, task =&gt; {
+    const seen = new Set(task.filesTouched)
+    // 去重：只保留尚未记录的新路径
+    const newTouched = touchedPaths.filter(p =&gt; !seen.has(p) &amp;&amp; seen.add(p))
+
+    // 空操作短路：turn 为空且无新 touched 路径时直接返回原 task
+    // 避免对纯 no-op 触发重渲染
+    if (
+      turn.text === '' &amp;&amp;
+      turn.toolUseCount === 0 &amp;&amp;
+      newTouched.length === 0
+    ) {
+      return task  // 返回相同引用 → React 跳过重渲染
+    }
+
+    return {
+      ...task,
+      // 首次收到 Edit/Write 工具调用时翻转 phase
+      phase: newTouched.length &gt; 0 ? 'updating' : task.phase,
+      filesTouched: newTouched.length &gt; 0
+        ? [...task.filesTouched, ...newTouched]
+        : task.filesTouched,
+      // 滚动窗口：保留最近 MAX_TURNS=30 轮
+      turns: task.turns.slice(-(MAX_TURNS - 1)).concat(turn),
+    }
+  })
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tasks/DreamTask/DreamTask.ts:76</code></p>
+<p>三个设计细节：</p>
+<p><strong>空操作短路</strong>（第 85 行）：当 turn 完全为空（text 为空字符串，toolUseCount 为 0）且没有新的 touched 路径时，函数直接返回原来的 <code>task</code> 对象（同一引用），而不是返回一个展开的新对象（<code>{ ...task }</code>）。在 React 状态管理中，返回同一引用等于"状态未变化"——React 会跳过重渲染。这个优化避免了后台 Agent 每产生一个空响应都触发一次 UI 更新的浪费。</p>
+<p><strong>去重累积</strong>（<code>seen</code> Set）：<code>filesTouched</code> 是已触碰路径的累积列表，但同一个路径可能被 Agent 多次编辑。用 <code>Set</code> 过滤重复路径，确保列表里每个路径只出现一次，避免 UI 展示"同一文件被触碰了 5 次"的冗余信息。</p>
+<p><strong>滚动窗口</strong>（第 101 行）：<code>task.turns.slice(-(MAX_TURNS - 1)).concat(turn)</code> 是经典的滚动窗口实现——保留最近的 <code>MAX_TURNS=30</code> 个 turn，超出的旧 turn 被丢弃。对于一个可能运行数十轮的整理 Agent，保留全量历史既无必要（UI 只显示最近几轮）又占用内存，30 轮是展示意义和内存开销之间的折中。</p>
+<p><code>completeDreamTask</code> 在终态时设置 <code>notified: true</code> 而非等待通知系统（<code>src/tasks/DreamTask/DreamTask.ts:106</code>）：</p>
+<pre><code class="language-typescript">// src/tasks/DreamTask/DreamTask.ts:106-119（含注释）
+export function completeDreamTask(taskId: string, setAppState: SetAppState): void {
+  // notified: true 立即设置——dream 没有面向模型的通知路径
+  // （它是纯 UI），而 eviction 需要 terminal + notified。
+  // 内联的 appendSystemMessage 完成备注就是用户可见的界面。
+  updateTaskState&lt;DreamTaskState&gt;(taskId, setAppState, task =&gt; ({
+    ...task,
+    status: 'completed',
+    endTime: Date.now(),
+    notified: true,            // 立即设为 true，跳过通知队列
+    abortController: undefined,
+  }))
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tasks/DreamTask/DreamTask.ts:106</code></p>
+<p><code>notified: true</code> 的即时设置是一个绕过通知流程的设计。通常，任务完成后系统会等待"通知已发送"才允许 GC 回收任务状态。DreamTask 没有独立的通知路径——它是"纯 UI"任务，完成时通过 <code>appendSystemMessage</code> 在对话中追加一条系统消息，而不走通知队列。直接设置 <code>notified: true</code> 告诉 GC 框架：不需要等通知，任务已经完成了它的工作。</p>
+<p><code>DreamTask.kill</code> 实现了状态回滚语义（<code>src/tasks/DreamTask/DreamTask.ts:132</code>）：</p>
+<pre><code class="language-typescript">// src/tasks/DreamTask/DreamTask.ts:132-157（简化）
+async kill(taskId, setAppState) {
+  let priorMtime: number | undefined
+  updateTaskState&lt;DreamTaskState&gt;(taskId, setAppState, task =&gt; {
+    if (task.status !== 'running') return task  // 已终态，幂等
+    task.abortController?.abort()               // 取消 Agent 执行
+    priorMtime = task.priorMtime                // 提取存储的原始 mtime
+    return { ...task, status: 'killed', endTime: Date.now(), notified: true, abortController: undefined }
+  })
+  // 回滚 consolidation lock，让下次会话可以重试
+  // （updateTaskState 为 no-op 时，priorMtime 仍为 undefined，跳过）
+  if (priorMtime !== undefined) {
+    await rollbackConsolidationLock(priorMtime)
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tasks/DreamTask/DreamTask.ts:132</code></p>
+<p><code>kill</code> 操作的特殊之处在于：除了中止 Agent 执行（<code>abortController.abort()</code>），还需要回滚文件锁的 mtime。注释说明这和"fork 失败时的 catch 路径"相同——系统中的错误恢复路径（整理启动但 fork 失败）和用户强制终止路径（整理运行中被 kill）使用了同一个恢复机制，这是代码复用的好例子。<code>priorMtime !== undefined</code> 的检查保证了幂等性：如果任务在 kill 时已经处于终态（<code>updateTaskState</code> 返回原对象，priorMtime 未被赋值），就不会重复回滚锁。</p>
+<hr />
+<h2 id="模式剖析后台任务透明化的四个原则"><a class="header" href="#模式剖析后台任务透明化的四个原则">模式剖析：后台任务透明化的四个原则</a></h2>
+<p><strong>后台任务透明化</strong>模式体现了四个相互支撑的原则：</p>
+<p><strong>1. 非侵入式观察</strong>：DreamTask 不修改后台 Agent 的任何逻辑——它只在 Agent 产生特定事件时（工具调用、消息完成）被回调，把这些事件转化为 DreamTaskState 的更新。后台 Agent 可以独立测试，不依赖 DreamTask 的存在。</p>
+<p><strong>2. 不完整性的显式声明</strong>：<code>filesTouched</code> 的注释明确说明"这是不完整的反映"，并解释了为什么（bash 间接写入无法捕获）。这种设计哲学是：<strong>展示不完整但有用的信息，比不展示任何信息更好；但必须标注不完整性，让使用者知道边界</strong>。</p>
+<p><strong>3. 最小渲染开销</strong>：<code>addDreamTurn</code> 的空操作短路确保了只有真正有新信息时才触发 UI 更新。滚动窗口（MAX_TURNS=30）控制了状态大小。DreamTask 是后台任务，不应该消耗过多前台资源。</p>
+<p><strong>4. 完整的生命周期关闭</strong>：kill 时的 <code>rollbackConsolidationLock</code> 确保系统状态在任务中止后是一致的——不会留下"孤儿锁"阻止下次整理。每个状态转变（完成/失败/kill）都立即设置 <code>notified: true</code>，确保 GC 可以回收状态，不会内存泄漏。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>Agent 自主触发的后台操作需要 UI 可见</td><td>✓</td><td>不修改后台逻辑，只加 UI 代理层</td><td>直接修改后台 Agent（侵入性高）</td></tr>
+<tr><td>后台操作可能失败需要用户感知</td><td>✓</td><td>failDreamTask 推送通知，用户能看到失败状态</td><td>静默失败（用户无感，难以诊断）</td></tr>
+<tr><td>后台操作输出需要完整审计</td><td>✗</td><td>MAX_TURNS=30 会丢弃旧轮次，filesTouched 不完整</td><td>完整 transcript 记录（高存储成本）</td></tr>
+<tr><td>需要用户交互的后台任务</td><td>✗</td><td>Dream 设计为完全自主，无交互接口</td><td>前台任务或带问答能力的任务类型</td></tr>
+<tr><td>高频后台任务（每秒多次）</td><td>✗（谨慎）</td><td>每次 addDreamTurn 触发状态更新，虽有短路保护但高频调用仍有开销</td><td>批量聚合后更新</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p><strong>权衡 1：filesTouched 不完整性 vs 零记录</strong></p>
+<p>只捕获 Edit/Write 工具调用的文件路径，遗漏了 bash 间接写入——这是实现复杂度和信息完整性的取舍。完整捕获所有文件写操作需要文件系统监控（类似 inotify/kqueue），在每次 addDreamTurn 时维护，成本高且跨平台复杂。当前实现选择了"捕获已知的工具调用路径"这一低成本方案，用注释标注了不完整性，让使用者自己判断是否够用。</p>
+<p><strong>权衡 2：MAX_TURNS=30 的信息丢失</strong></p>
+<p>整理 Agent 可能运行超过 30 轮（记忆整理任务有 4 个阶段：orient/gather/consolidate/prune，每个阶段可能有多轮对话）。MAX_TURNS=30 意味着用户在 Shift+Down 对话框里看到的历史只是最近 30 轮，之前的轮次已被丢弃。这对于"我想知道整理具体做了什么"的高级用户是信息损失，但对于"我只想知道整理是否正常完成"的普通用户是够用的。</p>
+<p><strong>权衡 3：notified: true 的立即设置</strong></p>
+<p><code>completeDreamTask</code> 立即设置 <code>notified: true</code> 绕过了通知系统，这意味着如果 <code>appendSystemMessage</code> 在 completeDreamTask 之前失败，任务会被标记为"已通知完成"但用户实际上没有收到通知。当前实现假设 <code>appendSystemMessage</code> 足够可靠，不需要事务性保证。如果这个假设不成立，需要重新设计通知语义（推断）。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与 GoF 观察者模式（Observer Pattern）</strong>：观察者模式中，观察者被动接收被观察对象的状态变化通知。DreamTask 也接收后台 Agent 的事件（<code>addDreamTurn</code> 被回调），但它不只是被动接收——它主动管理自己的生命周期（<code>completeDreamTask</code>、<code>kill</code> 时的锁回滚）。经典观察者是无状态的（只转发通知），DreamTask 是有状态的（维护 <code>phase</code>、<code>filesTouched</code>、<code>turns</code>），更接近<strong>聚合代理</strong>而非纯观察者。</p>
+<p><strong>与 Sidecar 模式（POSA/微服务）</strong>：Sidecar 是运行在主容器旁边的辅助容器，透明地增强主服务的能力（日志收集、监控、流量管理）而不修改主服务。DreamTask 是"应用状态层的 Sidecar"——它在 AppState 中为 Dream Agent 创建一个辅助状态对象，增加了 UI 可见性而不修改 Agent 本身。差异在于：网络层 Sidecar 通过网络代理流量，DreamTask 通过回调函数注入状态更新，是同进程内的"逻辑 Sidecar"。</p>
+<p><strong>与命令溯源（Event Sourcing）中的快照（Snapshot）</strong>：Event Sourcing 用快照压缩事件历史，避免重放全量事件。DreamTask 的 <code>turns</code> 滚动窗口与此类似——旧的 turn 被丢弃（"快照"只保留最近 30 个），新的 turn 增量追加。差异在于：Event Sourcing 的快照是为了重放（恢复状态），DreamTask 的滚动窗口是为了显示（UI 展示）——两者的目的不同，但机制相似。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="后台任务透明化background-task-transparency"><a class="header" href="#后台任务透明化background-task-transparency">后台任务透明化（Background Task Transparency）</a></h3>
+<p><strong>解决的问题</strong>：Agent 自主触发的后台操作对用户完全不可见——无进度、无失败通知、无审计记录，出错时难以诊断。</p>
+<p><strong>核心做法</strong>：在 AppState 中注册一个代理状态对象（<code>DreamTaskState</code>），不修改后台 Agent，通过回调（<code>addDreamTurn</code>）把 Agent 的事件转化为代理对象的状态更新，现有 UI 框架自动接管显示；kill 时执行必要的状态回滚（<code>rollbackConsolidationLock</code>）。</p>
+<p><strong>前置条件</strong>：有统一的 TaskState 框架（多种类型共享 UI）；后台 Agent 有事件回调接口（<code>onMessage</code> 等）可以注入状态更新；后台操作有可回滚的"开始状态"（如 <code>priorMtime</code>）。</p>
+<p><strong>源码证据</strong>：<code>src/tasks/DreamTask/DreamTask.ts:1</code>（注释："The dream agent itself is unchanged — this is pure UI surfacing"）；<code>src/tasks/DreamTask/DreamTask.ts:154</code>（<code>rollbackConsolidationLock(priorMtime)</code> kill 时状态回滚）</p>
+<hr />
+<h3 id="空操作短路no-op-short-circuit"><a class="header" href="#空操作短路no-op-short-circuit">空操作短路（No-Op Short Circuit）</a></h3>
+<p><strong>解决的问题</strong>：高频的状态更新函数（如每轮 AI 响应都调用的 <code>addDreamTurn</code>）可能在内容未变时也触发昂贵的 UI 重渲染。</p>
+<p><strong>核心做法</strong>：在 <code>updateTaskState</code> 回调中检查是否所有字段都未变化，若是则直接返回原对象（同一引用），React 的浅比较检测到引用不变，跳过重渲染。</p>
+<p><strong>前置条件</strong>：状态更新框架支持"返回原对象=无变化"的语义（如 React 的 <code>setState</code>）；高频调用中确实存在大量空调用的情况。</p>
+<p><strong>源码证据</strong>：<code>src/tasks/DreamTask/DreamTask.ts:85</code>（<code>if (turn.text === '' &amp;&amp; turn.toolUseCount === 0 &amp;&amp; newTouched.length === 0) return task</code>，返回原对象跳过渲染）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>用代理任务对象透明化后台 AI 操作</strong>：不修改后台逻辑，只创建一个代理状态对象，通过回调注入事件。现有 UI 框架自动接管显示，后台 Agent 和 UI 层各自独立测试。</p>
+</li>
+<li>
+<p><strong>对不完整的信息诚实标注</strong>：如果某个字段只捕获了部分信息（如"只捕获 Edit/Write，遗漏 bash 写入"），在注释中明确说明"INCOMPLETE，当作最小下界而非完整清单"。这比静默地展示不完整数据更有工程诚意。</p>
+</li>
+<li>
+<p><strong>在 <code>addXxxTurn</code> 中实现空操作短路</strong>：当所有字段都未变化时，直接返回原对象引用而非 <code>{ ...task }</code>。这个一行检查能显著减少高频更新场景下的无效重渲染。</p>
+</li>
+<li>
+<p><strong>为后台状态实现滚动窗口（MAX_TURNS=N）</strong>：长时间运行的后台任务不需要保留全量历史，UI 只展示最近 N 轮，超出的丢弃。N 的选择取决于"展示有意义"和"内存占用可接受"的平衡点。</p>
+</li>
+<li>
+<p><strong>在 kill 时回滚关键锁状态</strong>：如果任务持有某种"进行中"标记（如文件锁 mtime），kill 时必须把它恢复到任务开始前的状态，让下次运行可以重试。把 <code>priorMtime</code> 这类"回滚材料"存入任务状态，确保 kill 函数有回滚所需的全部信息。</p>
+</li>
+</ul>
+<hr />
+<p>DreamTask 代表了 Agent 自主性的一个维度：系统自己决定什么时候做记忆整理。Swarm 多智能体协作则代表了另一个维度：多个 Agent 如何协调分工。第 29 章将从 Teammate 生命周期开始，展开 Swarm 架构的全景（详见第 29 章）。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part6/ch27.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part7/part.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part6/ch27.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part7/part.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,482 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 3 章：构建时特性开关——bun:bundle feature() 的死代码消除 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-3-章构建时特性开关bunbundle-feature-的死代码消除"><a class="header" href="#第-3-章构建时特性开关bunbundle-feature-的死代码消除">第 3 章：构建时特性开关——bun:bundle feature() 的死代码消除</a></h1>
+<blockquote>
+<p>"18 个特性开关，18 道门。门关上的时候，门背后的房间根本不存在。"</p>
+</blockquote>
+<p>一个 CLI 工具有 18 个特性开关——如果全部用运行时 if/else，每个分支的代码、依赖和潜在安全风险都会进入最终二进制。<strong>构建时门控（Build-time Gate）</strong>——Claude Code 在编译阶段就把不需要的分支从产物中抹去。不是运行时跳过，而是字节码层面消除。读完本章，我们将掌握一种零运行时成本的特性隔离技术，并理解它与传统 Feature Flag 的本质区别。</p>
+<h2 id="问题18-个特性开关的运行时成本"><a class="header" href="#问题18-个特性开关的运行时成本">问题：18 个特性开关的运行时成本</a></h2>
+<p>第 1 章提到了 <code>import { feature } from 'bun:bundle'</code>（详见第 1 章），但没有展开它的工作机制。本章的任务就是展开。</p>
+<p><code>src/main.tsx</code> 中有 <strong>18 个不同的 feature flag</strong>，通过 <code>feature()</code> 函数判断：</p>
+<pre><code class="language-typescript">// 死代码消除：COORDINATOR_MODE 的条件导入
+const coordinatorModeModule = feature('COORDINATOR_MODE')
+  ? require('./coordinator/coordinatorMode.ts') as typeof import('./coordinator/coordinatorMode.js')
+  : null;
+
+// 死代码消除：KAIROS（助手模式）的条件导入
+const assistantModule = feature('KAIROS')
+  ? require('./assistant/index.js') as typeof import('./assistant/index.js')
+  : null;
+const kairosGate = feature('KAIROS')
+  ? require('./assistant/gate.js') as typeof import('./assistant/gate.js')
+  : null;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:74-81</code></p>
+<p>注释"死代码消除"（原文："Dead code elimination"）直接告诉读者这段代码的工程意图：当 <code>feature('KAIROS')</code> 在构建时求值为 <code>false</code> 时，三元运算符的 <code>require('./assistant/index.js')</code> 分支<strong>从最终产物中消失</strong>——不是运行时跳过，而是字节码级别不存在。</p>
+<p><strong>这与运行时 if/else 有什么本质区别？</strong> 看一下同一个文件中的运行时条件：</p>
+<pre><code class="language-typescript">if (isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK) &amp;&amp; !isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH)) {
+  // Bedrock 认证逻辑——这段代码永远存在于产物中
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:408-411</code></p>
+<p>运行时 <code>if/else</code> 保留了全部分支——即使 <code>CLAUDE_CODE_USE_BEDROCK</code> 永远为 false，Bedrock 认证的代码、它的依赖、它的安全风险，全部打包进最终二进制。<code>feature()</code> 的 DCE 效果则不同：<strong>不需要的分支根本不存在</strong>。这意味着 Assistant 模块的代码和依赖在非 KAIROS 构建中完全不进入最终产物——零体积、零加载时间、零攻击面。</p>
+<p><strong>图 3-1：构建时 DCE vs 运行时 if/else</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    subgraph DCE["构建时 DCE（feature()）"]
+        direction TB
+        Source1["源码：KAIROS + COORDINATOR_MODE + ..."]
+        Build1["Bun 构建"]
+        Prod1["产物：仅活跃分支"]
+        Source1 --&gt; Build1 --&gt; Prod1
+    end
+
+    subgraph Runtime["运行时 if/else（process.env）"]
+        direction TB
+        Source2["源码：Bedrock + Vertex + ..."]
+        Build2["构建"]
+        Prod2["产物：全部分支"]
+        Source2 --&gt; Build2 --&gt; Prod2
+    end
+
+    style Prod1 fill:#e8f5e9,stroke:#388e3c
+    style Prod2 fill:#ffebee,stroke:#c62828
+</code></pre>
+<p>DCE 的产物只包含活跃分支（绿色），运行时 if/else 的产物包含全部分支（红色）。产物体积的差异在大型 CLI 中非常显著——Assistant 模块有独立的依赖树，完整引入可能增加数兆字节。</p>
+<h2 id="源码实例-1feature-的-5-种门控形态"><a class="header" href="#源码实例-1feature-的-5-种门控形态">源码实例 1：feature() 的 5 种门控形态</a></h2>
+<p>18 个 feature flag 在 <code>src/main.tsx</code> 中的使用方式并非千篇一律——它们可以分为 <strong>5 种门控形态</strong>：</p>
+<p><strong>形态 1：模块级条件 require（最激进）</strong></p>
+<pre><code class="language-typescript">const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
+  ? require('./utils/permissions/autoModeState.ts')
+      as typeof import('./utils/permissions/autoModeState.js')
+  : null;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:171</code></p>
+<p>这是最激进的隔离：整个模块在构建时决定是否引入。当 flag 关闭时，<code>autoModeState.ts</code> 的代码、它的 import 链、它的依赖——全部从产物中消除。<strong>代价</strong>：后续代码需要通过 <code>autoModeStateModule?.xxx</code> 可选链调用，增加了运行时空检查。</p>
+<p><strong>形态 2：函数内条件分支（最灵活）</strong></p>
+<pre><code class="language-typescript">if (feature('TRANSCRIPT_CLASSIFIER')) {
+  resetAutoModeOptInForDefaultOffer();
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:337</code></p>
+<p>函数级别的条件分支——整个函数仍然存在于产物中，只是 flag 控制的代码块被消除。<strong>比形态 1 灵活</strong>：不需要可选链，但隔离粒度更粗。</p>
+<p><strong>形态 3：条件对象初始化（中间地带）</strong></p>
+<pre><code class="language-typescript">const _pendingConnect: PendingConnect | undefined = feature('DIRECT_CONNECT') ? {
+  url: undefined,
+  authToken: undefined,
+  dangerouslySkipPermissions: false
+} : undefined;
+
+const _pendingAssistantChat: PendingAssistantChat | undefined =
+  feature('KAIROS') ? {
+    sessionId: undefined,
+    discover: false
+  } : undefined;
+
+const _pendingSSH: PendingSSH | undefined = feature('SSH_REMOTE') ? {
+  host: undefined,
+  cwd: undefined,
+  permissionMode: undefined,
+  dangerouslySkipPermissions: false,
+  local: false,
+  extraCliArgs: []
+} : undefined;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:548-584</code></p>
+<p>条件对象初始化是模块级 require 和函数内分支的中间地带：对象的类型声明和变量名始终存在，但初始值在构建时决定——要么是预设的默认对象，要么是 <code>undefined</code>。<strong>关键区别</strong>：变量本身不会被消除（类型 <code>PendingSSH | undefined</code> 始终存在），只有初始值被消除。这意味着后续代码可以用 <code>_pendingSSH</code> 做类型收窄，而不需要可选链。</p>
+<p><strong>形态 4：条件行为控制（延迟导入）</strong></p>
+<pre><code class="language-typescript">if (feature('LODESTONE')) {
+  const handleUriIdx = process.argv.indexOf('--handle-uri');
+  if (handleUriIdx !== -1 &amp;&amp; process.argv[handleUriIdx + 1]) {
+    const { enableConfigs } = await import('./utils/config.js');
+    enableConfigs();
+    // ...处理 URI 逻辑
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:647-654</code></p>
+<p>LODESTONE 的门控不使用 require 而是用动态 <code>import()</code>——这是一种延迟加载策略：模块只在真正需要时才加载。<strong>关键区别</strong>：当 flag 关闭时，不仅条件分支被消除，连 <code>process.argv.indexOf('--handle-uri')</code> 的检查都不会执行。</p>
+<p><strong>形态 5：条件环境检测（混合门控）</strong></p>
+<pre><code class="language-typescript">const hint = feature('WEB_BROWSER_TOOL')
+  &amp;&amp; typeof Bun !== 'undefined'
+  &amp;&amp; 'WebView' in Bun
+  ? CLAUDE_IN_CHROME_SKILL_HINT_WITH_WEBBROWSER
+  : CLAUDE_IN_CHROME_SKILL_HINT;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:1571</code></p>
+<p>这是最复杂的形态：<code>feature()</code> 与运行时环境检测（<code>typeof Bun</code>、<code>'WebView' in Bun</code>）组合使用。<strong>构建时只消除 feature 部分</strong>——当 <code>WEB_BROWSER_TOOL</code> 关闭时，整个表达式短路为 <code>CLAUDE_IN_CHROME_SKILL_HINT</code>；当开启时，还需要运行时检查 Bun 是否支持 WebView。这种混合模式在同一个表达式中结合了构建时确定性和运行时灵活性。</p>
+<p><strong>图 3-2：5 种门控形态的隔离强度对比</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    F1["形态1：模块级条件 require
+（最激进）
+src/main.tsx:76"]
+    F3["形态3：条件对象初始化
+（中间地带）
+src/main.tsx:548"]
+    F2["形态2：函数内条件分支
+（最灵活）
+src/main.tsx:337"]
+    F4["形态4：条件行为控制
+（延迟导入）
+src/main.tsx:647"]
+    F5["形态5：条件环境检测
+（混合门控）
+src/main.tsx:1571"]
+
+    F1 --&gt;|"DCE消除：整个模块"| R1["零体积 + 零依赖"]
+    F3 --&gt;|"DCE消除：初始值"| R3["变量存在，值为 undefined"]
+    F2 --&gt;|"DCE消除：代码块"| R2["函数存在，块被消除"]
+    F4 --&gt;|"DCE消除：分支+延迟加载"| R4["动态import按需加载"]
+    F5 --&gt;|"DCE + 运行时检测"| R5["构建时短路 + 运行时检查"]
+
+    style R1 fill:#e8f5e9,stroke:#388e3c
+    style R3 fill:#e3f2fd,stroke:#1565c0
+    style R2 fill:#fff3e0,stroke:#e65100
+    style R4 fill:#f3e5f5,stroke:#6a1b9a
+    style R5 fill:#fce4ec,stroke:#c62828
+</code></pre>
+<p>图中五条路径的颜色反映隔离强度从高到低：形态1（绿）彻底消除模块和依赖，形态3（蓝）保留变量但消除初始值，形态2（橙）保留函数但消除分支逻辑，形态4/5为特殊场景设计。</p>
+<p><strong>18 个 feature flag 完整清单</strong>：</p>
+<div class="table-wrapper"><table><thead><tr><th>Flag</th><th>行号</th><th>门控形态</th><th>门控模块/行为</th></tr></thead><tbody>
+<tr><td>COORDINATOR_MODE</td><td>76</td><td>形态 1（条件 require）</td><td>协调器模式模块</td></tr>
+<tr><td>KAIROS</td><td>80-81, 559, 685, 1050, 1058</td><td>形态 1 + 3 + 2</td><td>助手模式模块 + 对象 + 行为</td></tr>
+<tr><td>TRANSCRIPT_CLASSIFIER</td><td>171, 337, 1399</td><td>形态 1 + 2 + 2</td><td>自动权限状态 + 迁移逻辑</td></tr>
+<tr><td>DIRECT_CONNECT</td><td>548, 612</td><td>形态 3 + 2</td><td>直连会话对象 + 行为</td></tr>
+<tr><td>SSH_REMOTE</td><td>577, 706</td><td>形态 3 + 2</td><td>SSH 会话对象 + 行为</td></tr>
+<tr><td>LODESTONE</td><td>647</td><td>形态 4（延迟导入）</td><td>URI 处理</td></tr>
+<tr><td>WEB_BROWSER_TOOL</td><td>1571</td><td>形态 5（混合门控）</td><td>Chrome WebView 提示</td></tr>
+<tr><td>BG_SESSIONS</td><td>1116</td><td>形态 2</td><td>后台会话环境变量</td></tr>
+<tr><td>CHICAGO_MCP</td><td>1477, 1608</td><td>形态 2</td><td>MCP 协议行为</td></tr>
+<tr><td>BRIDGE_MODE</td><td>—</td><td>形态 2</td><td>桥接模式</td></tr>
+<tr><td>PROACTIVE</td><td>—</td><td>形态 2</td><td>主动建议</td></tr>
+<tr><td>HARD_FAIL</td><td>—</td><td>形态 2</td><td>硬失败模式</td></tr>
+<tr><td>AGENT_MEMORY_SNAPSHOT</td><td>—</td><td>形态 2</td><td>Agent 内存快照</td></tr>
+<tr><td>KAIROS_BRIEF</td><td>—</td><td>形态 2</td><td>KAIROS 简报</td></tr>
+<tr><td>KAIROS_CHANNELS</td><td>—</td><td>形态 2</td><td>KAIROS 频道</td></tr>
+<tr><td>UDS_INBOX</td><td>—</td><td>形态 2</td><td>UDS 收件箱</td></tr>
+<tr><td>UPLOAD_USER_SETTINGS</td><td>963</td><td>形态 2</td><td>用户设置上传</td></tr>
+<tr><td>CCR_MIRROR</td><td>—</td><td>形态 2</td><td>CCR 镜像</td></tr>
+</tbody></table>
+</div>
+<p><strong>形态 1 和 3 是最激进的隔离</strong>——它们不仅消除行为，还消除依赖。形态 2 最常见但隔离最弱——只是跳过代码块，函数和模块本身仍在产物中。形态 4 和 5 是特殊场景的优化。</p>
+<h2 id="源码实例-2变体bunfeaturests-的运行时回退"><a class="header" href="#源码实例-2变体bunfeaturests-的运行时回退">源码实例 2（变体）：bunFeatures.ts 的运行时回退</a></h2>
+<p><code>feature()</code> 是 Bun 运行时的构建时 API——那在非 Bun 环境（如测试、开发）中如何运行？<code>src/utils/bunFeatures.ts</code> 提供了答案：</p>
+<pre><code class="language-typescript">/**
+ * Bun Feature Flags 模拟层（原文：Bun Feature Flags Shim）
+ * 提供类似 Bun 的 bun:bundle 的 feature() 函数
+ */
+
+export interface FeatureConfig {
+  KAIROS?: boolean;
+  COORDINATOR_MODE?: boolean;
+  CLAUDE_CODE_SIMPLE?: boolean;
+  [key: string]: boolean | undefined;
+}
+
+const DEFAULT_FEATURES: FeatureConfig = {
+  KAIROS: false,
+  COORDINATOR_MODE: false,
+  CLAUDE_CODE_SIMPLE: false
+};
+
+let currentFeatures: FeatureConfig = { ...DEFAULT_FEATURES };
+
+export function feature(featureName: string): boolean {
+  return currentFeatures[featureName] ?? false;
+}
+
+export function setFeatures(features: Partial&lt;FeatureConfig&gt;): void {
+  currentFeatures = { ...currentFeatures, ...features };
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/bunFeatures.ts:1-40</code></p>
+<p>这是一个 <strong>50 行的运行时模拟</strong>——当代码在 Node.js 环境中运行时（如测试），<code>import { feature } from 'bun:bundle'</code> 会失败，但 <code>import { feature } from './utils/bunFeatures.ts'</code> 可以正常工作。</p>
+<p><strong>关键设计约束</strong>：<code>DEFAULT_FEATURES</code> 中所有 flag 默认为 <code>false</code>。这确保了非 Bun 环境不会意外启用门控功能——<strong>安全优先于功能</strong>。<code>setFeatures</code> 和 <code>enableFeature</code>/<code>disableFeature</code> 函数只在测试中使用，允许测试用例按需开启特定 flag。</p>
+<p><strong>与实例 1 的关键区别</strong>：实例 1（main.tsx 的 feature 调用）是"构建时 DCE 的使用者"——它依赖 Bun 构建器在编译时消除分支。实例 2（bunFeatures.ts）是"DCE 不可用时的替代实现"——它用 JavaScript 对象模拟 DCE 的接口，但<strong>无法提供真 DCE 效果</strong>。当使用 bunFeatures.ts 时，所有分支都保留在产物中，feature() 只是返回 true/false 控制运行时走向。</p>
+<p><strong>图 3-3：构建时门控的两个执行路径</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    Import["import feature from bun:bundle"]
+
+    Import --&gt;|"Bun 环境"| Real["真 feature()"]
+    Import --&gt;|"非 Bun 环境"| Shim["bunFeatures.ts 模拟"]
+
+    Real --&gt; DCE["构建时 DCE：未激活分支被消除"]
+    Shim --&gt; Runtime["运行时判断：全部分支保留"]
+
+    DCE --&gt; Small["产物体积小"]
+    Runtime --&gt; Large["产物体积大"]
+
+    style DCE fill:#e8f5e9,stroke:#388e3c
+    style Runtime fill:#fff3e0,stroke:#e65100
+</code></pre>
+<p>同一个 <code>feature()</code> 接口背后，隐藏着两条完全不同的执行路径：Bun 环境走构建时消除（绿色），非 Bun 环境走运行时回退（橙色）。调用方不需要关心背后是哪条路径——这种接口统一性是"构建时门控"模式的优雅之处。</p>
+<h2 id="模式剖析构建时门控的两个变体"><a class="header" href="#模式剖析构建时门控的两个变体">模式剖析：构建时门控的两个变体</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>变体</th><th>执行时机</th><th>代码消除</th><th>依赖引入</th><th>适用环境</th></tr></thead><tbody>
+<tr><td><strong>构建时消除</strong></td><td>编译阶段</td><td>未激活分支从产物中移除</td><td>未激活分支的依赖不进入产物</td><td>Bun 生产构建</td></tr>
+<tr><td><strong>运行时回退</strong></td><td>运行时</td><td>无消除（全部分支保留）</td><td>所有分支的依赖都进入产物</td><td>Node.js 测试 / 开发</td></tr>
+</tbody></table>
+</div>
+<p>两个变体共享同一个接口：<code>feature('FLAG_NAME')</code> 返回 boolean。调用方不需要知道背后是 DCE 还是运行时查找。差异在于**"决定在什么时候做"**——构建时消除在生产环境获得零成本隔离，运行时回退在开发环境获得灵活性（通过 <code>setFeatures</code> 动态切换 flag）。</p>
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>功能模块独立、互不依赖</td><td>✓</td><td>门控的模块可以安全地从产物中移除，不影响其他功能</td><td>运行时 if/else（保留全部分支）</td></tr>
+<tr><td>需要零运行时开销</td><td>✓</td><td>DCE 后不需要的代码根本不存在，无判断开销</td><td>环境变量判断（每次调用都要求值）</td></tr>
+<tr><td>安全隔离需求</td><td>✓</td><td>门控的代码和依赖不进入最终二进制，消除攻击面</td><td>运行时开关（代码仍在产物中，可被逆向）</td></tr>
+<tr><td>需要运行时动态切换</td><td>✗</td><td>flag 值在构建时确定，无法运行时改变</td><td>Feature Flag 服务（LaunchDarkly 等）</td></tr>
+<tr><td>flag 依赖运行时输入</td><td>✗</td><td><code>feature()</code> 不能读取配置文件或用户输入</td><td>环境变量 + 运行时 if/else</td></tr>
+<tr><td>模块间强耦合</td><td>✗</td><td>门控模块的移除可能导致依赖它的代码编译失败</td><td>条件导入 + 空对象模式</td></tr>
+</tbody></table>
+</div>
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p>构建时门控的代价集中在三个方面。</p>
+<p><strong>第一，平台锁定。</strong> <code>bun:bundle</code> 的 <code>feature()</code> 是 Bun 运行时特有的 API。其他 JavaScript 运行时（Node.js、Deno）没有等价物——Webpack 的 <code>DefinePlugin</code> 和 Vite 的 <code>define</code> 可以实现类似效果，但需要额外配置。Claude Code 用 <code>bunFeatures.ts</code>（<code>src/utils/bunFeatures.ts</code>）作为补偿，但运行时回退无法提供真 DCE 效果——它只是把构建时确定性变成了运行时不确定性。</p>
+<p><strong>第二，flag 变更需要重新构建。</strong> 运行时 if/else 的优势是"改配置无需重编译"——修改环境变量即可切换行为。构建时门控则不同：flag 值在构建时烧录，改变 flag 需要重新构建整个产物。在 Claude Code 的场景中，这不是问题（flag 代表的是产品级别的功能模块，不是用户级别的配置项），但在需要频繁切换 flag 的开发调试场景中，这会降低效率。</p>
+<p><strong>第三，调试信息丢失。</strong> DCE 后，被消除的分支在运行时完全不存在——如果 bug 恰好与被消除的代码有关，开发者无法通过断点或日志追踪到它。唯一的调试方式是用运行时回退（bunFeatures.ts）重新构建，但此时行为已经与生产构建不同。</p>
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>构建时门控</th><th>Feature Flag（运行时）</th><th>Strategy Pattern (GoF)</th></tr></thead><tbody>
+<tr><td>决定时机</td><td>构建时</td><td>运行时</td><td>编码时（接口选择）</td></tr>
+<tr><td>代码消除</td><td>是（DCE）</td><td>否（全部分支保留）</td><td>否（所有策略类都在产物中）</td></tr>
+<tr><td>运行时开销</td><td>零（不存在的代码不执行）</td><td>有（每次判断 + 远程调用）</td><td>有（策略查找和分发）</td></tr>
+<tr><td>切换方式</td><td>重新构建</td><td>改配置 / 远程控制</td><td>修改调用代码</td></tr>
+<tr><td>典型工具</td><td>Bun feature() / Webpack DefinePlugin</td><td>LaunchDarkly / Unleash</td><td>TypeScript interface</td></tr>
+</tbody></table>
+</div>
+<p><strong>共同点</strong>：三种模式都在解决"如何在不修改主逻辑的前提下切换行为"。<strong>核心区别</strong>在于"决定在什么时候做"——构建时门控在编译阶段做决定（确定性最强），Feature Flag 在运行时做决定（灵活性最高），Strategy Pattern 在编码时做决定（架构层面）。</p>
+<p>构建时门控可以看作是 Feature Flag 的一个极端特例：<strong>flag 值提前到构建时就确定了</strong>。这种"提前决定"的代价是丧失了运行时灵活性，但换来的是零开销和安全隔离——在 CLI 工具这种"功能模块在构建时就确定"的场景下，这个交换是合理的。</p>
+<p>更有趣的历史对照是 C 语言的预处理器指令 <code>#ifdef</code>/<code>#endif</code>——两者在本质上做同一件事：<strong>在编译时根据条件消除代码</strong>。<code>feature('KAIROS') ? require(...) : null</code> 就是 JavaScript 世界中的 <code>#ifdef KAIROS ... #endif</code>。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="构建时门控build-time-gate"><a class="header" href="#构建时门控build-time-gate">构建时门控（Build-time Gate）</a></h3>
+<p><strong>解决的问题</strong>：如何让不需要的特性在编译后完全不存在？</p>
+<p><strong>核心做法</strong>：用 feature('FLAG') 三元运算符包裹条件分支，构建器在编译时求值并移除 false 分支。</p>
+<p><strong>前置条件</strong>：构建工具支持 DCE、flag 值在构建时确定、非 Bun 环境有运行时回退。</p>
+<p><strong>源码证据</strong>：src/main.tsx:80（KAIROS 门控）、src/utils/bunFeatures.ts:25（运行时回退）</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用 <code>grep -o "feature('[A-Z_]*')" src/main.tsx | sort -u</code> 列出所有 feature flag</strong>，验证本章提到的 18 个。注意有些 flag（如 BG_SESSIONS、CHICAGO_MCP）只出现在函数内部，需要全文件搜索才能发现。</li>
+<li><strong>对比 <code>src/main.tsx:80</code> 的 KAIROS 门控和 <code>src/main.tsx:408</code> 的 Bedrock 环境变量检查</strong>。前者是构建时确定性（flag 关闭 → 代码不存在），后者是运行时不确定性（环境变量可能随时改变）。在你的项目中，哪些条件分支在构建时就能确定？</li>
+<li><strong>在自己的项目中，尝试用 Webpack 的 <code>DefinePlugin</code> 或 Vite 的 <code>define</code> 实现类似的构建时门控</strong>。关键配置：<code>define: { __FEATURE_KAIROS__: JSON.stringify(false) }</code>，然后代码中用 <code>if (__FEATURE_KAIROS__) { ... }</code>——构建器会自动消除 false 分支。</li>
+<li><strong>阅读 <code>src/utils/bunFeatures.ts</code> 完整实现</strong>（约 50 行），理解运行时回退的设计约束——为什么所有 flag 默认关闭？为什么 <code>setFeatures</code> 用展开运算符而非直接赋值？</li>
+<li><strong>追踪 <code>feature('TRANSCRIPT_CLASSIFIER')</code> 的两个使用位置</strong>（行 171 和 337），理解同一个 flag 在不同门控形态下的 DCE 效果差异——行 171 的条件 require 会消除整个模块，行 337 的函数内分支只消除代码块。</li>
+<li><strong>对比 Bun 的 <code>feature()</code> 与 C 语言的 <code>#ifdef</code> 预处理指令</strong>——它们的共同祖先是什么？差异在于 <code>feature()</code> 保留了完整的类型信息（<code>as typeof import(...)</code>），而 <code>#ifdef</code> 是纯文本替换。</li>
+</ul>
+<hr />
+<p>第 4 章理解查询引擎如何使用全局状态（第 2 章）和特性开关（本章）协同工作——feature flag 控制哪些模块进入运行时，全局状态控制这些模块如何共享数据。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part1/ch02.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part2/part.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part1/ch02.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part2/part.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

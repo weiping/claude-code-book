@@ -1,0 +1,32 @@
+flowchart TD
+    subgraph ModuleSingleton["模块级单例（Module Singleton）"]
+        direction LR
+        Import2["import {getXxx} from './state'"]
+        Module2["模块首次加载 → STATE 初始化"]
+        Unique2["唯一性保证：模块系统加载一次"]
+        Import2 --> Module2 --> Unique2
+    end
+
+    subgraph GoFSingleton["GoF Singleton"]
+        direction LR
+        Call1["getInstance()"]
+        Check1{"_instance
+已存在?"}
+        Create1["new State()"]
+        Return1["返回 _instance"]
+        Call1 --> Check1
+        Check1 -->|否| Create1 --> Return1
+        Check1 -->|是| Return1
+    end
+
+    subgraph ServiceLocator["Service Locator (Fowler)"]
+        direction LR
+        Locate["locate('state')"]
+        Registry["注册表查询"]
+        Result["返回注册的实例"]
+        Locate --> Registry --> Result
+    end
+
+    style Unique2 fill:#e8f5e9,stroke:#388e3c
+    style Create1 fill:#fff3e0,stroke:#e65100
+    style Registry fill:#e3f2fd,stroke:#1565c0

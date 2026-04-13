@@ -1,0 +1,18 @@
+graph TD
+    A["Context Window: 200K (Sonnet)"] --> B["具体阈值设置"]
+    
+    B -->|NORMAL| B1["0-167K<br/>状态：NORMAL<br/>日志频率：低<br/>操作：无"]
+    
+    B -->|YELLOW| B2["167K-177K<br/>状态：YELLOW<br/>日志频率：中<br/>操作：准备"]
+    
+    B -->|RED| B3["177K-187K<br/>状态：RED<br/>日志频率：高<br/>操作：预加载"]
+    
+    B -->|ORANGE| B4["187K-192K<br/>状态：ORANGE<br/>日志频率：高<br/>操作：压缩执行<br/>boundary message 插入"]
+    
+    B -->|CRITICAL| B5["192K+<br/>状态：CRITICAL<br/>日志频率：最高<br/>操作：紧急压缩"]
+    
+    style B1 fill:#ccffcc
+    style B2 fill:#ffffcc
+    style B3 fill:#fff4e6
+    style B4 fill:#ffe6e6
+    style B5 fill:#ff6666

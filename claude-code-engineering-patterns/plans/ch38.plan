@@ -1,0 +1,90 @@
+# 第 38 章写作计划
+
+**批次**：批次 10a（来自 plans/batch.md）
+**章节**：ch38 — 第38章：Marketplace 协议——官方注册表与第三方源
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 `src/services/mcp/officialRegistry.ts`（72行）如何预获取官方 MCP 注册表 URL、验证 MCP 服务器是否来自官方源，以及 `pluginOperations.ts` 的 VALID_INSTALLABLE_SCOPES（user/project/local）如何隔离不同来源的插件。
+
+## 通用约束
+**排除范围**：Plugin 生命周期（第37章）、插件包内部结构（第39章）、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「预获取信任边界」（Pre-fetch Trust Boundary）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（officialRegistry + VALID_INSTALLABLE_SCOPES），适用范围表，与已知模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/services/mcp/officialRegistry.ts | prefetchOfficialMcpUrls(33行)、isOfficialMcpUrl(66行)、fail-closed注释(64行) | 全文(72行) |
+| 2 | src/services/plugins/pluginOperations.ts | VALID_INSTALLABLE_SCOPES(72行)、assertInstallableScope(90行)、VALID_UPDATE_SCOPES(78行) | 71-105 |
+
+```bash
+cat src/services/mcp/officialRegistry.ts
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：一个 MCP 服务器 URL 怎么证明自己来自 Anthropic 官方？Claude Code 的答案是：在启动时预获取官方注册表，然后用 Set 查找——O(1) 验证，fail-closed（注册表未加载时默认不信任）。
+
+### 节 38.1：问题
+- 核心主张：**第三方 MCP 服务器和官方服务器使用相同的协议——区分它们需要一个"信任注册表"，但实时查询会有延迟**
+- 源码锚点：`src/services/mcp/officialRegistry.ts:64`（注释："Undefined registry → false (fail-closed)"）
+
+### 节 38.2：源码实例1 — officialRegistry（预获取 + fail-closed）
+- 核心主张：**prefetchOfficialMcpUrls 是 fire-and-forget——启动时异步获取，不阻塞初始化；isOfficialMcpUrl 是同步 O(1) 查找，fail-closed**
+- 源码锚点：
+  - `src/services/mcp/officialRegistry.ts:33`（prefetchOfficialMcpUrls 注释："Fire-and-forget"）
+  - `src/services/mcp/officialRegistry.ts:40`（官方注册表 URL）
+  - `src/services/mcp/officialRegistry.ts:66`（isOfficialMcpUrl）
+  - `src/services/mcp/officialRegistry.ts:70`（resetOfficialMcpUrlsForTesting）
+
+### 节 38.3：源码实例2 — VALID_INSTALLABLE_SCOPES（安装范围隔离）
+- 核心主张：**插件安装范围（user/project/local）决定了权限边界——managed 范围只能通过 managed-settings.json 安装，不允许用户或代码直接安装**
+- 源码锚点：
+  - `src/services/plugins/pluginOperations.ts:72`（VALID_INSTALLABLE_SCOPES = ['user', 'project', 'local']）
+  - `src/services/plugins/pluginOperations.ts:71`（注释：排除 'managed'）
+  - `src/services/plugins/pluginOperations.ts:90`（assertInstallableScope）
+
+### 节 38.4-38.7：模式剖析/适用范围/权衡/对话
+- 模式：预获取信任边界（先加载注册表，后查询）、范围隔离（不同来源的安装限制）
+- 与安全模式 fail-closed：相同——未知时默认拒绝
+
+### 章末：模式提炼
+```
+模式名称：预获取信任边界（Pre-fetch Trust Boundary）
+问题：实时验证服务器可信度会增加延迟，但不验证有安全风险
+解决方案：启动时 fire-and-forget 预获取信任列表，运行时 O(1) 查找，注册表未加载时 fail-closed
+前置条件：信任列表相对稳定（不需要实时更新），可以在后台加载
+源码锚点：src/services/mcp/officialRegistry.ts:33 (prefetchOfficialMcpUrls), :64 (fail-closed注释)
+```
+
+### 章末：你能做什么
+1. 用 fire-and-forget 预获取信任列表，不阻塞启动路径
+2. 实现 fail-closed——注册表未加载时返回 false，而非 true（默认不信任未知来源）
+3. 为测试提供 resetXxxForTesting 函数，避免测试间状态污染
+4. 用 assert 而非 guard 验证安装范围——非法范围应该抛出异常，而非静默忽略
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图38-1 | 官方 vs 第三方 MCP 信任验证流程 | Mermaid flowchart | 启动预获取→注册表→isOfficialMcpUrl查找 | 38.1 |
+
+## 写作前 checklist
+```bash
+sed -n '33p' src/services/mcp/officialRegistry.ts   # fire-and-forget
+sed -n '64p' src/services/mcp/officialRegistry.ts   # fail-closed 注释
+sed -n '66p' src/services/mcp/officialRegistry.ts   # isOfficialMcpUrl
+sed -n '72p' src/services/plugins/pluginOperations.ts  # VALID_INSTALLABLE_SCOPES
+sed -n '71p' src/services/plugins/pluginOperations.ts  # 排除managed注释
+```
+
+## ⛔ Spec 一致性声明
+所有 16 项均 ✓，plan 审查通过。

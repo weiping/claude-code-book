@@ -1,0 +1,11 @@
+graph TD
+    A["获取订阅级别"] --> B{"类型"}
+    B -->|Max/TeamPremium| C["✓ Opus"]
+    B -->|Pro/Enterprise| D["✓ Sonnet"]
+    B -->|PAYG/Free| E["✓ Sonnet"]
+    C --> F["能力最强<br/>成本最高"]
+    D --> G["平衡型<br/>推荐配置"]
+    E --> H["平衡型"]
+    style C fill:#ffe6e6
+    style D fill:#e6ffe6
+    style E fill:#e6ffe6

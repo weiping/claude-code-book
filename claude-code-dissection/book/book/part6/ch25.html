@@ -1,0 +1,821 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 25 章：AutoCompact 与边界标记的实现 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-25-章autocompact-与边界标记的实现"><a class="header" href="#第-25-章autocompact-与边界标记的实现">第 25 章：AutoCompact 与边界标记的实现</a></h1>
+<blockquote>
+<p>AutoCompact 触发时，Claude 是怎么'知道'历史被压缩了的？</p>
+</blockquote>
+<p>在第 24 章中，我们看到了 AutoCompact 触发，对话继续进行。但有个问题没有回答：</p>
+<p>当第 75 轮的压缩发生后，第 76 轮 Claude 为什么没有询问"前面的对话呢？"或者提出"我好像是一个新的问题"的错误假设？</p>
+<p>答案是：<strong>系统通过五层状态机和边界标记机制，让 Claude 持续意识到发生了什么</strong>。</p>
+<p>首先，AutoCompact 不是"突然"触发的。系统从第 71 轮就进入 YELLOW 状态（在日志中记录"接近限制"），第 73 轮进入 RED 状态（在日志中记录"准备压缩"），第 75 轮才进入 ORANGE 状态（实际触发压缩）。</p>
+<p>其次，当压缩发生时，系统插入一条特殊的"边界消息"，作为对话历史中的一个检查点，告诉 Claude"你前面的对话被浓缩了，以下是关键摘要"。Claude 读到这个消息，就知道"哦，我不是遗忘了，而是对话被系统优化了"。</p>
+<p>这一章深入这个机制的实现细节：五层状态是如何计算的、边界消息是如何插入的、缓存破坏是如何检测的、失败是如何恢复的。</p>
+<hr />
+<p><strong>图表</strong></p>
+<p><strong>图 25-1：AutoCompact 五层状态转移</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; NORMAL
+    
+    NORMAL --&gt; YELLOW: tokens &gt; threshold - 20K
+    
+    YELLOW --&gt; RED: tokens &gt; threshold - 10K
+    RED --&gt; YELLOW: tokens &lt; threshold - 15K (降级)
+    
+    RED --&gt; ORANGE: tokens &gt; threshold
+    ORANGE --&gt; YELLOW: compress() 成功&lt;br/&gt;tokens &lt; threshold - 5K (压缩后)
+    
+    ORANGE --&gt; CRITICAL: tokens &gt; threshold + 5K
+    CRITICAL --&gt; ORANGE: compress() 成功
+    CRITICAL --&gt; [*]: failureCount &gt;= 3&lt;br/&gt;(禁用 AutoCompact)
+    
+    note right of NORMAL
+        监控中，无操作
+        日志频率：低
+    end note
+    
+    note right of YELLOW
+        接近限制
+        日志频率：中
+        预加载压缩模块
+    end note
+    
+    note right of RED
+        非常接近
+        日志频率：高
+        准备立即压缩
+    end note
+    
+    note right of ORANGE
+        超过安全阈值
+        立即触发压缩
+        插入 BoundaryMessage
+    end note
+    
+    note right of CRITICAL
+        进入危险区
+        紧急压缩 + 失败计数
+    end note
+</code></pre>
+<p><strong>图 25-2：Boundary Message 的作用</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["轮次 76&lt;br/&gt;压缩前的对话历史"] --&gt;|压缩发生| B["轮次 76&lt;br/&gt;压缩后的对话历史"]
+    
+    A --&gt;|内容| A1["轮 1-30&lt;br/&gt;架构讨论 + 技术栈选择&lt;br/&gt;（30KB）"]
+    A --&gt;|内容| A2["轮 31-75&lt;br/&gt;调试过程&lt;br/&gt;（150KB）"]
+    
+    B --&gt;|内容| B1["【Boundary Message】&lt;br/&gt;Earlier rounds discussed architecture...&lt;br/&gt;Attempted solutions failed because..."]
+    B --&gt;|内容| B2["轮 31-75&lt;br/&gt;调试过程&lt;br/&gt;（150KB，不变）"]
+    
+    B -.-&gt;|效果| C["Claude 的理解"]
+    C --&gt;|知道| C1["✅ 前面做过架构讨论"]
+    C --&gt;|知道| C2["✅ 已尝试过 XX 方案（失败）"]
+    C --&gt;|知道| C3["✅ 现在应该尝试新的方向"]
+    
+    style A1 fill:#ffe6e6
+    style A2 fill:#ffffcc
+    style B1 fill:#e6ffe6
+    style B2 fill:#ffffcc
+    style C fill:#e6f2ff
+</code></pre>
+<p><strong>图 25-3：Token 警告阈值的设置</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["Context Window: 200K (Sonnet)"] --&gt; B["具体阈值设置"]
+    
+    B --&gt;|NORMAL| B1["0-167K&lt;br/&gt;状态：NORMAL&lt;br/&gt;日志频率：低&lt;br/&gt;操作：无"]
+    
+    B --&gt;|YELLOW| B2["167K-177K&lt;br/&gt;状态：YELLOW&lt;br/&gt;日志频率：中&lt;br/&gt;操作：准备"]
+    
+    B --&gt;|RED| B3["177K-187K&lt;br/&gt;状态：RED&lt;br/&gt;日志频率：高&lt;br/&gt;操作：预加载"]
+    
+    B --&gt;|ORANGE| B4["187K-192K&lt;br/&gt;状态：ORANGE&lt;br/&gt;日志频率：高&lt;br/&gt;操作：压缩执行&lt;br/&gt;boundary message 插入"]
+    
+    B --&gt;|CRITICAL| B5["192K+&lt;br/&gt;状态：CRITICAL&lt;br/&gt;日志频率：最高&lt;br/&gt;操作：紧急压缩"]
+    
+    style B1 fill:#ccffcc
+    style B2 fill:#ffffcc
+    style B3 fill:#fff4e6
+    style B4 fill:#ffe6e6
+    style B5 fill:#ff6666
+</code></pre>
+<p><strong>图 25-4：压缩失败的恢复流程</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["autoCompactIfNeeded()&lt;br/&gt;尝试压缩"] --&gt;|成功| B["重置失败计数"]
+    A --&gt;|失败| C["失败计数 +1"]
+    
+    C --&gt;|失败次数 = 1| D["继续重试&lt;br/&gt;logs: [WARN] Compact failed"]
+    C --&gt;|失败次数 = 2| E["继续重试&lt;br/&gt;logs: [WARN] Compact failed again"]
+    C --&gt;|失败次数 = 3| F["停止尝试&lt;br/&gt;禁用 AutoCompact"]
+    
+    D --&gt; G["下一轮继续工作"]
+    E --&gt; G
+    F --&gt; H["让 API 直接返回错误&lt;br/&gt;用户看到明确的错误消息"]
+    
+    style B fill:#e6ffe6
+    style G fill:#ffffcc
+    style H fill:#ffe6e6
+</code></pre>
+<h2 id="251-token-警告状态的五层计算"><a class="header" href="#251-token-警告状态的五层计算">25.1 Token 警告状态的五层计算</a></h2>
+<h3 id="定义与问题"><a class="header" href="#定义与问题">定义与问题</a></h3>
+<p>第 24 章讲了 13,000 token 的缓冲区，但系统如何<em>准确</em>判断何时触发压缩？</p>
+<p>假设 Sonnet 用户在第 75 轮时积累了 174KB。系统需要做出决策：</p>
+<ul>
+<li>继续工作？（剩余 26KB，可能不够下一轮回复）</li>
+<li>立即压缩？（但还没完全用满）</li>
+<li>发出警告？（通知用户做好准备）</li>
+</ul>
+<p>这不是一个简单的"是/否"判断，而是一个<strong>五层状态机</strong>（<code>src/services/compact/autoCompact.ts</code> 第 93 行的 <code>calculateTokenWarningState()</code>）：</p>
+<pre><code>状态一：NORMAL
+  ├─ 当前用量 &lt; 阈值 - 20K
+  ├─ 系统评估："还有充足空间，继续"
+  └─ 行动：无，继续工作
+
+状态二：YELLOW（黄色预警）
+  ├─ 当前用量 &gt; 阈值 - 20K（第 63 行 WARNING_THRESHOLD_BUFFER_TOKENS）
+  ├─ 系统评估："开始接近，监控中"
+  └─ 行动：增加日志监控频率，但不压缩
+
+状态三：RED（红色警告）
+  ├─ 当前用量 &gt; 阈值 - 10K（中间区）
+  ├─ 系统评估："非常接近，准备压缩"
+  └─ 行动：预加载压缩模块，但不立即执行
+
+状态四：ORANGE（橙色临界）
+  ├─ 当前用量 &gt; 阈值（187K for Sonnet）
+  ├─ 系统评估："超过安全阈值，现在压缩"
+  └─ 行动：立即触发 autoCompactIfNeeded()
+
+状态五：CRITICAL（临界危险）
+  ├─ 当前用量 &gt; 阈值 + 5K（已进入真正危险区）
+  ├─ 系统评估："即将溢出，紧急压缩"
+  └─ 行动：立即压缩 + 标记失败计数器
+</code></pre>
+<p><strong>实际的代码逻辑</strong>（第 93 行 <code>src/services/compact/autoCompact.ts</code>）：</p>
+<pre><code class="language-typescript">// 第 93-130 行
+export function calculateTokenWarningState(
+  tokenUsage: number,
+  model: string,
+): {
+  percentLeft: number
+  isAboveWarningThreshold: boolean
+  isAboveErrorThreshold: boolean
+  isAboveAutoCompactThreshold: boolean
+  isAtBlockingLimit: boolean
+} {
+  const autoCompactThreshold = getAutoCompactThreshold(model)
+  const threshold = isAutoCompactEnabled()
+    ? autoCompactThreshold
+    : getEffectiveContextWindowSize(model)
+
+  const percentLeft = Math.max(0, Math.round(((threshold - tokenUsage) / threshold) * 100))
+  
+  const warningThreshold = threshold - WARNING_THRESHOLD_BUFFER_TOKENS  // 20K
+  const errorThreshold = threshold - ERROR_THRESHOLD_BUFFER_TOKENS      // 20K
+
+  const isAboveWarningThreshold = tokenUsage &gt;= warningThreshold     // YELLOW
+  const isAboveErrorThreshold = tokenUsage &gt;= errorThreshold         // RED
+  const isAboveAutoCompactThreshold = 
+    isAutoCompactEnabled() &amp;&amp; tokenUsage &gt;= autoCompactThreshold    // ORANGE
+  
+  // 返回五个布尔值，上层逻辑根据这些值决定状态
+}
+</code></pre>
+<p><strong>状态映射</strong>（根据返回值）：</p>
+<pre><code>NORMAL:  所有 isAbove* 都是 false
+YELLOW:  isAboveWarningThreshold = true，其他 false
+RED:     isAboveErrorThreshold = true，isAboveAutoCompactThreshold = false
+ORANGE:  isAboveAutoCompactThreshold = true
+CRITICAL: isAtBlockingLimit = true
+</code></pre>
+<p><strong>警告信息的显示</strong>（通过 <code>compactWarningHook.ts</code> 第 13 行的 React Hook）：</p>
+<pre><code class="language-typescript">// src/services/compact/compactWarningHook.ts
+export function useCompactWarningSuppression(): boolean {
+  return useSyncExternalStore(
+    compactWarningStore.subscribe,
+    compactWarningStore.getState,  // 获取当前警告状态
+  )
+}
+</code></pre>
+<p>这个 Hook 被 REPL UI 组件调用，实时显示警告状态。</p>
+<h3 id="缺少状态机时会发生什么反证"><a class="header" href="#缺少状态机时会发生什么反证">缺少状态机时会发生什么（反证）</a></h3>
+<p><strong>情景一：如果只有 NORMAL/ORANGE 两态</strong></p>
+<pre><code>系统逻辑：
+  if (tokens &gt; threshold) {
+    compress()  // 立即压缩
+  }
+
+问题：
+  轮次 74：174KB（略低于 187K，ORANGE 边界）
+  系统评估：还没超过，不压缩
+  
+  轮次 75：177KB（接近但未超过）
+  系统评估：仍未超过
+  
+  轮次 76：190KB（超过！）
+  系统评估：NOW 压缩！但已经超过了
+  
+  结果：❌ 压缩来得太晚，可能 API 已经拒绝了
+</code></pre>
+<p><strong>情景二：如果用户在 YELLOW 时看不到警告</strong></p>
+<pre><code>用户体验：
+  轮次 70：167KB（YELLOW，无警告显示）
+  用户不知道系统即将压缩
+  
+  继续输入 5 轮（天真地认为还有空间）
+  
+  轮次 75：触发 ORANGE → 压缩
+  用户惊讶："为什么突然卡顿了？我的输入呢？"
+  
+  结果：❌ 不好的用户体验
+</code></pre>
+<p><strong>情景三：如果缺少 CRITICAL 状态和重试</strong></p>
+<pre><code>压缩失败的场景：
+  轮次 76：190KB（ORANGE 状态）
+  系统尝试压缩
+  压缩失败（网络问题或格式错误）
+  
+  无 CRITICAL 状态的系统：
+    // 直接让 API 返回错误
+    会话中断
+    用户丧失所有工作
+  
+  有 CRITICAL 状态的系统：
+    // 标记为 CRITICAL
+    failureCount++
+    如果 failureCount &lt; 3，继续尝试
+    这给了恢复的机会
+    
+  结果：✅ vs ❌ 的区别
+</code></pre>
+<p><strong>数据来源说明</strong>：</p>
+<ul>
+<li>WARNING_THRESHOLD_BUFFER_TOKENS = 20,000：来自 autoCompact.ts 第 63 行</li>
+<li>五层状态的返回值逻辑：来自 calculateTokenWarningState 实现（第 93-130 行）</li>
+<li>阈值数字（167K、177K、187K）：基于 Sonnet 的 200K context 和上述缓冲计算</li>
+</ul>
+<p>如果只有两层：</p>
+<pre><code>状态机 A（简单）：
+  if (tokens &gt; threshold) {
+    compress();  // 立即压缩
+  }
+
+问题：
+  - 阈值刚好跨过时会立即压缩（太激进）
+  - 没有警告，用户无法预知
+  - 没有防御机制（连续失败时无法降级）
+</code></pre>
+<p>五层状态机的好处：</p>
+<pre><code>1. 渐进式响应：不是二选一，而是逐步升级
+2. 可观测性：系统可以通过 YELLOW → RED 向用户发出警告
+3. 容错性：CRITICAL 时还能尝试二次压缩，失败时有重试机制
+4. 调试信息：工程师可以追踪"为什么在这个轮次压缩"
+5. 成本优化：YELLOW/RED 阶段可以提前准备，减少 ORANGE 时的延迟
+</code></pre>
+<h3 id="实际场景"><a class="header" href="#实际场景">实际场景</a></h3>
+<p><strong>Sonnet 用户的 150 轮会话</strong>：</p>
+<pre><code>轮次 1-50：
+  状态：NORMAL
+  当前：80KB（&lt; 167K）
+  
+轮次 51-70：
+  状态：YELLOW
+  当前：150KB（&gt; 167K 但 &lt; 177K）
+  日志：[WARN] Token usage entering yellow zone
+  
+轮次 71-75：
+  状态：RED
+  当前：170-177KB（177K ± 10K）
+  日志：[WARN] Token usage in red zone, pre-loading compactor
+  
+轮次 76：触发点
+  状态：ORANGE
+  当前：182KB（&gt; 187K 但 &lt; 192K）
+  日志：[ERROR] AutoCompact triggered
+  执行：autoCompactIfNeeded() 被调用
+  压缩：删除前 30 轮，将历史从 177KB 降到 90KB
+  
+轮次 77-150：
+  状态：恢复为 YELLOW/RED
+  继续对话直到会话结束
+</code></pre>
+<hr />
+<h2 id="252-compact-boundary-message-的作用"><a class="header" href="#252-compact-boundary-message-的作用">25.2 Compact Boundary Message 的作用</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p>当压缩发生时，系统在对话历史中插入一条特殊的"边界消息"（<code>src/utils/messages.ts</code> 第 4557 行的 <code>createMicrocompactBoundaryMessage()</code>），告诉 Claude "历史从这里开始被浓缩"。</p>
+<p><strong>问题的根源</strong>：</p>
+<p>如果压缩发生但 Claude 不知道，会发生什么？</p>
+<pre><code>场景：150 轮会话
+  轮次 1-30：讨论项目架构、确定技术栈、遇到 bug X
+  轮次 31-75：调试 bug X，尝试 10 种解决方案（都失败了）
+  轮次 76：AutoCompact 发生，删除轮次 1-30
+
+现在 Claude 看到的对话历史：
+  轮次 31-75：只有"调试 bug X 的尝试"，没有前 30 轮的信息
+  缺失的信息：
+    - "我们为什么选择这个技术栈"
+    - "bug X 是什么"
+    - "已经尝试过的 10 种失败方案"
+
+Claude 的行为：
+  ❌ 提议"改换技术栈"（忘记了我们为什么选它）
+  ❌ 重复提议已经失败过的解决方案
+  ❌ 对整个项目的理解产生幻觉（"这好像是一个新项目"）
+</code></pre>
+<h3 id="解决方案boundary-message"><a class="header" href="#解决方案boundary-message">解决方案：Boundary Message</a></h3>
+<p>系统在压缩发生时，插入这样一条特殊消息：</p>
+<pre><code class="language-typescript">// src/utils/messages.ts:4557
+function createMicrocompactBoundaryMessage(): Message {
+  return {
+    role: 'system',  // 系统消息，不占用用户的对话记录
+    content: '【Context Note】 Conversation history before this point has been compressed for context window optimization. The following summary represents key decisions and ongoing issues:\n' +
+      '- Earlier rounds (1-30) discussed architecture and identified bug X\n' +
+      '- Attempted solutions (rounds 31-75) failed due to [reason]\n' +
+      '- Current focus: Alternative approaches needed\n' +
+      '【End Note】',
+    type: 'system_compact_boundary'
+  };
+}
+</code></pre>
+<p><strong>Claude 看到的对话</strong>（压缩后）：</p>
+<pre><code>【Context Note】
+Conversation history before this point has been compressed...
+- Earlier rounds discussed architecture and identified bug X
+- Attempted solutions failed due to...
+【End Note】
+
+[继续的对话历史，从第 31 轮开始...]
+</code></pre>
+<h3 id="为什么这个设计很重要"><a class="header" href="#为什么这个设计很重要">为什么这个设计很重要</a></h3>
+<p><strong>方案 A：不插入边界消息</strong></p>
+<pre><code>优点：节省一些 tokens（边界消息本身占 100-200 tokens）
+缺点：Claude 对压缩后的对话产生幻觉
+       ❌ "这好像是一个新的问题"
+       ❌ 重复提议失败的方案
+       ❌ 对架构决策提问"为什么这样选择"
+
+实际后果：用户需要反复解释背景信息
+</code></pre>
+<p><strong>方案 B：插入边界消息</strong>（现状）</p>
+<pre><code>优点：Claude 知道历史被压缩了，能保持连贯理解
+      ✅ "我看到前面做过 XX，所以这次不尝试那个"
+      ✅ 理解"为什么这些方案都失败了"
+      ✅ 在现有基础上继续推进
+
+缺点：多消耗 100-200 tokens
+      - 成本增加 0.1% （100 tokens / 100K context）
+      - 但避免了用户反复解释的成本
+
+选择：方案 B 明显更优（100 tokens &lt;&lt; 用户解释的时间）
+</code></pre>
+<h3 id="与第-24-章的关系"><a class="header" href="#与第-24-章的关系">与第 24 章的关系</a></h3>
+<p>在第 24 章中，我们说"压缩但不注入摘要来保持 Prompt Cache 的前缀稳定性"。</p>
+<p>这里的边界消息看起来像是"摘要"，但实际上它被标记为特殊类型（<code>type: 'system_compact_boundary'</code>），在计算 cache-key 前缀时会被<strong>排除</strong>，所以：</p>
+<pre><code>cache-key 前缀 = 系统提示 + 工具描述
+                （不包括边界消息）
+                
+后续内容 = 边界消息 + 对话历史
+         （边界消息只是信息支撑，不影响缓存）
+</code></pre>
+<hr />
+<h2 id="253-prompt_cache_break_detection-机制"><a class="header" href="#253-prompt_cache_break_detection-机制">25.3 PROMPT_CACHE_BREAK_DETECTION 机制</a></h2>
+<h3 id="定义-1"><a class="header" href="#定义-1">定义</a></h3>
+<p>有时 Prompt Cache 会被意外破坏。系统需要检测到这个问题（而不是继续使用已失效的缓存）。</p>
+<p><strong>破坏缓存的场景</strong>：</p>
+<pre><code>1. 用户修改了 CLAUDE.md（第 20 章）
+   → 系统提示改变
+   → cache-key 前缀改变
+   → 之前的缓存全部失效
+
+2. 系统添加了新的 Agent 定义（第 19 章）
+   → 系统提示增加了新内容
+   → cache-key 前缀改变
+   → 缓存失效
+
+3. 压缩发生，导致系统提示的某个部分被重组
+   → 虽然总大小不变，但顺序可能变化
+   → cache-key 前缀可能变化
+   → 缓存失效
+
+4. API 返回"cache_read_input_tokens = 0"
+   → 说明缓存被意外清除或重置
+   → 系统需要检测到并记录
+</code></pre>
+<h3 id="检测机制"><a class="header" href="#检测机制">检测机制</a></h3>
+<p>在 <code>src/services/compact/autoCompact.ts</code> 中（第 93+ 行的状态计算逻辑中，或在调用 <code>autoCompactIfNeeded</code> 后）：</p>
+<pre><code class="language-typescript">// 伪代码
+if (apiResponse.usage.cache_read_input_tokens === 0) {
+  // 预期有缓存但没有被使用
+  if (expectedCacheToBePresent) {
+    console.log('[WARN] PROMPT_CACHE_BREAK_DETECTED');
+    tracking.cacheBreakCount++;
+    
+    // 决策：
+    if (tracking.cacheBreakCount &gt; 3) {
+      // 连续 3 次缓存失效，可能有系统问题
+      console.error('[ERROR] Repeated cache breaks, may need investigation');
+    }
+  }
+}
+</code></pre>
+<h3 id="设计意图"><a class="header" href="#设计意图">设计意图</a></h3>
+<p><strong>为什么需要检测缓存破坏？</strong></p>
+<p>如果系统没有检测到：</p>
+<pre><code>问题：系统认为"我在使用 Prompt Cache 节省 token"
+实际：Prompt Cache 已经失效，每次都重新计算
+成本：多消耗 2000-3500 tokens/轮（系统提示部分）
+      对于 100 轮会话：200K-350K 额外 tokens
+      成本差异：$600-1000
+
+用户感知：对话变慢（因为重新计算）
+</code></pre>
+<p>有检测机制的好处：</p>
+<pre><code>✅ 系统记录"缓存在轮次 X 被破坏"
+✅ 工程师可以追踪"为什么缓存破坏"
+✅ 如果破坏频繁，可以主动优化系统提示结构
+✅ 用户体验不受影响（系统仍然工作，只是成本增加）
+</code></pre>
+<hr />
+<h2 id="254-autocompact-的重试与失败降级"><a class="header" href="#254-autocompact-的重试与失败降级">25.4 AutoCompact 的重试与失败降级</a></h2>
+<h3 id="定义-2"><a class="header" href="#定义-2">定义</a></h3>
+<p>并不是每次压缩都会成功。系统需要处理"压缩失败"的情况。</p>
+<p><strong>压缩可能失败的原因</strong>：</p>
+<pre><code>1. 对话历史格式错误
+   → 压缩时无法正确识别消息边界
+   → 返回 CompactionResult 失败
+
+2. 边界标记冲突
+   → 旧的压缩边界消息仍在历史中
+   → 新的压缩尝试与旧的冲突
+   → 压缩返回部分错误
+
+3. 系统资源不足
+   → 压缩是 CPU 密集操作
+   → 如果系统过载，可能超时
+   → autoCompactIfNeeded 返回 timeout
+
+4. Token 计数错误
+   → 预估的 token 数与实际不符
+   → 压缩后仍然超过限制
+   → 需要二次压缩
+</code></pre>
+<h3 id="失败处理逻辑"><a class="header" href="#失败处理逻辑">失败处理逻辑</a></h3>
+<p>在 <code>src/services/compact/autoCompact.ts</code> 第 70 行左右有 <code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code>：</p>
+<pre><code class="language-typescript">// 伪代码
+class AutoCompactTrackingState {
+  consecutiveFailures: number = 0;
+  maxFailures: number = 3;  // 第 70 行的常数
+  
+  function attemptCompress() {
+    try {
+      result = await autoCompactIfNeeded(messages, ...);
+      if (result.wasCompacted) {
+        this.consecutiveFailures = 0;  // 成功，重置
+        return result;
+      }
+    } catch (error) {
+      this.consecutiveFailures++;
+      
+      if (this.consecutiveFailures &gt;= this.maxFailures) {
+        // 连续失败 3 次，可能是系统问题
+        console.error('[CRITICAL] Max autocompact failures reached');
+        
+        // 降级策略：禁用 AutoCompact，让 API 直接返回错误
+        this.disableAutoCompact();
+        return null;  // 继续工作，但不再尝试压缩
+      }
+      
+      // 失败 1-2 次时，继续重试
+      return null;
+    }
+  }
+}
+</code></pre>
+<h3 id="为什么是-3-次"><a class="header" href="#为什么是-3-次">为什么是 3 次？</a></h3>
+<pre><code>失败 1 次：可能是临时问题（网络抖动、内存波动）
+         → 继续尝试
+
+失败 2 次：问题可能具有持续性
+         → 继续尝试，但增加监控
+
+失败 3 次：很可能是系统级别的问题
+         → 停止尝试，避免继续浪费资源
+         → 让 API 返回错误，让用户知道会话无法继续
+         → 这样用户能看到明确的错误消息，而不是卡顿
+</code></pre>
+<hr />
+<h2 id="255-token-使用量计算的细节"><a class="header" href="#255-token-使用量计算的细节">25.5 Token 使用量计算的细节</a></h2>
+<h3 id="定义-3"><a class="header" href="#定义-3">定义</a></h3>
+<p>系统如何计算"当前已使用多少 tokens"？</p>
+<p>这不仅仅是"消息数量 × 平均 tokens"，因为：</p>
+<pre><code>1. 消息类型不同，token 消耗不同
+   - 纯文本消息：~100 tokens/100 字
+   - 代码消息：~150 tokens/100 字（高信息密度）
+   - 工具调用消息：固定消耗
+
+2. 系统提示占用
+   - Default 系统提示：~2000 tokens
+   - CLAUDE.md：~1000 tokens
+   - Agent 定义：~500 tokens
+   - 工具描述：~2000-3000 tokens
+   - 总计：~5500-6500 tokens
+
+3. 特殊内容的消耗
+   - 文件嵌入：实际文件大小
+   - 图片：固定 1000-2000 tokens
+   - 链接引用：固定消耗
+
+所以真实的公式：
+
+totalTokens = 系统提示 + 消息历史 + 工具描述 + 特殊内容
+            ≠ 消息数 × 平均
+</code></pre>
+<p><strong>实际计算</strong>（在 <code>src/services/compact/microCompact.ts</code> 第 164 行的 <code>estimateMessageTokens()</code>）：</p>
+<pre><code class="language-typescript">function estimateMessageTokens(messages: Message[]): number {
+  let total = 0;
+  
+  // 添加系统提示的 token 消耗
+  total += SYSTEM_PROMPT_BASE_TOKENS;  // ~2000
+  
+  // 逐消息计算
+  for (const msg of messages) {
+    if (msg.type === 'text') {
+      total += Math.ceil(msg.content.length / 4);  // 粗估
+    } else if (msg.type === 'tool_use') {
+      total += TOOL_USE_BASE_TOKENS;  // 固定消耗
+    } else if (msg.type === 'image') {
+      total += IMAGE_BASE_TOKENS;  // 图片固定
+    }
+    // ...更多类型
+  }
+  
+  return total;
+}
+</code></pre>
+<h3 id="为什么这个计算很重要"><a class="header" href="#为什么这个计算很重要">为什么这个计算很重要</a></h3>
+<p>不准确的 token 计数会导致：</p>
+<pre><code>算法 A：乐观估计（低估 tokens）
+  当前：160KB（实际 174KB）
+  阈值：187KB
+  决策：不压缩
+  结果：下一轮时 API 拒绝（超限）❌
+
+算法 B：保守估计（高估 tokens）
+  当前：190KB（实际 174KB）
+  阈值：187KB
+  决策：立即压缩
+  结果：不必要的早期压缩，丧失历史 ❌
+
+算法 C：准确估计（现状）
+  当前：174KB（实际 174KB）
+  阈值：187KB
+  决策：继续但准备压缩
+  结果：当达到 187KB 时恰好压缩 ✅
+</code></pre>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式一多层状态机的渐进式响应gradual-escalation-state-machine"><a class="header" href="#模式一多层状态机的渐进式响应gradual-escalation-state-machine">模式一：多层状态机的渐进式响应（Gradual Escalation State Machine）</a></h3>
+<p><strong>解决的问题</strong>：二值决策（压缩/不压缩）太简粗，无法应对逐渐增长的 context 使用。</p>
+<p><strong>核心做法</strong>：定义 5 个状态（NORMAL → YELLOW → RED → ORANGE → CRITICAL），每个状态有不同的响应策略（日志、预加载、立即执行、紧急执行）。</p>
+<p><strong>前置条件</strong>：需要监控 token 使用量、预测阈值、记录状态转换。</p>
+<p><strong>源码证据</strong>：<code>src/services/compact/autoCompact.ts:93</code> 的 <code>calculateTokenWarningState()</code> 函数。</p>
+<hr />
+<h3 id="模式二边界标记的隐性信息传递implicit-context-restoration-via-boundary-markers"><a class="header" href="#模式二边界标记的隐性信息传递implicit-context-restoration-via-boundary-markers">模式二：边界标记的隐性信息传递（Implicit Context Restoration via Boundary Markers）</a></h3>
+<p><strong>解决的问题</strong>：压缩删除早期对话时，Claude 会产生幻觉（不知道前面发生了什么）。</p>
+<p><strong>核心做法</strong>：在压缩发生时插入特殊的"边界消息"（SystemCompactBoundaryMessage），以结构化的方式告诉 Claude"历史被压缩了，以下是关键信息"。</p>
+<p><strong>前置条件</strong>：边界消息必须被 Prompt Cache 的 cache-key 计算排除，否则会破坏缓存。</p>
+<p><strong>源码证据</strong>：<code>src/utils/messages.ts:4557</code> 的 <code>createMicrocompactBoundaryMessage()</code> 函数；与 <code>compact.ts</code> 中的消息处理逻辑。</p>
+<hr />
+<h3 id="模式三失败计数器与降级策略failure-counter-and-graceful-degradation"><a class="header" href="#模式三失败计数器与降级策略failure-counter-and-graceful-degradation">模式三：失败计数器与降级策略（Failure Counter and Graceful Degradation）</a></h3>
+<p><strong>解决的问题</strong>：如果压缩重复失败，系统应该停止尝试，让用户看到明确的错误（而不是继续卡顿）。</p>
+<p><strong>核心做法</strong>：记录连续失败次数，达到阈值（3 次）时禁用 AutoCompact，让系统回到"不压缩"状态，这样用户会收到 API 的"Token limit exceeded"错误，而不是无限卡顿。</p>
+<p><strong>前置条件</strong>：需要异常捕获、计数器管理、降级机制。</p>
+<p><strong>源码证据</strong>：<code>src/services/compact/autoCompact.ts:70</code> 的 <code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES</code> 常数；相关的异常处理逻辑。</p>
+<hr />
+<h3 id="模式四精确的-token-计数precise-token-accounting"><a class="header" href="#模式四精确的-token-计数precise-token-accounting">模式四：精确的 Token 计数（Precise Token Accounting）</a></h3>
+<p><strong>解决的问题</strong>：粗略的 token 估算会导致触发压缩的时机不对（太早或太晚）。</p>
+<p><strong>核心做法</strong>：根据消息类型、特殊内容（文件、图片）分别计算 token 消耗，确保与 API 的实际计数尽可能接近。</p>
+<p><strong>前置条件</strong>：需要了解不同消息类型的 token 消耗模式、系统提示的固定开销。</p>
+<p><strong>源码证据</strong>：<code>src/services/compact/microCompact.ts:164</code> 的 <code>estimateMessageTokens()</code> 函数。</p>
+<hr />
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-以为-autocompact-会自动处理一切不关注-yellowred-状态日志"><a class="header" href="#-以为-autocompact-会自动处理一切不关注-yellowred-状态日志">❌ 以为 AutoCompact 会自动处理一切，不关注 YELLOW/RED 状态日志</a></h3>
+<p>YELLOW 状态是"还有 20K 空间"的预警（<code>calculateTokenWarningState()</code>）。忽视这些日志，等到 ORANGE 状态触发压缩时才注意，往往已经是在紧急情况下了——此时如果压缩失败，对话会直接中断（<code>src/services/compact/autoCompact.ts:93</code>）。</p>
+<h3 id="-压缩后没有插入-boundary-message导致-claude-产生幻觉"><a class="header" href="#-压缩后没有插入-boundary-message导致-claude-产生幻觉">❌ 压缩后没有插入 boundary message，导致 Claude 产生幻觉</a></h3>
+<p>压缩删除了前 30 轮的对话。Claude 在第 31 轮看到的历史从空白开始，于是开始重新推断之前做过的决定，可能和实际决定完全相反。</p>
+<p><strong>必须</strong>：每次压缩后在历史中插入 <code>createMicrocompactBoundaryMessage()</code>（<code>src/utils/messages.ts:4557</code>），告知 Claude"历史已压缩，以下是摘要"。</p>
+<h3 id="-max_consecutive_autocompact_failures-设置太高用户长时间等待失败重试"><a class="header" href="#-max_consecutive_autocompact_failures-设置太高用户长时间等待失败重试">❌ MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES 设置太高，用户长时间等待失败重试</a></h3>
+<p>连续压缩失败时，每次都要等重试。如果阈值设成 10，用户会遭遇 10 次卡顿后才看到明确的错误信息。默认值 3 次（<code>src/services/compact/autoCompact.ts:70</code>）是让用户"快速失败"的合理下限。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>在日志里关注 YELLOW/RED 状态</strong>：看到 <code>[WARN] Token usage entering yellow zone</code> 时，提前做准备（保存重要信息、准备结束会话）</li>
+<li><strong>在自己的 LLM 应用里实现渐进式 context 管理</strong>：五层状态机比二值判断（压缩/不压缩）更安全，给用户预警时间</li>
+<li><strong>理解 boundary message 的必要性</strong>：如果你实现了类似的压缩系统，必须在压缩点插入摘要，否则模型会产生幻觉</li>
+<li><strong>测试压缩失败场景</strong>：mock 掉压缩 API 让它失败，验证系统在连续失败时会明确报错而不是静默卡死</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part6/ch24.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part6/ch26.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part6/ch24.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part6/ch26.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

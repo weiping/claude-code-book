@@ -1,0 +1,317 @@
+# 第 5 章写作计划
+
+**批次**：批次 3（来自 plans/batch.md）
+**章节**：ch05 — 提示词的分层构建
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示 Claude Code 如何通过分段式系统提示词实现 Prompt Cache 最大化命中——静态内容在前、动态内容在后，每节有独立缓存语义。记忆注入通过 MEMORY.md 参与上下文构建。读完本章，读者将理解为什么系统提示词被拆分为 20+ 个 section 而非一整块文本，以及这种分段如何直接映射到 Anthropic API 的缓存边界。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- 系统提示词为什么要拆成 20 多段？一整块不是更简单吗？这个"多此一举"的设计背后是一条精确计算的缓存命中率原则——静态在前、动态在后，每一个边界都是一个成本决策。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向后链接第 6 章（Skills 懒加载）
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（20+ section、40000 字符上限等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/constants/prompts.ts | SYSTEM_PROMPT_DYNAMIC_BOUNDARY（106-115）、getSystemPrompt 静态/动态分区（560-580）、systemPromptSection 调用（495-545） | 行 106-120, 444-580 |
+| 2 | src/utils/api.ts | splitSysPromptPrefix 注释文档（303-340）、四种缓存模式 | 行 282-380 |
+| 3 | src/utils/claudemd.ts | 四层记忆体系注释（1-20）、MAX_MEMORY_CHARACTER_COUNT（92）、getMemoryFiles | 行 1-25, 89-100 |
+| 4 | src/utils/systemPrompt.ts | buildEffectiveSystemPrompt（41+）—提示词优先级决策 | 行 41-123 |
+| 5 | src/utils/queryContext.ts | fetchSystemPromptParts（44-87）—三路并行构建 | 行 44-87 |
+
+验证文件存在：
+```bash
+ls src/constants/prompts.ts src/utils/api.ts src/utils/claudemd.ts src/utils/systemPrompt.ts src/utils/queryContext.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 5.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 5.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 正确链接 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图 | 图 5-1、5-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 5-1、5-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「一段提示词的价值不在于它说了什么，而在于下次它是否还在缓存中。」
+
+### 节 5.1：问题——为什么系统提示词要分段
+- 核心主张：把系统提示词拆成 20+ 段，唯一目的是最大化 Prompt Cache 命中率——每段对应一种缓存语义
+- 源码锚点：
+  - `src/constants/prompts.ts:106-115` — SYSTEM_PROMPT_DYNAMIC_BOUNDARY 注释："Boundary marker separating static (cross-org cacheable) content from dynamic content"
+  - `src/constants/prompts.ts:573` — 边界标记插入点注释："=== BOUNDARY MARKER - DO NOT MOVE OR REMOVE ==="
+- 概念层次：定义（为什么分段）→ 设计意图（缓存语义）
+- 权衡分析：N/A
+- 包含元素：表格（静态 vs 动态内容划分）
+- **⛔ 内容密度规划**：
+  - 引入段要点：如果系统提示词每次请求都完全重建，Prompt Cache 命中率为零——每个 token 都要重新计费
+  - 解读段要点：SYSTEM_PROMPT_DYNAMIC_BOUNDARY 是一条分界线，之前是静态内容（可以跨会话缓存），之后是动态内容（每轮都可能变化）。注释中的 "WARNING: Do not remove or reorder" 说明这条线的位置经过精确计算
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B1
+
+### 节 5.2：黄金法则——静态在前、动态在后
+- 核心主张：Prompt Cache 的最大化命中率依赖一个简单原则：在同一会话内不变的内容必须始终出现在会话内可能变化的内容之前
+- 源码锚点：
+  - `src/utils/api.ts:303-311` — `splitSysPromptPrefix` 注释说明四种缓存模式（MCP 工具存在时用 org 级缓存，全局缓存模式用 global 缓存）
+  - `src/services/api/claude.ts:3213` — `buildSystemPromptBlocks`：按 cacheScope 分段，注释 "IMPORTANT: Do not add any more blocks for caching"（最多 4 块）
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：全局缓存（global）vs 组织级缓存（org）：global 可跨组织命中但需要确保内容完全静态，org 只在同一组织内命中但允许组织级定制内容
+- 包含元素：对比表格（global/org/null 缓存作用域）
+- **⛔ 内容密度规划**：
+  - 引入段要点：API 缓存不是自动的——Claude Code 在每次调用时精确控制哪些块进缓存、用哪种缓存作用域
+  - 解读段要点：splitSysPromptPrefix 的注释文档揭示了 4 种不同的缓存策略，每种对应一个场景——MCP 工具（禁用 global 缓存）、全局缓存模式（4 块布局）、默认模式（3 块布局）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：800-1100 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 5.3：适用场景——哪些应用需要分段提示词
+- 核心主张：任何需要在 API 调用间复用大量相同系统提示词内容的应用，都应该采用分段策略
+- 源码锚点：
+  - `src/utils/queryContext.ts:44` — `fetchSystemPromptParts` 三路并行：`getSystemPrompt + getUserContext + getSystemContext`
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：提示词缓存是使用高频 Agent 应用的隐形成本优化器
+  - 解读段要点：fetchSystemPromptParts 的三路并行设计——三个组成部分（系统提示词+用户上下文+系统上下文）同时构建，各自独立，这种并行设计是分段策略的前提
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 5.4：工作原理——提示词构建的完整管道
+- 核心主张：系统提示词构建是一个 5 步管道，从原始 section 数组到 API 发送前的最终分块
+- 源码锚点：
+  - `src/constants/prompts.ts:444` — `getSystemPrompt`：异步构建 20+ 个 section，按静态/动态分区排列
+  - `src/constants/prompts.ts:495` — `systemPromptSection('memory', () => loadMemoryPrompt())` — MEMORY.md 记忆作为动态 section 注入
+  - `src/utils/systemPrompt.ts:41` — `buildEffectiveSystemPrompt`：5 级优先级决策（override → coordinator → agent → custom → default）
+  - `src/utils/queryContext.ts:60-70` — `Promise.all([getSystemPrompt, getUserContext, getSystemContext])` 三路并行
+  - `src/utils/api.ts:303` — `splitSysPromptPrefix`：按缓存语义分块
+  - `src/services/api/claude.ts:3213` — `buildSystemPromptBlocks`：添加 cache_control 字段
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：记忆注入在动态区：MEMORY.md 内容放在 SYSTEM_PROMPT_DYNAMIC_BOUNDARY 之后，因为它每次 mount 可能不同——牺牲缓存命中换取记忆灵活性
+- 包含元素：Mermaid 流程图（提示词构建 5 步管道）、表格（各 section 的缓存语义）
+- **⛔ 内容密度规划**：
+  - 引入段要点：从用户输入到 API 请求，系统提示词经历了 5 次变换
+  - 解读段要点：(1) getSystemPrompt 构建 section 数组（静态在前、动态在后）；(2) buildEffectiveSystemPrompt 按优先级选择提示词基础；(3) fetchSystemPromptParts 三路并行补充上下文；(4) splitSysPromptPrefix 按缓存语义分块；(5) buildSystemPromptBlocks 添加 cache_control 字段。MEMORY.md 在步骤 1 作为动态 section 注入
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 5.5：权衡——分段策略的 3 个代价
+- 核心主张：分段缓存策略在成本效率上有明显优势，但也引入了 3 个工程代价
+- 源码锚点：
+  - `src/services/api/claude.ts:3215` — 注释 "IMPORTANT: Do not add any more blocks for caching or you will get a 400"（硬上限：4 块）
+  - `src/constants/prompts.ts:509-513` — `DANGEROUS_uncachedSystemPromptSection('mcp_instructions', ...)` — MCP 指令必须动态（不能缓存），注释说明原因
+  - `src/utils/claudemd.ts:92` — `MAX_MEMORY_CHARACTER_COUNT = 40000` — 记忆文件上限 4 万字符
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - 分段上限（4 块）：超过 4 个 cache_control 块会 400 报错；Claude Code 的策略是把所有动态内容合并为最后 1 块（只用 3-4 块）
+  - DANGEROUS_uncachedSystemPromptSection：MCP 工具随时连接/断开，如果缓存了 MCP 指令会导致"幽灵工具"问题——工具已下线但模型还在尝试调用
+  - 记忆上限（40000 字符）：MEMORY.md 超过 40000 字符会被截断——因为超长记忆文件占用的缓存空间超过了其带来的命中率收益
+- 包含元素：对比表格（3 个权衡）
+- **⛔ 内容密度规划**：
+  - 引入段要点：分段缓存不是免费的——每条设计决策都有代价
+  - 解读段要点：3 个具体代价——缓存块数限制（4 块硬约束）、MCP 动态内容的特殊处理（DANGEROUS_ 前缀命名）、记忆文件大小上限（40000 字符截断）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 5.6：踩坑指南——提示词分段中的常见错误
+- 核心主张：提示词分段最常见的错误是把会变化的内容放到缓存区，导致缓存命中率归零
+- 源码锚点：
+  - `src/constants/prompts.ts:106-115` — SYSTEM_PROMPT_DYNAMIC_BOUNDARY 的 WARNING 注释
+  - `src/constants/prompts.ts:509` — DANGEROUS_ 前缀作为命名约定，标记不安全的非缓存 section
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：DANGEROUS_ 前缀是一个工程信号——这里有你要注意的事
+  - 解读段要点：陷阱一——把时间戳、用户 ID 等动态内容放到静态区（缓存 bust）；陷阱二——添加第 5 个 cache_control 块（400 报错）；陷阱三——MCP 工具使用 global 缓存（工具断线后幽灵调用）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 5.7：实证——从 MEMORY.md 到 API 请求的完整路径
+- 核心主张：一个 MEMORY.md 文件从磁盘读取到最终出现在 API 请求中，经过了 4 次变换
+- 源码锚点：
+  - `src/utils/claudemd.ts:1-7` — 四层记忆体系注释（Managed/User/Project/Local）
+  - `src/utils/claudemd.ts:92` — `MAX_MEMORY_CHARACTER_COUNT = 40000`（截断上限）
+  - `src/constants/prompts.ts:495` — `systemPromptSection('memory', () => loadMemoryPrompt())` — 记忆作为动态 section
+  - `src/utils/queryContext.ts:44-70` — 三路并行中 getUserContext 负责处理 claudeMd
+- 概念层次：实际案例 → 验证方法
+- 权衡分析：N/A
+- 包含元素：Mermaid 流程图（MEMORY.md → API 的路径）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪 MEMORY.md 从文件到 API 请求的完整路径
+  - 解读段要点：磁盘文件（claudemd.ts 发现 4 层）→ 截断（40000 字符上限）→ 注入到 systemPromptSection('memory')→ 进入动态区（BOUNDARY 之后）→ 不添加 cache_control
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：提示词分层构建的本质
+- 本质：把系统提示词按变化频率分段——不变的内容（global/org 缓存）在前，可变的内容（不缓存）在后
+- 关键机制：SYSTEM_PROMPT_DYNAMIC_BOUNDARY 标记分界、buildSystemPromptBlocks 最多 4 块、MEMORY.md 在动态区
+- 适用边界：适用于高频 API 调用场景；单次调用不需要缓存分段
+- 与其他模式的关系：本章是第 4 章（单轮执行）提示词构建步骤的深入；第 6 章（Skills 懒加载）是动态内容管理的延伸
+
+### 章末：用户能做什么（必填）
+1. 审视你的系统提示词，识别哪些内容在每次调用间不会变化
+2. 把静态内容移到动态内容之前，添加 cache_control 边界
+3. 检查你是否超过了 4 个 cache_control 块的 API 限制
+4. 对需要动态更新的工具列表（如 MCP 工具），使用 DANGEROUS_ 模式标记不缓存
+5. 为你的记忆/上下文文件设置合理的大小上限，避免截断导致信息丢失
+6. 测量优化前后的 cache_read_input_tokens 变化，验证分段策略的效果
+7. 学习第 6 章如何通过 Skills 懒加载进一步优化动态内容的管理
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图5-1 | 系统提示词分层结构 | Mermaid graph TD | 静态区（global 缓存）→ BOUNDARY → 动态区（无缓存）→ 记忆注入位置 | 5.4 |
+| 图5-2 | MEMORY.md 到 API 的路径 | Mermaid flowchart LR | 磁盘文件→4层发现→截断→动态 section→API 请求 | 5.7 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 5.4 节（提示词构建 5 步管道）——本章核心
+3. 写 5.2 节（黄金法则）
+4. 写 5.1 节（问题）
+5. 写 5.3 节（适用场景）
+6. 写 5.5 节（权衡）
+7. 写 5.6 节（踩坑指南）
+8. 写 5.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '114p' src/constants/prompts.ts                    # SYSTEM_PROMPT_DYNAMIC_BOUNDARY
+sed -n '573p' src/constants/prompts.ts                    # boundary marker 插入
+sed -n '444p' src/constants/prompts.ts                    # getSystemPrompt
+sed -n '495p' src/constants/prompts.ts                    # memory section
+sed -n '509p' src/constants/prompts.ts                    # DANGEROUS_uncached
+sed -n '303p' src/utils/api.ts                            # splitSysPromptPrefix 文档
+sed -n '3213p' src/services/api/claude.ts                 # buildSystemPromptBlocks
+sed -n '3215p' src/services/api/claude.ts                 # IMPORTANT 注释
+sed -n '41p' src/utils/systemPrompt.ts                    # buildEffectiveSystemPrompt
+sed -n '44p' src/utils/queryContext.ts                    # fetchSystemPromptParts
+sed -n '1p' src/utils/claudemd.ts                         # 四层记忆注释
+sed -n '92p' src/utils/claudemd.ts                        # MAX_MEMORY_CHARACTER_COUNT
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch05.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

@@ -1,0 +1,409 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 3 章：启动流水线的并发艺术 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第3章启动流水线的并发艺术"><a class="header" href="#第3章启动流水线的并发艺术">第3章：启动流水线的并发艺术</a></h1>
+<blockquote>
+<p><em>"Don't wait for what you know you'll need."</em></p>
+</blockquote>
+<blockquote>
+<p>Claude Code 的冷启动时间是 135ms。如果 MDM 读取（65ms）和 keychain 预热（45ms）串行执行，光这两步就要 110ms。实际上它们是并行的——但并行窗口只在模块加载阶段存在，一旦 <code>main()</code> 开始执行就关闭了。怎样抓住这个窗口？</p>
+</blockquote>
+<p><code>src/main.tsx</code> 的第 11 行有一个注释：<code>// eslint-disable-next-line custom-rules/no-top-level-side-effects</code>。</p>
+<p>这行注释说明，正下方的代码有意违反了 ESLint 规则——在 <code>import</code> 语句之间执行副作用。ESLint 禁止这种行为是有道理的：副作用在模块加载时执行，顺序难以控制，测试隔离困难。但 Claude Code 在这里违反了规则，并且违反了三次。</p>
+<p><strong>为什么值得为此承受技术债？</strong> 因为每次违反规则，都为用户节省了 10-65ms 的冷启动时间。</p>
+<p>这个问题的难点在于：<strong>冷启动时间的优化窗口是模块加载阶段（约 135ms），一旦 <code>main()</code> 函数开始执行，这个窗口就关闭了</strong>。如果等到 <code>main()</code> 里再触发 I/O，就是串行而非并行。</p>
+<p>读完这章，你能识别自己 CLI 工具中的"可并行但被串行化"的 I/O 操作，以及如何用 profileCheckpoint 量化每段延迟，将"感觉变慢了"变成"第 N 阶段多了 X ms"。</p>
+<h2 id="31-为什么在-import-之间触发异步任务"><a class="header" href="#31-为什么在-import-之间触发异步任务">3.1 为什么在 import 之间触发异步任务？</a></h2>
+<p>在 Node.js/Bun 模块系统中，<code>import</code> 语句是按顺序执行的。但<strong>被 import 的模块的副作用</strong>（顶层代码）在被 import 时立即执行。这给了一个利用机会：</p>
+<pre><code class="language-typescript">// src/main.tsx:9-20
+import { profileCheckpoint, profileReport } from './utils/startupProfiler.ts';
+
+// eslint-disable-next-line custom-rules/no-top-level-side-effects
+profileCheckpoint('main_tsx_entry');           // ← 副作用①：打下第一个时间戳
+
+import { startMdmRawRead } from './utils/settings/mdm/rawRead.ts';
+
+// eslint-disable-next-line custom-rules/no-top-level-side-effects
+startMdmRawRead();                             // ← 副作用②：触发 MDM 子进程（非阻塞）
+
+import { ensureKeychainPrefetchCompleted, startKeychainPrefetch } from './utils/secureStorage/keychainPrefetch.ts';
+
+// eslint-disable-next-line custom-rules/no-top-level-side-effects
+startKeychainPrefetch();                       // ← 副作用③：触发 Keychain 读取（非阻塞）
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:12,16,20</code></p>
+<p>这三行的关键是：<code>startMdmRawRead()</code> 和 <code>startKeychainPrefetch()</code> 都是<strong>非阻塞的</strong>——它们触发异步操作后立即返回。真正的等待发生在后面 <code>preAction</code> 阶段的 <code>await ensureMdmSettingsLoaded()</code> 和 <code>await ensureKeychainPrefetchCompleted()</code>。</p>
+<p>等待期间，剩余的 import 语句（约 135ms）已经在执行。<strong>两个耗时任务与模块加载并行进行，而不是串行等待。</strong></p>
+<h3 id="import-副作用模式-vs-main-函数内启动"><a class="header" href="#import-副作用模式-vs-main-函数内启动">"import 副作用"模式 vs "main 函数内启动"</a></h3>
+<p>为什么不在 <code>main()</code> 函数里启动这些任务？</p>
+<pre><code class="language-typescript">// ❌ 错误方式：在 main() 里启动
+async function main() {
+  startMdmRawRead()      // 时机太晚：此时模块加载已完成 135ms，并行窗口关闭
+  startKeychainPrefetch()
+  // ...
+}
+</code></pre>
+<pre><code class="language-typescript">// ✅ 正确方式：在 import 之间启动（实际代码）
+import { startMdmRawRead } from './utils/settings/mdm/rawRead.ts';
+startMdmRawRead();  // 时机正确：模块加载期间，并行执行
+// ... 后续 import 继续 ...
+</code></pre>
+<p><strong>核心权衡</strong>：在 <code>import</code> 间执行副作用的代价是测试隔离困难（模块加载时副作用自动触发，单元测试需要 mock）；收益是获得了模块加载这 135ms 的"免费"并行窗口。<strong>当并行节省的时间（65-135ms）明显大于隔离成本时，这个权衡是合理的——代码里的 3 个 <code>eslint-disable</code> 注释是明确的"有意违规"标记。</strong></p>
+<p><strong>图 3-1：三路并发启动时序</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant main as main.tsx
+    participant profiler as startupProfiler
+    participant mdm as MDM 子进程
+    participant kc as Keychain 读取
+    participant imports as 剩余 import（~135ms）
+
+    main-&gt;&gt;profiler: profileCheckpoint('main_tsx_entry')
+    main-&gt;&gt;mdm: startMdmRawRead()（非阻塞）
+    Note over mdm: plutil/reg query 在后台运行
+    main-&gt;&gt;kc: startKeychainPrefetch()（非阻塞）
+    Note over kc: 两次 keychain 读取并行（~65ms）
+    main-&gt;&gt;imports: 继续执行剩余 import（~135ms）
+    Note over imports,kc: ← 并行执行 →
+    imports--&gt;&gt;main: import 完成
+    main-&gt;&gt;profiler: profileCheckpoint('main_tsx_imports_loaded')
+    Note over mdm,kc: 子进程/读取已完成（在 preAction 前 await）
+</code></pre>
+<p>图中的关键是时间线重叠部分：MDM 子进程和 Keychain 读取与 135ms 的模块加载并行，而非串行。</p>
+<h2 id="32-profilecheckpoint-如何量化每段延迟"><a class="header" href="#32-profilecheckpoint-如何量化每段延迟">3.2 profileCheckpoint 如何量化每段延迟？</a></h2>
+<p>感性上的"启动慢了"无法定位瓶颈，<code>profileCheckpoint</code> 系统将其变成可测量的数据：</p>
+<pre><code class="language-typescript">// src/utils/startupProfiler.ts:65
+export function profileCheckpoint(name: string): void {
+  if (!SHOULD_PROFILE) return
+  const perf = getPerformance()
+  perf.mark(name)               // 使用 Node.js Performance API 打时间戳
+  if (DETAILED_PROFILING) {
+    memorySnapshots.push(process.memoryUsage())  // 可选：同时记录内存
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/startupProfiler.ts:65</code></p>
+<p><code>SHOULD_PROFILE</code> 控制是否启用（100% ant 用户，0.1% 外部用户采样），<code>DETAILED_PROFILING</code> 控制是否同时记录内存快照。</p>
+<p><code>main.tsx</code> 中共有约 15 个 checkpoint，构成完整的启动剖面：</p>
+<pre><code>main_tsx_entry                    ← 进入 main.tsx（最早时间戳）
+main_tsx_imports_loaded           ← 所有 import 完成（第 209 行）
+eagerLoadSettings_start/end       ← 设置加载阶段
+main_function_start               ← main() 开始执行
+preAction_start                   ← Commander.js preAction 钩子
+preAction_after_mdm               ← await MDM 完成
+preAction_after_init              ← init() 完成
+...
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:209,503,515,586,908,915</code></p>
+<p><code>profileReport()</code> 函数将这些 checkpoint 转换为可读的时间线：</p>
+<pre><code class="language-typescript">// src/utils/startupProfiler.ts:123
+export function profileReport(): void {
+  // ...
+  for (const [i, mark] of marks.entries()) {
+    lines.push(formatTimelineLine(
+      mark.startTime,
+      mark.startTime - prevTime,   // ← 与上一个 checkpoint 的差值（阶段耗时）
+      mark.name,
+      ...
+    ))
+  }
+  lines.push(`Total startup time: ${formatMs(lastMark?.startTime ?? 0)}ms`)
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/startupProfiler.ts:123</code></p>
+<p>输出格式是每行显示"绝对时间 | 阶段耗时 | checkpoint 名称"，让开发者能直接定位哪个阶段是瓶颈。设置环境变量 <code>CLAUDE_CODE_PROFILE_STARTUP=1</code> 即可启用详细输出。</p>
+<h2 id="33-mdm-与-keychain-预取的设计约束"><a class="header" href="#33-mdm-与-keychain-预取的设计约束">3.3 MDM 与 Keychain 预取的设计约束</a></h2>
+<p>两个预取模块的注释都明确写了设计约束，这是源码第一手的设计文档：</p>
+<p><code>src/utils/secureStorage/keychainPrefetch.ts</code> 的注释写道：</p>
+<blockquote>
+<p>"Imports stay minimal: child_process + macOsKeychainHelpers.ts (NOT macOsKeychainStorage.ts — that pulls in execa → human-signals → cross-spawn, ~58ms of synchronous module init)"</p>
+</blockquote>
+<p><strong>源码参考：</strong> <code>src/utils/secureStorage/keychainPrefetch.ts:1</code></p>
+<p>这揭示了一个关键约束：<strong>预取模块自身的 import 开销必须接近零</strong>，否则加载预取模块的时间就抵消了预取的收益。<code>keychainPrefetch.ts</code> 刻意只 import <code>child_process</code> 和一个轻量级 helper，而不是 <code>macOsKeychainStorage.ts</code>（会拉入一条 <code>execa→human-signals→cross-spawn</code> 的重型依赖链，58ms 的同步模块初始化）。</p>
+<p>同样，<code>rawRead.ts</code> 的注释也说明：</p>
+<blockquote>
+<p>"Minimal module for firing MDM subprocess reads without blocking the event loop. Has minimal imports — only child_process, fs, and mdmConstants"</p>
+</blockquote>
+<p><strong>源码参考：</strong> <code>src/utils/settings/mdm/rawRead.ts:1</code></p>
+<p>这两处注释共同揭示了一个通用原则：<strong>"早触发"的模块必须是轻量级的</strong>——它的价值是触发并行，而不是执行大量逻辑。任何重型依赖都会被转移到 "import 阶段"的串行成本中，破坏并行收益。</p>
+<p><strong>图 3-2：轻量级预取模块 vs 重型依赖的成本对比</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    subgraph 正确做法
+        light["keychainPrefetch.ts\n（轻量：child_process + helpers）\n模块加载 &lt; 1ms"]
+        fire1["触发异步读取\n（~65ms，后台运行）"]
+        light --&gt; fire1
+    end
+
+    subgraph 错误做法
+        heavy["macOsKeychainStorage.ts\n（重型：execa→human-signals→cross-spawn）\n模块加载 ~58ms"]
+        fire2["触发异步读取\n（~65ms，但已浪费 58ms）"]
+        heavy --&gt; fire2
+    end
+</code></pre>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模块加载并行化module-load-parallelism"><a class="header" href="#模块加载并行化module-load-parallelism">模块加载并行化（Module-Load Parallelism）</a></h3>
+<p><strong>解决的问题</strong>：CLI 启动时需要多个独立 I/O 操作（配置读取、凭证验证），串行执行浪费了模块加载阶段的时间窗口。</p>
+<p><strong>核心做法</strong>：在 <code>import</code> 语句之间触发非阻塞 I/O 操作，让它们与后续模块加载并行执行；在首次使用前 <code>await</code> 结果。</p>
+<p><strong>前置条件</strong>：操作必须相互独立（无依赖关系），且触发模块必须轻量（import 开销 &lt; 1ms）。</p>
+<p><strong>源码证据</strong>：<code>src/main.tsx:16,20</code> — <code>startMdmRawRead()</code> 和 <code>startKeychainPrefetch()</code> 在 import 阶段触发，在 <code>preAction</code> 的 <code>await</code> 前已完成，总节省约 135-200ms。</p>
+<h3 id="量化启动剖析quantified-startup-profiling"><a class="header" href="#量化启动剖析quantified-startup-profiling">量化启动剖析（Quantified Startup Profiling）</a></h3>
+<p><strong>解决的问题</strong>：启动性能优化缺乏数据支撑，无法定位瓶颈，也无法验证优化效果。</p>
+<p><strong>核心做法</strong>：在关键路径插入 checkpoint 埋点，收集绝对时间和阶段差值；<code>profileReport()</code> 输出可读时间线；生产环境采样，不影响用户性能。</p>
+<p><strong>前置条件</strong>：有长期的启动性能优化需求，需要持续跟踪。</p>
+<p><strong>源码证据</strong>：<code>src/utils/startupProfiler.ts:65,123</code> — <code>profileCheckpoint</code> 用 Performance API 打时间戳，<code>profileReport</code> 计算阶段差值输出时间线。</p>
+<h3 id="轻量预触发lightweight-early-trigger"><a class="header" href="#轻量预触发lightweight-early-trigger">轻量预触发（Lightweight Early Trigger）</a></h3>
+<p><strong>解决的问题</strong>：早触发的模块若引入重型依赖，加载成本抵消了并行收益。</p>
+<p><strong>核心做法</strong>：早触发模块只 import <code>child_process</code>、<code>fs</code> 等零成本原生模块，业务逻辑委托给独立的重型模块（在首次使用时加载）。</p>
+<p><strong>前置条件</strong>：需要在模块加载阶段触发的操作，以及能分离的轻量触发层和重型业务层。</p>
+<p><strong>源码证据</strong>：<code>src/utils/secureStorage/keychainPrefetch.ts:1</code> — 注释明确说明"NOT macOsKeychainStorage.ts — that pulls in execa → human-signals → cross-spawn, ~58ms"，刻意避免引入重型依赖。</p>
+<h2 id="延伸并行预热的权衡"><a class="header" href="#延伸并行预热的权衡">延伸：并行预热的权衡</a></h2>
+<h3 id="为什么不在-main-函数体内触发-io"><a class="header" href="#为什么不在-main-函数体内触发-io">为什么不在 main() 函数体内触发 I/O？</a></h3>
+<p>这是最常见的"启动串行化"反模式：</p>
+<pre><code class="language-typescript">// ❌ 串行（常见写法）
+async function main() {
+  await startMdmRawRead()        // 等65ms
+  await startKeychainPrefetch()  // 再等45ms
+  launchRepl()                   // 总共等110ms再启动
+}
+</code></pre>
+<pre><code class="language-typescript">// ✅ 并行（Claude Code 的做法）
+// 在模块加载时（import 之间）触发
+startMdmRawRead()        // 非阻塞，立即返回
+startKeychainPrefetch()  // 非阻塞，立即返回
+// main() 执行时，I/O 已经在后台完成了
+</code></pre>
+<p><strong>核心洞察</strong>：模块加载本身需要 ~135ms，这段时间本来就在"等待"——把 I/O 塞进这段等待时间，是零成本的并行优化（<code>src/main.tsx:11-20</code>）。</p>
+<h3 id="为什么-profilecheckpoint-必须是第一行"><a class="header" href="#为什么-profilecheckpoint-必须是第一行">为什么 profileCheckpoint 必须是第一行？</a></h3>
+<p>如果 <code>profileCheckpoint('main_tsx_entry')</code> 不是文件的第一行执行的代码，它后面记录的时间戳就不能代表真正的"进程启动时间"，会错过前面的所有初始化开销。这是为什么源码里专门注释了"需要早于 module evaluation"（<code>src/utils/startupProfiler.ts:65</code>）。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-在-main-函数体内触发-io串行执行错过并行窗口"><a class="header" href="#-在-main-函数体内触发-io串行执行错过并行窗口">❌ 在 main() 函数体内触发 I/O，串行执行错过并行窗口</a></h3>
+<pre><code class="language-typescript">async function main() {
+  await startMdmRawRead()        // 65ms，阻塞
+  await startKeychainPrefetch()  // 45ms，阻塞，总计 110ms
+  launchRepl()
+}
+</code></pre>
+<p>模块加载窗口（约 135ms）已经过去，现在才触发 I/O 是串行执行。</p>
+<p><strong>正确做法</strong>：在 <code>import</code> 语句之间的顶层触发（<code>src/main.tsx:11-20</code>），让 I/O 与模块加载并行，节省 65ms+。</p>
+<h3 id="-第一个-profilecheckpoint-位置太晚测量数据失真"><a class="header" href="#-第一个-profilecheckpoint-位置太晚测量数据失真">❌ 第一个 profileCheckpoint 位置太晚，测量数据失真</a></h3>
+<pre><code class="language-typescript">import { launchRepl } from './replLauncher.tsx'  // ← 此 import 已触发大量初始化
+profileCheckpoint('main_entry')  // 漏掉了最前面的初始化时间
+</code></pre>
+<p><strong>正确做法</strong>：第一个 checkpoint 必须放在 <code>src/main.tsx</code> 的绝对第一行，比任何 import 都早（<code>src/main.tsx:9</code>）。</p>
+<h3 id="-把顶层副作用当成通用模式到处使用"><a class="header" href="#-把顶层副作用当成通用模式到处使用">❌ 把"顶层副作用"当成通用模式到处使用</a></h3>
+<p>ESLint 规则 <code>no-top-level-side-effects</code> 被 <code>// eslint-disable-next-line</code> 注释绕过了三次——每次都有充分理由（节省 10-65ms）。但如果滥用这种模式，每个模块都在加载时触发 I/O，初始化顺序会变成无法追踪的谜题。这是有意接受的技术债，不是通用做法。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>检查你的 CLI <code>main()</code> 函数里有没有可以"前移"的独立 I/O</strong>：配置文件读取、远程凭证验证、缓存预热——如果它们相互独立，考虑在模块加载阶段触发</li>
+<li><strong>用 <code>perf.mark()</code> + <code>perf.getEntriesByType('mark')</code> 为关键路径打点</strong>：Node.js Performance API 是零依赖的，无需引入第三方工具</li>
+<li><strong>明确记录"有意违规"的 ESLint 规则</strong>：与其悄悄加 <code>eslint-disable</code>，不如像 <code>main.tsx</code> 一样加注释说明"为什么值得违规"</li>
+<li><strong>预触发模块的 import 开销必须接近零</strong>：用 <code>node -e "require('./your-module')"</code> 测量模块加载时间，确保不超过 1ms</li>
+</ul>
+<hr />
+<p><em>第3章解析了启动并发优化的具体实现。第4章将展开 <code>feature()</code> 这个工具的完整体系——60+ 个 feature flag 是如何分类的，双层架构（编译期 + 运行期）各自解决什么问题。</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part1/ch02.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part1/ch04.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part1/ch02.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part1/ch04.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

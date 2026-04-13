@@ -1,0 +1,16 @@
+flowchart LR
+    subgraph 本地
+        UI[任务面板 UI]
+        State["RemoteAgentTaskState\n（镜像状态）"]
+        Poller["startRemoteSessionPolling\n1s 轮询"]
+    end
+    subgraph 远程
+        API["Claude.ai API\n/v1/sessions/{id}/events"]
+        Agent["远程 Agent 进程\n（云端执行）"]
+    end
+
+    UI -->|"读取"| State
+    Poller -->|"更新"| State
+    Poller -->|"pollRemoteSessionEvents\n(sessionId, lastEventId)"| API
+    API -->|"newEvents + sessionStatus"| Poller
+    Agent -->|"产生事件"| API

@@ -1,0 +1,72 @@
+# 第11章写作计划
+
+**批次**：批次 3
+**章节**：ch11 — Tool 接口与 buildTool 工厂
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/Tool.ts | Tool 类型(362行)、TOOL_DEFAULTS(757行)、buildTool(783行)、ToolDef(721行) | 362-430, 700-795行 |
+| 2 | src/tools/BashTool/BashTool.tsx | buildTool 使用方式，前10行 | 1-15行 |
+
+```bash
+sed -n '757,795p' src/Tool.ts
+sed -n '362,430p' src/Tool.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「Claude Code 有 60+ 个工具：BashTool、FileEditTool、MCPTool、AgentTool……它们的实现完全不同，但 `query.ts` 用同一套代码调用所有工具。为什么不需要 if/else？」
+- 三个问题：1）Tool 接口定义了哪些必须实现的方法？2）安全三元模型（isReadOnly/isDestructive/interruptBehavior）如何影响工具执行？3）buildTool 工厂填充什么默认值？
+
+### 节 11.1：Tool 接口——为什么 60 个工具能被统一调用？
+- 核心主张：`Tool` 类型定义了所有工具的共同契约：`call`/`description`/`inputSchema` 是核心三元组，`isReadOnly`/`isDestructive`/`interruptBehavior` 是安全三元模型
+- 源码锚点：`src/Tool.ts:362`（Tool 类型定义）、`src/Tool.ts:380`（call 方法签名）、`src/Tool.ts:392`（description 方法）
+- 包含元素：Tool 接口方法分组表（核心必须实现 vs 安全模型 vs 可选扩展）
+- 权衡分析：统一接口 vs 继承体系
+- 估计字数：700字
+
+### 节 11.2：安全三元模型解决什么问题？
+- 核心主张：`isReadOnly`/`isDestructive`/`interruptBehavior` 三个维度捕获了工具执行安全性的三个独立关注点，任何两个都不能完全替代第三个
+- 源码锚点：`src/Tool.ts:404`（isReadOnly）、`src/Tool.ts:406`（isDestructive）、`src/Tool.ts:416`（interruptBehavior 返回 'cancel'|'block'）
+- 包含元素：三维安全模型的对比分析（每维度的具体语义 + 缺失某维度会导致什么问题）
+- 估计字数：600字
+
+### 节 11.3：buildTool 工厂——ToolDef 和 Tool 的区别？
+- 核心主张：`ToolDef` 是 `Tool` 的"可省略默认方法"版本，`buildTool` 将 `TOOL_DEFAULTS` 合并进去，确保每个工具都有完整接口
+- 源码锚点：`src/Tool.ts:757`（TOOL_DEFAULTS）、`src/Tool.ts:783`（buildTool 实现）、`src/Tool.ts:721`（ToolDef 类型）
+- 包含元素：一个最小 ToolDef 示例（不超过15行）
+- 权衡分析：工厂模式 vs 抽象基类（工厂：TypeScript 函数更灵活；基类：继承导致方法分散）
+- 估计字数：500字
+
+### 节 11.4：shouldDefer 和 alwaysLoad——工具集的动态加载策略
+- 核心主张：部分工具有 `shouldDefer: true`（延迟加载，需要先通过 ToolSearch 找到）或 `alwaysLoad: true`（始终在 prompt 中），这影响 token 使用量
+- 源码锚点：`src/Tool.ts:475`（shouldDefer 字段注释）、`src/Tool.ts:484`（alwaysLoad 字段注释）
+- 估计字数：400字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 工厂填充默认值（Factory Default Filling）| 大量实现类有共同的默认行为，但不想用继承 | buildTool 工厂将 TOOL_DEFAULTS spread 到 def，返回完整接口对象 | 有多个实现共享相同默认行为 | `src/Tool.ts:783` |
+| 多维安全模型（Multi-Dimensional Safety Model）| 工具执行安全性不能用单一标志描述 | 用独立的维度（只读性/破坏性/中断行为）分别建模，允许任意组合 | 工具执行有多个独立的安全关注点 | `src/Tool.ts:404,406,416` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图11-1 | Tool 接口方法分组 | 表格 | 核心三元组/安全三元模型/可选扩展 | 11.1 |
+| 图11-2 | buildTool 工厂工作流 | Mermaid flowchart | ToolDef + TOOL_DEFAULTS → spread → BuiltTool | 11.3 |
+
+## 写作前 checklist
+```bash
+sed -n '362,430p' src/Tool.ts         # Tool 接口
+sed -n '404,420p' src/Tool.ts         # 安全三元模型
+sed -n '757,795p' src/Tool.ts         # TOOL_DEFAULTS + buildTool
+sed -n '475,490p' src/Tool.ts         # shouldDefer/alwaysLoad
+```
+
+## 估算
+- 目标字数：2200-2600字
+- 预计轮次：7轮（含2轮验证）

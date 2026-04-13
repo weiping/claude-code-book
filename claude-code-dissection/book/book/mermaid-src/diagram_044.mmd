@@ -1,0 +1,14 @@
+flowchart LR
+    A["触发截图时机"]
+    B["用户操作后
+（点击、输入）"]
+    C["导航完成后
+networkidle"]
+    D["目标元素出现后
+waitForSelector"]
+    E["❌ 避免：定时轮询
+成本爆炸"]
+    
+    A --> B & C & D & E
+    
+    style E fill:#ffe6e6

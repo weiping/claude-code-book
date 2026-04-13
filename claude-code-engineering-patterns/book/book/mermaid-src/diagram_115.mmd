@@ -1,0 +1,28 @@
+flowchart LR
+    subgraph declared [声明层]
+        official["官方（隐式注入）\nofficialMarketplace.ts"]
+        user["用户声明（第三方）\nextraKnownMarketplaces"]
+    end
+
+    subgraph protocol [协议层 MarketplaceSource]
+        github["github\n克隆 GitHub 仓库"]
+        git["git\n克隆任意 Git"]
+        url["url\nHTTP 下载 JSON"]
+        file["file\n本地文件"]
+        dir["directory\n本地目录"]
+        npm["npm\n（计划中）"]
+    end
+
+    official -->|sourceIsFallback=true| github
+    user --> github
+    user --> git
+    user --> url
+    user --> file
+    user --> dir
+    user -->|TODO| npm
+
+    github --> cache["~/.claude/plugins/marketplaces/\n缓存目录"]
+    git --> cache
+    url --> cache
+    file -->|"直接读取"| cache
+    dir -->|"直接读取"| cache

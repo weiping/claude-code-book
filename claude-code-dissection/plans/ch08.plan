@@ -1,0 +1,84 @@
+# 第8章写作计划
+
+**批次**：批次 2
+**章节**：ch08 — query.ts——单轮对话的原子循环
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/query.ts | QueryParams(181行)、query函数签名(219行)、工具调用循环(554-565行)、streamingToolExecution(561行) | 181-230, 320-380, 550-580, 720-760, 890-920行 |
+| 2 | src/services/api/withRetry.ts | FallbackTriggeredError | 1-40行 |
+| 3 | src/query.ts | State 类型(202行)、Continue 类型 | 202-220行 |
+
+```bash
+ls src/query.ts src/services/api/withRetry.ts
+sed -n '219p' src/query.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「`query.ts` 的第219行：`export async function* query(`。为什么是 generator，不是普通 async 函数？」
+- 三个问题：1）generator 让调用方能做什么？2）`tool_use` 是在 stream 结束后处理还是边流边处理？3）`FallbackTriggeredError` 触发什么？
+
+### 节 8.1：async generator 的设计理由
+- 核心主张：generator 让 QueryEngine 在每个 yield 点处理中间结果（进度更新、UI 刷新），而不是等待整个 LLM 响应完成后一次性处理
+- 源码锚点：`src/query.ts:219`（async function* query 签名）、`src/query.ts:337`（yield stream_request_start）
+- 权衡分析：generator vs 回调 vs Promise.all
+- 估计字数：600字
+
+### 节 8.2：单轮循环的完整流程
+- 核心主张：一次 LLM 调用分为四阶段：流式接收→tool_use识别→工具执行→结果回填，整个过程可能因工具调用而循环多次
+- 源码锚点：
+  - `src/query.ts:554-555`（"stop_reason === 'tool_use' is unreliable"注释）
+  - `src/query.ts:561`（streamingToolExecution 选择）
+  - `src/query.ts:130`（tool_use 识别）
+- 包含元素：**核心 Mermaid flowchart**（单轮完整流程）
+- 权衡分析：为什么 stop_reason 不可靠，用什么替代判断
+- 估计字数：800字
+
+### 节 8.3：streamingToolExecution——边流边执行
+- 核心主张：streaming 期间开始执行工具（而非等 stream 结束），减少端到端延迟
+- 源码锚点：`src/query.ts:561`（useStreamingToolExecution = config.gates.streamingToolExecution）
+- 权衡分析：并发执行收益（延迟减少）vs 风险（工具结果可能与后续 token 交错）
+- 估计字数：500字
+
+### 节 8.4：FallbackTriggeredError 的重试路径
+- 核心主张：当主模型失败时，FallbackTriggeredError 触发降级到 fallbackModel 重试
+- 源码锚点：`src/query.ts:894`（catch FallbackTriggeredError）、`src/services/api/withRetry.ts`（FallbackTriggeredError 定义）
+- 估计字数：400字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 流式 Generator 编排（Streaming Generator Orchestration）| 异步操作序列需要在每个阶段暴露中间结果 | 用 async generator yield 每个事件，调用方逐事件消费 | 调用方需要处理进度/中间状态 | `src/query.ts:219,337` |
+| 工具调用信号重定义（Tool Call Signal Redefinition）| LLM 的 stop_reason 不可靠 | 在 streaming 期间检测 tool_use block 到达，作为执行信号 | 依赖 LLM streaming API | `src/query.ts:554-555` |
+| 降级重试（Fallback Retry）| 主模型不可用时需要平滑降级 | 通过特殊异常类型触发降级，保持调用链透明 | 有备用模型可用 | `src/query.ts:894` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图8-1 | 单轮原子循环完整流程 | Mermaid flowchart | 从 query() 调用到结果返回的完整路径 | 8.2 |
+| 图8-2 | streaming 期间工具执行时序 | Mermaid sequenceDiagram | stream tokens + 并发工具执行的时间线 | 8.3 |
+
+## 写作顺序
+1. 先写节 8.2（核心流程，画流程图）
+2. 写节 8.1（generator 理由，基于 8.2 已建立的流程理解）
+3. 写节 8.3（streamingToolExecution 权衡）
+4. 写节 8.4（FallbackTriggeredError）
+5. 模式提炼，开篇
+
+## 写作前 checklist
+```bash
+sed -n '219p' src/query.ts                  # async function* query
+sed -n '554,566p' src/query.ts              # stop_reason 注释 + streamingToolExecution
+sed -n '894,915p' src/query.ts              # FallbackTriggeredError catch
+sed -n '337,345p' src/query.ts              # yield stream_request_start
+head -30 src/services/api/withRetry.ts      # FallbackTriggeredError 定义
+```
+
+## 估算
+- 目标字数：2800-3200字（最核心章节，代码密度最高）
+- 预计轮次：10轮（含2轮验证）

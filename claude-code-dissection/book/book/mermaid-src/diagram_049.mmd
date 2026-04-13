@@ -1,0 +1,9 @@
+graph TD
+    A["/etc/claude-code/CLAUDE.md<br/>系统级"] --> B["加载顺序和优先级"]
+    C["~/.claude/CLAUDE.md<br/>用户级"] --> B
+    D["project/CLAUDE.md<br/>项目级（最高优先级）"] --> B
+    B --> E["✓ 后加载优先级高<br/>✓ 项目级 > 用户级 > 系统级"]
+    style A fill:#e6f2ff
+    style C fill:#fff4e6
+    style D fill:#e6ffe6
+    style E fill:#f0f0f0

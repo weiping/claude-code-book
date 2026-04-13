@@ -1,0 +1,10 @@
+flowchart LR
+    A["① 显式模式参数
+mode: PromptInputMode"] --> D["前置路由
+Pre-dispatch Router"]
+    B["② 优先级链
+if-chain 顺序语义"] --> D
+    C["③ 懒加载隔离
+dynamic import"] --> D
+    D --> E["路由决策
+先于所有副作用"]

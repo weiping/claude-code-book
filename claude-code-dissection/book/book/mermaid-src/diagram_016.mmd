@@ -1,0 +1,15 @@
+graph LR
+    subgraph 跨轮持久
+        A["mutableMessages\n对话历史累积"]
+        B["abortController\n统一取消控制"]
+        C["readFileState\n文件读取缓存"]
+        D["totalUsage\nAPI 用量统计"]
+    end
+
+    subgraph 按轮重置
+        E["discoveredSkillNames\n每轮 submitMessage 开始时清空"]
+    end
+
+    subgraph 不变
+        F["config\n初始化后只读"]
+    end

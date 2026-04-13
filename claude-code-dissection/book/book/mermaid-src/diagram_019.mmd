@@ -1,0 +1,14 @@
+stateDiagram-v2
+    [*] --> Pending: 创建任务
+    Pending --> Running: 开始执行
+    Running --> Completed: 成功完成
+    Running --> Failed: 执行出错
+    Running --> Cancelled: 用户取消
+    Running --> TimedOut: 超时
+    Failed --> Retrying: 可重试错误
+    Retrying --> Running: 重试
+    Retrying --> Failed: 超过重试上限
+    Completed --> [*]
+    Failed --> [*]: 清理资源
+    Cancelled --> [*]: 清理资源
+    TimedOut --> [*]: 清理资源

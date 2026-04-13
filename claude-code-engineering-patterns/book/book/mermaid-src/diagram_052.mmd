@@ -1,0 +1,10 @@
+flowchart TD
+    diff[核心差异：确定性]
+    
+    diff --> ai[模型即规则引擎\n概率性推理\n需要confidence字段]
+    diff --> strategy[策略模式\n确定性算法\n无需confidence]
+    diff --> rule_engine[规则引擎\n声明式可验证\n无需confidence]
+    
+    strategy -->|相同:可替换| common[判断逻辑可替换]
+    rule_engine -->|相同:外部化| common
+    ai --> common

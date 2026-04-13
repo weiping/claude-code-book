@@ -1,0 +1,9 @@
+flowchart TD
+    typelayer["类型层\nPermissionMode\ntypes/permissions.ts:22"] --> config["配置层\nPERMISSION_MODE_CONFIG\nPermissionMode.ts:43"]
+    typelayer --> calc["计算层\ngetNextPermissionMode()\ngetNextPermissionMode.ts:34"]
+    config --> display["UI 展示\ntitle / symbol / color"]
+    config --> external["API 映射\nexternal 字段\nauto→default"]
+    calc --> gate["canCycleToAuto()\n双重检查门禁"]
+    calc --> consume["消费层\ncyclePermissionMode()\ngetNextPermissionMode.ts:88"]
+    consume --> apply["transitionPermissionMode()\n副作用执行"]
+    consume --> result["{ nextMode, context }\n调用方获得"]

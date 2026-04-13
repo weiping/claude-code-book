@@ -1,0 +1,16 @@
+mindmap
+    root(命令系统三层设计)
+        目录即注册表
+            src_commands 每个子目录
+            index_ts 自描述元数据
+            load 懒加载实现
+            聚合函数自动发现
+        三层门控
+            构建时 feature 删死代码
+            运行时 availability 认证过滤
+            运行时 isEnabled 条件开关
+        懒加载聚合
+            memoize by cwd
+            Promise.all 并行加载
+            7个来源 spread 合并
+            清除时机绑定业务事件

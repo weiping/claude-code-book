@@ -1,0 +1,31 @@
+classDiagram
+    class InteractiveHandler {
+        +handleInteractivePermission(params, resolve) void
+        -pushToQueue(callbacks)
+        -runHooks_background()
+        -runClassifier_background()
+        -createResolveOnce(resolve)
+    }
+
+    class CoordinatorHandler {
+        +handleCoordinatorPermission(params) Promise~Decision|null~
+        -await runHooks()
+        -await tryClassifier()
+    }
+
+    class SwarmWorkerHandler {
+        +handleSwarmWorkerPermission(params) Promise~Decision|null~
+        -await tryClassifier()
+        -registerPermissionCallback()
+        -sendPermissionRequestViaMailbox()
+    }
+
+    class Caller {
+        +route(agentRole) Decision
+    }
+
+    Caller --> SwarmWorkerHandler : isSwarmWorker
+    Caller --> CoordinatorHandler : isCoordinator
+    Caller --> InteractiveHandler : fallback
+    SwarmWorkerHandler ..> InteractiveHandler : null → fallback
+    CoordinatorHandler ..> InteractiveHandler : null → fallback

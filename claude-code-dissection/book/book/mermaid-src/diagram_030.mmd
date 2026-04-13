@@ -1,0 +1,16 @@
+flowchart TD
+    A["系统启动"] --> B["读取 feature flags"]
+    B --> C["getAllBaseTools()"]
+    C --> D{"PROACTIVE flag?"}
+    D -->|true| E["+ SleepTool"]
+    D -->|false| F["跳过"]
+    C --> G{"AGENT_TRIGGERS flag?"}
+    G -->|true| H["+ CronTools × 3"]
+    G -->|false| I["跳过"]
+    C --> J["等待 MCP 连接"]
+    J --> K["+ MCP 工具集"]
+    E & F & H & I & K --> L["最终工具列表 Tool[]"]
+    L --> M["序列化为系统 prompt
+工具描述部分"]
+    M --> N["Prompt Cache
+cache key 锁定"]

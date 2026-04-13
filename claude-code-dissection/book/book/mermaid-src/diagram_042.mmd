@@ -1,0 +1,19 @@
+flowchart TD
+    A["用户指令
+'点击登录按钮'"] --> B["截图
+Screenshot API"]
+    B --> C["Claude Vision
+分析界面元素"]
+    C --> D{"找到目标元素?"}
+    D -->|是| E["计算坐标
+(x, y) × devicePixelRatio"]
+    D -->|否| F["等待加载
+waitForSelector"]
+    F --> B
+    E --> G["执行操作
+鼠标点击/键盘输入"]
+    G --> H["等待界面响应
+networkidle / 元素出现"]
+    H --> I{"任务完成?"}
+    I -->|是| J["✅ 成功"]
+    I -->|否| B

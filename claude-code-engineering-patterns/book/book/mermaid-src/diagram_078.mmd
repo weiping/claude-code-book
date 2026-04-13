@@ -1,0 +1,10 @@
+flowchart TD
+    enter["autoCompactIfNeeded(messages, toolUseContext)"] --> cb{"consecutiveFailures\n>= 3?"}
+    cb -->|是| skip["return wasCompacted=false\n电路断路器燘断"]
+    cb -->|否| check["shouldAutoCompact()模块"]
+    check -->|不需要压缩| no_compact["return wasCompacted=false"]
+    check -->|需要压缩| sm["trySessionMemoryCompaction()尝试"]
+    sm -->|成功| sm_ok["return wasCompacted=true（SM压缩）"]
+    sm -->|失败或不适用| cc["compactConversation()传统压缩"]
+    cc -->|成功| cc_ok["return wasCompacted=true, failures=0"]
+    cc -->|失败| fail["return wasCompacted=false\nconsecutiveFailures++"]

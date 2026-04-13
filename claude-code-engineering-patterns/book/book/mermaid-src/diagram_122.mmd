@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant Manifest as plugin.json（可选）
+    participant Loader as createPluginFromPath
+    participant FS as 文件系统
+    participant Consumer as loadPluginCommands
+
+    Manifest-->>Loader: commands: "./src/cmds/" （覆盖）
+    Loader->>FS: 清单有声明 → 跳过探测
+    Loader->>Consumer: plugin.commandsPath = "./src/cmds/"
+
+    Note over Manifest: 或：清单无 commands 字段
+    Loader->>FS: pathExists("commands/")
+    FS-->>Loader: true
+    Loader->>Consumer: plugin.commandsPath = "commands/"
+
+    FS-->>Loader: false（目录不存在）
+    Note over Consumer: plugin.commandsPath = undefined → 不加载命令

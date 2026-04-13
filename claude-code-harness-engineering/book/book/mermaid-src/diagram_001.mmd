@@ -1,0 +1,11 @@
+graph TD
+    START["🚀 启动系统"] --> CORE["🔄 核心循环"]
+    CORE -->|"构建提示词"| PROMPT["📝 提示词管理"]
+    CORE -->|"调用 API"| AUX["⚙️ 辅助系统"]
+    CORE -->|"执行工具"| TOOL["🔧 工具编排"]
+    TOOL -->|"权限检查"| PERM["🛡️ 权限护栏"]
+    CORE -->|"上下文溢出"| CTX["📦 上下文管理"]
+    CORE -->|"派生子任务"| TASK["📋 任务编排"]
+    CORE -->|"创建子智能体"| MULTI["🤖 多智能体"]
+    PROMPT -->|"读取 CLAUDE.md"| CTX
+    TOOL -->|"工具结果"| CTX

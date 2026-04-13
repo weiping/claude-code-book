@@ -1,0 +1,12 @@
+graph TD
+    subgraph 临时当前调用
+        T["ask_each_time = 每次询问"]
+    end
+    subgraph 会话级别
+        S1["remember_session = 本次会话记住"]
+    end
+    subgraph 持久化
+        P1["remember_forever = 持久存储"]
+        P2["~/.claude/permissions.json"]
+    end
+    T --> S1 --> P1 --> P2

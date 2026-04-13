@@ -1,0 +1,9 @@
+flowchart TD
+    apiError["API 错误（429/500）"] -->|触发重试| retry["底层重试机制"]
+    retry -->|透明| loop["while(true) 主循环"]
+    retry -->|产出事件| sdkCaller["SDK 调用者\n（可显示重试进度）"]
+
+    userStop["用户 Ctrl+C / Stop 按钮"] -->|调用| interrupt["interrupt()"]
+    interrupt -->|abort()| abortController["AbortController.abort()"]
+    abortController -->|AbortSignal 传播| loop
+    loop -->|收到中断信号| exit["循环退出"]

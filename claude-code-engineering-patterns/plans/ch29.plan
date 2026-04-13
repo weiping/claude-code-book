@@ -1,0 +1,119 @@
+# 第 29 章写作计划
+
+**批次**：批次 7a（来自 plans/batch.md）
+**章节**：ch29 — 第29章：Teammate 生命周期——Swarm 架构总览
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 Claude Code 的多智能体 Swarm 模型——Leader/Teammate 角色划分、Teammate 从创建到清理的生命周期管理，以及 `src/utils/swarm/teammateInit.ts`（129行）的初始化序列。读者读完后能理解 Leader-Teammate 多智能体架构，并能与其他 Agent 框架的 Swarm 设计进行比较。
+
+## 通用约束
+**排除范围**：leaderPermissionBridge（第30章）、三种 Teammate 后端（第31章）、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「领导者-队友事件驱动协调」（Leader-Teammate Event-Driven Coordination）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（initializeTeammateHooks + teamFile 结构），适用范围表，与已知模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/utils/swarm/teammateInit.ts | initializeTeammateHooks(28行)、Stop hook 注册(94行)、writeToMailbox(115行)、team-wide permissions(47行) | 全文(129行) |
+| 2 | src/utils/swarm/constants.ts | TEAM_LEAD_NAME、SWARM_SESSION_NAME、TEAMMATE_COMMAND_ENV_VAR、TEAMMATE_COLOR_ENV_VAR | 全文(~35行) |
+| 3 | src/utils/swarm/teamHelpers.ts | readTeamFile 函数 | 前50行 |
+
+```bash
+ls src/utils/swarm/teammateInit.ts src/utils/swarm/constants.ts
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：在 Claude Code 的 Swarm 模型中，每个 Teammate 在启动时都要"打招呼"——向 Leader 注册自己的 Stop 事件钩子，在任务完成时通过邮箱（mailbox）通知 Leader 自己空闲了。这是 Leader-Teammate 协调的核心机制。
+
+### 节 29.1：问题
+- 核心主张：**多 Agent 协作的核心挑战是"协调"——Leader 需要知道哪个 Teammate 何时完成，才能分配下一个任务；但每个 Teammate 是独立进程，不共享内存**
+- 源码锚点：`src/utils/swarm/constants.ts:1`（TEAM_LEAD_NAME = 'team-lead'——固定角色名）
+- 包含元素：**图29-1** — Mermaid，Leader-Teammate 角色划分和通信通道（mailbox）
+- 估计字数：600-800字
+
+### 节 29.2：源码实例1 — initializeTeammateHooks（Teammate 的启动协议）
+- 核心主张：**initializeTeammateHooks 在 Teammate 启动时执行三件事：读取团队文件、应用团队权限、注册 Stop Hook 通知 Leader——这是一个完整的"加入团队"协议**
+- 源码锚点：
+  - `src/utils/swarm/teammateInit.ts:28`（`export function initializeTeammateHooks(`）
+  - `src/utils/swarm/teammateInit.ts:47`（team-wide allowed paths 应用——团队共享权限）
+  - `src/utils/swarm/teammateInit.ts:88`（Leader 自身跳过 Stop hook 注册——"skipping idle notification hook"）
+  - `src/utils/swarm/teammateInit.ts:94`（Stop hook 注册，向 Leader 发送 idle notification）
+  - `src/utils/swarm/teammateInit.ts:109`（createIdleNotification + writeToMailbox）
+- 概念层次：team file 的数据结构（leadAgentId/members/teamAllowedPaths）、mailbox 通信模式（异步写入 + 等待完成）、Leader 跳过自身注册的设计
+- 估计字数：900-1100字
+
+### 节 29.3：源码实例2 — 团队权限（team-wide permissions）
+- 核心主张：**团队级权限在 Teammate 启动时统一应用——所有 Teammate 共享同一套路径规则，减少每个 Teammate 单独配置的开销**
+- 源码锚点：
+  - `src/utils/swarm/teammateInit.ts:47`（遍历 teamAllowedPaths）
+  - `src/utils/swarm/teammateInit.ts:51`（路径规则转换：绝对路径 → `//path/**`，相对路径 → `path/**`）
+  - `src/utils/swarm/teammateInit.ts:57`（applyPermissionUpdate 到每个 Teammate 的 toolPermissionContext）
+- 概念层次：团队权限 vs 个人权限的优先级、路径规则格式（`//path/**` vs `path/**`）、session 级别的权限（destination: 'session'）
+- 估计字数：700-900字
+
+### 节 29.4：模式剖析
+- 核心主张：**Leader-Teammate 协调的本质是"基于事件的角色协议"——不用中央调度器轮询，而是 Teammate 主动通过 Stop 事件和 mailbox 通知 Leader**
+- 估计字数：500-700字
+
+### 节 29.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 多个独立进程的 AI Agent 协作 | ✓ | mailbox 通信不依赖共享内存 | 共享状态（但进程隔离后不可行）|
+| Leader 需要知道 Teammate 何时空闲 | ✓ | Stop hook + idle notification 精确通知 | 轮询 Teammate 状态（效率低）|
+| 团队成员有共享权限规则 | ✓ | team-wide permissions 统一应用 | 每个 Teammate 单独配置（重复）|
+| 需要强一致性的任务分配（原子操作）| ✗ | mailbox 是 fire-and-forget，无事务 | 中央调度器 + 数据库 |
+| 超大规模 Swarm（>10个 Teammates）| ✗（谨慎）| teamFile 和 mailbox 没有水平扩展设计（推断）| 消息队列（Kafka/Redis）|
+
+### 节 29.6：权衡与局限
+- mailbox 的持久性（写入文件，进程重启后仍有效）vs 时序保证（不是严格 FIFO）、team file 的单点依赖、Teammate 与 Leader 的心跳缺失
+- 估计字数：500-700字
+
+### 节 29.7：与已知模式的对话
+- 与 Actor 模型（Erlang/Akka）：相同——独立进程间通过消息传递协调；不同——Erlang Actor 是轻量级线程，本模式是完整进程
+- 与 EIP 消息通道（Message Channel）：相同——发送者和接收者解耦；不同——mailbox 是文件系统持久化，不是内存队列
+
+### 章末：模式提炼
+```
+模式名称：领导者-队友事件驱动协调（Leader-Teammate Event-Driven Coordination）
+问题：多个独立 Agent 进程需要协调任务分配，但不共享内存，无法直接调用
+解决方案：Teammate 启动时注册 Stop 事件钩子，完成时通过 mailbox 发送 idle notification 给 Leader
+前置条件：有 mailbox（持久化消息存储）和 team file（团队元数据）
+源码锚点：src/utils/swarm/teammateInit.ts:28 (initializeTeammateHooks), :109 (writeToMailbox)
+```
+
+### 章末：你能做什么
+1. 用 Stop 事件钩子而非中央轮询实现 Teammate 空闲通知，去中心化协调逻辑
+2. 通过 team file 集中管理团队元数据（成员列表/Leader ID/共享权限），而非硬编码
+3. 为 Leader 实现跳过自身 Stop hook 的逻辑，防止 Leader 向自己发 idle notification
+4. 用文件系统 mailbox 实现跨进程通信，获得自然的持久化（进程重启后消息不丢失）
+5. 在 Teammate 启动时统一应用团队级权限，而非每次工具调用时重新计算
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图29-1 | Leader-Teammate Swarm 架构 | Mermaid flowchart | Leader ↔ mailbox ↔ Teammate 通信，team file 角色 | 29.1 |
+
+## 写作前 checklist
+```bash
+sed -n '1p' src/utils/swarm/constants.ts      # TEAM_LEAD_NAME
+cat src/utils/swarm/constants.ts              # 全部常量
+sed -n '28p' src/utils/swarm/teammateInit.ts  # initializeTeammateHooks
+sed -n '47p' src/utils/swarm/teammateInit.ts  # team-wide permissions
+sed -n '88p' src/utils/swarm/teammateInit.ts  # Leader 跳过
+sed -n '94p' src/utils/swarm/teammateInit.ts  # Stop hook 注册
+sed -n '109p' src/utils/swarm/teammateInit.ts # createIdleNotification
+```
+
+## ⛔ Spec 一致性声明
+所有 16 项均 ✓，plan 审查通过。

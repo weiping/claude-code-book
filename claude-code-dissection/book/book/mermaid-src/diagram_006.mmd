@@ -1,0 +1,10 @@
+graph TD
+    subgraph 编译期DCE层
+        A["已发布功能开关\n如：VOICE_MODE\n用户可见功能的产物包含控制"]
+        B["内部专属代码\n如：KAIROS, COORDINATOR_MODE\n外部产物中物理不存在"]
+    end
+
+    subgraph 运行期GrowthBook层
+        C["实验特性灰度\n如：ULTRATHINK, REACTIVE_COMPACT\n按用户/百分比推送"]
+        D["紧急死亡开关\n如：TRANSCRIPT_CLASSIFIER\n可实时关闭问题功能"]
+    end

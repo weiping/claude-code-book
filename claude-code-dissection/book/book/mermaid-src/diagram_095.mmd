@@ -1,0 +1,14 @@
+timeline
+    title 新功能的灰度发布计划
+    day 1: 内部测试
+        : userId == 'internal-*'
+        : 覆盖：1%
+    day 3: 扩大测试
+        : userTier == 'max' && 20%
+        : 覆盖：20%
+    day 7: 更广泛测试
+        : userTier in ['max', 'pro'] && 50%
+        : 覆盖：50%
+    day 14: 全量发布
+        : percentage == 100%
+        : 覆盖：100%

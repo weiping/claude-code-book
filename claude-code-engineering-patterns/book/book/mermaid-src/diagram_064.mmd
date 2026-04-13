@@ -1,0 +1,10 @@
+flowchart LR
+    lap[分层提示词组装]
+    
+    lap -->|多层叠加但无包装| dec[装饰器模式\n包装已有对象]
+    lap -->|并行不串行| mid[中间件管道\n串行依赖]
+    lap -->|提供材料不完成构建| build[Builder模式\n完整构建]
+    
+    dec --- d1[差异: 独立平行 vs 层层包裹]
+    mid --- d2[差异: Promise.all vs 串行传递]
+    build --- d3[差异: 返回原材料\n调用方完成最终组装]

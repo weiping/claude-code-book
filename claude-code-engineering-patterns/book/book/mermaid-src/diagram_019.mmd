@@ -1,0 +1,17 @@
+flowchart LR
+    subgraph session_level["会话级覆盖（src/bootstrap/state.ts）"]
+        set["setMainLoopModelOverride(model)"]
+        get["getMainLoopModelOverride()"]
+        state["STATE.mainLoopModelOverride"]
+        set --> state
+        state --> get
+    end
+    subgraph env_level["环境级覆盖（src/utils/model/model.ts）"]
+        envvar["process.env.ANTHROPIC_SMALL_FAST_MODEL"]
+        small["getSmallFastModel()"]
+        default_haiku["getDefaultHaikuModel()"]
+        envvar --> small
+        default_haiku --> small
+    end
+    get --> priority["优先级链\ngetUserSpecifiedModelSetting()"]
+    small --> caller["调用方（分类器、轻量任务）"]

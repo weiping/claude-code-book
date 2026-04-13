@@ -1,0 +1,12 @@
+flowchart LR
+    toolDef["ToolDef\n（只需实现非默认方法）"]
+    defaults["TOOL_DEFAULTS\n（7个安全/行为默认值）"]
+    spread["{ ...TOOL_DEFAULTS,\n  userFacingName: () => def.name,\n  ...def }"]
+    builtTool["BuiltTool\n（完整 Tool 接口）"]
+
+    toolDef --> spread
+    defaults --> spread
+    spread --> builtTool
+
+    note1["def 覆盖 TOOL_DEFAULTS\n（相同 key 时 def 优先）"]
+    spread -.-> note1

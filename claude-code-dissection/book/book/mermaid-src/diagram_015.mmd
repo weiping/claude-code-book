@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant API as Claude API
+    participant Q as query.ts
+    participant SE as StreamingToolExecutor
+    participant T as Tool（BashTool等）
+
+    API->>Q: 流式输出开始
+    API->>Q: token: "I'll run..."
+    API->>Q: tool_use block: bash（ls -la）
+    Q->>SE: startExecution(bash, ls -la)
+    Note over SE,T: 工具开始执行（并发）
+    API->>Q: token: "to check..."
+    API->>Q: token: "the files."
+    T-->>SE: 执行完成（ls 结果）
+    API->>Q: 流式输出结束
+    Q->>Q: stream 结束，收集所有 tool_result
+    Q->>API: 回填 tool_result，继续对话

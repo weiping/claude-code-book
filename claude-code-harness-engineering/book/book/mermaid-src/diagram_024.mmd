@@ -1,0 +1,14 @@
+graph LR
+    subgraph 父智能体
+        A["systemPrompt"] --> F["CacheSafeParams"]
+        B["userContext"] --> F
+        C["systemContext"] --> F
+        D["toolUseContext\n(tools + model)"] --> F
+        E["forkContextMessages\n(消息前缀)"] --> F
+    end
+
+    F -->|"逐字相同\n缓存命中"| G["子智能体"]
+    G --> H["新消息历史\n从空开始"]
+    G --- I["⚠️ maxOutputTokens\n改变会破坏\nthinking config"]
+
+    F -.- Note1["lastCacheSafeParams\n全局单例\n每轮更新"]

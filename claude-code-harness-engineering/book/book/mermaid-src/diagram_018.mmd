@@ -1,0 +1,18 @@
+flowchart TD
+    A["hasPermissionsToUseTool\n入口"] --> B{第1层:规则分类器}
+    B -->|"用户配置的\nallow 规则匹配"| Z["✅ 允许"]
+    B -->|"用户配置的\ndeny 规则匹配"| Y["❌ 拒绝"]
+    B -->|"无匹配"| C{第2层:危险模式库}
+
+    C -->|"命令匹配\nCROSS_PLATFORM_CODE_EXEC"| Y
+    C -->|"不匹配"| D{第3层:AI 分类器}
+
+    D -->|"classifyYoloAction\nshouldBlock=true"| Y
+    D -->|"shouldBlock=false"| E{第4层:否决追踪}
+
+    E -->|"consecutiveDenials\n>=3"| F["⚠️ 回退人工确认"]
+    E -->|"totalDenials\n>=20"| F
+    E -->|"未超限"| Z
+
+    D -.- Note1["递归设计:\nClaude 判断 Claude"]
+    C -.- Note2["硬编码拒绝\n不可绕过"]

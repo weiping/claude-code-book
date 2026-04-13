@@ -1,0 +1,13 @@
+flowchart LR
+    A[tool_use块到达] --> B{isConcurrencySafe?}
+    B -->|是| C{有非并发工具\n正在执行?}
+    B -->|否| D{有任何工具\n正在执行?}
+    C -->|否| E[立即开始执行]
+    C -->|是| F[加入等待队列]
+    D -->|否| E
+    D -->|是| F
+    E --> G[并发执行]
+    F --> H[前序完成后执行]
+    G --> I[结果缓冲]
+    H --> I
+    I --> J[getCompletedResults\n流结束后收割]

@@ -1,0 +1,11 @@
+flowchart TD
+    permission["权限系统\npermissions.ts"]
+    bootstrap["bootstrap/state.ts\n（叶子节点）"]
+    tool["工具系统\nTool.ts"]
+    query["query.ts"]
+
+    permission -->|"读取 sessionId"| bootstrap
+    tool -->|"读取 kairosActive"| bootstrap
+    query -->|"读取/更新 totalCostUSD"| bootstrap
+    bootstrap -.->|"❌ bootstrap-isolation\n规则禁止这类 import"| permission
+    bootstrap -.->|"❌ 同上"| tool

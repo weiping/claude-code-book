@@ -1,0 +1,11 @@
+graph LR
+    A["项目记忆量"] -->|增加| B["系统提示占用"]
+    subgraph capacity["容量权衡"]
+        C1["5KB<br/>~50 项"] -->|信息不足| C2["❌ 新会话无背景"]
+        D1["25KB<br/>~500 项"] -->|平衡| D2["✅ 充足背景<br/>不浪费 token"]
+        E1["100KB<br/>~2000 项"] -->|过多| E2["❌ 系统提示爆炸<br/>其他功能被挤压"]
+    end
+    style D1 fill:#e6ffe6
+    style D2 fill:#e6ffe6
+    style C2 fill:#ffe6e6
+    style E2 fill:#ffe6e6

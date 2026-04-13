@@ -1,0 +1,12 @@
+flowchart TD
+    Start["spawn(config)"] --> NI{非交互模式\n-p flag?}
+    NI -->|"是"| IP[in-process]
+    NI -->|"否"| Mode{teammateMode 配置}
+    Mode -->|"'in-process'"| IP
+    Mode -->|"'tmux'"| Pane[pane 后端]
+    Mode -->|"'auto'（默认）"| TmuxCheck{在 tmux 内\nORIGINAL_USER_TMUX?}
+    TmuxCheck -->|"是"| TmuxNative[tmux native panes]
+    TmuxCheck -->|"否"| ITermCheck{在 iTerm2 内?}
+    ITermCheck -->|"是 + it2 可用"| ITermNative[iterm2 native panes]
+    ITermCheck -->|"是 + it2 不可用"| TmuxFallback[tmux 外部会话]
+    ITermCheck -->|"否"| IPMode[in-process]

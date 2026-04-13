@@ -1,0 +1,16 @@
+timeline
+    title 工具生命周期的两层保护
+
+    section 编译时（开发阶段）
+        ToolDef 类型检查 : 省略必填字段 → 编译错误
+        buildTool 泛型约束 : D extends AnyToolDef
+        BuiltTool 类型推断 : 保留 D 的具体类型
+
+    section 模块加载时（启动阶段）
+        buildTool 执行 : spread TOOL_DEFAULTS + def
+        lazySchema 注册 : 延迟 Zod schema 初始化
+
+    section 运行时（调用阶段）
+        AI 生成 JSON : unknown 类型
+        safeParse 验证 : z.strictObject 拒绝额外字段
+        call 执行 : z.infer 类型安全的参数

@@ -1,0 +1,19 @@
+graph TD
+    subgraph layer1["第 1 层:进程内 - in-process"]
+        A["InProcessRunner\n同 Node.js 进程\n共享 AppState"]
+    end
+
+    subgraph layer2["第 2 层:进程外 - tmux/iTerm2"]
+        B["独立终端进程\n文件系统通信\n进程隔离"]
+    end
+
+    subgraph layer3["第 3 层:远程 - RemoteAgent"]
+        C["CCR 云环境\nHTTP 轮询\n完全隔离"]
+    end
+
+    A -->|"隔离增强"| B
+    B -->|"隔离增强"| C
+
+    A -.- Note1["最快启动\n共享状态需同步"]
+    B -.- Note2["中等延迟\n跨进程可用"]
+    C -.- Note3["最高延迟\n完全独立环境"]

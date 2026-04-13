@@ -1,0 +1,12 @@
+graph TD
+    A["用户执行<br/>/skill search"] --> B["扫描 Skill 目录"]
+    B --> C["Markdown 解析<br/>提取元数据"]
+    C --> D["相似度搜索<br/>返回排序结果"]
+    D --> E["用户选择 Skill"]
+    E --> F["显示参数表单"]
+    F --> G["用户填入参数"]
+    G --> H["验证参数类型"]
+    H --> I["参数注入代码"]
+    I --> J["沙箱执行"]
+    J --> K["返回结果"]
+    style K fill:#ccffcc

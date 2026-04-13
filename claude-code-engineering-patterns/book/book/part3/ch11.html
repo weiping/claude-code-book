@@ -1,0 +1,598 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 11 章：权限决策树——PermissionMode 的四层设计 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-11-章权限决策链permissionmode-的可组合设计"><a class="header" href="#第-11-章权限决策链permissionmode-的可组合设计">第 11 章：权限决策链——PermissionMode 的可组合设计</a></h1>
+<blockquote>
+<p>"最安全的系统不是拒绝一切，而是默认保守、按需升级。"</p>
+</blockquote>
+<p>用户按下 Shift+Tab，Claude Code 的权限模式从 <code>default</code> 切换到 <code>acceptEdits</code>，再到 <code>plan</code>，最后回到 <code>default</code>——整条切换路径在代码库里有 3 处清晰的实现：<strong>PermissionMode.ts</strong> 管理"每种模式长什么样"，<strong>getNextPermissionMode</strong> 用纯函数决定"按 Tab 后去哪里"，<strong>cyclePermissionMode</strong> 把"计算下一跳"和"应用新状态"拆成两个独立函数。我们把这个模式命名为<strong>可组合决策链（Composable Decision Chain）</strong>。</p>
+<p>这个模式至少解决了两件事：权限切换逻辑<strong>完全可单元测试</strong>（因为它是纯函数），以及内部的 <code>auto</code> 模式对外 API <strong>完全不可见</strong>（因为有 <code>external</code> 字段做映射）。</p>
+<p>为什么不用一个 if-else 树？为什么把计算和副作用拆成两个函数？答案不在设计偏好里，而在 <code>getNextPermissionMode.ts</code> 的那段注释里。</p>
+<hr />
+<h2 id="问题权限模式的三重管理困难"><a class="header" href="#问题权限模式的三重管理困难">问题：权限模式的三重管理困难</a></h2>
+<p>我们先设想一下，如果不做任何架构设计，权限模式的管理代码会是什么样的。</p>
+<p>Claude Code 有 5 种对外可见的权限模式（<code>default</code>、<code>acceptEdits</code>、<code>plan</code>、<code>bypassPermissions</code>、<code>dontAsk</code>），再加上一个 feature flag 控制的内部模式 <code>auto</code>。每种模式有自己的标题、缩写、状态栏符号、颜色键——6 组 UI 属性，如果散落在不同的 <code>switch</code> 语句或多个常量 map 里，很容易出现"UI 显示了某模式但权限映射忘了更新"的不一致。</p>
+<p><strong>第一重困难：展示与逻辑的同步</strong>。权限模式的元数据有两类用途：一类服务于 UI（<code>title</code>/<code>shortTitle</code>/<code>symbol</code>/<code>color</code>），另一类服务于权限逻辑（<code>external</code>——将内部模式映射到对外 API 使用的外部模式）。如果分两个 map 维护，任何新增模式都要改两处，遗漏一处就产生 bug；如果合并到一个结构体，同步就是语言层面的强制要求。</p>
+<p><strong>第二重困难：状态转换的可测试性</strong>。Shift+Tab 的处理链通常包含副作用：清理上下文、触发持久化、更新 UI 状态。如果"下一个模式是什么"和"进入新模式时做什么"混在同一个函数里，单元测试就必须模拟整个副作用链——数据库、UI 组件、session 状态全部都要 mock。测试成本急剧上升，测试覆盖率随之下降。</p>
+<p><strong>第三重困难：feature flag 控制的 <code>auto</code> 模式</strong>。<code>auto</code> 模式是内部测试功能，由 <code>TRANSCRIPT_CLASSIFIER</code> feature flag 控制；对外 API 不应暴露它的存在（否则外部用户会在文档里问"auto 是什么"）。如果没有一套"内部 → 外部"的映射机制，每个对外 API 端点都需要手动过滤 <code>auto</code>——遗漏一处就成了安全隐患或 API 不一致。</p>
+<p>源码中 <code>src/types/permissions.ts:16</code> 有一行很有代表性的定义：</p>
+<pre><code class="language-typescript">// src/types/permissions.ts:16
+export const EXTERNAL_PERMISSION_MODES = [
+  'acceptEdits',
+  'bypassPermissions',
+  'default',
+  'dontAsk',
+  'plan',
+] as const
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/types/permissions.ts:16</code></p>
+<p><strong>这一行揭示了设计意图</strong>：<code>EXTERNAL_PERMISSION_MODES</code> 只有 5 个元素——<code>auto</code> 不在其中。对外只暴露稳定的、文档化的模式；<code>auto</code> 是内部概念，通过 <code>external: 'default'</code> 的映射对外等同于 <code>default</code>，外部世界感知不到它的存在。<strong>内外分离是一等公民</strong>——它和状态转换逻辑一样重要，被设计为显式的数据结构，而非隐藏在 if-else 里的特判。</p>
+<p><strong>图 11-1：三重困难与可组合决策链的解法对应</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    subgraph 三重困难
+        P1["① 展示与逻辑分离维护\n两个 map 容易不同步"]
+        P2["② 副作用混入计算\n测试需 mock 整个上下文"]
+        P3["③ auto 模式对外可见\n每个端点手动过滤"]
+    end
+
+    subgraph 可组合决策链解法
+        S1["PermissionModeConfig\n展示+external 合并一个结构体"]
+        S2["getNextPermissionMode 纯函数\n计算与副作用完全分离"]
+        S3["external: default\nauto 在映射层消失"]
+    end
+
+    P1 --&gt;|解决| S1
+    P2 --&gt;|解决| S2
+    P3 --&gt;|解决| S3
+</code></pre>
+<p>三种困难一一对应三种解法——这不是偶然，而是"可组合决策链"模式的完整设计意图：<strong>把模式的形状（配置）、模式的转换（纯函数）、模式的副作用（包装层）拆成三个独立的关注点，各自演进、互不干扰</strong>。</p>
+<hr />
+<h2 id="源码实例-1permissionmodets-模式的形状定义"><a class="header" href="#源码实例-1permissionmodets-模式的形状定义">源码实例 1：PermissionMode.ts ——模式的"形状"定义</a></h2>
+<p>我们来看决策链的第一层。<code>PermissionModeConfig</code>（<code>src/utils/permissions/PermissionMode.ts:34</code>）的类型定义就已经告诉我们它做什么：</p>
+<pre><code class="language-typescript">// src/utils/permissions/PermissionMode.ts:34
+type PermissionModeConfig = {
+  title: string               // 完整标题，UI 模式选择器显示用
+  shortTitle: string          // 短标题，状态栏空间受限时使用
+  symbol: string              // 图标符号，⏵⏵ 或 ⏸ 等
+  color: ModeColorKey         // 颜色键，映射到 UI 主题颜色
+  external: ExternalPermissionMode  // 对外 API 使用的模式名
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/PermissionMode.ts:34</code></p>
+<p>5 个字段，前 4 个服务于 UI，最后 1 个服务于权限逻辑。<strong>为什么把 UI 属性和权限逻辑属性放在同一个结构体里？</strong> 答案是强制同步：任何修改 <code>PermissionModeConfig</code> 的人，必须同时思考"这个模式的对外名称是什么"——不可能只改 UI 忘记权限映射，因为它们在同一个对象字面量里。</p>
+<p><code>PERMISSION_MODE_CONFIG</code>（<code>src/utils/permissions/PermissionMode.ts:43</code>）是这个结构体的完整填充：</p>
+<pre><code class="language-typescript">// src/utils/permissions/PermissionMode.ts:43
+const PERMISSION_MODE_CONFIG: Partial&lt;
+  Record&lt;PermissionMode, PermissionModeConfig&gt;
+&gt; = {
+  default: {
+    title: 'Default',
+    shortTitle: 'Default',
+    symbol: '',
+    color: 'text',
+    external: 'default',
+  },
+  plan: {
+    title: 'Plan Mode',
+    shortTitle: 'Plan',
+    symbol: PAUSE_ICON,
+    color: 'planMode',
+    external: 'plan',
+  },
+  acceptEdits: {
+    title: 'Accept edits',
+    shortTitle: 'Accept',
+    symbol: '⏵⏵',
+    color: 'autoAccept',
+    external: 'acceptEdits',
+  },
+  bypassPermissions: {
+    title: 'Bypass Permissions',
+    shortTitle: 'Bypass',
+    symbol: '⏵⏵',
+    color: 'error',
+    external: 'bypassPermissions',
+  },
+  dontAsk: { ... },
+  // auto 模式由 feature flag 条件注入，见下方
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/PermissionMode.ts:43</code></p>
+<p>注意类型是 <code>Partial&lt;Record&lt;PermissionMode, ...&gt;&gt;</code>，而非完整的 <code>Record</code>。这意味着某些内部模式（如 <code>bubble</code>）可以不在 map 中。<code>getModeConfig</code> 函数（第 107 行）通过 <code>?? PERMISSION_MODE_CONFIG.default!</code> 提供优雅降级——<strong>未知模式自动回退到最保守的 <code>default</code> 配置</strong>，而非抛出异常。这是 fail-closed 哲学（详见第 10 章）在配置层的体现。</p>
+<p><strong><code>auto</code> 模式的条件注入</strong>（<code>src/utils/permissions/PermissionMode.ts:87</code>）是最关键的设计决策：</p>
+<pre><code class="language-typescript">// src/utils/permissions/PermissionMode.ts:87
+...(feature('TRANSCRIPT_CLASSIFIER')
+  ? {
+      auto: {
+        title: 'Auto mode',
+        shortTitle: 'Auto',
+        symbol: '⏵⏵',
+        color: 'warning' as ModeColorKey,
+        external: 'default' as ExternalPermissionMode,  // ← 关键
+      },
+    }
+  : {}),
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/PermissionMode.ts:87</code></p>
+<p><code>external: 'default'</code> 这一行是整个内外分离设计的物理实体。当 <code>auto</code> 模式处于活跃状态时，它的"对外名称"是 <code>default</code>——调用 <code>toExternalPermissionMode('auto')</code> 得到的是 <code>'default'</code>，不是 <code>'auto'</code>。任何将内部权限模式转换为 API 响应的代码，只需调用 <code>toExternalPermissionMode()</code> 一次，<code>auto</code> 就在映射层消失了，外部世界永远看不到它。</p>
+<p><strong>图 11-2：六种权限模式的状态转换与 external 映射</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; default1
+
+    default1 --&gt; acceptEdits: Shift+Tab（普通用户）
+    default1 --&gt; bypassPermissions: Shift+Tab（ant 用户，bypass 可用）
+    default1 --&gt; auto: Shift+Tab（ant 用户，auto 可用）
+
+    acceptEdits --&gt; plan: Shift+Tab
+    plan --&gt; bypassPermissions: Shift+Tab（bypass 可用）
+    plan --&gt; auto: Shift+Tab（auto 可用）
+    plan --&gt; default1: Shift+Tab（其他）
+    bypassPermissions --&gt; auto: Shift+Tab（auto 可用）
+    bypassPermissions --&gt; default1: Shift+Tab（其他）
+    dontAsk --&gt; default1: （UI 尚未暴露）
+    auto --&gt; default1: Shift+Tab（default case）
+
+    note right of auto
+        external: default
+        对外 API 不可见
+    end note
+</code></pre>
+<p>图 11-1 展示了完整的状态转换图。注意 <code>auto</code> 模式的标注：它的 <code>external</code> 映射为 <code>'default'</code>，在所有对外 API 中不可见。普通用户的循环路径是 <code>default → acceptEdits → plan → default</code>，最多 3 步；<code>ant</code> 内部用户的路径更短，可直接进入 <code>bypassPermissions</code> 或 <code>auto</code>。</p>
+<p>这正是<strong>这个模式在代码库里出现的第一处信号</strong>：配置 + 映射，让内部实现和外部接口完全解耦。下一处信号在状态转换函数里。</p>
+<hr />
+<h2 id="源码实例-2变体三种模式转换函数的职责分工"><a class="header" href="#源码实例-2变体三种模式转换函数的职责分工">源码实例 2（变体）：三种模式转换函数的职责分工</a></h2>
+<p>同一个决策链里有 3 个函数处理权限模式转换，职责层次分明。</p>
+<p><strong>变体 A：<code>canCycleToAuto()</code> ——门禁函数的双重检查</strong></p>
+<p>在主状态机之前，有一个辅助函数 <code>canCycleToAuto</code>（<code>src/utils/permissions/getNextPermissionMode.ts:17</code>）：</p>
+<pre><code class="language-typescript">// src/utils/permissions/getNextPermissionMode.ts:11（注释块）
+// 同时检查缓存的 isAutoModeAvailable（启动时由 verifyAutoModeGateAccess 设置）
+// 和实时的 isAutoModeGateEnabled()——
+// 如果熔断器触发或设置在会话中途变更，两者可能出现分歧。
+// 实时检查防止 transitionPermissionMode 抛出异常
+//（permissionSetup.ts:~559），否则会导致 shift+tab 处理器静默崩溃，
+// 使用户卡在当前模式无法切换。
+function canCycleToAuto(ctx: ToolPermissionContext): boolean {
+  if (feature('TRANSCRIPT_CLASSIFIER')) {
+    const gateEnabled = isAutoModeGateEnabled()
+    return !!ctx.isAutoModeAvailable &amp;&amp; gateEnabled
+  }
+  return false
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/getNextPermissionMode.ts:17</code></p>
+<p>这段注释是难得的"为什么"级别文档。<code>ctx.isAutoModeAvailable</code> 是<strong>启动时缓存的值</strong>；<code>isAutoModeGateEnabled()</code> 是<strong>调用时实时查询的值</strong>。两者通常一致——但如果熔断器在会话中途触发，缓存值仍为 <code>true</code>，而实时值已变为 <code>false</code>。<strong>如果只检查缓存值，系统会进入 <code>auto</code> 模式，然后 <code>transitionPermissionMode</code> 抛出异常，Shift+Tab 静默失效，用户被卡住</strong>。双重检查是防止这个隐患的最后一道防线。</p>
+<p><strong>变体 B：<code>getNextPermissionMode()</code> ——纯函数状态机</strong></p>
+<p>主状态转换函数（<code>src/utils/permissions/getNextPermissionMode.ts:34</code>）的签名揭示了它的设计意图：</p>
+<pre><code class="language-typescript">// src/utils/permissions/getNextPermissionMode.ts:34
+export function getNextPermissionMode(
+  toolPermissionContext: ToolPermissionContext,
+): PermissionMode {
+  switch (toolPermissionContext.mode) {
+    case 'default':
+      // ant 用户路径：跳过 acceptEdits/plan，直接进入 bypassPermissions 或 auto
+      if (process.env.USER_TYPE === 'ant') {
+        if (toolPermissionContext.isBypassPermissionsModeAvailable) {
+          return 'bypassPermissions'
+        }
+        if (canCycleToAuto(toolPermissionContext)) return 'auto'
+        return 'default'
+      }
+      return 'acceptEdits'
+
+    case 'acceptEdits':
+      return 'plan'
+
+    case 'plan':
+      if (toolPermissionContext.isBypassPermissionsModeAvailable) {
+        return 'bypassPermissions'
+      }
+      if (canCycleToAuto(toolPermissionContext)) return 'auto'
+      return 'default'
+
+    case 'bypassPermissions':
+      if (canCycleToAuto(toolPermissionContext)) return 'auto'
+      return 'default'
+
+    case 'dontAsk':
+      // UI 循环暂未暴露，若某种方式到达此处则回退到 default
+      return 'default'
+
+    default:
+      // 涵盖 auto（TRANSCRIPT_CLASSIFIER 启用时）及未来新模式——始终回退到 default
+      return 'default'
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/getNextPermissionMode.ts:38</code></p>
+<p>这个函数接受上下文（当前模式 + 各种权限标志），返回下一个 <code>PermissionMode</code>——<strong>没有任何副作用，没有任何状态修改</strong>。测试它只需要构造一个 <code>ToolPermissionContext</code> 字面量，直接断言返回值，不需要模拟数据库或 UI 组件。</p>
+<p><code>default</code> case 的兜底（最后一个 <code>return 'default'</code>）覆盖了所有未在 switch 中显式列出的模式——这是 fail-closed 的另一个体现：未知模式不崩溃，静默回到最保守状态。</p>
+<p><strong>变体 C：<code>cyclePermissionMode()</code> ——副作用的隔离层</strong></p>
+<p><code>getNextPermissionMode</code> 是纯计算，但用户实际按下 Shift+Tab 还需要执行副作用：清理上下文、持久化新状态。<code>cyclePermissionMode</code>（<code>src/utils/permissions/getNextPermissionMode.ts:88</code>）承担这个职责：</p>
+<pre><code class="language-typescript">// src/utils/permissions/getNextPermissionMode.ts:88
+export function cyclePermissionMode(
+  toolPermissionContext: ToolPermissionContext,
+  teamContext?: { leadAgentId: string },
+): { nextMode: PermissionMode; context: ToolPermissionContext } {
+  const nextMode = getNextPermissionMode(toolPermissionContext, teamContext)
+  return {
+    nextMode,
+    context: transitionPermissionMode(
+      toolPermissionContext.mode,
+      nextMode,
+      toolPermissionContext,
+    ),
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/getNextPermissionMode.ts:88</code></p>
+<p><strong>这个函数的结构是"副作用隔离"模式的物理实体</strong>：先调用纯函数计算下一状态，再调用有副作用的 <code>transitionPermissionMode</code> 应用转换，最后组装返回结果。测试"下一模式是什么"只需要测试 <code>getNextPermissionMode</code>；测试"转换时发生了什么"才需要测试 <code>cyclePermissionMode</code>。两个测试层，各自独立。</p>
+<p><strong>图 11-3：三种函数的职责分工</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant User as 用户 Shift+Tab
+    participant Cycle as cyclePermissionMode()&lt;br/&gt;副作用协调层
+    participant Pure as getNextPermissionMode()&lt;br/&gt;纯计算层
+    participant Gate as canCycleToAuto()&lt;br/&gt;双重检查门禁
+    participant Apply as transitionPermissionMode()&lt;br/&gt;副作用执行层
+
+    User-&gt;&gt;Cycle: 触发切换
+    Cycle-&gt;&gt;Pure: 计算下一模式（纯函数）
+    Pure-&gt;&gt;Gate: 可以进入 auto？
+    Gate--&gt;&gt;Pure: 缓存值 AND 实时值
+    Pure--&gt;&gt;Cycle: nextMode: PermissionMode
+    Cycle-&gt;&gt;Apply: 应用新状态（有副作用）
+    Apply--&gt;&gt;Cycle: 更新后的 context
+    Cycle--&gt;&gt;User: { nextMode, context }
+</code></pre>
+<p>注意调用顺序：纯计算（<code>getNextPermissionMode</code>）<strong>先于</strong>副作用（<code>transitionPermissionMode</code>）执行。这不是巧合，而是设计约束——如果纯计算返回了意外结果（如 <code>canCycleToAuto</code> 返回 false，下一模式变为 <code>default</code>），副作用可以无需执行就返回。计算先于副作用，是"不必要时不执行副作用"的最简实现。</p>
+<hr />
+<h2 id="模式剖析三层可组合决策链"><a class="header" href="#模式剖析三层可组合决策链">模式剖析：三层可组合决策链</a></h2>
+<p>把三个变体放在一起，一个清晰的层次结构浮现出来：</p>
+<pre><code>Claude Code 的权限决策链是一个三层可组合结构：
+
+  [消费层] Shift+Tab 处理器 / API 端点 / 配置加载器
+      ↕  调用 cyclePermissionMode / toExternalPermissionMode
+  [计算层] getNextPermissionMode()       ← getNextPermissionMode.ts:34
+      ↕  纯函数，无副作用，可直接单元测试
+  [配置层] PERMISSION_MODE_CONFIG         ← PermissionMode.ts:43
+      ↕  一个结构体，展示属性 + external 映射
+  [类型层] PermissionMode 字符串字面量联合 ← types/permissions.ts:22
+</code></pre>
+<p>每层职责单一：</p>
+<ul>
+<li><strong>类型层</strong>（<code>PermissionMode</code>）：定义合法状态集合，5 个对外可见 + <code>auto</code> 条件启用</li>
+<li><strong>配置层</strong>（<code>PERMISSION_MODE_CONFIG</code>）：管理展示属性和 <code>external</code> 映射，一处修改覆盖所有下游</li>
+<li><strong>计算层</strong>（<code>getNextPermissionMode</code>）：纯函数状态机，决定按 Tab 后的目标模式</li>
+<li><strong>消费层</strong>（<code>cyclePermissionMode</code>/<code>toExternalPermissionMode</code> 等）：面向不同场景的接口暴露，隔离调用者</li>
+</ul>
+<p><strong><code>return</code> 是层间连接的关键</strong>。<code>getNextPermissionMode</code> 返回的 <code>PermissionMode</code> 字符串是所有层共享的"通用货币"——配置层根据它查询 <code>PERMISSION_MODE_CONFIG</code>，副作用层根据它调用 <code>transitionPermissionMode</code>，UI 层根据它渲染状态符号。没有复杂的接口协议，一个字符串字面量就是层间契约。</p>
+<p><strong>"每个 case 知道自己的后继者"的设计哲学</strong>：<code>getNextPermissionMode</code> 的每个 <code>case</code> 分支直接返回下一个模式，而不是查询一张"转换表"。这意味着转换规则是<strong>代码</strong>，不是数据——TypeScript 编译器可以检查每个 case 的返回类型，确保它们都是合法的 <code>PermissionMode</code>。相比运行时查询转换表，编译时验证更早发现错误。</p>
+<p>这就是**可组合决策链（Composable Decision Chain）**模式的完整面貌：</p>
+<blockquote>
+<p>用字符串字面量联合类型定义有限状态，用一个统一结构体管理每种状态的所有属性（包括内外映射），用纯函数 switch-case 定义状态转换规则，用独立的包装函数隔离副作用——四个关注点独立演进，四层结构可按需选择性复用。</p>
+</blockquote>
+<p><strong>图 11-4：四层结构的数据流向</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    typelayer["类型层\nPermissionMode\ntypes/permissions.ts:22"] --&gt; config["配置层\nPERMISSION_MODE_CONFIG\nPermissionMode.ts:43"]
+    typelayer --&gt; calc["计算层\ngetNextPermissionMode()\ngetNextPermissionMode.ts:34"]
+    config --&gt; display["UI 展示\ntitle / symbol / color"]
+    config --&gt; external["API 映射\nexternal 字段\nauto→default"]
+    calc --&gt; gate["canCycleToAuto()\n双重检查门禁"]
+    calc --&gt; consume["消费层\ncyclePermissionMode()\ngetNextPermissionMode.ts:88"]
+    consume --&gt; apply["transitionPermissionMode()\n副作用执行"]
+    consume --&gt; result["{ nextMode, context }\n调用方获得"]
+</code></pre>
+<p>两条路径的分叉很重要：<strong>配置路径</strong>（类型层 → 配置层 → 展示/映射）服务于 UI 渲染和 API 序列化；<strong>计算路径</strong>（类型层 → 计算层 → 消费层）服务于模式切换。两条路径共享同一个类型层（<code>PermissionMode</code>），这是"可组合"的基础——更换配置层不影响计算路径，更换计算层不影响展示逻辑。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用？</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>Agent 系统需要分级权限（默认保守，可升级）</td><td>✓</td><td>决策链天然支持从最保守状态出发的渐进升级</td><td>单一布尔值（但无法分级）</td></tr>
+<tr><td>权限逻辑需要单元测试覆盖</td><td>✓</td><td>纯函数无依赖，测试直接调用 <code>getNextPermissionMode(ctx)</code></td><td>—</td></tr>
+<tr><td>内部模式对外 API 不可见（feature flag 模式）</td><td>✓</td><td><code>external</code> 字段在映射层屏蔽内部概念</td><td>每个 API 端点手动过滤（容易遗漏）</td></tr>
+<tr><td>权限状态需要序列化到配置文件（用户可读）</td><td>✓</td><td>字符串字面量（<code>"plan"</code>）比数字枚举（<code>2</code>）更可读</td><td>数字枚举（配置文件不友好）</td></tr>
+<tr><td>用户可手动切换安全级别（UI 快捷键）</td><td>✓</td><td>纯函数返回值可直接绑定任何 UI 事件</td><td>—</td></tr>
+<tr><td>需要运行时动态注册新权限级别（插件扩展）</td><td>✗</td><td>switch-case 是编译时静态的，新增模式需改代码</td><td>Map + 接口注册表</td></tr>
+<tr><td>权限决策依赖异步操作（网络鉴权）</td><td>✗（谨慎）</td><td><code>getNextPermissionMode</code> 是同步函数</td><td>异步权限验证器链</td></tr>
+<tr><td>权限状态数量超过 10 种且各有复杂行为</td><td>✗（谨慎）</td><td>case 分支过多，switch 维护困难</td><td>状态注册表 + 策略模式</td></tr>
+</tbody></table>
+</div>
+<p>Claude Code 的实践印证了表中前 5 行：整条权限决策链（类型层 → 配置层 → 计算层 → 消费层）完全同步、零依赖注入，<code>getNextPermissionMode</code> 的单元测试只需要构造一个 <code>{ mode: 'plan', isBypassPermissionsModeAvailable: true }</code> 对象，直接断言返回 <code>'bypassPermissions'</code>，没有任何 mock。</p>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p><strong>① 静态 switch-case 的扩展成本</strong></p>
+<p><code>getNextPermissionMode</code> 的 switch-case 在编译时是固定的——新增一种权限模式需要同时修改 <code>types/permissions.ts</code>（添加字符串字面量）、<code>PermissionMode.ts</code>（添加 PERMISSION_MODE_CONFIG 条目）、<code>getNextPermissionMode.ts</code>（添加 case 分支）三处。这是这个模式最主要的维护成本：不能"只改一处"。</p>
+<p>为什么不设计成数据驱动的转换表（<code>Map&lt;PermissionMode, (ctx) =&gt; PermissionMode&gt;</code>）？因为数据驱动失去了编译时的穷举检查——TypeScript 无法验证"所有 <code>PermissionMode</code> 都在 map 里"，而 <code>switch</code> + <code>default: return 'default'</code> 的 fail-closed 兜底让穷举不是强制要求，是安全选择。这个权衡值得：6 种模式的静态 switch 比运行时 map 的可维护性更好，代价是新增模式时 3 个文件都要改。</p>
+<p><strong>② 双重检查的维护负担</strong></p>
+<p><code>canCycleToAuto</code> 同时依赖两个检查来源：<code>ctx.isAutoModeAvailable</code>（启动时缓存）和 <code>isAutoModeGateEnabled()</code>（实时查询）。这解决了熔断器触发时的一致性问题，但引入了维护负担：两个来源在不同地方更新，如果熔断器逻辑演进，<code>canCycleToAuto</code> 也需要跟着修改。这是分布式状态的固有成本——"两份记录，需要手动保持一致"——无法完全消除，只能通过清晰注释（如源码中的那段注释）来降低理解门槛。</p>
+<p><strong>③ <code>dontAsk</code> 模式的不完整状态</strong></p>
+<p>源码注释写道 <code>dontAsk</code> 的 case：<code>// Not exposed in UI cycle yet, but return default if somehow reached</code>。这说明 <code>dontAsk</code> 是一个"存在但未完成"的模式——它在类型定义里，在配置 map 里，但在 UI 循环里没有入口。这是渐进式功能开发的常见状态：先建基础设施，再接入 UI。对系统稳定性没有影响（因为有 fail-closed 的 <code>return 'default'</code> 兜底），但对阅读代码的开发者来说是一个需要解释的"悬念"。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>① 与 GoF 状态模式（State Pattern）的比较</strong></p>
+<p>GoF 状态模式：<strong>"允许对象在内部状态改变时改变它的行为，对象看起来似乎修改了它的类。"</strong> GoF 实现通常为每个状态创建一个类，类内封装该状态下的行为，状态转换通过 <code>setState()</code> 完成。</p>
+<p>Claude Code 的可组合决策链的相同点：根据当前状态决定行为（下一个模式），状态驱动行为差异。关键差异：<strong>GoF 状态模式用类封装行为</strong>（每个状态类包含行为逻辑），Claude Code 用<strong>数据 + 纯函数</strong>（<code>PermissionModeConfig</code> 是数据，<code>getNextPermissionMode</code> 是函数）——没有类继承，没有 <code>this</code> 绑定。TypeScript 函数式风格下，避免了 class 继承的 OOP 负担，状态转换逻辑全部集中在一个函数里，一次阅读即可掌握所有转换规则。</p>
+<p><strong>② 与 GoF 责任链（Chain of Responsibility）的比较</strong></p>
+<p>GoF 责任链：<strong>"让多个对象都有机会处理请求，将这些对象连成链，沿链传递请求直到有一个对象处理为止。"</strong></p>
+<p>相同点：两者都有一条处理链，当前节点决定处理还是转发（或在 Claude Code 中：当前模式决定下一个模式）。关键差异：GoF 责任链的链是<strong>线性的</strong>（有终点，请求最终被某个节点处理），而可组合决策链是<strong>循环的</strong>（<code>default → acceptEdits → plan → default</code>，无终点，所有节点都是中间状态）。此外，GoF 责任链的每个节点是一个<strong>对象</strong>（包含处理逻辑），而 Claude Code 的节点是一个<strong>字符串字面量</strong>，转换逻辑集中在 <code>getNextPermissionMode</code> 一处——相比 6 个类分散在代码库各处，集中在一个函数里更容易阅读和修改。</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>可组合决策链</th><th>GoF 状态模式</th><th>GoF 责任链</th></tr></thead><tbody>
+<tr><td>状态表示</td><td>字符串字面量联合类型</td><td>状态类（实现接口）</td><td>处理者对象</td></tr>
+<tr><td>转换规则存放</td><td>集中（一个 switch-case 函数）</td><td>分散（每个状态类内部）</td><td>分散（每个处理者内部）</td></tr>
+<tr><td>链的形状</td><td>循环（无终点）</td><td>状态图（无循环限制）</td><td>线性（有终点）</td></tr>
+<tr><td>测试方式</td><td>直接调用纯函数</td><td>需要 mock 状态类方法</td><td>需要构造处理者链</td></tr>
+<tr><td>新增状态成本</td><td>改 3 个文件</td><td>新增 1 个类</td><td>新增 1 个处理者类</td></tr>
+<tr><td>Claude Code 使用</td><td>✅ 完整实现</td><td>架构概念参考</td><td>架构概念参考</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式-1可组合决策链composable-decision-chain"><a class="header" href="#模式-1可组合决策链composable-decision-chain">模式 1：可组合决策链（Composable Decision Chain）</a></h3>
+<p><strong>解决的问题</strong>：Agent 系统需要多级权限策略，不同安全级别对应不同的操作范围，且用户可以在运行时切换；同时展示属性和权限逻辑属性需要保持同步。</p>
+<p><strong>核心做法</strong>：用字符串字面量联合类型定义有限权限状态，用一个统一结构体（<code>PermissionModeConfig</code>）管理每种状态的展示属性和外部映射，用纯函数 switch-case 定义转换规则，副作用单独封装在包装函数中。</p>
+<p><strong>前置条件</strong>：权限状态数量固定（建议 ≤10），转换规则在编译时已知，需要单元测试覆盖。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/PermissionMode.ts:43</code>（<code>PERMISSION_MODE_CONFIG</code>）；<code>src/utils/permissions/getNextPermissionMode.ts:34</code>（<code>getNextPermissionMode</code>）</p>
+<hr />
+<h3 id="模式-2纯函数状态转换pure-state-transition"><a class="header" href="#模式-2纯函数状态转换pure-state-transition">模式 2：纯函数状态转换（Pure State Transition）</a></h3>
+<p><strong>解决的问题</strong>：UI 快捷键触发的状态切换逻辑难以测试，因为副作用（上下文清理、持久化）和计算逻辑混在一起，测试需要 mock 整个运行时环境。</p>
+<p><strong>核心做法</strong>：将"下一个状态是什么"（纯计算，<code>getNextPermissionMode</code>）和"进入新状态时做什么"（副作用，<code>cyclePermissionMode</code>）拆成两个独立函数，纯函数先于副作用执行，两层测试边界清晰。</p>
+<p><strong>前置条件</strong>：状态转换可以表达为纯函数（输入=当前状态+上下文，输出=下一状态）；副作用可以在计算完成后统一执行（无需交织）。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/getNextPermissionMode.ts:34</code>（纯计算）vs <code>src/utils/permissions/getNextPermissionMode.ts:88</code>（副作用包装）</p>
+<hr />
+<h3 id="模式-3内外模式分离internalexternal-mode-separation"><a class="header" href="#模式-3内外模式分离internalexternal-mode-separation">模式 3：内外模式分离（Internal/External Mode Separation）</a></h3>
+<p><strong>解决的问题</strong>：内部实现需要 feature flag 控制的实验性模式（<code>auto</code>），但对外 API 和配置文件不应暴露此内部概念，每个对外接口手动过滤容易遗漏。</p>
+<p><strong>核心做法</strong>：在配置结构体中为每种内部模式显式声明 <code>external</code> 字段（对外映射的模式名），通过统一的 <code>toExternalPermissionMode()</code> 函数一次性处理内外转换，调用方不需要知道 <code>auto</code> 的存在。</p>
+<p><strong>前置条件</strong>：存在需要对外隐藏的内部模式；对外 API 有统一的序列化入口。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/PermissionMode.ts:87</code>（<code>auto</code> 的 <code>external: 'default'</code>）；<code>src/utils/permissions/PermissionMode.ts:111</code>（<code>toExternalPermissionMode</code>）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>用字符串字面量联合类型定义权限模式，而非数字枚举</strong>。<code>'default' | 'acceptEdits' | 'plan'</code> 比 <code>0 | 1 | 2</code> 更可读，序列化到配置文件时用户直接理解，配合 TypeScript 的 exhaustive switch check 还能防止遗漏 case。</p>
+</li>
+<li>
+<p><strong>将状态转换逻辑写成纯函数</strong>，完全不包含副作用。测试只需要构造一个对象字面量：<code>getNextPermissionMode({ mode: 'plan', isBypassPermissionsModeAvailable: true })</code> 直接断言结果，不需要启动应用、不需要 mock 数据库、不需要 mock UI。参考 <code>getNextPermissionMode.ts:34</code>。</p>
+</li>
+<li>
+<p><strong>为配置映射表中的每种内部状态显式声明 <code>external</code> 字段</strong>，而非在每个 API 端点手动过滤。一个 <code>toExternalPermissionMode()</code> 函数覆盖所有对外场景，不可能遗漏。参考 <code>PermissionMode.ts:87</code> 的 <code>external: 'default'</code> 模式。</p>
+</li>
+<li>
+<p><strong>在条件性高权限状态的门禁函数中做双重检查</strong>——同时检查启动时缓存的值和调用时实时查询的值。缓存值提供性能，实时值提供准确性；当两者不一致时，优先信任实时值，并记录调试日志。参考 <code>canCycleToAuto</code> 的实现。</p>
+</li>
+<li>
+<p><strong>将展示属性和逻辑属性合并到同一个配置结构体</strong>（仿照 <code>PermissionModeConfig</code>）。强制同步更新比"两个独立 map 约定手动保持一致"更可靠，特别是在多人协作、长期维护的代码库中。</p>
+</li>
+<li>
+<p><strong>用 <code>default: return conservativeMode</code></strong> 的 fail-closed 兜底替代 <code>default: throw new Error</code>。未知状态静默回退到最保守选项，比让用户看到崩溃信息更好。参考 <code>getNextPermissionMode</code> 最后的 <code>default: return 'default'</code>。</p>
+</li>
+</ul>
+<hr />
+<p><strong>图 11-5：三个模式的协同关系</strong></p>
+<pre><code class="language-mermaid">mindmap
+  root((可组合决策链))
+    配置层
+      PermissionModeConfig
+      展示属性+external字段
+      合并维护强制同步
+    计算层
+      getNextPermissionMode
+      纯函数无副作用
+      编译时穷举检查
+    隔离层
+      cyclePermissionMode
+      纯计算先于副作用
+      两层测试边界清晰
+    分离层
+      internal vs external
+      auto→default 映射
+      对外接口稳定
+</code></pre>
+<p>四个关注点独立演进：配置层决定"模式长什么样"，计算层决定"按 Tab 后去哪"，隔离层决定"切换时做什么"，分离层决定"对外暴露什么"。任意一层的变化不影响其他层。</p>
+<hr />
+<p>权限模式的定义和切换是权限系统的"顶层"——"当前用户处于哪个安全级别"。更细粒度的问题是：当一个具体工具被调用时，AI 自动判断模式（<code>auto</code>）下分类器如何决定是否允许执行？这是第 12 章的主题——我们将深入 <code>autoModeState</code> 和 AI 自动分类器的完整决策链。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part3/ch10.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part3/ch12.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part3/ch10.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part3/ch12.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,316 @@
+# 第 9 章写作计划
+
+**批次**：批次 5（来自 plans/batch.md）
+**章节**：ch09 — 渐进式安全
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+展示 Claude Code 的权限系统如何从 default（最严格）到 bypassPermissions（无护栏）形成连续谱系，以及 AI 分类器如何实现"让 Claude 判断 Claude 的行为是否安全"——这是 Harness 在安全性上的递归应用。读完本章，读者将理解 Harness 的安全模型不是简单的开关，而是由规则分类器、AI 分类器、危险模式库和否决追踪 4 个子系统构成的纵深防御。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- 安全不是一个开关，是一条连续谱——从"每步都问用户"到"完全不问"之间，Claude Code 设计了 5 个精确的档位，每个档位有不同的守卫机制。最精妙的一档用 Claude 自己来判断 Claude 的行为是否安全。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向前链接第 7 章（工具基座的 checkPermissions）、第 8 章（Plan Mode 是一个权限档位）
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（5 个外部模式、7 个内部模式、maxConsecutive=3、maxTotal=20 等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/types/permissions.ts | EXTERNAL_PERMISSION_MODES（16-23）、INTERNAL_PERMISSION_MODES（33-38）| 行 16-40 |
+| 2 | src/utils/permissions/getNextPermissionMode.ts | 谱系循环顺序（38-85） | 行 33-85 |
+| 3 | src/utils/permissions/permissions.ts | hasPermissionsToUseTool（473-560）—4 层判断链 | 行 473-570 |
+| 4 | src/utils/permissions/denialTracking.ts | DENIAL_LIMITS（12）、shouldFallbackToPrompting（40） | 全文（45行） |
+| 5 | src/utils/permissions/yoloClassifier.ts | classifyYoloAction（1012-1060）、AutoModeRules（85） | 行 85-100, 1012-1060 |
+| 6 | src/utils/permissions/dangerousPatterns.ts | CROSS_PLATFORM_CODE_EXEC 列表 | 全文（80行） |
+
+验证文件存在：
+```bash
+ls src/types/permissions.ts src/utils/permissions/getNextPermissionMode.ts src/utils/permissions/permissions.ts src/utils/permissions/denialTracking.ts src/utils/permissions/yoloClassifier.ts src/utils/permissions/dangerousPatterns.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 9.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 9.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 链接第 7/8 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图 | 图 9-1、9-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 9-1、9-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「最好的安全护栏是透明的——用户感知不到它，但越界的模型行为不可能穿过它。」
+
+### 节 9.1：问题——单一权限开关为什么不够
+- 核心主张：不同使用场景需要不同的安全级别——个人开发者和企业 CI/CD 对权限的需求截然不同，单一模式无法满足全部场景
+- 源码锚点：
+  - `src/types/permissions.ts:16` — `EXTERNAL_PERMISSION_MODES`：5 个外部模式（acceptEdits/bypassPermissions/default/dontAsk/plan）
+  - `src/types/permissions.ts:33` — `INTERNAL_PERMISSION_MODES`：内部增加 auto 和 bubble（内置模式）
+- 概念层次：定义（为什么需要谱系）→ 设计意图
+- 权衡分析：N/A
+- 包含元素：表格（5 个外部模式的适用场景）
+- **⛔ 内容密度规划**：
+  - 引入段要点：5 个外部模式（面向用户）+ 2 个内部模式（auto/bubble），覆盖从"完全手动"到"完全自动"的全部场景
+  - 解读段要点：EXTERNAL_PERMISSION_MODES 和 INTERNAL_PERMISSION_MODES 的分层设计——外部模式是用户可配置的，内部模式是 Harness 内部使用的；auto 模式是内部模式（ant-only Feature Flag）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B2
+
+### 节 9.2：黄金法则——安全谱系是从严到宽的单向门
+- 核心主张：权限谱系的设计原则是"从最严开始，用户主动解锁更宽"——不存在默认宽松、用户主动收严的设计
+- 源码锚点：
+  - `src/utils/permissions/getNextPermissionMode.ts:33` — `getNextPermissionMode`：按 Shift+Tab 循环的顺序暴露了谱系的设计意图：default → acceptEdits → plan → bypassPermissions → default（循环）
+  - `src/utils/permissions/getNextPermissionMode.ts:40` — 注释"Ants skip acceptEdits and plan — auto mode replaces them"——内部用户的谱系不同
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：单向解锁 vs 双向调节——用户可以向宽松方向移动（default→bypassPermissions），也可以向严格方向收回（bypassPermissions→default），但系统的默认值始终是最严格的
+- 包含元素：Mermaid 图（谱系循环顺序）
+- **⛔ 内容密度规划**：
+  - 引入段要点：getNextPermissionMode 的 switch-case 是谱系最直接的源码证明
+  - 解读段要点：谱系循环：default → acceptEdits → plan → bypassPermissions → default。每个方向转换都有明确的语义——向右解锁更多自主性，向左增加安全护栏
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 9.3：适用场景——哪个权限档位用于哪个场景
+- 核心主张：5 个权限档位各有精确的适用场景，从交互式开发到无人值守 CI 全覆盖
+- 源码锚点：
+  - `src/utils/permissions/PermissionMode.ts:41-75` — PERMISSION_MODE_CONFIG：每个模式的 title/shortTitle/color——color='error' 标记高危模式
+- 概念层次：定义 → 实际案例
+- 权衡分析：N/A
+- 包含元素：表格（5 个模式适用场景）
+- **⛔ 内容密度规划**：
+  - 引入段要点：color='error' 是危险等级的视觉编码，bypassPermissions 和 dontAsk 都是 error 级
+  - 解读段要点：5 个档位从严到宽——default（每次操作需确认）、acceptEdits（文件编辑自动接受，命令仍需确认）、plan（只读探索，详见第 8 章）、dontAsk（静默拒绝代替询问）、bypassPermissions（完全无护栏）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：C6、E2
+
+### 节 9.4：工作原理——4 个子系统构成的纵深防御
+- 核心主张：Harness 的权限判断不是一个 if-else，而是 4 个子系统串联：规则分类器→危险模式库→AI 分类器→否决追踪
+- 源码锚点：
+  - `src/utils/permissions/permissions.ts:473` — `hasPermissionsToUseTool`：4 层判断的入口
+  - `src/utils/permissions/dangerousPatterns.ts:15` — `CROSS_PLATFORM_CODE_EXEC`：危险模式库（python/node/bash/sh 等代码执行入口点）
+  - `src/utils/permissions/yoloClassifier.ts:1012` — `classifyYoloAction`：AI 分类器——把对话历史发给 Claude，让它判断当前操作是否安全
+  - `src/utils/permissions/yoloClassifier.ts:85` — `AutoModeRules`：AI 分类器的规则配置（内置规则集）
+  - `src/utils/permissions/denialTracking.ts:12` — `DENIAL_LIMITS = { maxConsecutive: 3, maxTotal: 20 }`：否决追踪上限
+  - `src/utils/permissions/denialTracking.ts:40` — `shouldFallbackToPrompting`：连续/总计否决超限则回退到人工确认
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：AI 分类器的递归性：用 Claude 模型判断 Claude 行为是否安全，是一种递归设计——好处是分类器能理解上下文（不只是模式匹配），代价是分类器本身可能被对抗性提示操控（因此有否决追踪作为兜底）
+- 包含元素：Mermaid 流程图（4 层防御链）、表格（每层的输入/输出/失败行为）
+- **⛔ 内容密度规划**：
+  - 引入段要点：一次工具调用在 auto 模式下经过 4 次独立判断才能执行
+  - 解读段要点：第 1 层（规则分类器）——检查用户配置的允许/拒绝规则；第 2 层（危险模式库）——CROSS_PLATFORM_CODE_EXEC 中的 python/node/bash 等直接拒绝；第 3 层（AI 分类器）——classifyYoloAction 把整个对话历史发给 Claude，返回 shouldBlock；第 4 层（否决追踪）——连续 3 次否决或总计 20 次否决后 shouldFallbackToPrompting=true，强制回到人工确认
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 9.5：权衡——AI 分类器的 3 个设计代价
+- 核心主张：AI 分类器在安全性和自主性之间找到了独特平衡点，但引入了 3 个不可忽视的代价
+- 源码锚点：
+  - `src/utils/permissions/yoloClassifier.ts:85` — `AutoModeRules` 的结构——规则可配置，说明 AI 分类器不是硬编码
+  - `src/utils/permissions/dangerousPatterns.ts:1` — 注释"An allow rule like Bash(python:*) lets the model run arbitrary code via that interpreter, bypassing the auto-mode classifier"——危险模式库是 AI 分类器的前置守卫
+  - `src/utils/permissions/denialTracking.ts:12` — `maxConsecutive: 3, maxTotal: 20`——否决上限的具体数字是权衡点
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - AI 分类器的对抗性：用 Claude 判断 Claude 的行为，在提示词注入场景下可能被绕过——因此在 AI 分类器之前有危险模式库（不可绕过的硬编码拒绝）
+  - 否决阈值的设定：maxConsecutive=3 和 maxTotal=20 是精确校准的——太低则自主模式频繁退出，太高则连续错误操作无法被人类干预
+  - 内部模式（auto）不对外暴露：auto 模式是 ant-only（内部用户专用），通过 Feature Flag 控制——说明 AI 分类器机制尚在验证阶段，未达到对外开放的可靠性要求（推断）
+- 包含元素：对比表格（3 个权衡）
+- **⛔ 内容密度规划**：
+  - 引入段要点：AI 分类器是纵深防御中最有趣的一层，也是代价最复杂的一层
+  - 解读段要点：3 个具体代价——可被对抗（危险模式库兜底）、否决阈值选择（3+20 的精确数字）、对外不开放（auto 是内部模式）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 9.6：踩坑指南——权限系统中的常见错误
+- 核心主张：权限系统最常见的错误是过度宽松的 allow 规则意外覆盖了危险模式库的保护
+- 源码锚点：
+  - `src/utils/permissions/dangerousPatterns.ts:1` — 注释：`Bash(python:*)` 这样的允许规则会绕过 AI 分类器
+  - `src/utils/permissions/denialTracking.ts:40` — `shouldFallbackToPrompting`：连续否决后的回退机制
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：一条 allow 规则可以悄无声息地撤销多层安全防护
+  - 解读段要点：陷阱一——`Bash(python:*)` 通配允许规则绕过 AI 分类器（危险模式库注释明确警告）；陷阱二——在 auto 模式下运行高危操作触发否决累积，最终强制退出 auto 模式；陷阱三——误以为 bypassPermissions 只是"不问用户"（实际上完全移除了 4 层防御）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 9.7：实证——一次 auto 模式工具调用的决策链
+- 核心主张：在 auto 模式下，一次 Bash 工具调用在执行前经过了至少 4 次独立判断
+- 源码锚点：
+  - `src/utils/permissions/permissions.ts:473` — 入口 hasPermissionsToUseTool
+  - `src/utils/permissions/dangerousPatterns.ts:15` — CROSS_PLATFORM_CODE_EXEC 第一道硬检查
+  - `src/utils/permissions/yoloClassifier.ts:1012` — classifyYoloAction 调用 Claude API
+  - `src/utils/permissions/denialTracking.ts:40` — shouldFallbackToPrompting 兜底
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 流程图（决策链）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一次 `Bash("rm -rf /tmp/old")` 在 auto 模式下的决策路径
+  - 解读段要点：入口（hasPermissionsToUseTool）→ 规则匹配（无匹配规则）→ 危险模式检查（rm 不在 CROSS_PLATFORM_CODE_EXEC 列表中，通过）→ AI 分类器（classifyYoloAction 发整个对话历史给 Claude）→ Claude 返回 shouldBlock=false → 否决计数检查（consecutiveDenials=0<3）→ 允许执行
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：渐进式安全的本质
+- 本质：5 个权限档位构成从严到宽的单向解锁谱系，auto 档位通过 AI 递归判断实现"让 Claude 监督 Claude"
+- 关键机制：4 层纵深防御（规则→危险模式→AI 分类器→否决追踪）、DENIAL_LIMITS（3/20）、危险模式库
+- 适用边界：默认档位适合所有场景；auto 档位适合信任度高的半自动场景；bypassPermissions 仅适合完全受控的 CI 环境
+- 与其他模式的关系：本章是第 7 章（工具基座 checkPermissions）的运行时实现；第 8 章（Plan Mode）是权限谱系的一个具体档位；第 10 章（Hooks）在权限决策后提供进一步的行为拦截
+
+### 章末：用户能做什么（必填）
+1. 审视你的 Agent 使用了哪个权限档位——生产环境应避免 bypassPermissions
+2. 为你的工具实现 toAutoClassifierInput，确保 AI 分类器能看到安全相关信息（详见第 7 章）
+3. 检查你的 allow 规则是否包含代码执行入口点（python/node/bash），这些会绕过 AI 分类器
+4. 如果实现 auto 模式类似系统，设置合理的否决连续/总计上限（参考 3/20 的比例设计）
+5. 为高危操作（rm/overwrite）构建专用的危险模式库，在 AI 分类器之前提供硬拒绝
+6. 监控 shouldFallbackToPrompting 触发频率，高频触发说明 AI 分类器在当前任务类型上不可靠
+7. 理解 auto 模式的递归性质——AI 分类器也可能被误导，否决追踪是最后的安全网
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图9-1 | 权限谱系从严到宽 | Mermaid graph LR | default→acceptEdits→plan→bypassPermissions 的循环，标注每个档位的守卫机制 | 9.2 |
+| 图9-2 | auto 模式 4 层纵深防御 | Mermaid flowchart TD | hasPermissionsToUseTool→规则检查→危险模式库→AI 分类器→否决追踪→允许/拒绝 | 9.4 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 9.4 节（4 层纵深防御）——本章核心
+3. 写 9.2 节（黄金法则：谱系）
+4. 写 9.1 节（问题）
+5. 写 9.3 节（适用场景）
+6. 写 9.5 节（权衡）
+7. 写 9.6 节（踩坑指南）
+8. 写 9.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '16p' src/types/permissions.ts                           # EXTERNAL_PERMISSION_MODES
+sed -n '33p' src/types/permissions.ts                           # INTERNAL_PERMISSION_MODES
+sed -n '33p' src/utils/permissions/getNextPermissionMode.ts     # 函数注释
+sed -n '38p' src/utils/permissions/getNextPermissionMode.ts     # switch 入口
+sed -n '473p' src/utils/permissions/permissions.ts              # hasPermissionsToUseTool
+sed -n '12p' src/utils/permissions/denialTracking.ts            # DENIAL_LIMITS
+sed -n '40p' src/utils/permissions/denialTracking.ts            # shouldFallbackToPrompting
+sed -n '1012p' src/utils/permissions/yoloClassifier.ts          # classifyYoloAction
+sed -n '85p' src/utils/permissions/yoloClassifier.ts            # AutoModeRules
+sed -n '15p' src/utils/permissions/dangerousPatterns.ts         # CROSS_PLATFORM_CODE_EXEC
+sed -n '1p' src/utils/permissions/dangerousPatterns.ts          # 注释
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch09.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

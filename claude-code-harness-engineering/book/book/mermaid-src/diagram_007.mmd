@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant User as 用户
+    participant QE as QueryEngine
+    participant QL as queryLoop
+    participant API as 模型API
+    participant Tools as 工具层
+
+    User->>QE: submitMessage(prompt)
+    QE->>QE: processUserInput + recordTranscript
+    QE->>QL: for await (query(...))
+
+    QL->>API: callModel(messages)
+    API-->>QL: stream_event(message_start)
+    API-->>QL: stream_event(content_block)
+    API-->>QL: stream_event(message_delta stop_reason=tool_use)
+    QL-->>QE: yield assistant消息
+    QE->>QE: mutableMessages.push + turnCount追踪
+
+    QL->>Tools: 执行工具调用
+    Tools-->>QL: 工具结果
+    QL-->>QE: yield user消息(工具结果)
+
+    QL->>QL: 检查maxTurns
+    QL->>QL: state = next(turnCount+1)
+    QL->>API: callModel(messages+工具结果)
+    Note over QL,API: 下一轮循环开始

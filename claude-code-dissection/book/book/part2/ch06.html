@@ -1,0 +1,396 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 6 章：用户输入的三条分叉路 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第6章用户输入的三条分叉路"><a class="header" href="#第6章用户输入的三条分叉路">第6章：用户输入的三条分叉路</a></h1>
+<blockquote>
+<p><em>"Every input is a question: what do you want from me?"</em></p>
+</blockquote>
+<blockquote>
+<p>用户输入 <code>/help</code> 和用户输入 <code>如何优化这段代码</code> 都是"输入"，但前者不该经过 LLM——直接处理更快且不花 token。用户输入 <code>!git status</code> 也不该经过 LLM——直接执行。<code>processUserInput</code> 是这个分叉的入口，它的设计决定了哪些输入走 AI、哪些走本地。</p>
+</blockquote>
+<p>你在终端输入了一行文字，按下回车。Claude Code 收到这个输入后，第一件事是什么？</p>
+<p>不是调用 LLM。不是读文件。而是<strong>判断这行输入是什么</strong>——它是一个 AI 应该处理的问题，还是一个本地命令，还是一个需要特殊路由的指令。</p>
+<p><code>processUserInput</code> 是这个判断的入口，是 REPL 和 Agent 主循环之间的第一道分叉口。它的签名揭示了复杂度：</p>
+<pre><code class="language-typescript">// src/utils/processUserInput/processUserInput.ts:85
+export async function processUserInput({
+  input,
+  preExpansionInput,
+  mode,
+  setToolJSX,
+  context,
+  pastedContents,
+  ideSelection,
+  messages,
+  uuid,
+  isAlreadyProcessing,
+  querySource,
+  canUseTool,
+  skipSlashCommands,
+  bridgeOrigin,
+}: ...)
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/processUserInput/processUserInput.ts:85</code></p>
+<p>14 个参数。不是因为设计差，而是因为"用户按下回车"这个简单动作背后有很多上下文——当前运行模式、是否正在处理、输入来自哪里（终端/移动端/IDE）。</p>
+<p>这章解析分流逻辑：三条路径的优先级是什么，Slash 命令为什么能绕过 LLM，以及如果什么都不匹配会发生什么。</p>
+<h2 id="61-优先级如何决定将输入路由到哪条路径"><a class="header" href="#61-优先级如何决定将输入路由到哪条路径">6.1 优先级如何决定将输入路由到哪条路径？</a></h2>
+<p><code>processUserInputBase</code>（<code>src/utils/processUserInput/processUserInput.ts:281</code>）按以下顺序检查输入，首次匹配即路由：</p>
+<p><strong>源码参考：</strong> <code>src/utils/processUserInput/processUserInput.ts:281</code></p>
+<pre><code>1. Ultraplan 关键词检测（feature flag 门控，实验特性）
+2. Bash 模式（mode === 'bash'，前缀 !）
+3. Slash 命令（inputString.startsWith('/')）
+4. 文本提示（默认路径，不匹配以上任何条件）
+</code></pre>
+<p>核心代码在 <code>processUserInputBase</code> 的 450-580 行段落：</p>
+<pre><code class="language-typescript">// src/utils/processUserInput/processUserInput.ts:518
+// Bash commands
+if (inputString !== null &amp;&amp; mode === 'bash') {
+  const { processBashCommand } = await import('./processBashCommand.js')
+  return addImageMetadataMessage(
+    await processBashCommand(inputString, ...),
+    imageMetadataTexts,
+  )
+}
+
+// Slash commands
+if (inputString !== null &amp;&amp; !effectiveSkipSlash &amp;&amp; inputString.startsWith('/')) {
+  const { processSlashCommand } = await import('./processSlashCommand.js')
+  const slashResult = await processSlashCommand(inputString, ...)
+  return addImageMetadataMessage(slashResult, imageMetadataTexts)
+}
+
+// 默认：文本提示
+return addImageMetadataMessage(
+  processTextPrompt(inputString, imageContentBlocks, ...),
+  imageMetadataTexts,
+)
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/processUserInput/processUserInput.ts:518,538,578</code></p>
+<p>注意：三条路径都用了<strong>动态 import</strong>（<code>await import('./processBashCommand.js')</code>）。这是延迟加载——Bash 和 Slash 处理模块只在真正需要时才加载，减少启动时的模块初始化开销。<code>processTextPrompt</code> 是唯一的静态导入（<code>src/utils/processUserInput/processUserInput.ts:61</code>），因为它是默认路径，总会用到。</p>
+<p><strong>源码参考：</strong> <code>src/utils/processUserInput/processUserInput.ts:61</code>（静态导入）、<code>src/utils/processUserInput/processUserInput.ts:518</code>（动态 import）</p>
+<p><strong>图 6-1：用户输入分流决策树</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    input["用户输入\n（string | ContentBlock[]）"]
+    ultraplan{feature ULTRAPLAN\n且含关键词?}
+    bash_mode{mode === bash\n或 ! 前缀?}
+    slash{startsWith / ?}
+    text["processTextPrompt()\n→ UserMessage\n→ 触发 LLM 调用"]
+    bash_exec["processBashCommand()\n→ 本地执行\n→ SystemLocalCommandMessage"]
+    slash_exec["processSlashCommand()\n→ 命令执行\n→ SystemLocalCommandMessage"]
+    ultraplan_exec["路由到 /ultraplan\n→ 远程 Plan 会话"]
+
+    input --&gt; ultraplan
+    ultraplan --&gt;|是| ultraplan_exec
+    ultraplan --&gt;|否| bash_mode
+    bash_mode --&gt;|是| bash_exec
+    bash_mode --&gt;|否| slash
+    slash --&gt;|是| slash_exec
+    slash --&gt;|否| text
+</code></pre>
+<p>图中 <code>SystemLocalCommandMessage</code> 是关键：Bash 和 Slash 路径的结果类型不是 <code>UserMessage</code>，它们<strong>不进入 LLM 调用链</strong>（详见 6.2 节）。</p>
+<h3 id="为什么是单个大函数而非-strategy-模式"><a class="header" href="#为什么是单个大函数而非-strategy-模式">为什么是单个大函数而非 Strategy 模式？</a></h3>
+<p>Strategy 模式更优雅——为每种输入类型定义一个 Handler 接口，运行时动态选择。为什么不这样做？</p>
+<p>原因在路由条件的复杂性：Ultraplan 路由需要检查 feature flag、session 状态、输入模式等多个条件组合。这些条件互相关联，难以拆分成独立的 Handler 匹配函数。<strong>当路由条件是全局上下文的函数（而非输入的函数）时，集中判断比 Strategy 更清晰</strong>。</p>
+<h2 id="62-slash-命令如何绕过-llm"><a class="header" href="#62-slash-命令如何绕过-llm">6.2 Slash 命令如何绕过 LLM？</a></h2>
+<p>这是分流机制最重要的设计点。当 <code>/clear</code>、<code>/help</code>、<code>/model</code> 这类命令被执行时，用户不希望等 LLM 响应——这些是本地操作，应该立即完成。</p>
+<p>关键在于消息类型。<code>processSlashCommand</code> 的结果被 <code>isSystemLocalCommandMessage</code> 标记：</p>
+<pre><code class="language-typescript">// src/utils/processUserInput/processSlashCommand.tsx:34
+import {
+  // ...
+  isSystemLocalCommandMessage,
+  // ...
+} from '../messages.js';
+</code></pre>
+<pre><code class="language-typescript">// src/utils/processUserInput/processSlashCommand.tsx:515
+messages: messageShouldQuery || newMessages.every(isSystemLocalCommandMessage)
+  || isCompactResult ? newMessages : [createSyntheticUserCaveatMessage(), ...newMessages],
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/processUserInput/processSlashCommand.tsx:34,515</code></p>
+<p><code>SystemLocalCommandMessage</code> 是一种特殊消息类型——在 REPL 层被识别和消费，<strong>不会被传递到 <code>QueryEngine.submitMessage()</code></strong>，因此不会触发 <code>query.ts</code> 的 LLM 调用。</p>
+<p><strong>图 6-2：消息类型决定是否触发 LLM</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    subgraph Slash 命令路径
+        slash_cmd["/clear 输入"] --&gt; slash_proc["processSlashCommand()"]
+        slash_proc --&gt; local_msg["SystemLocalCommandMessage\n（本地消费，不进 LLM）"]
+    end
+
+    subgraph 文本提示路径
+        text_input["普通文本"] --&gt; text_proc["processTextPrompt()"]
+        text_proc --&gt; user_msg["UserMessage\n→ QueryEngine.submitMessage()\n→ LLM 调用"]
+    end
+</code></pre>
+<p>这个设计让 REPL 层能区分"需要 AI 处理"和"本地执行"两类消息，无需在 <code>QueryEngine</code> 内部做判断。</p>
+<h2 id="63-优先级队列如何处理快速连续输入"><a class="header" href="#63-优先级队列如何处理快速连续输入">6.3 优先级队列如何处理快速连续输入？</a></h2>
+<p>用户快速输入多条消息时，<code>processUserInput</code> 不会立即处理每一条——它通过 <code>messageQueueManager</code> 管理队列：</p>
+<pre><code class="language-typescript">// src/utils/messageQueueManager.ts:49
+// Priority determines dequeue order: 'now' &gt; 'next' &gt; 'later'.
+// Within the same priority, commands are processed FIFO.
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/messageQueueManager.ts:49</code></p>
+<p>三级优先级（<code>now</code> &gt; <code>next</code> &gt; <code>later</code>）保证了高优先级操作（如 abort、interrupt）能插队处理，而不是等待队列前面的普通消息处理完。同一优先级内 FIFO，保持输入顺序。</p>
+<p><strong>源码参考：</strong> <code>src/utils/messageQueueManager.ts:49</code>（优先级注释）、<code>src/utils/messageQueueManager.ts:56</code>（changeSignal 通知订阅方）</p>
+<h2 id="64-未知命令为什么不报错而是-fallthrough-到-llm"><a class="header" href="#64-未知命令为什么不报错而是-fallthrough-到-llm">6.4 未知命令为什么不报错，而是 fallthrough 到 LLM？</a></h2>
+<p>如果用户输入 <code>/doesnotexist</code>，会怎样？</p>
+<p><code>processUserInputBase</code> 对 Slash 命令的检查只看前缀 <code>/</code>，不在这里验证命令是否存在。验证发生在 <code>processSlashCommand</code> 内部——如果命令不存在，代码注释里说的是"fall through to plain text"：</p>
+<pre><code class="language-typescript">// src/utils/processUserInput/processUserInput.ts:450
+// Unknown /foo or unparseable — fall through to plain text, same as
+// pre-#19134. A mobile user typing "/shrug" shouldn't see "Unknown skill".
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/processUserInput/processUserInput.ts:450</code></p>
+<p>未知 <code>/</code> 命令 fallthrough 为普通文本，LLM 会收到 <code>/doesnotexist</code> 这个字符串并尝试响应。这是**宽容失败（Graceful Fallthrough）**设计——用户输入 <code>/shrug</code> 这类不是命令的斜杠内容时，不会看到报错，而是正常触发 AI 响应。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="优先级分流priority-based-routing"><a class="header" href="#优先级分流priority-based-routing">优先级分流（Priority-Based Routing）</a></h3>
+<p><strong>解决的问题</strong>：多种输入类型需要不同处理路径，且某些路径有更高优先级。</p>
+<p><strong>核心做法</strong>：按优先级依次检查输入特征（关键词 → 模式 → 前缀），首次匹配即路由，末尾设置通用默认路径兜底。</p>
+<p><strong>前置条件</strong>：输入类型有明确的优先级关系，且不同类型的处理完全分离。</p>
+<p><strong>源码证据</strong>：<code>src/utils/processUserInput/processUserInput.ts:518-578</code> — Bash 模式检查先于 Slash 命令，Slash 命令先于文本提示，文本提示是无条件的最终分支。</p>
+<h3 id="本地执行绕过local-execution-bypass"><a class="header" href="#本地执行绕过local-execution-bypass">本地执行绕过（Local Execution Bypass）</a></h3>
+<p><strong>解决的问题</strong>：部分操作（命令执行、本地配置）不需要 LLM 参与，但在同一输入入口进来。</p>
+<p><strong>核心做法</strong>：用特殊消息类型（<code>SystemLocalCommandMessage</code>）标记本地执行结果，上层消费时跳过 LLM 调用路径。</p>
+<p><strong>前置条件</strong>：有明确的"需要 AI"和"不需要 AI"的操作分类。</p>
+<p><strong>源码证据</strong>：<code>src/utils/processUserInput/processSlashCommand.tsx:515</code> — <code>isSystemLocalCommandMessage</code> 判断决定消息是否需要触发 LLM 查询。</p>
+<h3 id="宽容失败graceful-fallthrough"><a class="header" href="#宽容失败graceful-fallthrough">宽容失败（Graceful Fallthrough）</a></h3>
+<p><strong>解决的问题</strong>：边界情况（无效命令、未识别输入）应该有合理的默认行为而非报错。</p>
+<p><strong>核心做法</strong>：无法匹配任何特殊路径时，fallthrough 到默认处理路径（文本提示），让 AI 自行决策如何响应。</p>
+<p><strong>前置条件</strong>：默认路径（LLM）能处理任意文本输入，不会因未知格式崩溃。</p>
+<p><strong>源码证据</strong>：<code>src/utils/processUserInput/processUserInput.ts:450</code> — "Unknown /foo or unparseable — fall through to plain text, same as pre-#19134"，注释明确说明这是有意的宽容设计。</p>
+<h2 id="输入路由的设计权衡"><a class="header" href="#输入路由的设计权衡">输入路由的设计权衡</a></h2>
+<p><strong>为什么不在 REPL 层就区分斜杠命令和 AI 输入？</strong></p>
+<p>REPL 层只负责渲染和用户交互，不应该包含业务路由逻辑。斜杠命令的判断（<code>startsWith('/')</code>）如果放在 REPL 层，每次添加新路由规则都要改 REPL 代码，影响范围太大。</p>
+<p><strong>为什么不把 Bash 命令（<code>!</code>）和斜杠命令（<code>/</code>）合并处理？</strong></p>
+<p>两者的错误处理策略不同：斜杠命令找不到时显示命令提示；Bash 命令执行失败时显示 stderr。如果合并处理，错误响应会难以区分。更重要的是，Bash 命令的权限检查和斜杠命令的权限检查是不同的逻辑。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-在-processuserinput-里用-if-else-链处理所有路由情况"><a class="header" href="#-在-processuserinput-里用-if-else-链处理所有路由情况">❌ 在 processUserInput 里用 if-else 链处理所有路由情况</a></h3>
+<pre><code class="language-typescript">// ❌ 函数越来越长，难以维护
+async function processUserInput(input) {
+  if (input.startsWith('/')) { /* 斜杠命令处理 */ }
+  else if (input.startsWith('!')) { /* Bash 命令 */ }
+  else if (input.includes('@')) { /* 文件引用 */ }
+  else { /* AI 路由 */ }
+  // 6个月后：500行的 if-else 链
+}
+</code></pre>
+<p><strong>正确做法</strong>：每条路径是独立的处理器，<code>processUserInput</code> 只做判断和分发（<code>src/utils/processUserInput/processUserInput.ts:85</code>）。</p>
+<h3 id="-对斜杠命令也调用-llm-api"><a class="header" href="#-对斜杠命令也调用-llm-api">❌ 对斜杠命令也调用 LLM API</a></h3>
+<p>斜杠命令如 <code>/clear</code>、<code>/help</code> 是本地操作，不需要 Claude 处理。如果路由逻辑有 bug 把它们发给 API，会产生不必要的 token 费用，响应时间也从毫秒变成秒级。</p>
+<h3 id="-忘记-preexpansioninput-字段的用途"><a class="header" href="#-忘记-preexpansioninput-字段的用途">❌ 忘记 preExpansionInput 字段的用途</a></h3>
+<pre><code class="language-typescript">// preExpansionInput = 用户输入的原始文本（展开 @ 引用之前）
+// input = 展开后的完整上下文
+// 历史显示和命令建议应该用 preExpansionInput，而非展开后的长文本
+</code></pre>
+<p>用展开后的 <code>input</code> 展示历史，用户会看到一堆文件内容而不是自己输入的 <code>@file.ts</code>。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用消息类型区分"需要 AI"和"不需要 AI"的操作</strong>：不要靠条件判断绕开 AI 层，而是在消息层面标记区别</li>
+<li><strong>为分流逻辑设计明确的优先级</strong>：当多个条件可能同时成立时，用显式的优先级顺序而非 if-else 链</li>
+<li><strong>边界情况选择"宽容失败"而非"严格报错"</strong>：用户在输入框里打 <code>/shrug</code> 不应该看到报错</li>
+<li><strong>用动态 import 延迟加载非关键路径</strong>：Bash 和 Slash 处理模块只在实际使用时加载，减少启动开销</li>
+</ul>
+<hr />
+<p><em>第6章解析了用户输入的第一道分叉。第7章将深入斜杠命令系统：100+ 个命令是如何通过目录约定注册的，以及 <code>isCommandEnabled</code> 的三层过滤如何决定你能看到哪些命令。</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part1/ch05.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part2/ch07.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part1/ch05.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part2/ch07.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

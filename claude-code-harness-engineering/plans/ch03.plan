@@ -1,0 +1,320 @@
+# 第 3 章写作计划
+
+**批次**：批次 2（来自 plans/batch.md）
+**章节**：ch03 — 永不停歇的循环
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+剖析 QueryEngine 这个 Claude Code 的心脏。它不是简单的"接收输入→调用 API→返回输出"管道，而是一个带有状态追踪、自动压缩和多层终止条件判断的会话级状态机。读完本章，你将理解 Harness 循环在什么条件下继续执行、触发压缩、或优雅终止——以及这些决策如何编码了 Anthropic 对"模型什么时候会失控"的工程预判。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心状态转换有至少一处 `相对路径:行号` 格式的源码引用，重点锚定 `src/QueryEngine.ts:184`（class QueryEngine）和 `src/QueryEngine.ts:1186`（ask 函数）
+- 包含至少一个 Mermaid 状态机图展示循环生命周期
+- 跨章节引用使用"详见第 X 章"格式（至少引用第 2 章、第 4 章、第 11 章）
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- 每个用户消息都启动一个状态机——它会循环、压缩、偶尔终止，而驱动这一切的不是用户指令，是 Harness 对模型行为的工程预判。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 引用第 2 章（启动序列）、第 4 章（单轮执行）、第 11 章（压缩策略）
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/QueryEngine.ts | QueryEngine 类（184-210）、submitMessage（209-500）、循环核心（660-900） | 行 184-210, 440-500, 660-900 |
+| 2 | src/query.ts | queryLoop 函数（241-330）、终止条件（580-660, 1670-1729）、turnCount/maxTurns | 行 241-330, 580-660, 1670-1729 |
+| 3 | src/QueryEngine.ts | ask 函数入口（1186-1295） | 行 1186-1295 |
+| 4 | src/utils/processUserInput/processUserInput.ts | processUserInput 函数 | 行 85-120 |
+| 5 | src/services/compact/autoCompact.ts | 自动压缩触发条件 | 行 1-50 |
+| 6 | src/bootstrap/state.ts | 会话状态函数 | 行 430-470 |
+
+验证文件存在：
+```bash
+ls src/QueryEngine.ts src/query.ts src/utils/processUserInput/processUserInput.ts src/services/compact/autoCompact.ts src/bootstrap/state.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径引用 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注原文 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 3.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 3.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 引用第 2/4/11 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图，含状态机 | 图 3-1、3-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 3-1、3-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「循环不是重复，是收敛。每一轮都在向目标靠近一步——或者向终止条件靠近一步。」
+
+### 节 3.1：问题——用户消息之后发生了什么
+- 核心主张：用户消息不是"发送→接收"的单次交互，而是触发一个会话级状态机，它可能循环数十轮才终止
+- 源码锚点：
+  - `src/QueryEngine.ts:184` — `export class QueryEngine` — 状态机的载体
+  - `src/QueryEngine.ts:186` — `private mutableMessages: Message[]` — 会话消息是有状态的
+  - `src/QueryEngine.ts:209` — `async *submitMessage` — 每次 submit 是状态机的一个入口
+- 概念层次：定义（QueryEngine 是什么）→ 设计意图（为什么用状态机而非管道）
+- 权衡分析：N/A
+- 包含元素：对比表（管道模型 vs 状态机模型）
+- **⛔ 内容密度规划**：
+  - 引入段要点：大多数开发者假设 AI 对话是"发一条收一条"，但 Claude Code 的 QueryEngine 是一个会话级循环——一个用户消息可能触发 10 轮以上的工具调用循环
+  - 解读段要点：mutableMessages 是核心——每次 submitMessage 向消息数组追加内容，query() 的 for-await-of 循环消费 API 返回的每一条消息，根据消息类型决定继续还是终止
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B1
+
+### 节 3.2：黄金法则——Harness 循环的三层守卫
+- 核心主张：QueryEngine 的循环由三层守卫保护——轮次上限（maxTurns）、费用上限（maxBudgetUsd）、上下文阻塞（blocking_limit）。每一层都编码了"模型在什么条件下会失控"的工程预判
+- 源码锚点：
+  - `src/query.ts:1705-1711` — maxTurns 检查：`if (maxTurns && nextTurnCount > maxTurns)` → yield max_turns_reached → return
+  - `src/QueryEngine.ts:146-147` — maxTurns 和 maxBudgetUsd 参数定义
+  - `src/query.ts:641-646` — blocking_limit 检查：`return { reason: 'blocking_limit' }`
+  - `src/query.ts:1506-1511` — abort 时的 maxTurns 检查
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：硬上限 vs 软上限——maxTurns 是硬上限（到达即终止），而自动压缩是软上限（尝试恢复后再检查）。这个设计编码了"宁可强制终止也不要无限循环"的原则
+- 包含元素：表格（三层守卫对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：无限制的循环是 Agent 最危险的失败模式——模型可以永远"再试一次"
+  - 解读段要点：三层守卫的设计逻辑——maxTurns 限制工具调用轮数、maxBudgetUsd 限制费用、blocking_limit 在上下文溢出时终止。三层各有适用场景：SDK 调用用 maxTurns、企业用 maxBudgetUsd、所有人受益于 blocking_limit
+  - 散文与代码比例目标：100% 散文
+- 估计字数：800-1100 字
+- 对应 spec 场景：C3、C4、E1、E3
+
+### 节 3.3：适用场景——谁需要会话级状态机
+- 核心主张：任何需要多轮工具调用的 Agent 都需要会话级循环管理——问题不是"要不要循环"，而是"循环的守卫机制够不够"
+- 源码锚点：
+  - `src/QueryEngine.ts:1186-1268` — ask 函数封装了 QueryEngine，暴露了 maxTurns/budget/taskBudget 等参数
+  - `src/QueryEngine.ts:130` — QueryEngineConfig 类型定义了 20+ 个配置参数
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：如果你的 Agent 只做一轮调用，你不需要 QueryEngine。但任何需要"调用工具→看结果→决定下一步"的 Agent 都需要循环管理
+  - 解读段要点：从 ask 函数的参数列表看出 Anthropic 的设计意图——20+ 个参数暴露了完整的状态机控制面：轮次、预算、工具、模型、中断控制器
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 3.4：工作原理——queryLoop 的完整生命周期
+- 核心主张：queryLoop 是一个 `while(true)` 无限循环，每次迭代完成一轮"API 调用→工具执行→结果收集"，然后通过 continue 机制重新开始下一轮
+- 源码锚点：
+  - `src/query.ts:241-277` — queryLoop 函数签名和初始状态：`let state: State = { ... turnCount: 1 }`
+  - `src/query.ts:297-305` — `while (true)` 循环入口，每次迭代解构 state
+  - `src/query.ts:1719` — 下一轮状态赋值：`state = next`，turnCount 递增
+  - `src/QueryEngine.ts:660-680` — for-await-of 消费 query() 的每条消息，追踪 turnCount 和 lastStopReason
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：while(true) + continue vs 递归——Claude Code 选择 while(true) + 状态对象模式，避免递归栈溢出，代价是状态管理更复杂（7 个 continue 点）
+- 包含元素：Mermaid 状态机图（循环生命周期）、表格（state 字段说明）
+- **⛔ 内容密度规划**：
+  - 引入段要点：queryLoop 的结构出奇简洁——一个 while(true)，一个 State 对象，7 个 continue 点
+  - 解读段要点：每次迭代做四件事——(1) 检查压缩/终止条件，(2) 调用模型 API，(3) 执行工具，(4) 收集结果后决定 continue 或 return。State 对象在 7 个 continue 点重新构建，携带 turnCount、compactTracking 等跨迭代状态
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1000-1400 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 3.5：权衡——循环设计中的工程选择
+- 核心主张：queryLoop 的每个设计决策都在"灵活性 vs 安全性"之间做权衡
+- 源码锚点：
+  - `src/query.ts:282-288` — taskBudgetRemaining 跨压缩边界追踪的注释解释了为什么这个状态是循环局部的（"Loop-local to avoid touching the 7 continue sites"）
+  - `src/QueryEngine.ts:438-449` — transcript 写入时机的注释解释了为什么用户消息必须在 query 循环前写入磁盘（"if the process is killed... the transcript is left with only queue-operation entries"）
+  - `src/query.ts:594-610` — blocking_limit 检查的复杂跳过条件（压缩后跳过、compact/session_memory 查询跳过、reactiveCompact 启用时跳过）
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - 即时写入 vs 延迟写入 transcript：用户消息立即写入（确保 resume 可用），助手消息 fire-and-forget（避免阻塞流式传输）
+  - 简单终止 vs 条件化终止：blocking_limit 检查有 5 个跳过条件，编码了"不同场景需要不同的终止策略"
+  - 循环局部状态 vs 实例级状态：taskBudgetRemaining 是循环局部变量，避免修改 7 个 continue 点
+- 包含元素：对比表格（三个权衡点）
+- **⛔ 内容密度规划**：
+  - 引入段要点：循环设计不是"能跑就行"——每个状态管理决策都影响系统的可靠性
+  - 解读段要点：三个关键权衡——transcript 写入时机决定了 resume 的可靠性、blocking_limit 的条件化跳过避免了死锁、循环局部状态简化了 continue 点的维护
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 3.6：踩坑指南——循环设计中的陷阱
+- 核心主张：最常见的循环设计错误是——没有终止守卫、transcript 丢失、和状态管理不当
+- 源码锚点：
+  - `src/query.ts:1506-1511` — abort 路径中也要检查 maxTurns——注释说明"Check maxTurns before returning when aborted"
+  - `src/QueryEngine.ts:438-449` — transcript 在 query 循环前写入的注释解释了 kill-mid-request 的恢复问题
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：源码注释揭示了 Anthropic 工程师踩过的真实坑
+  - 解读段要点：陷阱一——"只在正常路径检查终止"（abort 路径也需要），陷阱二——"延迟写入 transcript"（进程被杀后无法 resume），陷阱三——"在循环中修改共享状态"（7 个 continue 点需要一致的状态更新）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 3.7：实证——从源码追踪一轮完整循环
+- 核心主张：一轮完整循环的消息流可以从源码的 yield 和 push 操作中完整追踪
+- 源码锚点：
+  - `src/QueryEngine.ts:762-767` — assistant 消息处理：push + yield + 捕获 stop_reason
+  - `src/QueryEngine.ts:781-784` — user 消息处理：turnCount++
+  - `src/QueryEngine.ts:791-807` — stream_event 处理：message_start/message_delta/message_stop 三阶段
+  - `src/query.ts:1679-1719` — 循环尾部：nextTurnCount、maxTurns 检查、state = next
+- 概念层次：实际案例 → 验证方法
+- 权衡分析：N/A
+- 包含元素：Mermaid 时序图（一轮循环的消息流）
+- **⛔ 内容密度规划**：
+  - 引入段要点：让我们追踪一个用户消息从进入 QueryEngine 到触发下一轮循环的完整路径
+  - 解读段要点：submitMessage → processUserInput → recordTranscript → for-await-of(query()) → assistant/user/stream_event 消息逐条处理 → turnCount++ → state = next → while(true) 下一轮
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：QueryEngine 循环的本质
+- 本质：一个由三层守卫（轮次/费用/上下文）保护的 while(true) 状态机，每轮迭代完成一次"API 调用→工具执行→结果收集"循环
+- 关键机制：mutableMessages 有状态累积、turnCount 跨迭代追踪、transcript 即时写入确保 resume 可用
+- 适用边界：适用于需要多轮工具调用的 Agent 系统；不适用于单轮问答
+- 与其他模式的关系：QueryEngine 是 Harness 核心循环，启动序列（第 2 章）为它准备环境，单轮执行（第 4 章）是它的每轮迭代，压缩策略（第 11 章）是它的内存管理
+
+### 章末：用户能做什么（必填）
+1. 审视你的 Agent 循环是否有至少三层终止守卫（轮次/费用/上下文）
+2. 检查你的终止检查是否覆盖了异常路径（abort/错误/超时）
+3. 为你的 Agent 添加 mutableMessages 式的有状态消息累积
+4. 评估你的 transcript/日志写入时机——是否在循环关键点前持久化
+5. 用 state 对象模式替代散乱的状态变量，确保 continue/return 点的一致性
+6. 对照 queryLoop 的 5 个 blocking_limit 跳过条件，检查你的终止逻辑是否有死锁风险
+7. 为你的循环添加 turnCount 式的跨迭代追踪，用于调试和监控
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图3-1 | QueryEngine 循环状态机 | Mermaid stateDiagram-v2 | 从 submitMessage 到 queryLoop 到三层守卫到终止的状态转换 | 3.4 |
+| 图3-2 | 一轮循环的消息流 | Mermaid sequenceDiagram | 用户消息→processUserInput→recordTranscript→for-await-of(query())→assistant/user/stream_event→state=next | 3.7 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 3.4 节（queryLoop 完整生命周期）——本章核心
+3. 写 3.2 节（黄金法则——三层守卫）
+4. 写 3.1 节（问题）
+5. 写 3.3 节（适用场景）
+6. 写 3.5 节（权衡）
+7. 写 3.6 节（踩坑指南）
+8. 写 3.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '184p' src/QueryEngine.ts     # class QueryEngine
+sed -n '209p' src/QueryEngine.ts     # submitMessage
+sed -n '186p' src/QueryEngine.ts     # mutableMessages
+sed -n '1186p' src/QueryEngine.ts    # ask 函数
+sed -n '241p' src/query.ts           # queryLoop
+sed -n '1705p' src/query.ts          # maxTurns 检查
+sed -n '641p' src/query.ts           # blocking_limit
+sed -n '1719p' src/query.ts          # state = next
+sed -n '660p' src/QueryEngine.ts     # for-await-of 入口
+sed -n '781p' src/QueryEngine.ts     # turnCount++
+sed -n '438p' src/QueryEngine.ts     # transcript 写入注释
+sed -n '1506p' src/query.ts          # abort 时 maxTurns
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch03.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

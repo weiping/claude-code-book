@@ -1,0 +1,11 @@
+flowchart LR
+    FM["Markdown Frontmatter\nhooks: { PreToolUse: [...] }"]
+    RS["registerSkillHooks\n或 registerFrontmatterHooks"]
+    ASH["addSessionHook\n（命令式底层）"]
+    AppState["AppState\n（session hooks Map）"]
+    Exec["executeHooks\n（运行时触发）"]
+
+    FM -->|"解析 HooksSettings"| RS
+    RS -->|"遍历 HOOK_EVENTS\n+ 语义转换"| ASH
+    ASH -->|"写入"| AppState
+    AppState -->|"按事件查找"| Exec

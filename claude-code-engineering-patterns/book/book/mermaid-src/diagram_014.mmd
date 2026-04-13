@@ -1,0 +1,18 @@
+flowchart LR
+    start([loadAllCommands 调用]) --> pa["Promise.all 并行加载"]
+    pa --> gs["getSkills(cwd)\n→ 4 个子来源"]
+    pa --> gpc["getPluginCommands()\n→ 插件命令"]
+    pa --> gwc["getWorkflowCommands(cwd)\n→ 工作流命令（WORKFLOW_SCRIPTS gate）"]
+
+    gs --> bs[bundledSkills]
+    gs --> bps[builtinPluginSkills]
+    gs --> sdc[skillDirCommands]
+    gs --> ps[pluginSkills]
+
+    bs --> merge["...spread 合并\n返回统一列表"]
+    bps --> merge
+    sdc --> merge
+    gwc --> merge
+    gpc --> merge
+    ps --> merge
+    cmds["COMMANDS()\n内置命令"] --> merge

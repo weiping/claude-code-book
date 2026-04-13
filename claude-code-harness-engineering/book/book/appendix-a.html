@@ -1,0 +1,308 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>附录 A：术语表 - 从 Claude Code 源码提炼的 Harness 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">从 Claude Code 源码提炼的 Harness 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="附录-a术语表"><a class="header" href="#附录-a术语表">附录 A：术语表</a></h1>
+<p>本书使用的核心术语，按主题分组。每个术语给出在 Claude Code 语境下的精确定义。</p>
+<h2 id="架构与系统"><a class="header" href="#架构与系统">架构与系统</a></h2>
+<p><strong>Harness</strong>
+: 围绕 LLM/Agent 搭建的运行框架，涵盖提示词管理、工具编排、上下文压缩、多智能体协调、权限护栏等。Claude Code 是目前公开可见的最完整的 Harness 实现。</p>
+<p><strong>QueryEngine</strong>
+: Claude Code 的主循环引擎。管理用户输入 → API 调用 → 工具执行 → 响应输出的循环，控制循环的继续、压缩和终止条件。</p>
+<p><strong>REPL</strong>（Read-Eval-Print Loop）
+: 交互模式——读取用户输入、模型处理、输出响应、等待下一输入。Claude Code 的 REPL 基于 Ink（React for CLI）渲染。</p>
+<p><strong>Feature Flag</strong>
+: 编码"模型能力假设"的编译时/运行时开关。Claude Code 有 89 个 Feature Flag、828 处调用。</p>
+<p><strong>DCE</strong>（Dead Code Elimination，死代码消除）
+: Bun 编译时将 <code>feature()=false</code> 的代码从产物中物理消除。不是注释掉，不是跳过——代码不存在。</p>
+<p><strong>excluded-strings.txt</strong>
+: Bun 的 DCE 配置文件，列出只存在于内部构建的 Feature Flag 名称。flag 名称字符串本身也从外部版本中消除。</p>
+<h2 id="上下文管理"><a class="header" href="#上下文管理">上下文管理</a></h2>
+<p><strong>autoCompact</strong>
+: 上下文接近上限时触发的全量压缩策略。用一次 API 调用生成完整对话摘要，替换整个历史。缓冲区 13000 token，失败 3 次触发熔断。</p>
+<p><strong>microCompact</strong>
+: 清除旧工具结果的轻量压缩策略。只处理 COMPACTABLE_TOOLS 白名单中的 8 类工具（FileRead/Shell/Grep/Glob/WebSearch/WebFetch/FileEdit/FileWrite）。</p>
+<p><strong>snipCompact</strong>
+: 在历史轮次边界处裁剪消息的压缩策略。删除边界之前的消息块，计算释放的 token 数。</p>
+<p><strong>contextCollapse</strong>
+: 投影式上下文折叠。不修改原始消息数组，而是提供一个"折叠视图"。折叠状态存储在独立的 collapse store 中，跨轮次持久化。</p>
+<p><strong>timeBasedMC</strong>（Time-Based MicroCompact）
+: 基于 cache TTL 过期的压缩策略。阈值 60 分钟，默认关闭。适合长会话场景。</p>
+<p><strong>Prompt Cache</strong>
+: Anthropic API 的缓存机制。相同前缀的消息可以复用之前的计算结果，减少 token 消耗和延迟。缓存 key 由系统提示词、工具、模型、消息前缀和思考配置组成。</p>
+<p><strong>CacheSafeParams</strong>
+: fork 时必须与父智能体完全相同的 5 个参数（systemPrompt/userContext/systemContext/toolUseContext/forkContextMessages）。任何一字不同都会导致 Prompt Cache 失效。</p>
+<h2 id="agent-与并行"><a class="header" href="#agent-与并行">Agent 与并行</a></h2>
+<p><strong>forkedAgent</strong>
+: 在主循环之外启动的独立 Agent 会话。隔离对话历史但共享 Prompt Cache。通过 <code>runForkedAgent</code> 执行，复用 <code>lastCacheSafeParams</code> 全局单例。</p>
+<p><strong>AgentDefinition</strong>
+: 智能体的定义结构，包含 agentType、disallowedTools、model、系统提示词等。三种来源：BuiltIn（内置）、Custom（Markdown frontmatter）、Plugin（插件 API），共享 BaseAgentDefinition 接口。</p>
+<p><strong>disallowedTools</strong>
+: 智能体的硬性工具禁用列表。被禁用的工具不存在于智能体的工具池中——不是"建议不用"，是"不存在"。planAgent 和 verificationAgent 共享 5 种禁用工具。</p>
+<p><strong>Verification Agent</strong>
+: 对抗性验证智能体。目标不是确认代码能运行，而是"拼命让代码崩溃"。系统提示词明确列出模型的 6 种"合理化借口"并逐一对抗。异步执行（background: true）。</p>
+<p><strong>planAgent</strong>
+: 只读规划智能体。通过 disallowedTools 硬性保证不能修改文件。系统提示词强调 "CRITICAL: READ-ONLY MODE"。</p>
+<p><strong>exploreAgent</strong>
+: 快速搜索智能体。使用 haiku 模型（外部用户）或 inherit（内部用户），每周被调用超过 3400 万次。</p>
+<p><strong>Coordinator Mode</strong>
+: 多智能体协调模式。协调器分配任务，worker 独立执行并汇报结果。需要 Feature Flag + 环境变量双重启用。</p>
+<p><strong>BackendType</strong>
+: 队友执行后端类型。三种：in-process（同进程）、tmux（独立终端）、iterm2（iTerm2 原生分屏）。控制进程隔离级别。</p>
+<p><strong>teammateMailbox</strong>
+: 基于文件系统的 Agent 间消息队列。源码注释定义："File-based messaging system for agent swarms"。跨进程可用，I/O 延迟。</p>
+<p><strong>SendMessage</strong>
+: 队友间实时通信工具。通过 <code>to: "&lt;name&gt;"</code> 发送给指定队友，<code>to: "*"</code> 广播。</p>
+<h2 id="提示词与记忆"><a class="header" href="#提示词与记忆">提示词与记忆</a></h2>
+<p><strong>System Prompt</strong>（系统提示词）
+: 分层构建的完整系统提示词。通过 DYNAMIC_BOUNDARY 分为静态区（缓存友好）和动态区（每次重新生成）。</p>
+<p><strong>DYNAMIC_BOUNDARY</strong>
+: 系统提示词中静态区与动态区的分界标记。静态区包含角色定义和工具说明（缓存命中），动态区包含当前工作目录、文件列表等（每次不同）。</p>
+<p><strong>CLAUDE.md</strong>
+: 四层记忆体系：Managed（全局管理） → User（用户全局） → Project（项目级） → Local（本地私有）。后加载的优先级更高。</p>
+<p><strong>MEMORY.md</strong>
+: 记忆系统的入口文件。限制 200 行 / 25000 字节。通过 <code>@include</code> 指向详细记忆文件。</p>
+<p><strong>memoryTypes</strong>
+: 4 种记忆类型：user（用户偏好）、feedback（用户反馈）、project（项目知识）、reference（参考资料）。选择标准：只存"不可从项目状态推导的信息"。</p>
+<p><strong>omitClaudeMd</strong>
+: 子智能体省略 CLAUDE.md 加载的配置。Explore 智能体每周 3400 万次调用，省略不必要的 CLAUDE.md 每周节省 5-15 Gtoken。</p>
+<p><strong>自动记忆提取</strong>（initExtractMemories）
+: 从对话中自动识别值得记忆的内容并写入记忆文件。每次会话独立初始化（闭包隔离），异步执行。</p>
+<h2 id="安全与权限"><a class="header" href="#安全与权限">安全与权限</a></h2>
+<p><strong>Permission Mode</strong>（权限模式）
+: 权限谱系模式。5 个外部模式（default/acceptEdits/plan/dontAsk/bypassPermissions）+ 2 个内部模式（auto/bubble）。默认值是 default（最严格）。</p>
+<p><strong>auto 模式</strong>
+: AI 分类器自动判断工具调用是否安全的内部模式。通过 <code>USER_TYPE === 'ant'</code> 判断和 Feature Flag 控制，仅内部用户可用。</p>
+<p><strong>4 层纵深防御</strong>
+: auto 模式下的权限判断链：规则分类器 → 危险模式库 → AI 分类器 → 否决追踪。每层独立判断，互为兜底。</p>
+<p><strong>DENIAL_LIMITS</strong>
+: 否决追踪上限：maxConsecutive=3（连续否决不超过 3 次）、maxTotal=20（总计否决不超过 20 次）。超限后 shouldFallbackToPrompting=true，强制回退人工确认。</p>
+<p><strong>CROSS_PLATFORM_CODE_EXEC</strong>
+: 危险模式库。硬编码的代码执行入口点列表（python/node/bash/sh 等），在 AI 分类器之前提供不可绕过的硬拒绝。</p>
+<p><strong>Hook</strong>
+: 在 Harness 生命周期特定时机点插入自定义逻辑的事件系统。27 种事件类型（HOOK_EVENTS），4 种执行方式（command/prompt/agent/http）。</p>
+<p><strong>Stop Hook</strong>
+: 查询循环结束时触发的事件。通常配置为 agent Hook，用 AI 验证任务是否真正完成。</p>
+<p><strong>HOOK_EVENTS</strong>
+: 27 个预定义触发点的完整列表。覆盖工具调用（Pre/PostToolUse）、会话边界（SessionStart/End）、权限（PermissionRequest）、压缩（Pre/PostCompact）等。</p>
+<h2 id="工具系统"><a class="header" href="#工具系统">工具系统</a></h2>
+<p><strong>buildTool</strong>
+: 工具的工厂函数。统一接口定义 isEnabled（是否可用）、isAllowed（是否被允许）、execute（执行逻辑）。所有工具共享相同的注册和调度路径。</p>
+<p><strong>StreamingToolExecutor</strong>
+: 并发工具执行器。支持工具的流式输出（yield），只读工具可并发执行，写操作工具串行执行。</p>
+<p><strong>SkillTool</strong>
+: 技能工具。延迟加载技能定义，将 100+ 技能文件缩减为 1% 上下文预算。模型看到技能摘要，需要时才加载全文。</p>
+<p><strong>COMPACTABLE_TOOLS</strong>
+: microCompact 可清除的工具白名单。8 类：FileRead、Shell、Grep、Glob、WebSearch、WebFetch、FileEdit、FileWrite。白名单外的工具结果不会被清除。</p>
+<h2 id="压缩常量"><a class="header" href="#压缩常量">压缩常量</a></h2>
+<p><strong>AUTOCOMPACT_BUFFER_TOKENS</strong>
+: autoCompact 的摘要生成缓冲区，13000 token。编码假设"模型需要至少 13000 token 才能完成高质量摘要"。</p>
+<p><strong>POST_COMPACT_TOKEN_BUDGET</strong>
+: 压缩后资源恢复预算，50000 token。压缩后重新读取最近 5 个文件，重建模型的工作记忆。</p>
+<p><strong>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES</strong>
+: autoCompact 连续失败熔断阈值，3 次。源码注释记录真实生产数据：曾有 1279 个会话 50+ 次连续失败，每天浪费约 25 万次 API 调用。</p>
+<hr />
+<blockquote>
+<p>参见正文各章节获取每个术语的完整分析和源码锚点。</p>
+</blockquote>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="part8/ch16.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="part8/ch16.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,15 @@
+flowchart TD
+    dirs["src/commands/ 下所有目录\n（113 个）"]
+    compile["编译期 DCE\nfeature flag = false 的目录\n在外部产物中不存在"]
+    loadAll["loadAllCommands()\n加载所有 index.ts"]
+    availability["meetsAvailabilityRequirement()\n第一层：订阅限制\nclaude.ai 或 console 专属命令"]
+    enabled["isCommandEnabled()\n第二层：feature flag\n+ 运行环境检查"]
+    remote["filterCommandsForRemoteMode()\n第三层：远程模式\nBridge 环境仅允许白名单命令"]
+    final["最终可用命令集\n返回给 processSlashCommand"]
+
+    dirs --> compile
+    compile --> loadAll
+    loadAll --> availability
+    availability --> enabled
+    enabled --> remote
+    remote --> final

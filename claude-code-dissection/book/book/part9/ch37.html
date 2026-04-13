@@ -1,0 +1,582 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 37 章：未发布的功能总线——Feature Flag 背后的实验特性 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-37-章feature-flag-与产品演进---隐藏和测试未发布的功能"><a class="header" href="#第-37-章feature-flag-与产品演进---隐藏和测试未发布的功能">第 37 章：Feature Flag 与产品演进 - 隐藏和测试未发布的功能</a></h1>
+<blockquote>
+<p>Claude Code 的代码中有一个 <code>COORDINATOR_MODE</code> 的完整实现，但用户看不到它。一个新的权限系统在测试，但只有 10% 的用户能使用。系统怎样在不改代码的情况下，隐藏、启用或回滚功能？</p>
+</blockquote>
+<hr />
+<h2 id="371-feature-flag-的设计意图"><a class="header" href="#371-feature-flag-的设计意图">37.1 Feature Flag 的设计意图</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p><strong>Feature Flag</strong>（特性开关）= 通过配置而不是代码部署来控制功能的开启/关闭。</p>
+<pre><code>场景：
+  • 某个功能未完成，但代码已 push
+  • 一个功能有 bug，需要紧急下线
+  • 做 A/B 测试，10% 用户用新功能，90% 用旧功能
+  • 在生产环境中逐步灰度发布新功能（1% → 10% → 50% → 100%）
+传统做法：
+  ❌ 等功能完成才 merge → 无法并行开发
+  ❌ 不允许 WIP（work in progress）代码 → 效率低
+Flag 做法：
+  ✅ 代码先 push（带 flag 包装）
+  ✅ 生产环境通过 flag 控制
+  ✅ 问题发生时秒级下线，无需重新部署
+</code></pre>
+<hr />
+<h2 id="372-claude-code-的双层-flag-架构"><a class="header" href="#372-claude-code-的双层-flag-架构">37.2 Claude Code 的双层 Flag 架构</a></h2>
+<h3 id="层级-1编译期-flagbunbundle"><a class="header" href="#层级-1编译期-flagbunbundle">层级 1：编译期 Flag（bun:bundle）</a></h3>
+<p>在 <code>src/main.tsx</code> 中使用 <code>bun:bundle</code> 的 <code>feature()</code> API：</p>
+<pre><code class="language-typescript">import { feature } from 'bun:bundle'
+// 编译期决策
+if (feature('KAIROS')) {
+  // 这段代码只在编译时 KAIROS flag 为 true 时才被包含
+  import('./assistant/index.js')  // 完全可能被消除
+} else {
+  assistantModule = null
+}
+// 通常用于：
+// • 大功能模块的 on/off（能节省 100+ KB bundle size）
+// • 商业模式区分（Pro vs Free 版本）
+// • 平台特定代码（desktop vs web）
+</code></pre>
+<p><strong>特点</strong>：</p>
+<ul>
+<li><strong>优点</strong>：没有运行时开销，减小 bundle 大小</li>
+<li><strong>缺点</strong>：需要重新编译才能改变，不能在生产动态改</li>
+</ul>
+<h3 id="层级-2运行期-flaggrowthbook"><a class="header" href="#层级-2运行期-flaggrowthbook">层级 2：运行期 Flag（GrowthBook）</a></h3>
+<p>在 <code>src/services/analytics/growthbook.ts</code> 中使用 GrowthBook API：</p>
+<pre><code class="language-typescript">import { getFeatureValue_CACHED_MAY_BE_STALE } from './growthbook.js'
+async function isFeatureEnabled(
+  featureName: string,
+  context: {
+    userId?: string
+    userTier?: 'free' | 'pro' | 'max'
+    region?: string
+    percentage?: number
+  }
+): Promise&lt;boolean&gt; {
+  // 查询 GrowthBook：这个用户应该有这个特性吗？
+  const value = await getFeatureValue_CACHED_MAY_BE_STALE(
+    featureName,
+    context,
+    false  // 默认值（如果无法查询）
+  )
+  return value === true
+}
+</code></pre>
+<p><strong>工作流</strong>：</p>
+<pre><code>运行时：
+  1. Agent 启动
+  2. 查询 GrowthBook
+  3. 获得 flag 配置（可能包含规则）
+  4. 缓存 5 分钟
+  5. 根据规则决策用户应该用哪个版本
+特点：
+  ✅ 动态改变（无需重新部署）
+  ✅ 支持复杂规则（百分比、用户分组等）
+  ✅ 实时分析（能看到 A/B 测试的效果）
+</code></pre>
+<hr />
+<h2 id="373-feature-flag-的规则引擎"><a class="header" href="#373-feature-flag-的规则引擎">37.3 Feature Flag 的规则引擎</a></h2>
+<h3 id="flag-定义"><a class="header" href="#flag-定义">Flag 定义</a></h3>
+<p>在 GrowthBook 中，一个 flag 可能看起来像这样：</p>
+<pre><code class="language-json">{
+  "key": "new-permission-system",
+  "type": "boolean",
+  // 规则：什么情况下返回 true
+  "rules": [
+    {
+      "condition": {
+        "userTier": { "$eq": "max" }
+      },
+      "value": true,
+      "percentage": 100  // Max 用户 100% 启用
+    },
+    {
+      "condition": {
+        "userTier": { "$in": ["pro", "enterprise"] }
+      },
+      "value": true,
+      "percentage": 10   // Pro/企业用户 10% 启用（灰度）
+    },
+    {
+      "condition": {
+        "userTier": { "$eq": "free" }
+      },
+      "value": false     // 免费用户 0% 启用
+    }
+  ],
+  // 默认值
+  "defaultValue": false
+}
+</code></pre>
+<h3 id="条件语言"><a class="header" href="#条件语言">条件语言</a></h3>
+<p>GrowthBook 使用 MongoDB 查询语言的子集：</p>
+<pre><code>$eq    → 等于
+$ne    → 不等于
+$in    → 在列表中
+$nin   → 不在列表中
+$gt    → 大于
+$gte   → 大于等于
+$lt    → 小于
+$lte   → 小于等于
+$regex → 正则匹配
+</code></pre>
+<p><strong>示例</strong>：</p>
+<pre><code class="language-json">{
+  "userId": { "$regex": "^admin-" }     // 用户 ID 以 admin- 开头
+}
+{
+  "region": { "$nin": ["cn", "ru"] }    // 不在中国或俄罗斯
+}
+{
+  "createdAt": { "$gte": 1609459200000 }  // 用户在 2021-01-01 之后创建
+}
+</code></pre>
+<hr />
+<h2 id="374-claude-code-中的已知-flag"><a class="header" href="#374-claude-code-中的已知-flag">37.4 Claude Code 中的已知 Flag</a></h2>
+<h3 id="实验阶段的功能"><a class="header" href="#实验阶段的功能">实验阶段的功能</a></h3>
+<p>通过代码扫描，我们能发现许多未发布的功能：</p>
+<div class="table-wrapper"><table><thead><tr><th>Flag 名称</th><th>代码位置</th><th>功能</th><th>状态</th></tr></thead><tbody>
+<tr><td><strong>COORDINATOR_MODE</strong></td><td><code>src/main.tsx:2800+</code></td><td>Agent 协调器模式</td><td>实现完整，未启用</td></tr>
+<tr><td><strong>DAEMON</strong></td><td><code>src/main.tsx:2850+</code></td><td>后台守护进程模式</td><td>框架完整，需测试</td></tr>
+<tr><td><strong>BG_SESSIONS</strong></td><td><code>src/services/sessions.ts:100+</code></td><td>后台会话管理</td><td>部分实现</td></tr>
+<tr><td><strong>EXPERIMENTAL_SKILL_SEARCH</strong></td><td><code>src/utils/skills/</code></td><td>Skill 语义搜索</td><td>完全实现，实验中</td></tr>
+<tr><td><strong>ULTRAPLAN</strong></td><td><code>src/tools/</code></td><td>超级规划模式</td><td>框架完整</td></tr>
+<tr><td><strong>BYOC_ENVIRONMENT_RUNNER</strong></td><td><code>src/runner/</code></td><td>BYOC 环境执行器</td><td>骨架代码</td></tr>
+</tbody></table>
+</div>
+<h3 id="日志中的-flag-提示"><a class="header" href="#日志中的-flag-提示">日志中的 FLAG 提示</a></h3>
+<p>当一个功能被 flag 控制时，通常有诊断日志：</p>
+<pre><code class="language-typescript">if (DEBUG) {
+  logInfo(`Feature COORDINATOR_MODE is ${enabled ? 'ENABLED' : 'DISABLED'}`)
+}
+// 或者
+if (isFeatureEnabled('COORDINATOR_MODE')) {
+  logDebug('Running in COORDINATOR_MODE')
+}
+</code></pre>
+<hr />
+<h2 id="375-rollout-与灰度策略"><a class="header" href="#375-rollout-与灰度策略">37.5 Rollout 与灰度策略</a></h2>
+<h3 id="灰度发布流程"><a class="header" href="#灰度发布流程">灰度发布流程</a></h3>
+<pre><code>第 1 天：内部测试
+  ├─ GrowthBook rule: userId == 'internal-*'
+  └─ 覆盖范围：1%（仅 Anthropic 内部）
+第 3 天：扩大测试
+  ├─ rule: userTier == 'max' &amp;&amp; percentage == 20%
+  └─ 覆盖范围：20%（Max 用户的 20%）
+第 7 天：更广泛测试
+  ├─ rule: userTier in ['max', 'pro'] &amp;&amp; percentage == 50%
+  └─ 覆盖范围：50%（Max + Pro 用户的 50%）
+第 14 天：全量发布
+  ├─ rule: percentage == 100%
+  └─ 覆盖范围：100%（所有用户）
+</code></pre>
+<h3 id="回滚策略"><a class="header" href="#回滚策略">回滚策略</a></h3>
+<p>如果发现问题：</p>
+<pre><code class="language-typescript">// 在 GrowthBook 中，改规则
+{
+  "key": "new-permission-system",
+  "defaultValue": false,
+  "rules": []  // 移除所有规则 → 所有用户都是 false
+}
+// 效果：立即对所有用户禁用该功能，无需部署
+</code></pre>
+<p><strong>成本</strong>：</p>
+<ul>
+<li>改规则时间：&lt; 1 秒</li>
+<li>缓存刷新时间：5 分钟（或手动清缓存立即生效）</li>
+<li>对比：代码部署可能需要 5-15 分钟</li>
+</ul>
+<hr />
+<h2 id="延伸flag-管理的反面教训"><a class="header" href="#延伸flag-管理的反面教训">延伸：Flag 管理的反面教训</a></h2>
+<h3 id="为什么不把能否激活的判断留在运行期"><a class="header" href="#为什么不把能否激活的判断留在运行期">为什么不把"能否激活"的判断留在运行期？</a></h3>
+<pre><code class="language-typescript">// ❌ 危险的方案：运行期判断
+async function isCoordinatorEnabled() {
+  const flags = await fetchRemoteFlags()
+  return flags.COORDINATOR_MODE &amp;&amp; user.isInternal
+}
+</code></pre>
+<p>问题：如果 <code>COORDINATOR_MODE</code> 的代码在外部用户产物中存在，即使运行期判断返回 <code>false</code>，攻击者仍然可以通过：</p>
+<ol>
+<li>反编译产物找到代码</li>
+<li>修改本地的 flag 配置文件</li>
+<li>通过代理修改 GrowthBook 响应</li>
+</ol>
+<p><code>feature('COORDINATOR_MODE')</code> 的编译期消除是唯一能做到"代码不存在于外部产物"的方法——不是"代码存在但不执行"，而是代码物理消失（<code>src/coordinator/coordinatorMode.ts:37</code>）。</p>
+<h3 id="为什么不把所有-flag-都放在-growthbook"><a class="header" href="#为什么不把所有-flag-都放在-growthbook">为什么不把所有 flag 都放在 GrowthBook？</a></h3>
+<p>GrowthBook 是远程可配置的运行期 flag 系统，如果把所有 60+ 个 flag 都放在 GrowthBook，会有什么问题？</p>
+<ol>
+<li>
+<p><strong>离线可用性</strong>：Claude Code 需要在没有网络时也能工作（GrowthBook 连接失败时需要有合理的降级值）。编译期 flag 在离线时没有问题（已经烧入产物）</p>
+</li>
+<li>
+<p><strong>启动性能</strong>：GrowthBook 的初始化需要网络请求，等待响应才能知道某些 flag 的值。编译期 flag 在启动时立即就绪，不影响冷启动时间</p>
+</li>
+<li>
+<p><strong>代码可见性</strong>：如果 <code>KAIROS</code> 在 GrowthBook 里，外部用户可以在浏览器的网络请求中看到 flag 名称，推断出 Anthropic 的内部项目代号。编译期 flag 连 flag 名称也不会出现在外部产物中（<code>src/main.tsx:80</code>）</p>
+</li>
+</ol>
+<h3 id="为什么-flag-骨架代码不该是完全未测试的死代码"><a class="header" href="#为什么-flag-骨架代码不该是完全未测试的死代码">为什么 flag 骨架代码不该是"完全未测试的死代码"？</a></h3>
+<p>一个常见的误解：被 flag 门控的代码"反正不运行，不用测"。</p>
+<p>风险：</p>
+<pre><code class="language-typescript">// COORDINATOR_MODE 骨架代码中有 bug
+if (feature('COORDINATOR_MODE')) {
+  const coordinator = new CoordinatorMode()
+  coordinator.init()  // 如果这里有 null pointer，只有内部用户才会发现
+}
+</code></pre>
+<p>当这个 flag 对外开放时，可能遇到多年积累的未被发现的 bug。更好的做法是在内部构建（feature flag = true）中对骨架代码进行基本的集成测试，确保代码路径是健康的（<code>src/coordinator/coordinatorMode.ts</code>）。</p>
+<h2 id="图解"><a class="header" href="#图解">图解</a></h2>
+<p><strong>图 37-1：双层 Flag 架构</strong></p>
+<pre><code class="language-mermaid">graph TB
+    A["代码"]
+    B["编译期决策&lt;br/&gt;bun:bundle"]
+    C["feature()"]
+    D["true → 包含&lt;br/&gt;false → 消除"]
+    E["编译产物&lt;br/&gt;.js"]
+    F["运行时决策&lt;br/&gt;GrowthBook"]
+    G["getFeatureValue()"]
+    H["查询规则"]
+    I["缓存结果&lt;br/&gt;5 分钟"]
+    A --&gt; B --&gt; C --&gt; D --&gt; E
+    E --&gt; F --&gt; G --&gt; H --&gt; I
+    style E fill:#ccffcc
+    style I fill:#ccffcc
+</code></pre>
+<p><strong>图 37-2：灰度发布的时间线</strong></p>
+<pre><code class="language-mermaid">timeline
+    title 新功能的灰度发布计划
+    day 1: 内部测试
+        : userId == 'internal-*'
+        : 覆盖：1%
+    day 3: 扩大测试
+        : userTier == 'max' &amp;&amp; 20%
+        : 覆盖：20%
+    day 7: 更广泛测试
+        : userTier in ['max', 'pro'] &amp;&amp; 50%
+        : 覆盖：50%
+    day 14: 全量发布
+        : percentage == 100%
+        : 覆盖：100%
+</code></pre>
+<p><strong>图 37-3：规则引擎的决策流</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["用户请求&lt;br/&gt;feature X"]
+    B["查询 GrowthBook"]
+    C{"有规则&lt;br/&gt;匹配?"}
+    D{"条件&lt;br/&gt;满足?"}
+    E{"百分比&lt;br/&gt;命中?"}
+    F["返回 true"]
+    G["返回 false"]
+    H["使用默认值"]
+    A --&gt; B --&gt; C
+    C --&gt;|YES| D
+    C --&gt;|NO| H
+    D --&gt;|NO| G
+    D --&gt;|YES| E
+    E --&gt;|YES| F
+    E --&gt;|NO| G
+    H --&gt; F
+    H --&gt; G
+</code></pre>
+<p><strong>表格 37-1：已知的实验 Flag</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Flag</th><th>功能</th><th>完成度</th><th>预期发布</th></tr></thead><tbody>
+<tr><td><strong>COORDINATOR_MODE</strong></td><td>Agent 协调器</td><td>100%</td><td>v3.0+</td></tr>
+<tr><td><strong>DAEMON</strong></td><td>后台进程</td><td>60%</td><td>未定</td></tr>
+<tr><td><strong>EXPERIMENTAL_SKILL_SEARCH</strong></td><td>Skill 搜索</td><td>90%</td><td>v2.5+</td></tr>
+<tr><td><strong>BG_SESSIONS</strong></td><td>后台会话</td><td>50%</td><td>v3.0+</td></tr>
+<tr><td><strong>ULTRAPLAN</strong></td><td>超级规划</td><td>40%</td><td>未定</td></tr>
+<tr><td><strong>表格 37-2：灰度采样的原理</strong></td><td></td><td></td><td></td></tr>
+<tr><td>用户</td><td>hash(id) % 100</td><td>10% flag</td><td>50% flag</td></tr>
+<tr><td>------</td><td>---</td><td>---</td><td>---</td></tr>
+<tr><td>user-001</td><td>12</td><td>❌ NO</td><td>✅ YES</td></tr>
+<tr><td>user-002</td><td>45</td><td>❌ NO</td><td>✅ YES</td></tr>
+<tr><td>user-003</td><td>08</td><td>✅ YES</td><td>✅ YES</td></tr>
+<tr><td>user-004</td><td>92</td><td>❌ NO</td><td>❌ NO</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="编译期特性门控compile-time-feature-gating"><a class="header" href="#编译期特性门控compile-time-feature-gating">编译期特性门控（Compile-time Feature Gating）</a></h3>
+<p><strong>解决的问题</strong>：内部功能（COORDINATOR_MODE、KAIROS 等）不应该出现在外部用户的产物中——不只是运行时跳过，而是代码物理不存在，防止逆向工程和环境变量绕过。</p>
+<p><strong>核心做法</strong>：用 <code>bun:bundle</code> 的 <code>feature()</code> 函数包裹内部代码，构建时 <code>feature()</code> 被替换为字面量 <code>false</code>，整个分支通过 Dead Code Elimination 物理删除。外部用户产物中不存在这段代码，也不可能通过任何环境变量启用。</p>
+<p><strong>前置条件</strong>：构建工具支持编译期常量替换和 DCE（Bun 的 <code>--target bun</code>）；内部功能有清晰的边界，可以整块门控。</p>
+<p><strong>源码证据</strong>：<code>src/coordinator/coordinatorMode.ts:37</code> — <code>if (feature('COORDINATOR_MODE'))</code> 的双层门控；<code>src/utils/ultraplan/keyword.ts:97</code> — <code>findUltraplanTriggerPositions()</code> 在 ULTRAPLAN flag 下的条件编译。</p>
+<hr />
+<h3 id="关键词启动守卫keyword-triggered-launch-guard"><a class="header" href="#关键词启动守卫keyword-triggered-launch-guard">关键词启动守卫（Keyword-Triggered Launch Guard）</a></h3>
+<p><strong>解决的问题</strong>：<code>ultraplan</code> 这样的触发词需要在用户输入中准确识别，但触发词出现在代码块、路径、注释等上下文中不应该触发，需要复杂的上下文感知。</p>
+<p><strong>核心做法</strong>：实现专门的关键词检测器，跳过成对分隔符内（backtick、引号、括号等）和路径/标识符上下文中的出现，只在"自由文本"中触发。</p>
+<p><strong>前置条件</strong>：有明确的"自由文本"上下文定义；关键词检测的假阴性（漏检）比假阳性（误触发）危害更小。</p>
+<p><strong>源码证据</strong>：<code>src/utils/ultraplan/keyword.ts:14-40</code> — 注释详细说明了所有需要跳过的上下文类型；<code>src/utils/ultraplan/keyword.ts:48</code> — 核心检测函数，处理单词边界和上下文感知。</p>
+<hr />
+<h3 id="后台会话骨架background-session-scaffold"><a class="header" href="#后台会话骨架background-session-scaffold">后台会话骨架（Background Session Scaffold）</a></h3>
+<p><strong>解决的问题</strong>：<code>DAEMON</code> 和 <code>BG_SESSIONS</code> 功能需要在正式发布前就建立基础设施（进程管理、会话类型枚举），这样当 flag 开启时可以直接使用，而不是临时赶工。</p>
+<p><strong>核心做法</strong>：在 flag 开启前就定义完整的类型系统和会话枚举，代码骨架通过 flag 门控处于休眠状态。当 flag 开启时，基础设施已经就绪，只需在上层添加业务逻辑。</p>
+<p><strong>前置条件</strong>：功能的类型和接口相对稳定（避免基础设施变更导致已使用的代码崩溃）；骨架代码经过基本的测试验证，不是完全未经测试的死代码。</p>
+<p><strong>源码证据</strong>：<code>src/utils/concurrentSessions.ts:18</code> — <code>SessionKind = 'interactive' | 'bg' | 'daemon' | 'daemon-worker'</code>；<code>bg</code> 和 <code>daemon</code> 类型已在枚举中就绪，等待 <code>BG_SESSIONS</code> flag 开启后的调用方。</p>
+<h2 id="延伸实验-flag-的源码骨架分析"><a class="header" href="#延伸实验-flag-的源码骨架分析">延伸：实验 Flag 的源码骨架分析</a></h2>
+<h3 id="ultraplan-的关键词触发"><a class="header" href="#ultraplan-的关键词触发">ULTRAPLAN 的关键词触发</a></h3>
+<pre><code class="language-typescript">// src/utils/ultraplan/keyword.ts（关键词检测逻辑）
+// 检测用户输入中是否包含 "ultraplan" 触发词
+// 支持大小写变体，但跳过在代码块、引号等上下文中的出现
+export function findUltraplanKeyword(text: string): TriggerPosition | null {
+  // ...复杂的词边界检测逻辑
+}
+</code></pre>
+<p><code>keyword.ts</code> 的复杂度（127 行只为检测一个词）揭示了触发词检测的工程难点：<code>ultraplan</code> 不应该在 <code>src/ultraplan/foo.ts</code> 这样的路径中触发，也不应该在代码注释中触发，但在 "Let's ultraplan this" 中应该触发（<code>src/utils/ultraplan/keyword.ts</code>）。</p>
+<h3 id="ultraplan-的远程会话轮询ccrsessionts"><a class="header" href="#ultraplan-的远程会话轮询ccrsessionts">ULTRAPLAN 的远程会话轮询（ccrSession.ts）</a></h3>
+<p><code>UltraplanPhase</code>（<code>src/utils/ultraplan/ccrSession.ts:66</code>）展示了 ULTRAPLAN 的完整状态机：</p>
+<pre><code class="language-typescript">// src/utils/ultraplan/ccrSession.ts:66
+export type UltraplanPhase = 'running' | 'needs_input' | 'plan_ready'
+
+// ULTRAPLAN_TELEPORT_SENTINEL 标记本地执行路径
+// src/utils/ultraplan/ccrSession.ts:48
+export const ULTRAPLAN_TELEPORT_SENTINEL = '__ULTRAPLAN_TELEPORT_LOCAL__'
+</code></pre>
+<p><code>ccrSession.ts</code> 实现了跨设备的 ULTRAPLAN 体验——用户在 terminal 触发 ultraplan，实际的批准可以在浏览器里完成（<code>src/utils/ultraplan/ccrSession.ts</code>）。这是 <code>BG_SESSIONS</code> 基础设施的典型用例。</p>
+<h3 id="daemonbg_sessions-基础设施"><a class="header" href="#daemonbg_sessions-基础设施">DAEMON/BG_SESSIONS 基础设施</a></h3>
+<pre><code class="language-typescript">// src/utils/concurrentSessions.ts:18
+export type SessionKind = 'interactive' | 'bg' | 'daemon' | 'daemon-worker'
+</code></pre>
+<p><code>SessionKind</code> 已经有 4 种类型——<code>bg</code>（后台任务）和 <code>daemon</code>（守护进程）对应 <code>BG_SESSIONS</code> 和 <code>DAEMON</code> flag。基础设施已经存在，只等 flag 开启（<code>src/utils/concurrentSessions.ts</code>）。</p>
+<h3 id="coordinator_mode-骨架"><a class="header" href="#coordinator_mode-骨架">COORDINATOR_MODE 骨架</a></h3>
+<pre><code class="language-typescript">// src/coordinator/coordinatorMode.ts:36
+export function isCoordinatorMode(): boolean {
+  if (feature('COORDINATOR_MODE')) {
+    return isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)
+  }
+  return false
+}
+</code></pre>
+<p><code>COORDINATOR_MODE</code> 是编译期 + 运行期的双层 flag——先需要内部构建（编译期），再需要环境变量（运行期）才能激活（<code>src/coordinator/coordinatorMode.ts:36</code>）。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-在代码各处散落-flag-检查删除-flag-时遗漏修改点"><a class="header" href="#-在代码各处散落-flag-检查删除-flag-时遗漏修改点">❌ 在代码各处散落 flag 检查，删除 flag 时遗漏修改点</a></h3>
+<pre><code class="language-typescript">// 散落在 10 个不同文件里
+if (feature('NEW_PERMISSION_UI')) { ... }  // file1.ts
+// ...
+if (getFeatureValue('NEW_PERMISSION_UI')) { ... }  // file7.ts
+</code></pre>
+<p>删除 flag 时需要全局搜索，容易遗漏导致死代码或 bug。应该把 flag 检查封装成命名函数（<code>isNewPermissionUIEnabled()</code>），修改只需改一处。</p>
+<h3 id="-运行期-flag-门控应该物理隔离的内部功能"><a class="header" href="#-运行期-flag-门控应该物理隔离的内部功能">❌ 运行期 flag 门控应该物理隔离的内部功能</a></h3>
+<p>运行期 GrowthBook flag 只控制代码路径，代码本身仍然存在于所有用户的产物中。用这种方式保护内部功能，攻击者可以通过修改本地存储的 flag 值来启用（<code>src/utils/featureFlag/</code>）。</p>
+<h3 id="-废弃-flag-后不清理对应的旧代码分支"><a class="header" href="#-废弃-flag-后不清理对应的旧代码分支">❌ 废弃 flag 后不清理对应的旧代码分支</a></h3>
+<pre><code class="language-typescript">// flag 已经全量推送，ENABLE_V2 一直为 true，但旧分支还在
+if (feature('ENABLE_V2')) { newCode() } else { oldCode() }  // oldCode() 是死代码
+</code></pre>
+<p>积累的死代码增加了包体积和认知负担。全量推送后的 flag 应该在下个 sprint 移除，同时删除 else 分支。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>把 flag 检查封装成命名函数</strong>：<code>isNewPermissionUIEnabled()</code> 替代散落各处的 <code>feature('NEW_PERM_UI')</code>，删除 flag 时只改一处</li>
+<li><strong>建立 flag 的生命周期管理</strong>：每个 flag 创建时记录预期删除时间，定期审查并清理已全量推送的 flag</li>
+<li><strong>用编译期 flag 保护内部代码，用运行期 flag 做 A/B 实验</strong>：明确两者的职责边界，不混用</li>
+<li><strong>为 flag 的各种组合写测试</strong>：flag 开/关的不同组合可能产生难以预料的交互，自动化测试覆盖关键路径</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part9/ch36.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part10/ch38.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part9/ch36.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part10/ch38.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

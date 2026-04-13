@@ -1,0 +1,9 @@
+stateDiagram-v2
+    [*] --> 挂起: registerPendingAsyncHook\n注册 + 启动进度报告
+    挂起 --> 完成: shellCommand.status=completed\n且 exitCode=0
+    挂起 --> 错误: shellCommand.status=completed\n且 exitCode≠0
+    挂起 --> 取消: finalizePendingAsyncHooks\n（会话结束强制清理）
+    挂起 --> 取消: shellCommand.status=killed
+    完成 --> [*]: finalizeHook(success)\n+ 从 Map 删除
+    错误 --> [*]: finalizeHook(error)\n+ 从 Map 删除
+    取消 --> [*]: finalizeHook(cancelled)\n+ Map.clear()

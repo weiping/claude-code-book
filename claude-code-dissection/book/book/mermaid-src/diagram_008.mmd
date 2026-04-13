@@ -1,0 +1,31 @@
+graph LR
+    State["bootstrap/state.ts\nState 对象"]
+
+    subgraph 会话标识
+        S1["sessionId"]
+        S2["originalCwd"]
+        S3["projectRoot"]
+    end
+
+    subgraph 成本追踪
+        C1["totalCostUSD"]
+        C2["totalAPIDuration"]
+        C3["totalLinesAdded/Removed"]
+    end
+
+    subgraph 模型配置
+        M1["mainLoopModelOverride"]
+        M2["initialMainLoopModel"]
+        M3["kairosActive"]
+    end
+
+    subgraph 遥测句柄
+        T1["meter: Meter"]
+        T2["sessionCounter: AttributedCounter"]
+        T3["tokenCounter: AttributedCounter"]
+    end
+
+    State --> 会话标识
+    State --> 成本追踪
+    State --> 模型配置
+    State --> 遥测句柄

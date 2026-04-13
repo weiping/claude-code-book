@@ -1,0 +1,721 @@
+# 第9章写作计划：流式响应管道——异步生成器的工程应用
+
+> STYLE_ID: hunter（模式猎人）
+> 生成日期：2026-04-08
+> 前置章节：第8章（QueryEngine 主循环）
+
+---
+
+## 1. 章节意图
+
+> 原文直引自 specs/ch09.spec
+
+揭示 `src/query.ts` 和 `src/QueryEngine.ts:1186`（`async function* ask`）如何用 async generator 把 SSE 流转化为结构化事件序列，以及这一模式在高延迟 AI 调用中解决了什么具体工程问题（背压控制、中间状态消费、错误传播）。读者读完后能将"async generator 作为流式 API 适配器"模式用于自己的高延迟 IO 场景。
+
+**核心模式名称**：异步生成器流式适配器（Async Generator Streaming Adapter）
+
+**读者收获承诺**：读完本章，你能将"async generator 作为流式 API 适配器"模式应用于任意高延迟 IO 场景，并理解为什么这比 EventEmitter、Promise.all 或 callback 链更优越。
+
+---
+
+## 2. 通用约束
+
+### 2.1 通用必须（4条）
+
+| # | 约束 | 说明 |
+|---|------|------|
+| M1 | 每节必须包含至少一个源码锚点 | 格式：`文件名:行号 — 函数/变量名` |
+| M2 | 图表必须可 Mermaid 渲染，且 ≥2 个 | 包括流程图、序列图、适用范围表等 |
+| M3 | 代码片段限制在 25 行以内 | 超出部分用注释省略，保留核心逻辑 |
+| M4 | 章末必须包含 5-8 条行动建议 | 具体可操作，用第二人称"你" |
+
+### 2.2 通用禁止（4条）
+
+| # | 禁止项 | 原因 |
+|---|--------|------|
+| F1 | 开篇不得引用源码路径或行号 | hunter 风格：开篇是模式预告，不是代码讲解 |
+| F2 | 禁止空洞表述（如"优雅地"、"强大的"） | 必须用具体数据或对比替代 |
+| F3 | 不重复第8章对主循环的描述 | 章节边界清晰，引用第8章即可 |
+| F4 | 不展开 Anthropic SDK 内部 SSE 实现 | 边界：仅分析 Claude Code 侧的消费逻辑 |
+
+### 2.3 排除范围
+
+根据 spec 明确排除：
+
+- `node_modules/@anthropic-ai/sdk` — Anthropic SDK 内部 SSE 实现
+- 第8章已讲解的主循环编排逻辑（`src/QueryEngine.ts` 主循环部分）
+- `src/assistant/` — stub，排除
+- `src/ssh/` — stub，排除
+- `src/server/` — stub，排除
+- `src/proactive/` — stub，排除
+
+---
+
+## 3. 风格专属写作要求（hunter 模式猎人）
+
+### 3.1 开篇格式（⛔ 最高优先级）
+
+**结构**：模式预告段（150-200字）
+
+- 必须：在正文第一段预告本章将识别的 1-2 个模式名称
+- 必须：用"猎人"视角，从现象入手（用户看到流式输出的体验）描述模式存在的线索
+- 必须：以一个钩子式问句结尾，引发读者好奇（例："为什么 Claude Code 没有选择 EventEmitter 或 RxJS？"）
+- 禁止：开篇出现任何文件路径、行号、函数名
+- 禁止：开篇是枯燥的章节结构介绍
+
+**示例结构**（不是内容，是格式参考）：
+```
+[现象观察 1-2句] → [模式线索 2-3句] → [本章将识别的模式名 1句] → [钩子问句 1句]
+```
+
+### 3.2 分节组织（hunter 递进层次）
+
+必须严格遵循以下顺序，不可调换：
+
+```
+问题（Problem）
+  ↓
+实例1（Instance 1）
+  ↓
+实例2/变体（Instance 2 / Variant）
+  ↓
+模式剖析（Pattern Analysis）
+  ↓
+适用范围（Applicability）
+  ↓
+权衡局限（Trade-offs & Limitations）
+  ↓
+与已知模式对话（In Conversation with Known Patterns）
+  ↓
+你能做什么（What You Can Do）
+```
+
+### 3.3 章末结构（hunter 专属）
+
+章末必须包含两个专属结构块：
+
+**① 模式命名框**（2-3个）
+格式：
+```
+┌─────────────────────────────────────────────┐
+│ 模式：[模式名]                                │
+│ 意图：[一句话]                                │
+│ 别名：[其他名称]                              │
+│ 适用：[2-3个触发条件]                         │
+└─────────────────────────────────────────────┘
+```
+
+**② 你能做什么**（5-8条行动建议）
+- 每条以动词开头
+- 具体到可执行（"用 async generator 替换 callback" 而非 "考虑使用 async generator"）
+- 覆盖：立即可做、项目可用、深入探索 三个层次
+
+### 3.4 风格专属必须（5条）
+
+| # | 必须项 |
+|---|--------|
+| S1 | 每个模式出现时必须有"这就是XXX模式的信号"式显式点名 |
+| S2 | 适用范围必须用表格呈现（场景 vs 是否适用 vs 原因） |
+| S3 | 与已知模式对话节必须至少对话2个已知模式（EIP/GoF/Reactive等） |
+| S4 | 模式剖析节必须有"生产者-管道-消费者"的三层结构分析 |
+| S5 | 每个实例节必须以"这里有一个信号"或类似的模式识别句收尾 |
+
+### 3.5 风格专属禁止（3条）
+
+| # | 禁止项 |
+|---|--------|
+| P1 | 不得以"首先"、"然后"、"最后"的线性流水账讲解代码 |
+| P2 | 不得把模式当成"功能列表"枚举，必须用工程问题驱动 |
+| P3 | 不得在正文中直接粘贴超过 25 行的完整函数 |
+
+### 3.6 通用写作铁律（6条）
+
+| # | 铁律 |
+|---|------|
+| L1 | 数据驱动：用具体数字替代模糊描述（如"平均延迟 2-30 秒"而非"高延迟"） |
+| L2 | 术语标准化：async generator / SSE / backpressure 首次出现时给出精确定义 |
+| L3 | 章节间链接：引用其他章节时明确说明"第X章已讲解"，不重复内容 |
+| L4 | 读者对话感：每节至少有一处直接用"你"提问或引导 |
+| L5 | 关键信息突出：每节的核心主张必须在该节第一段或最后一段明确点出 |
+| L6 | 代码注释引用：代码片段中必须有注释说明关键行的意图 |
+
+---
+
+## 4. 前置阅读清单
+
+| # | 文件 | 读取范围 | 读取目的 | 验证命令 |
+|---|------|----------|----------|----------|
+| 1 | `src/query.ts` | 全文（重点 L219-L400） | 理解 query/queryLoop 入口和循环结构 | `wc -l src/query.ts` |
+| 2 | `src/QueryEngine.ts` | L1180-L1230（ask 函数） | 理解 convenience wrapper 模式 | `sed -n '1180,1230p' src/QueryEngine.ts` |
+| 3 | `src/services/api/claude.ts` | L750-L800（queryModelWithStreaming）、L1010-L1060（queryModel）、L1975-L2020（switch part.type） | 理解 SSE 转换核心逻辑 | `grep -n 'async function\*' src/services/api/claude.ts` |
+| 4 | `src/utils/hooks/execAgentHook.ts` | L160-L185（for await 消费） | 理解第三个消费模式（hooks 场景） | `sed -n '160,185p' src/utils/hooks/execAgentHook.ts` |
+| 5 | `book/ch08.md` | 全文（扫描主循环相关内容） | 确认边界：不重复第8章内容 | `grep -n 'queryLoop\|query(' book/ch08.md \| head -20` |
+| 6 | `specs/ch09.spec` | 全文 | 确认 spec 意图和排除范围 | `cat specs/ch09.spec` |
+
+---
+
+## 5. Spec 验收场景清单
+
+### A组：源码锚点验收
+
+| 场景ID | 验收项 | 通过标准 |
+|--------|--------|----------|
+| A1 | 所有锚点引用有效 | 每个 `文件:行号` 锚点对应的代码实际存在 |
+| A2 | 推断内容有标注 | 无法直接从源码读出的内容，标注"（推断）" |
+| A3 | 不引用排除范围 | 不出现 `node_modules/@anthropic-ai/sdk` 路径，不出现 `src/assistant/`、`src/ssh/`、`src/server/`、`src/proactive/` |
+| A4 | 不重复第8章锚点 | 不重复引用第8章已讲解的主循环锚点（如 `QueryEngine.ts` 主循环部分） |
+
+### B组：语言精确性验收
+
+| 场景ID | 验收项 | 通过标准 |
+|--------|--------|----------|
+| B1 | 无空洞表述 | 全文无"优雅"、"强大"、"完美"等形容词（除非引用他人） |
+| B2 | 数据驱动 | 延迟、时间、比较等描述均有具体数值支撑 |
+| B3 | 术语标准化 | async generator、SSE、backpressure 首次出现均有定义 |
+| B4 | 无模糊因果 | 所有"因为……所以"的断言均有源码或逻辑支撑 |
+
+### C组：结构完整性验收
+
+| 场景ID | 验收项 | 通过标准 |
+|--------|--------|----------|
+| C1 | hunter 递进层次 | 按问题→实例1→实例2→模式剖析→适用→权衡→对话→行动 顺序排列 |
+| C2 | hunter 专属结构 | 包含模式命名框（≥2个）和"你能做什么"（5-8条） |
+| C3 | 核心主张可提炼 | 每节第一段或最后一段有明确的核心主张句 |
+| C4 | 设计权衡 | 9.6节覆盖 generator 调试困难、中间状态复杂、Memory 压力三个权衡点 |
+| C5 | 章末行动建议 | "你能做什么"包含 5-8 条具体可执行建议 |
+| C6 | 章节间链接 | 明确引用第8章，不重复其内容 |
+
+### D组：图表与代码验收
+
+| 场景ID | 验收项 | 通过标准 |
+|--------|--------|----------|
+| D1 | 图表数量 | ≥2 个可渲染 Mermaid 图表 |
+| D2 | 图表标注格式 | 每个图表下方有 `图9-X：说明文字` 格式的标题 |
+| D3 | 代码片段长度 | 每个代码片段 ≤25 行 |
+| D4 | 源码注释引用 | 每个代码片段中有注释说明关键行意图 |
+| D5 | hunter 专属图表 | 包含适用范围表（表格）和模式命名框 |
+
+### E组：风格符合性验收
+
+| 场景ID | 验收项 | 通过标准 |
+|--------|--------|----------|
+| E1 | hunter 开篇格式（⛔最高优先级） | 开篇 150-200 字，模式预告，无文件路径/行号，以钩子问句结尾 |
+| E2 | 读者对话感 | 每节至少一处用"你"直接提问或引导 |
+| E3 | 关键信息突出 | 每节核心主张在首段或末段明确点出 |
+
+---
+
+## 6. 章节骨架
+
+### 开篇：模式预告（150-200字）
+
+**写作要点**：
+- 现象：用户在终端看到 Claude Code 逐字输出，从不卡顿，即使 AI 思考了 30 秒
+- 线索：这种流式体验不是"魔法"，背后有一个工程模式在撑腰
+- 预告：本章将识别"异步生成器流式适配器"和"协作式背压"两个模式
+- 钩子：为什么不用 EventEmitter？为什么不用 RxJS Observable？
+
+---
+
+### 节9.1：问题——SSE 流的消费困境
+
+**核心主张**：高延迟 AI 调用的流式响应无法用 Promise 模型描述，async generator 提供了一种既能推送中间状态又能自然传播错误的语言原语。
+
+**源码锚点**：
+- `src/query.ts:337` — `yield { type: 'stream_request_start' }` — 每轮开始推送的信号，证明"中间状态"是一等公民
+
+**概念层次（3层）**：
+1. 表层：为什么不能 `await response.body()`（30秒没输出用户体验崩溃）
+2. 中层：背压问题——如果消费者（UI 渲染）比生产者（API 流）慢，谁等谁？
+3. 深层：错误传播——`try/catch` 穿透 `for await` 的语义保证
+
+**权衡分析**：
+- 对比方案：Callback、Promise.all、EventEmitter、RxJS
+- 为什么 async generator 是最简洁的表达（语言级支持，无需额外依赖）
+
+**包含元素**：
+- [ ] 用户体验动机（AI 响应延迟 2-30 秒的数量级）
+- [ ] 背压控制的直觉解释（用水管比喻）
+- [ ] 错误传播的代码对比（callback vs generator）
+- [ ] `yield { type: 'stream_request_start' }` 的意义解读
+
+**内容密度规划**：
+- 高密度：背压控制的技术原理（必须讲透）
+- 中密度：错误传播的对比（点到为止，后面实例会展示）
+- 低密度：用户体验动机（引子，不展开）
+
+**估计字数**：800-1000 字
+
+**对应 spec 场景**：B1（无空洞表述）、C3（核心主张）、E2（读者对话感）
+
+---
+
+### 节9.2：源码实例1 — queryModel() 将 SSE 转化为结构化消息
+
+**核心主张**：`queryModel()` 是一个三段管道的中间层：接收原始 SSE 字节流，yield 结构化 `AssistantMessage` 事件，向上层屏蔽所有 HTTP 细节。
+
+**源码锚点**：
+- `src/services/api/claude.ts:1017` — `async function* queryModel(` — 管道函数签名
+- `src/services/api/claude.ts:1980` — `switch (part.type) { case 'message_start':` — SSE 事件到结构化消息的核心转换
+
+**概念层次（3层）**：
+1. 表层：`queryModel` 接收什么、yield 什么（类型签名层面）
+2. 中层：`switch(part.type)` 的状态机——把 SSE 协议的 7 种事件类型折叠成业务需要的结构
+3. 深层：为什么是 generator 而不是 transform stream——可组合性和错误边界
+
+**权衡分析**：
+- `switch` 状态机 vs 函数分派表（代码可读性 vs 可扩展性）
+- 单层 yield vs yield* 委托（扁平化 vs 分层）
+
+**包含元素**：
+- [ ] `queryModel` 函数签名解读（≤10行代码片段）
+- [ ] `switch(part.type)` 核心状态机（≤25行代码片段，含注释）
+- [ ] 图9-1：Mermaid 流程图，SSE原始事件 → queryModel → AssistantMessage 三段管道
+- [ ] 模式识别句："这就是管道-过滤器（Pipe-and-Filter）模式的信号"
+
+**图表设计（图9-1）**：
+```mermaid
+graph LR
+    A["Anthropic API<br/>SSE Stream"] -->|raw bytes| B["queryModel()<br/>async generator"]
+    B -->|message_start| C["AssistantMessage<br/>构建开始"]
+    B -->|content_block_delta| D["文本块累积"]
+    B -->|message_stop| E["AssistantMessage<br/>完整对象"]
+    C --> F["上层消费者<br/>for await"]
+    D --> F
+    E --> F
+```
+
+**内容密度规划**：
+- 高密度：switch 状态机逐段解读（本节核心）
+- 中密度：类型签名和接口设计
+- 低密度：与第8章的关联（一句话引用）
+
+**估计字数**：1000-1200 字
+
+**对应 spec 场景**：A1（锚点有效）、D1（图表）、D3（代码长度）、S5（模式识别句）
+
+---
+
+### 节9.3：源码实例2 — ask() 与 queryModelWithStreaming() 的两种消费模式
+
+**核心主张**：同一个 async generator 可以有两种截然不同的消费模式：ask() 批量收集后一次性返回，queryModelWithStreaming() 保持流式让消费者逐事件处理——这揭示了 generator 的核心设计价值：生产者和消费者解耦。
+
+**源码锚点**：
+- `src/QueryEngine.ts:1186` — `export async function* ask({` — convenience wrapper，批量收集模式
+- `src/services/api/claude.ts:752` — `export async function* queryModelWithStreaming(` — 带 VCR 回放的流式变体
+- `src/utils/hooks/execAgentHook.ts:167` — `for await (const message of query({` — 第三个消费模式（hooks 场景）
+
+**概念层次（3层）**：
+1. 表层：ask() 和 queryModelWithStreaming() 的函数签名对比
+2. 中层：`for await` 的"拉取"语义——消费者控制节奏，producer 暂停等待
+3. 深层：VCR 回放模式——queryModelWithStreaming 包装了录制/回放能力，不改变接口
+
+**权衡分析**：
+- 批量消费（ask）：简单，但大响应时内存压力大
+- 流式消费（queryModelWithStreaming）：复杂，但响应可分块处理
+- hooks 场景（execAgentHook）：第三方扩展点，generator 保证隔离性
+
+**包含元素**：
+- [ ] ask() 核心逻辑片段（≤15行，展示 for await 收集模式）
+- [ ] queryModelWithStreaming 签名对比（≤10行）
+- [ ] execAgentHook 的 for await 消费（≤10行，第三种模式）
+- [ ] 图9-2：Mermaid 序列图，三种消费模式的对比
+- [ ] 模式识别句："这里有一个信号——generator 让消费者成为节奏的主人"
+
+**图表设计（图9-2）**：
+```mermaid
+sequenceDiagram
+    participant P as queryModel()<br/>生产者
+    participant A as ask()<br/>批量消费者
+    participant S as queryModelWithStreaming()<br/>流式消费者
+    participant H as execAgentHook()<br/>hooks消费者
+
+    P->>A: yield event1
+    P->>A: yield event2
+    P->>A: yield event_n
+    A-->>A: 收集所有后返回
+
+    P->>S: yield event1
+    S-->>S: 立即处理event1
+    P->>S: yield event2
+    S-->>S: 立即处理event2
+
+    P->>H: yield message
+    H-->>H: 触发hook逻辑
+```
+
+**内容密度规划**：
+- 高密度：两种消费模式的设计差异分析（本节核心）
+- 中密度：VCR 回放机制的简介（不深入，只说明扩展点）
+- 低密度：hooks 场景（作为第三种佐证，不展开）
+
+**估计字数**：1000-1200 字
+
+**对应 spec 场景**：A1（锚点有效）、D1（图表）、S5（模式识别句）
+
+---
+
+### 节9.4：模式剖析——三层 Generator 管道
+
+**核心主张**：Claude Code 的流式响应是一个三层 async generator 栈：`queryModel`（SSE适配层）→ `queryLoop`（多轮循环层）→ `query/ask`（接口暴露层）。每层职责单一，通过 `yield*` 委托连接，背压天然由 `for await` 的协作式调度解决。
+
+**源码锚点**：
+- `src/query.ts:219` — `export async function* query(` — 入口层
+- `src/query.ts:241` — `async function* queryLoop(` — 循环层（真正的多轮逻辑）
+- `src/services/api/claude.ts:1017` — `async function* queryModel(` — 适配层
+
+**概念层次（3层）**：
+1. 表层：三层函数调用栈图（query → queryLoop → queryModel）
+2. 中层：`yield*` 委托的语义——不是调用，是"接管"控制流
+3. 深层：协作式调度（cooperative scheduling）——`for await` 是 JavaScript 的微任务让出点
+
+**权衡分析**：
+- 深层 generator 栈 vs 扁平化：分层清晰 vs 调用栈追踪困难
+- yield* vs 手动 for await 转发：简洁 vs 可以在中间插入逻辑
+
+**包含元素**：
+- [ ] 三层管道示意（文字 ASCII 图或 Mermaid）
+- [ ] `yield*` 的简短代码示例（≤10行）
+- [ ] 协作式背压的直觉解释（不需要 RxJS 的 backpressure 算子）
+- [ ] 显式点名："这就是异步生成器流式适配器（Async Generator Streaming Adapter）模式"
+
+**内容密度规划**：
+- 高密度：三层分工分析和 yield* 语义（本节核心）
+- 高密度：协作式背压原理（关键洞见）
+- 低密度：与第8章主循环的关系（一句话收束）
+
+**估计字数**：900-1100 字
+
+**对应 spec 场景**：C3（核心主张）、S4（三层结构分析）、S1（模式显式点名）
+
+---
+
+### 节9.5：适用范围
+
+**核心主张**：异步生成器流式适配器适用于"生产速度不可预测、消费者需要中间状态、错误需要从深层传播"的场景，但不适用于需要多播或历史重放的场景。
+
+**源码锚点**（作为适用案例支撑）：
+- `src/utils/hooks/execAgentHook.ts:167` — hooks 消费场景（适用：第三方扩展点）
+- `src/services/api/claude.ts:752` — VCR 变体（适用：录制/回放需求）
+
+**包含元素**：
+- [ ] 适用范围表格（hunter 专属）
+
+**适用范围表设计**：
+
+| 场景 | 适用？ | 原因 |
+|------|--------|------|
+| 高延迟 AI/LLM API 调用 | ✅ 强烈推荐 | 生产速度不可预测，消费者需要中间状态 |
+| HTTP SSE / WebSocket 流式接收 | ✅ 推荐 | 天然适配协议的推送模型 |
+| 文件系统大文件逐行处理 | ✅ 适用 | 背压自动控制，内存友好 |
+| 数据库游标/分页查询 | ✅ 适用 | 延迟加载，避免全量加载 |
+| 多播（一个 producer，多个 consumer） | ❌ 不适用 | Generator 是一次性的，需要 Subject/BehaviorSubject |
+| 需要历史重放的流 | ❌ 不适用 | Generator 消费过后不可回退，需要 RxJS ReplaySubject |
+| CPU 密集型同步计算 | ⚠️ 谨慎 | Generator 切换有微任务开销，纯计算用普通循环更快 |
+| 需要组合多个流（zip/merge） | ⚠️ 需要额外工具 | 原生 generator 无组合算子，需要 for await 手动协调 |
+
+**估计字数**：400-500 字（表格为主）
+
+**对应 spec 场景**：D5（hunter 专属图表：适用范围表）
+
+---
+
+### 节9.6：权衡与局限
+
+**核心主张**：Async generator 不是银弹——它在调试工具链支持、中间状态复杂性、以及多消费者场景上有明显局限，Claude Code 本身也为此付出了代价。
+
+**源码锚点**：
+- `src/query.ts:337` — `yield { type: 'stream_request_start' }` — 中间状态事件类型（体现了中间状态的复杂性）
+
+**权衡点分析（3个）**：
+
+**① Generator 调试困难**
+- 问题：断点在 generator 中命中时，调用栈显示的是 generator 帧，而非真实调用者
+- 代价：Claude Code 团队在 generator 中添加了大量 `yield { type: 'xxx' }` 信号事件，实际上是手工的调试跟踪
+- 对策：使用具名 generator 函数（非箭头函数），配合 `--inspect-brk`
+
+**② 中间状态类型复杂性**
+- 问题：`yield` 的事件类型随着功能增长而膨胀（`stream_request_start`、`stream_request_end`、`tool_use`、`error` 等）
+- 代价：消费者需要处理所有事件类型，否则容易漏掉错误事件
+- 对策：定义 discriminated union 类型，TypeScript 会强制穷举
+
+**③ 内存压力（批量消费场景）**
+- 问题：`ask()` 模式收集所有 yield 值后返回，大响应会造成内存压力
+- 数量级：一次 Claude 响应可能产生 50-200 个 yield 事件
+- 对策：优先使用流式消费，仅在确需完整结果时使用批量模式
+
+**包含元素**：
+- [ ] 三个权衡点的分析
+- [ ] 每个权衡点配一个"对策"
+- [ ] 简短的代码示例（调试技巧，≤10行）
+
+**估计字数**：600-800 字
+
+**对应 spec 场景**：C4（设计权衡）
+
+---
+
+### 节9.7：与已知模式对话
+
+**核心主张**：异步生成器流式适配器不是新发明——它是 EIP 管道-过滤器模式的语言级实现，同时借鉴了 Reactive Streams 的背压规范，但用更轻量的方式解决了同样的问题。
+
+**源码锚点**：
+- `src/query.ts:241` — `queryLoop` — 多个 yield 点体现了 EIP Filter 角色
+
+**对话对象（2个）**：
+
+**① EIP 管道-过滤器（Pipe-and-Filter）模式**
+- 相似：`queryModel` 是 Filter，`yield*` 是 Pipe，消费者是 Sink
+- 不同：EIP 原版是线程模型，async generator 是单线程协作式
+- Claude Code 的选择：语言级原语而非框架，零依赖
+
+**② Reactive Streams 背压规范（RxJS / Project Reactor）**
+- 相似：都解决了背压问题（慢消费者不会被快生产者淹没）
+- 不同：Reactive Streams 支持多播、操作符组合、历史重放；async generator 不支持
+- Claude Code 的选择：不引入 RxJS 依赖，接受功能子集，换取代码简洁性
+- 数量级比较：RxJS ~40KB gzip，async generator 是语言原语
+
+**包含元素**：
+- [ ] 两个模式对话的对比分析
+- [ ] 明确说明"Claude Code 为什么没有选择 RxJS"的推断
+- [ ] 与 Node.js Streams（Transform Stream）的简短对比
+
+**估计字数**：600-800 字
+
+**对应 spec 场景**：S3（至少对话2个已知模式）
+
+---
+
+### 章末：模式命名框 + 你能做什么
+
+#### 模式命名框（2个）
+
+**模式1**：
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 模式：异步生成器流式适配器                                      │
+│       (Async Generator Streaming Adapter)                    │
+│                                                             │
+│ 意图：将不可预测的 IO 流（SSE/WebSocket/文件流）转化为结构化     │
+│       事件序列，同时提供天然的背压控制和错误传播                  │
+│                                                             │
+│ 别名：Generator Pipeline、Async Iterator Adapter            │
+│                                                             │
+│ 适用：① 生产速度不可预测的高延迟 IO                            │
+│       ② 消费者需要处理中间状态（非最终结果）                     │
+│       ③ 错误需要从深层自然传播到顶层调用者                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**模式2**：
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 模式：协作式背压（Cooperative Backpressure）                   │
+│                                                             │
+│ 意图：利用 async generator 的 for await 协作式调度，            │
+│       让消费者天然控制生产者节奏，无需显式背压信号               │
+│                                                             │
+│ 别名：Pull-based Backpressure、Generator Throttle           │
+│                                                             │
+│ 适用：① 消费者处理速度慢于生产者                               │
+│       ② 单消费者场景（不需要多播）                              │
+│       ③ 希望避免引入 RxJS 等流式库依赖                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 你能做什么（7条）
+
+1. **立即可用**：将你现有的 `fetch` + `response.json()` 调用改为 async generator，让 UI 在响应流入时就能开始渲染
+2. **立即可用**：给你的 async generator 函数命名（不要用箭头函数），调试时调用栈会清晰得多
+3. **项目可用**：为 generator yield 的事件类型定义 TypeScript discriminated union，强制消费者处理所有事件类型（包括错误事件）
+4. **项目可用**：用 `yield { type: 'start' }` / `yield { type: 'end' }` 模式给你的 generator 添加生命周期信号，方便日志追踪和调试
+5. **项目可用**：在需要多轮对话的场景中，用 `queryLoop` 模式——generator 函数内部的 while 循环可以用 `yield*` 委托给内层 generator，保持每层职责单一
+6. **深入探索**：阅读 TC39 的 AsyncIterator Helpers 提案（Stage 3），了解原生 `map`、`filter`、`take` 等算子即将到来
+7. **深入探索**：对比在相同场景下用 Node.js Transform Stream 实现的代码复杂度，理解为什么 async generator 在单消费者场景下是更简洁的选择
+
+**对应 spec 场景**：C2（5-8条行动建议）、C5（章末结构完整）
+
+---
+
+## 7. 图表清单
+
+| 图表ID | 类型 | 标题 | 所在节 | 渲染方式 | 用途 |
+|--------|------|------|--------|----------|------|
+| 图9-1 | Mermaid flowchart LR | SSE原始事件 → queryModel → AssistantMessage 三段管道 | 9.2 | Mermaid | 展示 queryModel 的管道角色 |
+| 图9-2 | Mermaid sequenceDiagram | 三种消费模式对比：ask / queryModelWithStreaming / execAgentHook | 9.3 | Mermaid | 对比批量 vs 流式消费 |
+| 表9-1 | Markdown table | 异步生成器流式适配器适用范围 | 9.5 | 原生表格 | hunter专属：适用范围表 |
+| 框9-1 | ASCII/文本框 | 模式命名框：异步生成器流式适配器 | 章末 | 代码块 | hunter专属：模式命名框 |
+| 框9-2 | ASCII/文本框 | 模式命名框：协作式背压 | 章末 | 代码块 | hunter专属：模式命名框 |
+
+> 注：图9-1 和 图9-2 是强制要求的 Mermaid 图表（≥2个）；表9-1 和框9-1/9-2 是 hunter 风格专属结构。
+
+---
+
+## 8. 写作顺序（完整8步）
+
+### Step 1：锚点验证（写作前）
+```bash
+# 验证所有关键源码锚点存在
+sed -n '1186,1200p' src/QueryEngine.ts
+sed -n '219,245p' src/query.ts
+sed -n '241,260p' src/query.ts
+sed -n '335,340p' src/query.ts
+sed -n '1015,1025p' src/services/api/claude.ts
+sed -n '1978,1985p' src/services/api/claude.ts
+sed -n '750,760p' src/services/api/claude.ts
+sed -n '165,170p' src/utils/hooks/execAgentHook.ts
+```
+
+### Step 2：边界确认（写作前）
+- 阅读 `book/ch08.md` 最后2节，确认主循环描述范围
+- 确认本章不会重复第8章的 QueryEngine 主循环内容
+
+### Step 3：开篇写作（模式预告段）
+- 从用户体验现象入手（流式输出体验）
+- 预告两个模式名称
+- 以钩子问句结尾
+- 严格控制在 150-200 字
+- 不引用任何文件路径或行号
+
+### Step 4：问题节（9.1）
+- 写背压控制的直觉解释
+- 写错误传播的挑战
+- 引入 `src/query.ts:337` 锚点，说明中间状态是一等公民
+- 设置读者问题：为什么不用 EventEmitter / Promise.all？
+
+### Step 5：实例节（9.2 → 9.3）
+- 先写 9.2（queryModel，SSE 转换核心）
+  - 绘制图9-1（Mermaid 流程图）
+  - 分析 switch 状态机
+  - 以模式识别句收尾
+- 再写 9.3（ask vs queryModelWithStreaming，两种消费模式）
+  - 绘制图9-2（Mermaid 序列图）
+  - 对比批量 vs 流式消费
+  - 加入 execAgentHook 第三种消费模式
+
+### Step 6：模式剖析（9.4）
+- 绘制三层管道示意
+- 解释 yield* 委托语义
+- 解释协作式背压
+- **显式点名模式**："这就是异步生成器流式适配器（Async Generator Streaming Adapter）模式"
+
+### Step 7：适用范围 + 权衡 + 对话（9.5 → 9.7）
+- 9.5：填写适用范围表格（8行）
+- 9.6：分析三个权衡点，每个附对策
+- 9.7：与 EIP 管道-过滤器、Reactive Streams 对话
+
+### Step 8：章末收尾
+- 写模式命名框（2个）
+- 写"你能做什么"（7条行动建议）
+- 检查全文是否符合 E1（hunter开篇格式）
+
+---
+
+## 9. 写作前 Checklist
+
+### 9.1 源码锚点验证命令
+
+```bash
+#!/bin/bash
+# 验证第9章所有关键锚点
+PROJECT=/Users/liuweiping/workspace/dev/claude-code-sourcemap
+
+echo "=== 锚点1: QueryEngine.ts:1186 ==="
+sed -n '1184,1192p' $PROJECT/src/QueryEngine.ts
+
+echo "=== 锚点2: query.ts:219 ==="
+sed -n '217,225p' $PROJECT/src/query.ts
+
+echo "=== 锚点3: query.ts:241 ==="
+sed -n '239,247p' $PROJECT/src/query.ts
+
+echo "=== 锚点4: query.ts:337 ==="
+sed -n '335,341p' $PROJECT/src/query.ts
+
+echo "=== 锚点5: claude.ts:1017 ==="
+sed -n '1015,1023p' $PROJECT/src/services/api/claude.ts
+
+echo "=== 锚点6: claude.ts:1980 ==="
+sed -n '1978,1986p' $PROJECT/src/services/api/claude.ts
+
+echo "=== 锚点7: claude.ts:752 ==="
+sed -n '750,758p' $PROJECT/src/services/api/claude.ts
+
+echo "=== 锚点8: execAgentHook.ts:167 ==="
+sed -n '165,172p' $PROJECT/src/utils/hooks/execAgentHook.ts
+
+echo "=== 验证完毕 ==="
+```
+
+### 9.2 边界检查命令
+
+```bash
+# 确认第8章覆盖范围（不重复）
+grep -n 'queryLoop\|queryModel\|stream_request' \
+  /Users/liuweiping/workspace/dev/claude-code-sourcemap/book/ch08.md \
+  | head -30
+
+# 确认排除范围不出现在本章内容规划中
+echo "排除：node_modules/@anthropic-ai/sdk（不分析SDK内部）"
+echo "排除：src/assistant/ src/ssh/ src/server/ src/proactive/（stub）"
+```
+
+### 9.3 风格 Checklist（写作中）
+
+- [ ] 开篇是否为 150-200 字的模式预告？
+- [ ] 开篇是否以钩子问句结尾？
+- [ ] 开篇是否没有出现文件路径或行号？
+- [ ] 每节是否有至少一个源码锚点？
+- [ ] 9.4 节是否显式点名了模式名称？
+- [ ] 9.5 节是否包含适用范围表格？
+- [ ] 9.6 节是否覆盖三个权衡点（调试、中间状态复杂性、内存）？
+- [ ] 9.7 节是否与两个已知模式对话？
+- [ ] 章末是否包含 2 个模式命名框？
+- [ ] 章末是否包含 5-8 条行动建议？
+- [ ] 全文是否有 ≥2 个可渲染 Mermaid 图表？
+- [ ] 代码片段是否均 ≤25 行？
+- [ ] 是否有空洞表述（优雅/强大/完美）？
+
+---
+
+## 10. Spec 一致性声明
+
+以下 16 项对齐检查，全部已在本 plan 中覆盖：
+
+| # | 检查项 | 状态 |
+|---|--------|------|
+| 1 | 章节意图原文已提取（来自 specs/ch09.spec） | ✓ |
+| 2 | 核心文件（query.ts、QueryEngine.ts）已纳入前置阅读 | ✓ |
+| 3 | 排除范围（SDK内部、第8章主循环、stub目录）已明确标注 | ✓ |
+| 4 | 所有8个关键锚点已映射到具体节 | ✓ |
+| 5 | hunter开篇格式已规划（150-200字，无路径/行号，钩子问句） | ✓ |
+| 6 | hunter递进层次（问题→实例→模式→适用→权衡→对话→行动）已确认 | ✓ |
+| 7 | 模式命名框（2个）已设计，包含意图/别名/适用 | ✓ |
+| 8 | 你能做什么（7条）已规划，覆盖三个层次 | ✓ |
+| 9 | ≥2个 Mermaid 图表已设计（图9-1流程图、图9-2序列图） | ✓ |
+| 10 | 适用范围表（hunter专属）已设计（8行，含❌场景） | ✓ |
+| 11 | 权衡分析覆盖3个点（调试难、中间状态复杂、内存） | ✓ |
+| 12 | 与已知模式对话覆盖2个（EIP管道-过滤器、Reactive Streams） | ✓ |
+| 13 | 代码片段 ≤25 行约束已注明每节 | ✓ |
+| 14 | 第8章边界检查命令已提供 | ✓ |
+| 15 | 五组验收场景（A/B/C/D/E）已全部纳入骨架规划 | ✓ |
+| 16 | 写作顺序（8步）完整，Step 1 为锚点验证 | ✓ |
+
+---
+
+## 附录：本章字数估算
+
+| 节 | 估算字数 |
+|----|----------|
+| 开篇模式预告 | 150-200 |
+| 9.1 问题节 | 800-1000 |
+| 9.2 实例1 | 1000-1200 |
+| 9.3 实例2 | 1000-1200 |
+| 9.4 模式剖析 | 900-1100 |
+| 9.5 适用范围 | 400-500 |
+| 9.6 权衡局限 | 600-800 |
+| 9.7 与已知模式对话 | 600-800 |
+| 章末（命名框+行动） | 400-500 |
+| **合计** | **5850-7300** |
+
+> 注：含图表说明文字、代码注释、表格内容，实际字数可达 6000-8000 字。

@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant AI as AI 模型
+    participant QE as QueryEngine
+    participant Schema as inputSchema.safeParse()
+    participant Call as tool.call()
+
+    AI->>QE: 工具调用 JSON（unknown 类型）
+    QE->>Schema: 验证参数格式
+    alt 验证通过
+        Schema-->>QE: z.infer&lt;Input&gt;（类型安全）
+        QE->>Call: call(verified_args)
+        Call-->>QE: ToolResult
+    else 验证失败（额外字段/类型错误）
+        Schema-->>QE: ZodError（字段路径 + 原因）
+        QE-->>AI: 错误反馈，请重新生成参数
+    end

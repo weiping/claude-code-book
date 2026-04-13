@@ -1,0 +1,709 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 39 章：termio——终端原语的解析与发送 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-39-章终端原语与光标管理---低级控制的边界"><a class="header" href="#第-39-章终端原语与光标管理---低级控制的边界">第 39 章：终端原语与光标管理 - 低级控制的边界</a></h1>
+<blockquote>
+<p>Claude Code 在终端中运行 React 组件（ch38）。但实际的"绘制"工作需要什么？光标怎样精确定位？如何避免终端状态混乱？</p>
+</blockquote>
+<hr />
+<h2 id="391-问题终端的低级-api"><a class="header" href="#391-问题终端的低级-api">39.1 问题：终端的低级 API</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p><strong>终端原语</strong> = 对终端物理特性的最小操作集合：</p>
+<ul>
+<li>光标移动（上/下/左/右/绝对定位）</li>
+<li>文本颜色和样式</li>
+<li>屏幕清空和区域清空</li>
+<li>特殊字符和符号</li>
+</ul>
+<pre><code>对比：
+  Web：调用 DOM API，浏览器负责渲染
+  终端：需要发送原始 ANSI 转义序列到 stdout
+</code></pre>
+<h3 id="为什么难"><a class="header" href="#为什么难">为什么难</a></h3>
+<pre><code>问题 1：状态泄漏
+  • 某个命令设置了红色文本
+  • 忘记重置
+  → 后续所有文本都是红色（污染全局状态）
+问题 2：光标位置不可知
+  • 想写第 5 行第 10 列
+  • 但终端可能已经换行或被其他程序写入
+  • 无法精确定位（不像 DOM 的绝对坐标）
+问题 3：屏幕尺寸动态变化
+  • 用户调整终端窗口大小
+  • 旧的坐标全部失效
+  • 需要完整重新布局和渲染
+问题 4：竞态条件
+  • 多个进程都在写终端
+  • Agent A 在第 10 行写进度条
+  • Agent B 同时在第 5 行写日志
+  • 结果混乱
+</code></pre>
+<hr />
+<h2 id="392-ansi-转义序列的核心操作"><a class="header" href="#392-ansi-转义序列的核心操作">39.2 ANSI 转义序列的核心操作</a></h2>
+<h3 id="光标控制"><a class="header" href="#光标控制">光标控制</a></h3>
+<p>在 <code>src/ink/cursorControl.ts</code> 中：</p>
+<pre><code class="language-typescript">// CSI = Control Sequence Introducer
+const CSI = '\x1b['
+class CursorController {
+  // 绝对定位：光标移到 (row, col)
+  moveTo(row: number, col: number): string {
+    return `${CSI}${row + 1};${col + 1}H`
+    //           ↑ 终端计数从 1 开始，不是 0
+  }
+  // 相对移动
+  moveUp(count: number = 1): string {
+    return `${CSI}${count}A`
+  }
+  moveDown(count: number = 1): string {
+    return `${CSI}${count}B`
+  }
+  moveRight(count: number = 1): string {
+    return `${CSI}${count}C`
+  }
+  moveLeft(count: number = 1): string {
+    return `${CSI}${count}D`
+  }
+  // 保存和恢复光标位置
+  save(): string {
+    return '\x1b7'  // SCP (Save Cursor Position)
+  }
+  restore(): string {
+    return '\x1b8'  // RCP (Restore Cursor Position)
+  }
+  // 隐藏/显示光标
+  hide(): string {
+    return `${CSI}?25l`  // l = off
+  }
+  show(): string {
+    return `${CSI}?25h`  // h = on
+  }
+}
+</code></pre>
+<h3 id="样式设置"><a class="header" href="#样式设置">样式设置</a></h3>
+<pre><code class="language-typescript">class StyleController {
+  // SGR = Select Graphic Rendition
+  // 颜色（前景）
+  setForeground(colorCode: number): string {
+    return `${CSI}${colorCode}m`
+  }
+  // 常见颜色码：
+  //  30-37 = 标准颜色 (黑、红、绿、黄、蓝、品红、青、白)
+  //  90-97 = 亮色
+  // 38;5;n = 256 色模式
+  // 38;2;r;g;b = RGB 真彩色
+  // 粗体/斜体
+  bold(): string {
+    return `${CSI}1m`
+  }
+  italic(): string {
+    return `${CSI}3m`
+  }
+  underline(): string {
+    return `${CSI}4m`
+  }
+  // 重置所有样式
+  reset(): string {
+    return `${CSI}0m`
+  }
+}
+</code></pre>
+<h3 id="屏幕清空"><a class="header" href="#屏幕清空">屏幕清空</a></h3>
+<pre><code class="language-typescript">class ScreenController {
+  // 清空整个屏幕
+  clear(): string {
+    return `${CSI}2J`
+  }
+  // 清空光标到屏幕末尾
+  clearToEnd(): string {
+    return `${CSI}0J`
+  }
+  // 清空当前行
+  clearLine(): string {
+    return `${CSI}2K`
+  }
+  // 从光标到行末清空
+  clearToLineEnd(): string {
+    return `${CSI}0K`
+  }
+}
+</code></pre>
+<hr />
+<h2 id="393-状态管理与恢复"><a class="header" href="#393-状态管理与恢复">39.3 状态管理与恢复</a></h2>
+<h3 id="问题"><a class="header" href="#问题">问题</a></h3>
+<p>ANSI 样式是"粘性"的（一旦设置就一直生效，直到重置）。</p>
+<pre><code>脚本 1：输出红色文本
+  echo -e '\x1b[31mRed\x1b[0m'  ← 记得重置
+  ✓ 结果：只有"Red"是红色
+脚本 2：输出红色文本但忘记重置
+  echo -e '\x1b[31mRed'         ← 忘记 \x1b[0m
+  ❌ 结果：后续所有终端输出都是红色（污染全局）
+</code></pre>
+<h3 id="解决方案saverestore-栈"><a class="header" href="#解决方案saverestore-栈">解决方案：Save/Restore 栈</a></h3>
+<p>在 <code>src/ink/styleStack.ts</code> 中：</p>
+<pre><code class="language-typescript">class StyleStack {
+  private stack: StyleState[] = []
+  private current: StyleState = {
+    foreground: 'default',
+    background: 'default',
+    bold: false,
+    italic: false,
+    underline: false
+  }
+  push(): void {
+    // 保存当前状态到栈
+    this.stack.push({...this.current})
+  }
+  pop(): void {
+    // 恢复到上一个状态
+    if (this.stack.length &gt; 0) {
+      this.current = this.stack.pop()!
+      this.emitReset()
+    }
+  }
+  setForeground(color: string): void {
+    this.current.foreground = color
+  }
+  // 最后，为所有样式变更清理环境
+  cleanup(): void {
+    this.current = {
+      foreground: 'default',
+      background: 'default',
+      bold: false,
+      italic: false,
+      underline: false
+    }
+    // 输出重置命令
+    process.stdout.write('\x1b[0m')
+  }
+}
+</code></pre>
+<p><strong>使用示例</strong>：</p>
+<pre><code class="language-typescript">const styles = new StyleStack()
+// 输出普通文本
+process.stdout.write('Normal')
+// 进入红色模式
+styles.push()
+styles.setForeground('red')
+process.stdout.write('\x1b[31mRed')
+// 回到普通文本
+styles.pop()
+process.stdout.write('Normal again')
+// 清理（保险起见）
+styles.cleanup()
+</code></pre>
+<hr />
+<h2 id="394-屏幕尺寸与自适应"><a class="header" href="#394-屏幕尺寸与自适应">39.4 屏幕尺寸与自适应</a></h2>
+<h3 id="获取终端大小"><a class="header" href="#获取终端大小">获取终端大小</a></h3>
+<p>在 <code>src/ink/terminalSize.ts</code> 中：</p>
+<pre><code class="language-typescript">class TerminalSize {
+  private width: number
+  private height: number
+  private resizeListeners: Set&lt;() =&gt; void&gt; = new Set()
+  constructor() {
+    // 初始化
+    const size = process.stdout.getWindowSize?.() || [80, 24]
+    this.width = size[0]
+    this.height = size[1]
+    // 监听尺寸变化（SIGWINCH 信号）
+    process.on('SIGWINCH', () =&gt; {
+      this.onResize()
+    })
+  }
+  private onResize(): void {
+    const newSize = process.stdout.getWindowSize?.() || [80, 24]
+    if (newSize[0] !== this.width || newSize[1] !== this.height) {
+      this.width = newSize[0]
+      this.height = newSize[1]
+      // 通知所有监听器
+      for (const listener of this.resizeListeners) {
+        listener()
+      }
+    }
+  }
+  onResize(callback: () =&gt; void): () =&gt; void {
+    this.resizeListeners.add(callback)
+    // 返回取消监听函数
+    return () =&gt; {
+      this.resizeListeners.delete(callback)
+    }
+  }
+  getSize(): {width: number; height: number} {
+    return {width: this.width, height: this.height}
+  }
+}
+</code></pre>
+<h3 id="重新布局"><a class="header" href="#重新布局">重新布局</a></h3>
+<p>当终端尺寸改变时，所有组件需要重新计算布局：</p>
+<pre><code>事件流：
+  SIGWINCH 信号 → onResize() 
+    → 更新 terminalSize 
+    → 触发所有 resizeListeners 
+    → Ink 重新计算 Yoga 布局 
+    → 完整重新渲染屏幕
+</code></pre>
+<hr />
+<h2 id="395-竞态条件与互斥"><a class="header" href="#395-竞态条件与互斥">39.5 竞态条件与互斥</a></h2>
+<h3 id="问题-1"><a class="header" href="#问题-1">问题</a></h3>
+<pre><code>两个异步任务同时写终端：
+Task A：写进度条 50%
+  "Progress: [#####      ] 50%"
+Task B：写日志
+  "INFO: Task completed"
+结果（竞态）：
+  "Progress: INF: [#####O     ] 50%Task completed"
+  ↑ 完全混乱
+</code></pre>
+<h3 id="解决方案互斥锁"><a class="header" href="#解决方案互斥锁">解决方案：互斥锁</a></h3>
+<p>在 <code>src/ink/terminalMutex.ts</code> 中：</p>
+<pre><code class="language-typescript">class TerminalMutex {
+  private isLocked = false
+  private queue: Array&lt;() =&gt; Promise&lt;void&gt;&gt; = []
+  async write(task: () =&gt; Promise&lt;void&gt;): Promise&lt;void&gt; {
+    // 如果已加锁，加入队列
+    if (this.isLocked) {
+      return new Promise((resolve) =&gt; {
+        this.queue.push(async () =&gt; {
+          await task()
+          resolve()
+        })
+      })
+    }
+    this.isLocked = true
+    try {
+      await task()
+    } finally {
+      this.isLocked = false
+      // 处理队列中的下一个任务
+      if (this.queue.length &gt; 0) {
+        const next = this.queue.shift()!
+        // 不等待（继续非阻塞）
+        this.write(next)
+      }
+    }
+  }
+}
+// 使用
+const mutex = new TerminalMutex()
+// 两个任务都会通过互斥锁序列化
+await mutex.write(async () =&gt; {
+  // 写进度条（原子操作，不会被打断）
+  process.stdout.write('Progress: 50%\n')
+})
+await mutex.write(async () =&gt; {
+  // 写日志（原子操作）
+  process.stdout.write('INFO: Task completed\n')
+})
+</code></pre>
+<hr />
+<h2 id="延伸终端控制的设计选择与权衡"><a class="header" href="#延伸终端控制的设计选择与权衡">延伸：终端控制的设计选择与权衡</a></h2>
+<h3 id="为什么用-ansi-转义序列而不是-ncurses"><a class="header" href="#为什么用-ansi-转义序列而不是-ncurses">为什么用 ANSI 转义序列而不是 ncurses？</a></h3>
+<p><code>ncurses</code> 是 C 语言的终端控制库，很多 TUI 应用都基于它。为什么 Ink 不基于 ncurses？</p>
+<ol>
+<li>
+<p><strong>Node.js/Bun 生态无法直接用 ncurses</strong>：ncurses 是 C 库，在 Node.js 中使用需要 native bindings，增加了安装复杂度（编译依赖、平台差异）</p>
+</li>
+<li>
+<p><strong>ncurses 的抽象层是"窗口"，而非"字符"</strong>：ncurses 管理多个 <code>WINDOW</code> 对象，适合传统的全屏 TUI 应用（如 vim、htop）。但 Claude Code 的 UI 是流式输出 + 偶尔的弹框，不是全屏 TUI，ncurses 的窗口管理是过度设计</p>
+</li>
+<li>
+<p><strong>跨平台性</strong>：ANSI 序列在 macOS、Linux、Windows Terminal 上都有标准支持。<code>ncurses</code> 需要 terminfo 数据库，在不同平台上行为可能有差异</p>
+</li>
+</ol>
+<h3 id="为什么用-yoga-而不是自己实现布局算法"><a class="header" href="#为什么用-yoga-而不是自己实现布局算法">为什么用 Yoga 而不是自己实现布局算法？</a></h3>
+<p>Flexbox 布局算法本身并不复杂（对于基本用例），为什么 Ink 不自己实现？</p>
+<ol>
+<li>
+<p><strong>边缘情况的复杂性</strong>：<code>flex-wrap</code>、<code>align-items</code>、<code>justify-content</code> 的各种组合形成了极多的边缘情况。Meta 的 Yoga 团队经过多年打磨，Ink 获得了一个经过充分测试的实现，而无需自己测试这些边缘情况</p>
+</li>
+<li>
+<p><strong>一致性</strong>：Yoga 是 React Native 使用的同一个布局引擎。开发者用 React Native 的布局经验来写 Ink 组件，行为是一致的，降低了学习成本</p>
+</li>
+<li>
+<p><strong>多线程安全</strong>：Yoga 支持多线程布局计算，Ink 未来可以利用这一点优化大型布局的性能</p>
+</li>
+</ol>
+<h3 id="csi-和-osc-序列的分工为什么不统一成一种序列"><a class="header" href="#csi-和-osc-序列的分工为什么不统一成一种序列">CSI 和 OSC 序列的分工：为什么不统一成一种序列？</a></h3>
+<pre><code>CSI (Control Sequence Introducer): ESC[...
+  用于：光标控制、颜色、屏幕操作
+  特点：即时生效，参数是数字
+  
+OSC (Operating System Command): ESC]...
+  用于：标题设置、超链接、图片（Kitty 协议）
+  特点：可能涉及二进制数据，参数是字符串
+</code></pre>
+<p>两种序列的分工来自历史设计：CSI 是 ANSI 标准（1976年），简单高效；OSC 是后来扩展的，用于需要字符串参数（如 URL）的操作。统一成一种会要求 ANSI 标准重新设计，实际上不可能。</p>
+<p>Ink 的 <code>csi.ts</code>（<code>src/ink/termio/csi.ts</code>）和 <code>osc.ts</code>（<code>src/ink/termio/osc.ts</code>）分别处理这两种序列，正好对应了这个历史分工——不是 Ink 的过度设计，而是终端标准的现实。</p>
+<h3 id="tokenizer-与-parser-分工的工程价值"><a class="header" href="#tokenizer-与-parser-分工的工程价值">tokenizer 与 parser 分工的工程价值</a></h3>
+<pre><code>单阶段处理（合并 tokenize + parse）：
+  raw bytes → Action
+  
+  缺陷：
+  - 测试困难：无法独立测试"字节切分"和"意义解析"
+  - 扩展困难：添加新序列类型需要修改整个状态机
+
+两阶段处理（tokenize → parse）：
+  raw bytes → Token → Action
+  
+  优势：
+  - tokenizer 只关心字节边界（ESC 开始，BEL 或 ST 结束）
+  - parser 只关心 Token 的语义（这个 CSI 序列代表什么操作）
+  - 分别测试、分别替换
+</code></pre>
+<p><code>src/ink/termio/tokenize.ts:57</code> 的 <code>createTokenizer()</code> 和 <code>src/ink/termio/parser.ts:87</code> 的 <code>parseCSI()</code> 的职责分离，是软件工程中"单一职责原则"的直接体现——一个函数只做一件事，做好一件事。</p>
+<h2 id="图解"><a class="header" href="#图解">图解</a></h2>
+<p><strong>图 39-1：ANSI 控制流</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["应用代码"] --&gt; B["CSI 命令"]
+    B --&gt; C["光标移动&lt;br/&gt;CSI H"]
+    B --&gt; D["样式设置&lt;br/&gt;CSI m"]
+    B --&gt; E["屏幕操作&lt;br/&gt;CSI J/K"]
+    C --&gt; F["终端"]
+    D --&gt; F
+    E --&gt; F
+    style F fill:#ccffcc
+</code></pre>
+<p><strong>图 39-2：样式栈的管理</strong></p>
+<pre><code class="language-mermaid">graph TB
+    A["push()"]
+    B["栈：[]"]
+    C["保存状态&lt;br/&gt;栈：[default]"]
+    D["setForeground red"]
+    E["改变当前状态"]
+    F["pop()"]
+    G["恢复状态&lt;br/&gt;栈：[]"]
+    A --&gt; B --&gt; C --&gt; D --&gt; E --&gt; F --&gt; G
+</code></pre>
+<p><strong>图 39-3：SIGWINCH 事件处理</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant User
+    participant Terminal
+    participant App
+    User-&gt;&gt;Terminal: 调整窗口大小
+    Terminal-&gt;&gt;App: SIGWINCH
+    App-&gt;&gt;App: 获取新尺寸
+    App-&gt;&gt;App: 重新布局
+    App-&gt;&gt;Terminal: 完整重新渲染
+    Terminal-&gt;&gt;User: 适配新尺寸
+</code></pre>
+<p><strong>表格 39-1：常见 ANSI 代码</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>操作</th><th>代码</th><th>参数</th></tr></thead><tbody>
+<tr><td>光标绝对位置</td><td>CSI H</td><td>row, col</td></tr>
+<tr><td>光标上移</td><td>CSI A</td><td>count</td></tr>
+<tr><td>清空屏幕</td><td>CSI 2J</td><td>-</td></tr>
+<tr><td>粗体</td><td>CSI 1m</td><td>-</td></tr>
+<tr><td>红色</td><td>CSI 31m</td><td>-</td></tr>
+<tr><td>重置</td><td>CSI 0m</td><td>-</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="样式栈style-stack"><a class="header" href="#样式栈style-stack">样式栈（Style Stack）</a></h3>
+<p><strong>解决的问题</strong>：ANSI 颜色码是全局状态——设置了红色之后不重置，后续所有输出都是红色。嵌套的颜色区域（红色里面的蓝色）更难处理。</p>
+<p><strong>核心做法</strong>：用栈管理样式状态。进入颜色区域时 <code>push()</code> 保存当前状态，离开时 <code>pop()</code> 恢复。这和编程语言的词法作用域是同构的。</p>
+<p><strong>前置条件</strong>：所有终端输出都通过统一的样式管理器，不允许直接调用 ANSI 转义码。</p>
+<p><strong>源码证据</strong>：<code>src/ink/styleStack.ts</code> — <code>StyleStack.push()/pop()</code> 管理颜色作用域，进程退出时 <code>cleanup()</code> 重置所有样式。</p>
+<h3 id="互斥写入mutex-write"><a class="header" href="#互斥写入mutex-write">互斥写入（Mutex Write）</a></h3>
+<p><strong>解决的问题</strong>：多个异步任务（主对话、子 Agent、后台日志）同时写终端，输出内容交叉混乱。</p>
+<p><strong>核心做法</strong>：所有终端写入通过 <code>TerminalMutex.write()</code> 序列化。新的写入请求如果当前有写入在进行，加入等待队列（Promise 链），写入完成后自动触发下一个。</p>
+<p><strong>前置条件</strong>：终端写入是异步操作，并发写入会产生竞态；写入原子性比写入延迟更重要。</p>
+<p><strong>源码证据</strong>：<code>src/ink/terminalMutex.ts</code> — <code>TerminalMutex.write()</code> 实现写入序列化，<code>queue: Array&lt;() =&gt; Promise&lt;void&gt;&gt;</code> 管理等待列表。</p>
+<h3 id="事件驱动布局event-driven-layout"><a class="header" href="#事件驱动布局event-driven-layout">事件驱动布局（Event-Driven Layout）</a></h3>
+<p><strong>解决的问题</strong>：终端窗口大小会动态改变（用户拖拽窗口），所有基于固定尺寸计算的布局瞬间失效。</p>
+<p><strong>核心做法</strong>：监听 <code>SIGWINCH</code> 信号，收到信号时更新终端尺寸，通知所有监听者触发重新布局和完整重渲染。</p>
+<p><strong>前置条件</strong>：布局计算依赖终端尺寸，且尺寸改变时需要完整重算（不能增量更新布局）。</p>
+<p><strong>源码证据</strong>：<code>src/ink/terminalSize.ts</code> — <code>process.on('SIGWINCH', this.onResize)</code> 监听尺寸变化，<code>resizeListeners</code> 集合存储所有需要通知的组件。</p>
+<h2 id="延伸termio-模块tokenizerparser-的职责分工"><a class="header" href="#延伸termio-模块tokenizerparser-的职责分工">延伸：termio 模块——tokenizer/parser 的职责分工</a></h2>
+<p>ch39 的现有内容描述了高层的 ANSI 控制概念，但遗漏了 Ink 真实实现的核心——<code>src/ink/termio/</code> 目录下的 tokenizer/parser 体系：</p>
+<h3 id="tokenizer把字节流切分为-token"><a class="header" href="#tokenizer把字节流切分为-token">tokenizer：把字节流切分为 token</a></h3>
+<pre><code class="language-typescript">// src/ink/termio/tokenize.ts:57
+export function createTokenizer(options?: TokenizerOptions): Tokenizer {
+  // tokenizer 是有状态的——它记住"上一个 ESC 是否还没有匹配"
+  // 当 tokenizer 识别到 ESC[ 时，进入 CSI 状态，等待后续字节
+  // Token 类型包括：PrintableChar、CSI序列、OSC序列、DEC序列等
+}
+</code></pre>
+<p><strong>tokenizer 的职责</strong>：把原始字节流切分为有意义的 token（可打印字符、控制序列），但不解释序列的含义。</p>
+<h3 id="parser解释-csi-序列的含义"><a class="header" href="#parser解释-csi-序列的含义">parser：解释 CSI 序列的含义</a></h3>
+<pre><code class="language-typescript">// src/ink/termio/parser.ts:87
+function parseCSI(rawSequence: string): Action | null {
+  // 解析 CSI 序列：ESC[ params finalByte
+  // 例如：ESC[31m → 设置红色前景色（SGR: Select Graphic Rendition）
+  // 例如：ESC[3;4H → 光标移到第3行第4列（CUP: Cursor Position）
+}
+
+// src/ink/termio/parser.ts:81
+function parseCSIParams(paramStr: string): number[] {
+  // 解析参数字符串："31;1" → [31, 1]（红色 + 粗体）
+}
+</code></pre>
+<p><strong>parser 的职责</strong>：把 CSI token 转换为具体的 <code>Action</code>（光标移动、颜色变化等）。</p>
+<h3 id="csisgroscdec-四类控制序列"><a class="header" href="#csisgroscdec-四类控制序列">CSI/SGR/OSC/DEC 四类控制序列</a></h3>
+<pre><code class="language-typescript">// src/ink/termio/csi.ts（CSI 序列类型定义）
+export const CSI_PREFIX = ESC + String.fromCharCode(ESC_TYPE.CSI)  // ESC[
+
+// src/ink/termio/sgr.ts:127
+export function applySGR(paramStr: string, style: TextStyle): TextStyle {
+  // SGR（Select Graphic Rendition）: 颜色和文本样式
+  // ESC[0m → 重置，ESC[31m → 红色，ESC[1m → 粗体
+}
+</code></pre>
+<p><strong>四类控制序列对比</strong>：</p>
+<div class="table-wrapper"><table><thead><tr><th>类型</th><th>前缀</th><th>用途</th><th>示例</th></tr></thead><tbody>
+<tr><td>CSI</td><td>ESC[</td><td>光标/颜色/屏幕控制</td><td>ESC[3;4H（移动光标）</td></tr>
+<tr><td>SGR</td><td>ESC[...m</td><td>字符样式（颜色/粗体）</td><td>ESC[31m（红色）</td></tr>
+<tr><td>OSC</td><td>ESC]</td><td>操作系统命令（标题/图片）</td><td>ESC]0;title（设置标题）</td></tr>
+<tr><td>DEC</td><td>ESC?</td><td>DEC 私有控制（鼠标/备用屏幕）</td><td>ESC[?25l（隐藏光标）</td></tr>
+</tbody></table>
+</div>
+<h3 id="dec-与-osc-控制序列"><a class="header" href="#dec-与-osc-控制序列">DEC 与 OSC 控制序列</a></h3>
+<p><strong>DEC 私有模式</strong>（<code>src/ink/termio/dec.ts</code>）控制终端的特殊功能：</p>
+<pre><code class="language-typescript">// src/ink/termio/dec.ts:14
+export const DEC = {
+  CURSOR_VISIBLE: 25,      // ESC[?25l 隐藏光标 / ESC[?25h 显示光标
+  ALT_SCREEN: 47,          // ESC[?47h 切换备用屏幕（全屏应用常用）
+  MOUSE_NORMAL: 1000,      // 启用鼠标事件报告
+}
+// DEC 私有模式：CSI ? N h（开启）/ CSI ? N l（关闭）
+</code></pre>
+<p><strong>OSC 操作系统命令</strong>（<code>src/ink/termio/osc.ts</code>）控制终端标题、颜色主题等：</p>
+<pre><code class="language-typescript">// src/ink/termio/osc.ts:21
+export function osc(...parts: (string | number)[]): string {
+  // 生成 OSC 序列：ESC ] parts BEL/ST
+  // 例如：ESC]0;My App → 设置终端标题为 "My App"
+  // Kitty 终端用 ST 终止符（避免 BEL 蜂鸣），其他终端用 BEL
+}
+</code></pre>
+<p>OSC 序列的特殊之处：终止符有两种（BEL <code></code> 和 ST <code>ESC\</code>），且不同终端的支持不一致——<code>osc()</code> 函数根据 <code>env.terminal</code> 自动选择正确的终止符，这是跨终端兼容性的具体体现（<code>src/ink/termio/osc.ts</code>）。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-sgr-颜色码设置后忘记重置污染全局终端状态"><a class="header" href="#-sgr-颜色码设置后忘记重置污染全局终端状态">❌ SGR 颜色码设置后忘记重置，污染全局终端状态</a></h3>
+<pre><code class="language-bash"># ❌ 错误：忘记 [0m 重置
+echo -e '[31mError message'
+# 后续所有终端输出都变成红色，直到手动 reset
+</code></pre>
+<p>每次颜色设置后必须用 <code>[0m</code> 重置（<code>src/ink/styleStack.ts</code>）。更好的做法是用 <code>StyleStack.push()/pop()</code> 模式，保证样式的作用域隔离。</p>
+<h3 id="-用相对光标移动代替绝对定位受其他程序影响"><a class="header" href="#-用相对光标移动代替绝对定位受其他程序影响">❌ 用相对光标移动代替绝对定位，受其他程序影响</a></h3>
+<pre><code class="language-typescript">// ❌ 不稳定：如果有其他程序写了终端，相对位置就错了
+cursor.moveUp(3)  // 假设光标在第 N 行，向上移 3 行
+// 但其他程序刚好也写了输出，实际位置不是预期的
+</code></pre>
+<p>在多进程共用同一个终端的场景下，只有绝对定位（<code>CSI row;colH</code>）是可靠的。</p>
+<h3 id="-不监听-sigwinch-信号终端调整大小后布局混乱"><a class="header" href="#-不监听-sigwinch-信号终端调整大小后布局混乱">❌ 不监听 SIGWINCH 信号，终端调整大小后布局混乱</a></h3>
+<pre><code class="language-typescript">// ❌ 遗漏：没有处理终端 resize 事件
+const size = process.stdout.getWindowSize()  // 只读一次
+// 用户调整窗口后，size 仍然是旧值
+</code></pre>
+<p><code>TerminalSize</code> 类（<code>src/ink/terminalSize.ts</code>）通过 <code>process.on('SIGWINCH', ...)</code> 监听尺寸变化，触发完整的重新布局和渲染。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用 StyleStack 的 push/pop 模式管理颜色作用域</strong>：像 CSS 的块作用域一样，进入颜色区域 push，离开时 pop，杜绝颜色泄漏</li>
+<li><strong>用绝对定位代替相对光标移动</strong>：在多进程或多线程写终端的场景下，只有绝对定位（<code>CSI row;colH</code>）是可靠的</li>
+<li><strong>监听 SIGWINCH 并触发重新布局</strong>：终端 resize 是用户会做的操作，应该优雅处理而不是忽视</li>
+<li><strong>理解 ANSI 状态机</strong>：终端状态（颜色、光标、备用屏幕）是全局的，进入任何修改状态的操作都要有对应的恢复操作</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part10/ch38.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part11/ch40.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part10/ch38.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part11/ch40.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

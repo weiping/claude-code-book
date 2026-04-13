@@ -1,0 +1,333 @@
+# 第 14 章写作计划
+
+**批次**：批次 7（来自 plans/batch.md）
+**章节**：ch14 — 并行世界
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示后台任务系统如何在主循环之外并行执行任务（LocalShellTask、LocalAgentTask、RemoteAgentTask），以及 Coordinator 模式如何实现多智能体群组协调——协调器分配任务，工作智能体汇报结果。读完本章，读者将理解 Harness 如何在单线程的 REPL 循环之外开辟出并行的执行维度，让主对话不被阻塞的同时完成多任务。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+- coordinator/workerAgent.ts 为 stub（只有空函数），分析仅基于 coordinatorMode.ts 中的协调器系统提示词，不分析 workerAgent.ts 内部实现
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- REPL 是单线程的——一轮对话、一个响应、一个任务。但用户的现实世界不是单线程的。Claude Code 用两种方式突破这个限制：后台任务让主循环不阻塞，Coordinator 模式让多个智能体真正并行工作。理解这两种并行的区别，比知道怎么 spawn 一个后台任务更重要。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向前链接第 13 章（内置智能体是 Coordinator 模式中的 worker）
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（3 种 BackendType、7 种 TaskState、TEAM_LEAD_NAME、scratchpad 目录等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/tasks/types.ts | TaskState 联合类型（13-16）、BackgroundTaskState（23-26）、isBackgroundTask（38-47） | 全文（48行）|
+| 2 | src/coordinator/coordinatorMode.ts | isCoordinatorMode（36）、getCoordinatorUserContext（80）、getCoordinatorSystemPrompt（111-350） | 行 36-50, 80-110, 111-250 |
+| 3 | src/utils/swarm/constants.ts | TEAM_LEAD_NAME、SWARM_SESSION_NAME 等常量 | 全文（35行）|
+| 4 | src/utils/swarm/backends/types.ts | BackendType（'tmux'|'iterm2'|'in-process'）、PaneBackend 接口 | 行 1-50 |
+| 5 | src/utils/swarm/inProcessRunner.ts | InProcessRunnerConfig（471+）、teammate 执行逻辑 | 行 1-15, 471-490 |
+| 6 | src/utils/teammateMailbox.ts | TeammateMessage 类型（43）、readMailbox（84） | 行 1-10, 43-55, 84-100 |
+| 7 | src/utils/swarm/teammatePromptAddendum.ts | TEAMMATE_SYSTEM_PROMPT_ADDENDUM — 队友通信规则 | 全文（18行）|
+| 8 | src/tasks/LocalAgentTask/LocalAgentTask.tsx | LocalAgentTaskState（116） | 行 116-130 |
+| 9 | src/tasks/LocalShellTask/LocalShellTask.tsx | LocalShellTask 定义（173） | 行 173-180 |
+| 10 | src/tasks/RemoteAgentTask/RemoteAgentTask.tsx | RemoteAgentTaskState（22）、REMOTE_TASK_TYPES（60） | 行 22-60 |
+
+验证文件存在：
+```bash
+ls src/tasks/types.ts src/coordinator/coordinatorMode.ts src/utils/swarm/constants.ts src/utils/swarm/backends/types.ts src/utils/swarm/inProcessRunner.ts src/utils/teammateMailbox.ts src/utils/swarm/teammatePromptAddendum.ts src/tasks/LocalAgentTask/LocalAgentTask.tsx src/tasks/LocalShellTask/LocalShellTask.tsx src/tasks/RemoteAgentTask/RemoteAgentTask.tsx
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 14.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 14.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 向前链接第 13 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图 | 图 14-1、14-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 14-1、14-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「单线程是 REPL 的命运，但不是 Agent 的命运。后台任务是暗线，Coordinator 是明线，两条线织出并行的世界。」
+
+### 节 14.1：问题——REPL 是单线程的，但现实世界不是
+- 核心主张：REPL 的"一问一答"模型无法处理需要同时进行的任务——后台任务和 Coordinator 模式是两种不同层次的并行解法
+- 源码锚点：
+  - `src/tasks/types.ts:13` — TaskState 联合类型包含 7 种任务状态（LocalShell/LocalAgent/RemoteAgent/InProcessTeammate/LocalWorkflow/MonitorMcp/Dream）——任务类型远比"前台/后台"复杂
+  - `src/tasks/types.ts:42` — `isBackgroundTask` 函数：判断一个任务是否为后台任务——isBackgrounded=false 的运行中任务不算后台任务
+- 概念层次：定义（为什么 REPL 需要并行）→ 设计意图（两种并行的区别）
+- 权衡分析：N/A
+- 包含元素：表格（7 种 TaskState × 执行位置/并行能力）
+- **⛔ 内容密度规划**：
+  - 引入段要点：如果用户需要同时调研两个问题、同时运行测试和构建、同时修复多个文件——REPL 的单线程循环无法满足
+  - 解读段要点：两种并行——后台任务（在 REPL 循环之外执行 shell 命令或 Agent 任务，不阻塞主对话）和 Coordinator 模式（多个 worker Agent 并行工作，由协调器分配任务和综合结果）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B1
+
+### 节 14.2：黄金法则——并行是能力分层，不是功能开关
+- 核心主张：Claude Code 的并行能力按"进程内→进程外→远程"三个层次递进，每个层次的隔离和代价不同
+- 源码锚点：
+  - `src/utils/swarm/backends/types.ts:12` — BackendType: 'tmux' | 'iterm2' | 'in-process'——三种后端分别代表不同的进程隔离策略
+  - `src/utils/swarm/backends/types.ts:1` — 注释："Types of backends available for teammate execution"——Backend 不是传输层，是执行环境
+  - `src/utils/swarm/constants.ts:1` — `TEAM_LEAD_NAME = 'team-lead'`——coordinator 模式中的领导者名称
+  - `src/tasks/LocalAgentTask/LocalAgentTask.tsx:116` — LocalAgentTaskState——本地 Agent 任务，进程内执行
+  - `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx:22` — RemoteAgentTaskState——远程 Agent 任务，CCR（Cloud Compute Runtime）执行
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：进程内（in-process）共享内存和上下文，最快但隔离最弱；tmux/iTerm2 是独立进程，隔离好但有通信开销；远程（RemoteAgent）是完全独立的云环境，隔离最强但延迟最高
+- 包含元素：表格（3 种并行层次 × 隔离级别/延迟/适用场景）
+- **⛔ 内容密度规划**：
+  - 引入段要点：并行不是"开/关"，是有层次的——从共享进程到云上独立环境
+  - 解读段要点：in-process（同 Node.js 进程、共享 AppState、最快启动）、tmux/iTerm2（独立终端进程、文件系统通信）、RemoteAgent（CCR 云环境、HTTP 轮询、完全隔离）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：800-1100 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 14.3：适用场景——何时用后台任务，何时用 Coordinator
+- 核心主张：后台任务适合"主对话需要继续、子任务独立执行"的场景；Coordinator 适合"多个任务有依赖关系、需要协调分配"的场景
+- 源码锚点：
+  - `src/tasks/LocalShellTask/LocalShellTask.tsx:173` — `LocalShellTask: Task`——shell 命令后台执行
+  - `src/coordinator/coordinatorMode.ts:36` — `isCoordinatorMode()`——Coordinator 模式需要显式启用（feature flag + 环境变量）
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：表格（后台任务 vs Coordinator 的适用场景对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：两种并行解决不同的问题——"主对话不被阻塞"和"多任务需要协调"
+  - 解读段要点：后台任务——独立 shell 命令（构建/测试/lint）、独立 Agent 任务（探索/验证）。Coordinator——多文件并行修改（每个 worker 负责一组文件）、研究→实现→验证的工作流流水线
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 14.4：工作原理——Coordinator 模式的任务分配和通信机制
+- 核心主张：Coordinator 模式通过"协调器→worker→通知→综合"的循环实现多智能体协作，核心通信机制是文件邮箱和 task-notification XML
+- 源码锚点：
+  - `src/coordinator/coordinatorMode.ts:111` — `getCoordinatorSystemPrompt()`：协调器的系统提示词——定义了角色（"You are a coordinator"）和工作流
+  - `src/coordinator/coordinatorMode.ts:120` — 协调器职责："Direct workers to research, implement and verify code changes; Synthesize results and communicate with the user"
+  - `src/coordinator/coordinatorMode.ts:213` — 并发指导："Parallelism is your superpower. Workers are async. Launch independent workers concurrently whenever possible"
+  - `src/utils/teammateMailbox.ts:2` — 注释："Teammate Mailbox - File-based messaging system for agent swarms"——基于文件系统的消息传递
+  - `src/utils/teammateMailbox.ts:43` — `TeammateMessage` 类型——队友消息的结构定义
+  - `src/utils/swarm/teammatePromptAddendum.ts:8` — TEAMMATE_SYSTEM_PROMPT_ADDENDUM："You are running as an agent in a team. To communicate... Use the SendMessage tool"
+  - `src/utils/swarm/inProcessRunner.ts:471` — `InProcessRunnerConfig`——进程内队友的配置结构
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：文件邮箱 vs 进程内通信——文件邮箱（teammateMailbox）用文件系统作为消息队列，好处是跨进程可用（tmux/iTerm2 后端），代价是 I/O 延迟；进程内通信直接调用函数，更快但只适用于 in-process 后端
+- 包含元素：Mermaid 流程图（Coordinator 模式的任务分配和通知循环）、表格（3 种通信机制对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：Coordinator 的"协调"不是简单的任务分发，是包含综合和重新分配的闭环
+  - 解读段要点：协调器角色——不直接修改代码，只分配任务和综合结果。Worker 角色——独立执行任务，通过 task-notification XML（格式：task-id/status/summary/result/usage）汇报结果。通信方式——进程内用 teammateMailbox 文件系统、tmux 用终端输出、SendMessage 工具用于队内通信。关键原则——"Workers can't see your conversation"，每个 worker 的提示词必须自包含
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 14.5：权衡——并行系统的 3 个设计代价
+- 核心主张：并行能力的三个层次（进程内/进程外/远程）带来三个递增的代价：共享状态冲突、通信延迟和上下文重复
+- 源码锚点：
+  - `src/coordinator/coordinatorMode.ts:253` — "Workers can't see your conversation. Every prompt must be self-contained"——上下文重复是并行的固有代价
+  - `src/coordinator/coordinatorMode.ts:216` — 并发规则："Read-only tasks — run in parallel freely; Write-heavy tasks — one at a time per set of files"——写操作需要串行化
+  - `src/utils/swarm/backends/types.ts:12` — BackendType 三种选择——进程内快但共享状态、进程外安全但通信慢、远程隔离但延迟高
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - 共享状态冲突：in-process 队友共享 AppState，需要锁和同步机制（参见 swarm/permissionSync.ts）；写操作必须按文件集合串行化
+  - 通信延迟：tmux/iTerm2 后端通过文件系统通信（teammateMailbox），每次消息传递都有 I/O 延迟
+  - 上下文重复：每个 worker 无法看到协调器的对话——"Workers can't see your conversation"意味着协调器必须把所有上下文写进提示词，这是 token 成本
+- 包含元素：对比表格（3 个代价 × 3 种并行层次）
+- **⛔ 内容密度规划**：
+  - 引入段要点：并行的代价和并行的收益一样有层次
+  - 解读段要点：共享状态（in-process 需要同步、写操作必须串行）、通信延迟（文件邮箱的 I/O 开销）、上下文重复（每个 worker 都需要完整的自包含提示词）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 14.6：踩坑指南——并行系统中的常见错误
+- 核心主张：最常见的错误是把"后台"当"免费"——后台任务和 Coordinator worker 都有资源成本，不加控制地并行会降低整体质量
+- 源码锚点：
+  - `src/coordinator/coordinatorMode.ts:253` — "Workers can't see your conversation"——最常见的坑：协调器写了基于对话的模糊指令（"基于你的发现修复"），worker 无法理解
+  - `src/coordinator/coordinatorMode.ts:217` — "Write-heavy tasks — one at a time per set of files"——违反这个规则会导致文件冲突
+  - `src/utils/swarm/constants.ts:2` — `SWARM_SESSION_NAME = 'claude-swarm'`——tmux 会话名，多个 swarm 会话可能冲突
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：三个关键陷阱
+  - 解读段要点：陷阱一——给 worker 的提示词不够自包含（"Workers can't see your conversation"）；陷阱二——多个 worker 同时修改同一组文件（写操作必须串行化）；陷阱三——在 in-process 后端中不处理共享状态的并发访问（需要 permissionSync 同步）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 14.7：实证——Coordinator 的一次完整任务分配循环
+- 核心主张：一次完整的 Coordinator 任务循环包含"研究→综合→实现→验证"四个阶段，协调器在每个阶段做出不同的并行策略选择
+- 源码锚点：
+  - `src/coordinator/coordinatorMode.ts:213` — 并发策略（"Parallelism is your superpower"）
+  - `src/coordinator/coordinatorMode.ts:253` — 综合策略（"Workers can't see your conversation" + "Always synthesize — your most important job"）
+  - `src/utils/teammateMailbox.ts:84` — `readMailbox`——读取队友消息
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 时序图（研究→综合→实现→验证四阶段，标注并行/串行决策点）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一次 Coordinator 从接收到完成的多阶段任务
+  - 解读段要点：阶段一——Research（多个 worker 并行，只读任务自由并行）→ 阶段二——Synthesis（协调器综合研究结果，撰写自包含的实现规格）→ 阶段三——Implementation（单个 worker 或按文件集合串行的多 worker）→ 阶段四——Verification（独立 worker 验证，最好用全新的 worker 以避免实现偏差）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：并行世界的本质
+- 本质：并行不是单一能力，是按隔离程度分层的（进程内→进程外→远程），每一层有不同的通信机制和代价
+- 关键机制：BackendType（3 种后端）、TaskState（7 种任务）、Coordinator 系统提示词（角色+工作流）、teammateMailbox（文件系统消息队列）、isBackgroundTask（前台/后台判断）
+- 适用边界：后台任务适用于独立子任务；Coordinator 适用于需要协调的多任务流水线
+- 与其他模式的关系：本章是第 13 章（内置智能体）的扩展——那些智能体在 Coordinator 模式中就是 worker；第 12 章（fork 机制）是每个 worker 的底层执行机制
+
+### 章末：用户能做什么（必填）
+1. 区分"后台任务"和"Coordinator 模式"——前者是不阻塞主对话，后者是多个 Agent 协调工作
+2. 为每个 worker 提供自包含的提示词——worker 看不到你的对话，所有上下文必须写进提示词
+3. 只读任务自由并行，写操作按文件集合串行——这是 coordinatorMode 系统提示词中的显式规则
+4. 实现多 Agent 系统时，协调器的核心职责是"综合"——不是简单转发，而是理解后重新组织
+5. 选择后端时按隔离需求决定：进程内（最快）→ 进程外（隔离好）→ 远程（完全隔离）
+6. 为队友间通信实现基于文件的消息队列（参考 teammateMailbox）——跨进程可用，延迟可接受
+7. 在协调器提示词中明确"什么是好的提示词"和"什么是坏的提示词"——减少 worker 的无效调用
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图14-1 | Coordinator 任务分配循环 | Mermaid sequenceDiagram | 协调器→worker(研究)→协调器(综合)→worker(实现)→worker(验证)→协调器(报告) | 14.4 |
+| 图14-2 | 三层并行架构 | Mermaid graph TD | in-process→tmux/iTerm2→RemoteAgent 三层，标注隔离级别和通信方式 | 14.2 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 14.4 节（Coordinator 任务分配和通信机制）——本章核心
+3. 写 14.2 节（黄金法则：并行分层）
+4. 写 14.1 节（问题）
+5. 写 14.3 节（适用场景）
+6. 写 14.5 节（权衡）
+7. 写 14.6 节（踩坑指南）
+8. 写 14.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '36p' src/coordinator/coordinatorMode.ts              # isCoordinatorMode
+sed -n '111p' src/coordinator/coordinatorMode.ts             # getCoordinatorSystemPrompt
+sed -n '120p' src/coordinator/coordinatorMode.ts             # coordinator 职责
+sed -n '213p' src/coordinator/coordinatorMode.ts             # Parallelism is your superpower
+sed -n '253p' src/coordinator/coordinatorMode.ts             # Workers can't see your conversation
+sed -n '1p' src/utils/swarm/constants.ts                     # TEAM_LEAD_NAME
+sed -n '2p' src/utils/swarm/constants.ts                     # SWARM_SESSION_NAME
+sed -n '12p' src/utils/swarm/backends/types.ts               # BackendType
+sed -n '471p' src/utils/swarm/inProcessRunner.ts             # InProcessRunnerConfig
+sed -n '2p' src/utils/teammateMailbox.ts                     # 邮箱注释
+sed -n '43p' src/utils/teammateMailbox.ts                    # TeammateMessage
+sed -n '84p' src/utils/teammateMailbox.ts                    # readMailbox
+sed -n '8p' src/utils/swarm/teammatePromptAddendum.ts        # TEAMMATE_SYSTEM_PROMPT_ADDENDUM
+sed -n '13p' src/tasks/types.ts                              # TaskState 联合类型
+sed -n '42p' src/tasks/types.ts                              # isBackgroundTask
+sed -n '116p' src/tasks/LocalAgentTask/LocalAgentTask.tsx     # LocalAgentTaskState
+sed -n '22p' src/tasks/RemoteAgentTask/RemoteAgentTask.tsx    # RemoteAgentTaskState
+sed -n '173p' src/tasks/LocalShellTask/LocalShellTask.tsx     # LocalShellTask
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch14.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围（含 workerAgent stub 说明）|
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

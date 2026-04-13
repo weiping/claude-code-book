@@ -1,0 +1,381 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 4 章：单轮执行的艺术 - 从 Claude Code 源码提炼的 Harness 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">从 Claude Code 源码提炼的 Harness 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-4-章单轮执行的艺术"><a class="header" href="#第-4-章单轮执行的艺术">第 4 章：单轮执行的艺术</a></h1>
+<blockquote>
+<p>"控制不是枷锁，是信任。每一道关卡都在说：'我相信你能完成任务，但我要确保你不会跑偏。'"</p>
+</blockquote>
+<p>一次 API 调用在 Harness 眼里不是"发出去、等回来"。在消息离开进程之前，Harness 完成了提示词的分段缓存组装；在流式响应到达时，Harness 实时调度工具的并发执行；在流结束之后，Harness 触发后采样 Hooks 决定是否允许循环继续。四道关卡，每一道都编码了 Anthropic 对"模型什么时候会失控"的具体预判。读完本章，你将理解这四道关卡如何组成一条串行控制流水线，以及每道关卡的介入条件和权衡逻辑。</p>
+<h2 id="问题一次-api-调用经历了什么"><a class="header" href="#问题一次-api-调用经历了什么">问题——一次 API 调用经历了什么</a></h2>
+<p>大多数 Agent 框架把 API 调用抽象为一个黑盒：构建消息列表，调用 API，处理返回结果。Claude Code 拒绝这个抽象。</p>
+<p>在 <code>query.ts</code> 的循环体中，从消息列表准备好到 API 调用返回，中间经过了密度极高的控制逻辑。这些逻辑可以归纳为 4 层串行控制：</p>
+<div class="table-wrapper"><table><thead><tr><th>层次</th><th>触发时机</th><th>核心操作</th><th>失败时行为</th></tr></thead><tbody>
+<tr><td>第 1 层：提示词构建</td><td>API 调用前</td><td>三路并行组装→分段→加缓存控制</td><td>拒绝调用</td></tr>
+<tr><td>第 2 层：自动压缩检查</td><td>API 调用前</td><td>检查 token 上限→按需压缩消息列表</td><td>替换消息列表后继续</td></tr>
+<tr><td>第 3 层：流式工具分区执行</td><td>API 响应流中</td><td>并发/独占分区→实时执行工具→缓冲结果</td><td>丢弃旧执行器重试</td></tr>
+<tr><td>第 4 层：后采样 Hooks</td><td>流结束后</td><td>触发外部 Hooks→判断是否允许循环继续</td><td>强制终止循环</td></tr>
+</tbody></table>
+</div>
+<p>每一层都有明确的输入和输出，层与层之间严格串行——前层未通过，后层不执行。这条流水线在每次工具调用循环的每一轮中都会完整执行一遍。</p>
+<p><strong>原则 4.1：控制流水线</strong> — 对每次 API 调用施加的控制<strong>必须</strong>是分层的、串行的、可审计的。每层<strong>必须</strong>有明确的职责边界，层间<strong>禁止</strong>跨层直接通信，只通过输出状态传递控制权。</p>
+<h2 id="黄金法则最小介入精确控制"><a class="header" href="#黄金法则最小介入精确控制">黄金法则——最小介入，精确控制</a></h2>
+<p>4 层控制听起来很重，实际上每一层的介入条件都经过精心设计——只在必要时才触发。</p>
+<p><strong>第 1 层介入条件</strong>：永远触发，但代价极低。提示词的三个组成部分（defaultSystemPrompt、userContext、systemContext）在每次 API 调用前并行构建，结果被合并并追加到系统提示词末尾。分段缓存控制只在模型支持时附加——<code>getPromptCachingEnabled</code> 检查全局禁用标志、模型级禁用标志，任一为真则跳过缓存。</p>
+<p><strong>第 2 层介入条件</strong>：只在上下文窗口接近上限时触发。如果 token 计数低于自动压缩阈值，这一层是透明的——消息列表原封不动进入第 3 层。只有当计数超过阈值时，自动压缩才介入，调用压缩 Agent 重写消息列表（详见第 11 章）。</p>
+<p><strong>第 3 层介入条件</strong>：只在助手消息包含工具调用（<code>stop_reason = tool_use</code>）时触发。纯文本回复完全跳过 <code>StreamingToolExecutor</code>。工具调用到达时，执行器判断是否可以立即开始——并发安全的工具可以与其他并发安全工具同时执行，非并发工具必须等待所有进行中的工具完成。</p>
+<p><strong>第 4 层介入条件</strong>：只在配置了后采样 Hooks 时触发。如果没有配置，<code>handleStopHooks</code> 是一个空操作，零开销。配置后，Hooks 可以执行外部命令、HTTP 请求或提示词注入，并决定是否允许循环继续。</p>
+<p><strong>原则 4.2：介入条件决定控制成本</strong> — 每个控制层<strong>必须</strong>有精确的介入条件，在条件不满足时<strong>禁止</strong>主动干预，确保控制成本不取决于层数，而取决于实际触发频率。</p>
+<h2 id="适用场景哪些系统需要-4-层控制"><a class="header" href="#适用场景哪些系统需要-4-层控制">适用场景——哪些系统需要 4 层控制</a></h2>
+<p>4 层控制不是"所有 Agent 都应该复制的架构"，而是针对特定场景设计的解决方案。</p>
+<p><strong>第 1 层（提示词构建）</strong>：所有调用 LLM 的系统都需要。提示词构建是最基础的 Harness 职责——它决定模型"看到"什么。如果你的提示词是硬编码的字符串，你已经在做第 1 层，只是没有结构化。</p>
+<p><strong>第 2 层（自动压缩）</strong>：所有可能产生长对话的 Agent 需要考虑。单次问答不需要；超过 10 轮的任务型 Agent 迟早需要面对上下文窗口限制的问题（详见第 11 章）。</p>
+<p><strong>第 3 层（流式工具分区）</strong>：需要同时执行多个工具的 Agent。如果你的 Agent 每次只调用一个工具，顺序执行已经足够。一旦你的任务适合并发（比如同时搜索多个数据源），工具分区带来的延迟收益就变得显著。</p>
+<p><strong>第 4 层（后采样 Hooks）</strong>：需要外部审计、安全检查或工作流集成的企业级系统。后采样 Hooks 是 Harness 向外部世界开放的唯一扩展点——它让你可以在不修改核心循环的情况下插入自定义逻辑（详见第 10 章）。</p>
+<h2 id="工作原理4-层控制的完整流水线"><a class="header" href="#工作原理4-层控制的完整流水线">工作原理——4 层控制的完整流水线</a></h2>
+<p><strong>图 4-1：单轮执行 4 层控制流水线</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    A[循环迭代开始] --&gt; B[第1层 提示词构建]
+
+    subgraph L1[第1层 提示词构建]
+        B1["fetchSystemPromptParts\n三路并行构建"] --&gt; B2["appendSystemContext\n合并系统上下文"]
+        B2 --&gt; B3["buildSystemPromptBlocks\n分段加缓存控制"]
+    end
+
+    B --&gt; L1
+    L1 --&gt; C[第2层 自动压缩检查]
+
+    subgraph L2[第2层 自动压缩]
+        C1{token超阈值?} --&gt;|是| C2[调用压缩Agent\n重写消息列表]
+        C1 --&gt;|否| C3[消息列表不变]
+    end
+
+    C --&gt; L2
+    L2 --&gt; D[第3层 流式工具执行]
+
+    subgraph L3[第3层 流式工具执行]
+        D1["callModel\n流式API调用"] --&gt; D2{工具调用?}
+        D2 --&gt;|并发安全| D3[立即并发执行]
+        D2 --&gt;|非并发| D4[等待独占执行]
+        D3 --&gt; D5[缓冲结果]
+        D4 --&gt; D5
+    end
+
+    D --&gt; L3
+    L3 --&gt; E[第4层 后采样Hooks]
+
+    subgraph L4[第4层 后采样Hooks]
+        E1{有Hooks配置?} --&gt;|是| E2[执行Hooks]
+        E1 --&gt;|否| E3[透明通过]
+        E2 --&gt; E4{preventContinuation?}
+        E4 --&gt;|是| E5[终止循环]
+        E4 --&gt;|否| E6[继续下一轮]
+    end
+
+    E --&gt; L4
+</code></pre>
+<p><strong>第 1 层：提示词构建</strong></p>
+<p>提示词的三个组成部分使用 <code>Promise.all</code> 并行获取——<code>defaultSystemPrompt</code>（工具定义和系统指令）、<code>userContext</code>（Claude.md 内容和日期）、<code>systemContext</code>（Git 状态和缓存破坏标记）三路同时请求，再合并。这三部分各自有独立的缓存策略，memoized 版本在会话内不变，重复调用直接命中内存缓存。</p>
+<p>合并后，<code>appendSystemContext</code> 将 systemContext 追加到系统提示词末尾，产生 <code>fullSystemPrompt</code>。随后 <code>buildSystemPromptBlocks</code> 将系统提示词按缓存范围（cacheScope）分段，每段独立附加 <code>cache_control</code> 标记。分段策略遵循一条硬约束：最多 4 个缓存块——这是 API 的硬限制，超过会立即返回 400 错误。</p>
+<p><strong>第 2 层：自动压缩检查</strong></p>
+<p>在 API 调用前，循环检查当前消息列表的 token 估算值是否超过自动压缩阈值。如果触发，<code>autocompact</code> 调用一个独立的压缩 Agent，将完整对话历史压缩为摘要，返回一个更短的消息列表替换原列表。压缩完成后，循环从检查守卫重新开始（而非直接进入 API 调用），确保压缩结果有效。</p>
+<p><strong>第 3 层：流式工具分区执行</strong></p>
+<p>这是 4 层中最精妙的设计。<code>StreamingToolExecutor</code> 在流式响应开始前初始化，流式传输期间实时检测每个 <code>tool_use</code> 内容块的到达，并立即决定执行策略。</p>
+<p><strong>图 4-2：StreamingToolExecutor 工具调度策略</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    A[tool_use块到达] --&gt; B{isConcurrencySafe?}
+    B --&gt;|是| C{有非并发工具\n正在执行?}
+    B --&gt;|否| D{有任何工具\n正在执行?}
+    C --&gt;|否| E[立即开始执行]
+    C --&gt;|是| F[加入等待队列]
+    D --&gt;|否| E
+    D --&gt;|是| F
+    E --&gt; G[并发执行]
+    F --&gt; H[前序完成后执行]
+    G --&gt; I[结果缓冲]
+    H --&gt; I
+    I --&gt; J[getCompletedResults\n流结束后收割]
+</code></pre>
+<p>注释对并发策略有精确描述：并发安全工具可以与其他并发安全工具并行执行，非并发工具需要独占访问。这保证了只读工具（文件读取、代码搜索）可以并发，而写操作工具（文件编辑、命令执行）串行执行。</p>
+<p>流式响应结束时，<code>getCompletedResults</code> 收割所有已完成的工具结果，合并为 user 消息追加到消息列表。这条消息成为下一轮循环的输入。</p>
+<p>如果 API 流中途失败触发流式回退（streaming fallback），<code>discard()</code> 方法立即将当前执行器标记为废弃——所有排队中的工具不再启动，进行中的工具收到合成错误。然后创建新的执行器重试，避免旧执行器的孤立 tool_result 污染新一轮的消息历史。</p>
+<p><strong>第 4 层：后采样 Hooks</strong></p>
+<p>流式传输完全结束、所有工具结果收集完毕后，<code>handleStopHooks</code> 触发。Hooks 收到完整的当前轮次上下文，可以执行三类操作：外部命令（shell 脚本）、HTTP 请求（外部服务）、提示词注入（向下一轮注入额外指令）。</p>
+<p>Hooks 执行完成后，返回 <code>preventContinuation</code> 标志。如果为 <code>true</code>，循环立即返回，终止原因为 <code>'stop_hook_prevented'</code>，不再进入下一轮——无论模型是否还有工具要调用。</p>
+<h2 id="权衡流水线设计中的-3-个关键选择"><a class="header" href="#权衡流水线设计中的-3-个关键选择">权衡——流水线设计中的 3 个关键选择</a></h2>
+<p><strong>权衡一：Prompt Cache 分段上限（4 块）</strong></p>
+<p>API 允许最多 4 个带 <code>cache_control</code> 的文本块。Claude Code 的分段策略优先保护命中率最高的块：系统提示词的"全局"部分（工具定义、系统指令）使用 <code>cacheScope: 'global'</code>，几乎所有会话共享，命中率最高（推断）；用户上下文和动态内容放在后面，按需缓存。</p>
+<p>注释「不得再添加更多缓存控制块，否则会触发 400 错误（原文："IMPORTANT: Do not add any more blocks for caching or you will get a 400"）」是一条踩坑记录——这个上限不是软警告，是 API 硬拒绝。分段策略必须在设计阶段就固定，而不是在运行时动态增减。</p>
+<p><strong>权衡二：流式工具并发 vs 顺序执行</strong></p>
+<p>顺序执行更简单——等第一个工具完成，再发第二个。并发执行更快，但需要管理执行状态、缓冲结果、处理部分失败。<code>StreamingToolExecutor</code> 选择了精确的中间路径：<strong>按并发安全性分区</strong>，而非全并发或全顺序。</p>
+<p>这个选择的代价是 <code>StreamingToolExecutor</code> 本身的复杂度——它需要维护工具队列、执行状态跟踪、discard 机制、结果缓冲四套逻辑。好处是：只读工具（通常占绝大多数）（推断）全部并发，总执行时间接近最慢单个工具的时间，而非所有工具时间之和。</p>
+<div class="table-wrapper"><table><thead><tr><th>策略</th><th>延迟</th><th>实现复杂度</th><th>安全性</th></tr></thead><tbody>
+<tr><td>全顺序执行</td><td>最高（时间累加）</td><td>最低</td><td>最高</td></tr>
+<tr><td>全并发执行</td><td>最低</td><td>中等</td><td>有风险（写操作竞争）</td></tr>
+<tr><td>按并发安全性分区</td><td>接近最低</td><td>最高</td><td>高（写操作隔离）</td></tr>
+</tbody></table>
+</div>
+<p><strong>权衡三：后采样 Hooks 的强制终止能力</strong></p>
+<p><code>preventContinuation</code> 是一把双刃剑。它让外部系统可以终止任何循环——合规检查、安全审计、预算控制都可以通过 Hook 实现。但一旦配置错误，所有请求都会被终止，Agent 彻底失去工具调用能力，而错误原因藏在 Hooks 执行日志中，不易排查。</p>
+<p>Claude Code 的设计选择是：第 4 层默认不存在（无 Hooks 配置时是空操作），强制终止能力需要显式激活。这遵循了第 1 章介绍的 fail-closed 原则的另一面——<strong>扩展点默认关闭，需要显式开启。</strong></p>
+<h2 id="踩坑指南流水线中的工程陷阱"><a class="header" href="#踩坑指南流水线中的工程陷阱">踩坑指南——流水线中的工程陷阱</a></h2>
+<p><strong>陷阱一：缓存分段超过 4 块导致 400</strong></p>
+<p>系统提示词构建函数中的"IMPORTANT"注释（原文："IMPORTANT: Do not add any more blocks for caching or you will get a 400"，译：不得再添加更多缓存控制块，否则会触发 400 错误）不是礼貌提示，是血泪教训。Anthropic API 对带缓存控制的文本块有硬上限，超过立即返回 400 错误。这类错误不会出现在 API 错误消息中（它只说 "invalid_request"），需要在请求体中检查 <code>cache_control</code> 块的数量。</p>
+<p>❌ 错误做法：在系统提示词中动态追加 <code>cache_control</code> 块，以为可以按需扩展。<br />
+✓ 正确做法：在设计阶段固定分段策略，确保带缓存控制的文本块总数 ≤ 4。测试时验证所有代码路径下的分段计数。</p>
+<p><strong>陷阱二：工具错误声明为并发安全</strong></p>
+<p>一个工具声明了 <code>isConcurrencySafe: true</code> 但实际上会修改共享状态——这不会在单工具测试中暴露，只在多工具并发调用时出现竞争条件。症状是随机的数据损坏或不一致的文件状态，极难复现。</p>
+<p>❌ 错误做法：为了追求并发性能，对未经严格审查的写操作工具声明 <code>isConcurrencySafe: true</code>。<br />
+✓ 正确做法：保守默认（<code>TOOL_DEFAULTS</code> 中 <code>isConcurrencySafe</code> 默认 <code>false</code>，如第 1 章所述），只对经过严格审查的纯只读工具显式开启并发。</p>
+<p><strong>陷阱三：流式回退不调用 discard()</strong></p>
+<p>当 API 流中途失败需要重试时，如果忘记调用 <code>discard()</code> 丢弃旧的 <code>StreamingToolExecutor</code>，旧执行器中已开始执行的工具会产生 tool_result 消息，但对应的 tool_use 消息在重试时被替换了——API 在收到孤立的 tool_result 时会返回 "tool_result without matching tool_use" 错误。</p>
+<p>❌ 错误做法：流式重试时复用旧的 <code>StreamingToolExecutor</code> 实例，或忽略 <code>discard()</code> 调用。<br />
+✓ 正确做法：在任何触发流式重试的路径上，先调用旧执行器的 <code>discard()</code> 标记废弃，再创建新执行器，确保 tool_use 与 tool_result 的对应关系在重试后保持一致。</p>
+<h2 id="实证从源码追踪一次完整的单轮执行"><a class="header" href="#实证从源码追踪一次完整的单轮执行">实证——从源码追踪一次完整的单轮执行</a></h2>
+<p>一次单轮执行的完整路径可以通过 <code>queryCheckpoint</code> 调用串联起来。</p>
+<p>第 1 层从 <code>fetchSystemPromptParts</code> 三路并行返回后开始（<code>src/utils/queryContext.ts:44</code>），<code>fullSystemPrompt</code> 在 <code>query.ts</code> 的组装步骤完成后确定（<code>src/query.ts:449</code>）。此时提示词已经是最终形态，包含分段缓存控制标记。</p>
+<p>第 2 层紧随其后——<code>autocompact</code> 函数检查当前消息列表的 token 估算（<code>src/query.ts:454</code>），如果触发压缩，整个消息列表被替换后从检查守卫重新开始，否则直接穿透到第 3 层。</p>
+<p>第 3 层从 <code>query_api_streaming_start</code> 打点后开始（<code>src/query.ts:658</code>），<code>callModel</code> 发起流式请求，<code>StreamingToolExecutor</code> 在请求前已初始化，开始实时处理流中的内容块。流结束时，<code>streamingToolExecutor.getCompletedResults()</code> 收割所有已完成工具的结果（<code>src/query.ts:851</code>），合并为工具结果列表。</p>
+<p>第 4 层在流式结束后触发（<code>src/query.ts:1267</code>），<code>handleStopHooks</code> 接收当前会话上下文，执行配置的 Hooks，返回 <code>stopHookResult</code>。如果 <code>stopHookResult.preventContinuation</code> 为真（<code>src/query.ts:1278</code>），循环立即返回，单轮执行在此终止而非进入下一轮。</p>
+<p>这条追踪路径验证了一个核心观察：4 层控制确实是严格串行的——每层的 checkpoint 打点之间没有交叉，层与层的边界清晰可测。</p>
+<h2 id="本章主成分4-层串行控制流水线"><a class="header" href="#本章主成分4-层串行控制流水线">本章主成分：4 层串行控制流水线</a></h2>
+<p><strong>本质</strong>：一条 4 层串行控制流水线，每层精确地只在必要时介入，共同保护上下文窗口不超限、工具调用不越界、循环不失控。</p>
+<p><strong>关键机制</strong>：</p>
+<ul>
+<li>提示词三路并行构建后串行分段，最多 4 个缓存块</li>
+<li><code>StreamingToolExecutor</code> 按并发安全性实时分区调度工具执行</li>
+<li>后采样 Hooks 是循环外部世界唯一的扩展点，可强制终止</li>
+</ul>
+<p><strong>适用边界</strong>：</p>
+<ul>
+<li>✓ 适合：需要工具调用、缓存优化、外部审计的 Agent 系统</li>
+<li>✓ 适合：多工具并发执行场景</li>
+<li>✗ 不适合：简单单轮问答（第 1 层足够）</li>
+<li>✗ 不适合：无状态函数式调用（4 层控制面向有状态会话）</li>
+</ul>
+<p><strong>与其他模式的关系</strong>：</p>
+<ul>
+<li>单轮执行是 QueryEngine 循环（第 3 章）的每轮迭代内部</li>
+<li>提示词构建是第 5 章（系统提示词分层缓存）的执行层</li>
+<li>工具分区执行是第 7 章（工具编排）的运行时实现</li>
+<li>后采样 Hooks 是第 10 章（Hooks 系统）的执行入口</li>
+</ul>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>审视你的 Agent 每次 API 调用是否经过提示词最终组装层</strong>。硬编码的提示词字符串无法享受分段缓存，也无法动态注入系统上下文——这是第 1 层控制最直接的价值。</li>
+<li><strong>检查你的提示词缓存分段数量是否超过 API 上限</strong>。如果你使用 Anthropic API 的 <code>cache_control</code>，上限是 4 个带缓存标记的文本块。超过会触发 400 错误，而错误消息不会告诉你原因。</li>
+<li><strong>为你的工具建立并发安全分类</strong>，并在工具定义中显式声明。默认保守（不声明为并发安全），只对经过审查的只读工具开放并发。</li>
+<li><strong>为你的流式工具执行添加 discard 机制</strong>。任何需要重试的流式调用，都应该在重试前清理旧的执行状态，防止孤立 tool_result 污染后续调用。</li>
+<li><strong>把后采样 Hooks 当作审计点而非控制点</strong>。<code>preventContinuation</code> 很强大，也很危险——错误配置会静默地杀死所有循环。优先用 Hooks 收集数据，只在完全确定后才启用强制终止。</li>
+<li><strong>用 queryCheckpoint 式的时间线埋点定位延迟</strong>。4 层控制中，第 2 层（压缩）是最大的延迟来源，第 3 层（工具执行）是最大的并发优化空间。埋点是找到优化方向的前提。</li>
+<li><strong>评估你的 Agent 需要哪几层</strong>。不要为了架构完整性引入不需要的复杂度——只调用一个工具的 Agent 不需要 <code>StreamingToolExecutor</code>，没有审计需求的系统不需要后采样 Hooks。</li>
+</ul>
+<hr />
+<p><strong>下一章导读</strong>：本章看到了提示词构建的执行过程——三路并行、合并、分段加缓存控制。第 5 章将深入这条路径，展示系统提示词是如何通过分段缓存策略实现 Prompt Cache 最大化命中的，以及 Claude.md 记忆注入如何参与上下文构建。这是 Harness 最精妙的成本优化之一。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part2/ch03.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part3/part3.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part2/ch03.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part3/part3.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,20 @@
+stateDiagram-v2
+    [*] --> default1
+
+    default1 --> acceptEdits: Shift+Tab（普通用户）
+    default1 --> bypassPermissions: Shift+Tab（ant 用户，bypass 可用）
+    default1 --> auto: Shift+Tab（ant 用户，auto 可用）
+
+    acceptEdits --> plan: Shift+Tab
+    plan --> bypassPermissions: Shift+Tab（bypass 可用）
+    plan --> auto: Shift+Tab（auto 可用）
+    plan --> default1: Shift+Tab（其他）
+    bypassPermissions --> auto: Shift+Tab（auto 可用）
+    bypassPermissions --> default1: Shift+Tab（其他）
+    dontAsk --> default1: （UI 尚未暴露）
+    auto --> default1: Shift+Tab（default case）
+
+    note right of auto
+        external: default
+        对外 API 不可见
+    end note

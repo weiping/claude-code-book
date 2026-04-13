@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> inactive
+    inactive --> active: setAutoModeActive(true)
+    active --> inactive: 会话结束
+    active --> circuit_broken: verifyAutoModeGateAccess发现disabled
+    circuit_broken --> circuit_broken: 拒绝新auto请求
+    note right of circuit_broken
+        isAutoModeCircuitBroken=true
+        会话内不可恢复
+    end note

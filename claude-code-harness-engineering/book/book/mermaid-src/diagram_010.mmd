@@ -1,0 +1,22 @@
+flowchart TD
+    subgraph Static["静态区 cacheScope: global"]
+        A1["工具定义\nTool definitions"]
+        A2["系统指令\nSystem instructions"]
+        A3["安全规则\nSafety rules"]
+        A1 --> A2 --> A3
+    end
+
+    B["BOUNDARY MARKER\nSYSTEM_PROMPT_DYNAMIC_BOUNDARY"]
+
+    subgraph Dynamic["动态区 cacheScope: null"]
+        C1["会话指引\nsession_guidance"]
+        C2["记忆文件\nmemory / MEMORY.md"]
+        C3["环境信息\nenv_info_simple"]
+        C4["语言设置\nlanguage"]
+        C5["MCP 指令\nmcp_instructions"]
+        C1 --> C2 --> C3 --> C4 --> C5
+    end
+
+    Static --> B --> Dynamic
+
+    B -.- Note1["WARNING:\n不得移动或重排"]

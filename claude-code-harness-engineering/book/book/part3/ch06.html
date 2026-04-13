@@ -1,0 +1,363 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 6 章：按需加载的智慧 - 从 Claude Code 源码提炼的 Harness 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">从 Claude Code 源码提炼的 Harness 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-6-章按需加载的智慧"><a class="header" href="#第-6-章按需加载的智慧">第 6 章：按需加载的智慧</a></h1>
+<blockquote>
+<p>"把所有东西都放进上下文，和让模型自己决定需要什么——这两种策略的 token 成本可以相差 50 倍。"</p>
+</blockquote>
+<p>Claude Code 有 50 多个技能（Skills），但系统提示词中只暴露它们的名称和摘要——全文在模型决定使用时才拉取。这个"让模型自己管理上下文窗口"的设计，不是延迟加载的性能技巧，而是 Harness 控制每次 API 调用 token 预算的核心策略。读完本章，你将理解三层懒加载架构——发现、决策、执行——如何让技能库的元信息只占用上下文窗口的 1%。</p>
+<h2 id="问题50-技能如何在上下文中不占位"><a class="header" href="#问题50-技能如何在上下文中不占位">问题——50+ 技能如何在上下文中"不占位"</a></h2>
+<p>如果把 50 多个技能的完整提示词全部注入系统提示词，每个技能平均 400-800 字符，总计 20,000-40,000 字符（约 5,000-10,000 token）（推断）。在 200,000 token 的上下文窗口中，技能提示词一项就占去 2.5%-5%——留给工具定义、对话历史和工作空间的内容被大幅压缩。</p>
+<p>Claude Code 的解法是一个反直觉的设计：只注入元数据摘要，不注入全文。系统提示词中，技能列表占用上下文窗口的 1%（<code>SKILL_BUDGET_CONTEXT_PERCENT = 0.01</code>），默认 8,000 字符（<code>DEFAULT_CHAR_BUDGET = 8_000</code>，计算方式：200k token × 4 字符/token × 1%）。每条技能的描述截断为 250 字符（<code>MAX_LISTING_DESC_CHARS = 250</code>），确保 50 个技能的摘要列表控制在预算内。</p>
+<div class="table-wrapper"><table><thead><tr><th>策略</th><th>技能列表 token 消耗</th><th>上下文占比</th><th>留给工作空间的 token</th></tr></thead><tbody>
+<tr><td>全文注入</td><td>~5,000-10,000</td><td>2.5%-5%</td><td>减少 5,000-10,000</td></tr>
+<tr><td>元数据摘要（1% 预算）</td><td>~2,000</td><td>1%</td><td>仅减少 2,000</td></tr>
+<tr><td>不注入任何技能信息</td><td>0</td><td>0%</td><td>模型无法发现和使用技能</td></tr>
+</tbody></table>
+</div>
+<p>注释写出了精确的计算逻辑："Skill listing gets 1% of the context window (in characters)"（译：技能列表占用上下文窗口的 1%，以字符为单位）。8,000 字符不是随意设定的数字，而是从上下文窗口大小推导的精确预算。<code>MAX_LISTING_DESC_CHARS</code> 的注释进一步解释："The listing is for discovery only — the Skill tool loads full content on invoke, so verbose whenToUse strings waste turn-1 cache_creation tokens without improving match rate."（译：列表仅用于发现——Skill 工具在调用时加载完整内容，冗长的 whenToUse 字符串会浪费第一轮的缓存创建 token，却不能提高匹配率）。</p>
+<p><strong>原则 6.1：预算驱动的上下文分配</strong> — 每种上下文内容<strong>必须</strong>有明确的 token 预算上限。技能列表<strong>禁止</strong>超过上下文窗口的 1%——超出预算的信息在发现阶段被截断。</p>
+<h2 id="黄金法则让模型决定何时拉取全文"><a class="header" href="#黄金法则让模型决定何时拉取全文">黄金法则——让模型决定何时拉取全文</a></h2>
+<p>Skills 懒加载的核心原则是"发现时只给名称和摘要，调用时才给全文"——把上下文管理的决策权从 Harness 转交给模型。</p>
+<p><code>DiscoverSkillsTool</code> 只做一件事：告诉模型当前有哪些技能可用（<code>DISCOVER_SKILLS_PROMPT = 'Discover skills'</code>）。这个"无操作"的发现阶段是懒加载的关键——模型在需要时调用发现工具，获得技能列表，然后根据任务需求决定是否调用具体技能。</p>
+<p><code>estimateSkillFrontmatterTokens</code> 函数只统计技能的 frontmatter 元数据（name + description + whenToUse），而非全文。注释说明了原因："since full content is only loaded on invocation"（译：因为完整内容只在调用时加载）。<code>FRONTMATTER_REGEX</code> 正则解析 YAML frontmatter，提取元数据用于发现阶段的摘要生成。</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>预加载（所有技能全文）</th><th>懒加载（先发现后调用）</th></tr></thead><tbody>
+<tr><td>首次调用 token 成本</td><td>极高（全部技能全文）</td><td>极低（仅 1% 预算的摘要）</td></tr>
+<tr><td>调用技能时延迟</td><td>零（已在上下文中）</td><td>一轮 API 调用（先发现后执行）</td></tr>
+<tr><td>缓存命中率</td><td>低（技能内容变化频繁）</td><td>高（摘要列表稳定可缓存）</td></tr>
+<tr><td>上下文窗口利用率</td><td>差（大量不相关技能占位）</td><td>好（只加载需要的技能）</td></tr>
+</tbody></table>
+</div>
+<p><strong>原则 6.2：模型即上下文管理者</strong> — Harness <strong>禁止</strong>主动决定哪些技能内容进入上下文——只提供摘要，让模型根据任务需求自行判断。模型是唯一有权决定"我需要什么信息"的参与者。</p>
+<h2 id="适用场景哪些功能适合懒加载"><a class="header" href="#适用场景哪些功能适合懒加载">适用场景——哪些功能适合懒加载</a></h2>
+<p>任何"存在但不常用"的能力都适合懒加载。核心判断标准是：每次任务中，有多少比例的技能实际被使用？</p>
+<p><strong>适合懒加载</strong>：</p>
+<ul>
+<li>技能库超过 20 个，每次任务只用 1-3 个——典型场景是代码编辑 Agent，拥有代码分析、重构、测试、文档等多种技能，但单个任务只需其中一两种</li>
+<li>技能内容较长（每个 400 字符以上），全文注入会显著挤占上下文</li>
+<li>技能列表在不同会话间变化不大——摘要可以缓存，提高 Prompt Cache 命中率</li>
+</ul>
+<p><strong>不适合懒加载</strong>：</p>
+<ul>
+<li>核心工具（文件读写、代码搜索）——每次任务几乎都用，懒加载反而增加延迟</li>
+<li>极短的内容（&lt;50 字符）——懒加载的管理开销超过节省的 token</li>
+</ul>
+<p><code>BundledSkillDefinition</code> 类型中 <code>userInvocable</code> 字段区分了两类技能：用户可直接调用的（需要在发现阶段显示）和仅供内部使用的（不需要在列表中暴露）。这个区分确保了发现阶段的列表只包含对用户有价值的信息。</p>
+<h2 id="工作原理三层架构的完整流程"><a class="header" href="#工作原理三层架构的完整流程">工作原理——三层架构的完整流程</a></h2>
+<p>Skills 懒加载不是一个工具，是三个协作模块构成的完整系统：发现层、决策层、执行层。</p>
+<p><strong>图 6-1：Skills 懒加载三层架构</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    subgraph L1["第 1 层：发现（1% 预算）"]
+        A["技能文件\nfrontmatter 元数据"] --&gt; B["estimateSkillFrontmatterTokens\n仅计费元数据"]
+        B --&gt; C["getCommandDescription\n250字符截断"]
+        C --&gt; D["技能摘要列表\n≤8000字符"]
+    end
+
+    subgraph L2["第 2 层：模型决策"]
+        E["模型阅读摘要列表"] --&gt; F{技能适用?}
+        F --&gt;|是| G["调用 SkillTool"]
+        F --&gt;|否| H["跳过"]
+    end
+
+    subgraph L3["第 3 层：执行（全文加载）"]
+        G --&gt; I["读取技能全文"]
+        I --&gt; J{context 字段}
+        J --&gt;|inline| K["展开到当前上下文"]
+        J --&gt;|fork| L["启动独立子智能体"]
+    end
+
+    D --&gt; E
+    H --&gt; D
+    K --&gt; M["技能执行完成"]
+    L --&gt; M
+</code></pre>
+<p><strong>发现层</strong>：<code>DiscoverSkillsTool</code> 在模型需要时被调用，返回技能摘要列表。列表的生成经过三步过滤：首先 <code>estimateSkillFrontmatterTokens</code> 只提取每个技能的 name、description、whenToUse 三个字段；然后 <code>getCommandDescription</code> 将 description 和 whenToUse 拼接为完整描述；最后截断到 250 字符。整个列表控制在 8,000 字符预算内。</p>
+<p><strong>决策层</strong>：模型阅读摘要列表后，根据任务需求判断哪个技能适用。这个决策完全由模型做出——Harness 不干预。如果模型判断需要某个技能，调用 <code>SkillTool</code> 并传入技能名称和参数。</p>
+<p><strong>执行层</strong>：<code>SkillTool</code> 调用时才读取技能全文。根据技能的 <code>context</code> 字段选择执行模式：<code>inline</code>（技能内容展开到当前上下文中）适合需要访问当前会话状态的轻量技能；<code>fork</code>（启动独立子智能体执行）适合需要隔离上下文的重型任务。fork 模式的详细设计见第 12 章（隔离与交接）。</p>
+<p><code>getAllCommands</code> 函数合并了所有技能来源——本地技能和 MCP 技能。注释解释了过滤逻辑："Only include MCP skills (loadedFrom === 'mcp'), not plain MCP prompts"（译：只包含 MCP 技能，不包含普通 MCP prompts）——这是为了防止模型猜测 MCP prompt 名称绕过发现阶段。</p>
+<h2 id="权衡三层架构的设计代价"><a class="header" href="#权衡三层架构的设计代价">权衡——三层架构的设计代价</a></h2>
+<p>三层懒加载在 token 效率上有显著优势，但引入了 3 个工程代价。</p>
+<div class="table-wrapper"><table><thead><tr><th>决策维度</th><th>选择 A（本系统）</th><th>选择 B</th><th>核心权衡</th></tr></thead><tbody>
+<tr><td>调用模式</td><td>两步调用（先发现后执行）</td><td>一步直接调用</td><td>多一轮 API 调用，换取上下文窗口的 95% 以上节省</td></tr>
+<tr><td>描述精度</td><td>250 字符截断</td><td>不限长度</td><td>短摘要可能降低发现精度，但防止列表超出预算</td></tr>
+<tr><td>MCP 技能管理</td><td>过滤非 MCP skill 的 prompts</td><td>允许所有 MCP 内容</td><td>增加约束复杂度，但防止绕过发现阶段的安全管控</td></tr>
+</tbody></table>
+</div>
+<p><strong>代价一：两步调用增加延迟</strong></p>
+<p>模型需要先调用 <code>DiscoverSkillsTool</code> 获得技能列表，再调用 <code>SkillTool</code> 执行——这增加了一轮 API 调用。但代价是可接受的：技能列表在第一次发现后留在模型的上下文中，后续调用无需重复发现。在多轮对话中，首次发现的固定成本被后续所有技能调用分摊。</p>
+<p><strong>代价二：描述截断降低发现精度</strong></p>
+<p>250 字符的截断上限意味着复杂的技能用途可能无法在摘要中完整表达。模型可能因为描述不够精确而跳过适用的技能，或调用了不适用的技能——这是懒加载固有的精确度/效率权衡。缓解方法是让 <code>whenToUse</code> 字段聚焦于触发场景而非功能描述。</p>
+<p><strong>代价三：MCP 过滤增加约束复杂度</strong></p>
+<p><code>getAllCommands</code> 中的 MCP 过滤逻辑防止模型通过猜测 prompt 名称直接调用——这确保所有技能调用都经过发现阶段。但这也意味着 MCP 提供商需要按照 BundledSkillDefinition 的格式注册技能，增加了集成复杂度。</p>
+<h2 id="踩坑指南懒加载中的常见错误"><a class="header" href="#踩坑指南懒加载中的常见错误">踩坑指南——懒加载中的常见错误</a></h2>
+<p><strong>陷阱一：frontmatter 格式不规范</strong></p>
+<p><code>FRONTMATTER_REGEX</code> 要求严格的 <code>---\n</code> 开头和结尾。常见的错误包括：<code>---</code> 后缺少换行符、使用 <code>~~~</code> 代替 <code>---</code>、frontmatter 块内有未转义的冒号。解析失败的结果是整个技能文件被当作正文处理——技能不会出现在发现列表中，模型无法调用。</p>
+<p>❌ 错误做法：在技能文件中随意使用 YAML 格式，不验证 frontmatter 是否被正确解析。<br />
+✓ 正确做法：使用严格的 <code>---\n</code> 格式包裹 frontmatter，提交前用 <code>FRONTMATTER_REGEX</code> 验证解析结果。</p>
+<p><strong>陷阱二：whenToUse 描述过于泛化</strong></p>
+<p>"完成各种任务"或"帮助用户解决问题"——这类泛化的 whenToUse 在截断到 250 字符后，无法帮助模型判断技能是否适用。模型面对 50 个"帮助用户"的摘要，只能猜测。</p>
+<p>❌ 错误做法：whenToUse 写成功能简介——"这个技能用于代码分析和重构"。<br />
+✓ 正确做法：whenToUse 写成触发场景——"当用户要求分析项目架构、重构超过 50 行的函数、或解释复杂类型推导时使用"。</p>
+<p><strong>陷阱三：description 和 whenToUse 的信息重叠</strong></p>
+<p><code>getCommandDescription</code> 会把 description 和 whenToUse 拼接为一条摘要。如果两者内容重叠，250 字符中会有大量冗余，导致有效信息被截断。</p>
+<p>❌ 错误做法：description 写"代码搜索工具"，whenToUse 也写"用于搜索代码"。<br />
+✓ 正确做法：description 写"代码搜索工具"，whenToUse 写"当用户要求查找某个函数的所有调用点、搜索特定模式的代码、或定位变量定义时使用"。</p>
+<h2 id="实证从-skills-列表到技能执行的完整路径"><a class="header" href="#实证从-skills-列表到技能执行的完整路径">实证——从 Skills 列表到技能执行的完整路径</a></h2>
+<p>一个 bundled skill 从代码注册到模型调用，经过 4 个阶段。这条路径验证了三层懒加载架构的实际运作。</p>
+<p><strong>注册阶段</strong>：<code>registerBundledSkill</code>（<code>src/skills/bundledSkills.ts:47</code>）将技能定义注册到内部数组 <code>bundledSkills</code>。注册时，如果技能有附属文件（<code>files</code> 字段），这些文件会在首次调用时按需解压到磁盘——不是启动时解压，而是调用时。</p>
+<p><strong>发现阶段</strong>：模型调用 <code>DiscoverSkillsTool</code>，触发 <code>getAllCommands</code>（<code>src/tools/SkillTool/SkillTool.ts:81</code>）合并所有来源的技能列表。每个技能的元数据通过 <code>estimateSkillFrontmatterTokens</code>（<code>src/skills/loadSkillsDir.ts:100</code>）估算 token 数，然后截断到 250 字符（<code>src/tools/SkillTool/prompt.ts:29</code>），总列表控制在 8,000 字符预算内（<code>src/tools/SkillTool/prompt.ts:21</code>）。</p>
+<p><strong>决策阶段</strong>：模型阅读摘要列表，选择适用的技能。这个决策完全由模型做出——Harness 不干预。模型传入技能名称和参数调用 <code>SkillTool</code>。</p>
+<p><strong>执行阶段</strong>：<code>SkillTool</code> 读取技能全文。如果技能声明了 <code>context: 'fork'</code>，通过 <code>executeForkedSkill</code>（<code>src/tools/SkillTool/SkillTool.ts:119</code>）启动独立子智能体执行。否则以 inline 模式将技能内容展开到当前上下文。</p>
+<p><strong>图 6-2：bundled skill 的注册→发现→选择→执行路径</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    A["registerBundledSkill\n注册到数组"] --&gt; B["getAllCommands\n合并所有来源"]
+    B --&gt; C["1% 预算\n250字符截断"]
+    C --&gt; D["模型决策\n选择技能"]
+    D --&gt; E["SkillTool.call\n读取全文"]
+    E --&gt; F{context?}
+    F --&gt;|inline| G["当前上下文"]
+    F --&gt;|fork| H["独立子智能体"]
+</code></pre>
+<p>这条路径验证了核心设计：技能全文只在调用时加载——注册时只存定义，发现时只暴露摘要，执行时才读取完整内容。三个阶段各自的 token 成本递减：注册零成本（内存数组），发现 1% 预算，执行仅当前需要的技能。</p>
+<h2 id="本章主成分skills-懒加载"><a class="header" href="#本章主成分skills-懒加载">本章主成分：Skills 懒加载</a></h2>
+<p><strong>本质</strong>：把上下文管理的决策权从 Harness 转交给模型——Harness 只维护 1% 的发现层，模型自己决定何时加载全文。</p>
+<p><strong>关键机制</strong>：</p>
+<ul>
+<li>1% 上下文预算（8,000 字符默认值），每条技能截断到 250 字符</li>
+<li><code>FRONTMATTER_REGEX</code> 解析 YAML 元数据，<code>estimateSkillFrontmatterTokens</code> 只计费元数据</li>
+<li><code>DiscoverSkillsTool</code> 发现 + <code>SkillTool</code> 执行的两步调用模式</li>
+<li><code>context: 'inline' | 'fork'</code> 执行模式选择</li>
+</ul>
+<p><strong>适用边界</strong>：</p>
+<ul>
+<li>✓ 适合：技能库超过 20 个，每次任务只用少数几个</li>
+<li>✓ 适合：技能内容较长，全文注入会挤占上下文</li>
+<li>✗ 不适合：每次任务必用的核心工具（应预加载）</li>
+<li>✗ 不适合：极短内容（懒加载管理开销超过节省）</li>
+</ul>
+<p><strong>与其他模式的关系</strong>：</p>
+<ul>
+<li>本章是第 5 章（提示词分层构建）动态区管理的实例——技能摘要列表属于动态区内容</li>
+<li>第 7 章（最小工具基座）的工具注册采用了类似的按需声明策略</li>
+<li>第 12 章（隔离与交接）详细展开 fork 执行模式的上下文隔离设计</li>
+</ul>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>为你的技能/工具库建立发现层</strong>。只暴露名称和简短描述，不暴露全文。计算上下文预算的 1%，以此为发现层的 token 上限。</li>
+<li><strong>为每个技能写精确的 whenToUse 字段</strong>。不超过 200 字符，聚焦于触发场景而非功能描述——确保模型能从摘要判断技能适用性。</li>
+<li><strong>检查技能 frontmatter 格式是否符合严格的 <code>---\n</code> 规范</strong>。解析失败意味着技能不会出现在发现列表中，模型无法调用。</li>
+<li><strong>为需要隔离上下文的重型技能设置 <code>context: 'fork'</code></strong>。fork 模式启动独立子智能体，防止技能执行的副作用污染当前会话（详见第 12 章）。</li>
+<li><strong>对照第 5 章的缓存策略，确保技能元数据列表在静态区</strong>。技能摘要列表在会话内不变，应该利用 Prompt Cache——如果你的技能列表每轮都变，说明摘要中有动态内容，需要排除。</li>
+<li><strong>评估你的技能库大小</strong>。超过 20 个时特别需要懒加载策略；超过 50 个时，1% 预算可能不够——考虑对技能分组，按任务类型分批发现。</li>
+<li><strong>测量技能发现和执行的 token 消耗</strong>。验证发现阶段的实际消耗是否在预算内，执行阶段的全文加载是否值得。</li>
+</ul>
+<hr />
+<p><strong>下一章导读</strong>：本章看到了 Skills 如何通过懒加载控制上下文窗口的技能列表占用。但技能只是 Harness 工具系统的一部分——更基础的问题是：哪些工具应该存在，它们如何注册、分类、分组？第 7 章将进入工具注册的最小基座设计，展示 Harness 如何用"最小工具集 + 按需扩展"的策略平衡能力与安全。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part3/ch05.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part4/part4.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part3/ch05.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part4/part4.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

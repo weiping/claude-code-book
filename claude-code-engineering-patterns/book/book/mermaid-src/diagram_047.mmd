@@ -1,0 +1,18 @@
+mindmap
+  root((可组合决策链))
+    配置层
+      PermissionModeConfig
+      展示属性+external字段
+      合并维护强制同步
+    计算层
+      getNextPermissionMode
+      纯函数无副作用
+      编译时穷举检查
+    隔离层
+      cyclePermissionMode
+      纯计算先于副作用
+      两层测试边界清晰
+    分离层
+      internal vs external
+      auto→default 映射
+      对外接口稳定

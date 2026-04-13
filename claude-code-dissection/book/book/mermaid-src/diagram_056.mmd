@@ -1,0 +1,10 @@
+graph TD
+    A["轮1-50<br/>80KB"] -->|持续增长| B["轮51-75<br/>174KB<br/>接近 187K<br/>触发点"]
+    B -->|AutoCompact| C["压缩执行<br/>删除前 30 轮"]
+    C --> D["轮76-100<br/>95KB"]
+    D -->|持续增长| E["轮101-130<br/>175KB<br/>再次接近"]
+    E -->|AutoCompact 再次| F["轮131-150<br/>110KB"]
+    F --> G["✅ 成功完成<br/>150+ 轮对话"]
+    style B fill:#ffffcc
+    style E fill:#ffffcc
+    style G fill:#e6ffe6

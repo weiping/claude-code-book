@@ -1,0 +1,172 @@
+# 第 12 章写作计划
+
+**批次**：批次 10b（来自 plans/batch.md）
+**章节**：ch12 — 第12章：AI 分类器替代规则引擎——yolo-classifier 的设计哲学
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 Claude Code 为何用 AI 模型（`src/utils/permissions/autoModeState.ts`、`bashClassifier.ts`）而非规则集来判断"这个操作是否安全"，以及 `toAutoClassifierInput()` 接口（Tool.ts:556）如何让每个工具自定义安全判断的输入。读者读完后能分析"AI 分类器 vs 规则引擎"的工程成本与收益，并能在自己的系统中做有依据的选型决策。
+
+## 通用约束
+**必须**：每个核心概念有源码引用；含Mermaid/ASCII图；跨章引用"详见第X章"；使用"我们"
+
+**禁止**：不引 stub 模块；不空洞表述；无依据猜测标"（推断）"；不重复其他章
+
+**排除范围**：PermissionMode 完整四层描述（第11章）、第33章全局安全架构、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。触发句：在 Claude Code 中，AI 自己判断"这个 bash 命令危不危险"——不是用 if/else 规则集，而是用一个 AI 分类器调用另一个 AI 模型
+**核心模式**：「模型即规则引擎」（Model-as-Rule-Engine）
+**章末**：模式提炼（2-3个命名模式）+ 你能做什么（5-8条）
+**必须**：≥2处实例；适用范围表；与业界模式对话（规则引擎模式、策略模式）
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/utils/permissions/bashClassifier.ts | ClassifierResult(5行)、ClassifierBehavior(12行)、classifyBashCommand(40行) | 全文(61行) |
+| 2 | src/utils/permissions/autoModeState.ts | isAutoModeActive(15行)、isAutoModeCircuitBroken(31行) | 全文(39行) |
+| 3 | src/utils/permissions/classifierDecision.ts | isAutoModeAllowlistedTool(96行) | 全文(98行) |
+| 4 | src/Tool.ts | toAutoClassifierInput 注释(556行) | 552-570 |
+
+```bash
+ls src/utils/permissions/bashClassifier.ts src/utils/permissions/autoModeState.ts src/utils/permissions/classifierDecision.ts
+```
+
+## Spec 验收场景清单
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+| # | 场景名 | 核心要求 | plan节 | 覆盖 |
+|---|--------|---------|--------|------|
+| A1 | 引用有效性 | 每处实际存在 | 所有节 | ☑ |
+| A2 | 推断标注 | "（推断）" | 模式剖析、权衡 | ☑ |
+| A3 | 不引排除范围 | 不引第11/33章 | 排除范围列出 | ☑ |
+| A4 | 不重复 | 详见第X章 | PermissionMode→11章 | ☑ |
+
+### B. 语言精确性组
+| # | 场景名 | 要求 | plan节 | 覆盖 |
+|---|--------|------|--------|------|
+| B1 | 禁空洞表述 | 无"介绍了" | 全章 | ☑ |
+| B2 | 数据驱动 | 具体数字 | 节12.3 | ☑ |
+| B3 | 术语标注 | 首次标注原文 | 所有术语 | ☑ |
+
+### C. 结构完整性组
+| # | 场景名 | 要求 | plan节 | 覆盖 |
+|---|--------|------|--------|------|
+| C1 | 递进层次 | hunter递进 | 全章骨架 | ☑ |
+| C2 | hunter专属结构 | 按spec | 全章骨架 | ☑ |
+| C3 | 核心主张 | "模型即规则引擎" | 模式剖析 | ☑ |
+| C4 | 权衡说明 | AI分类器vs规则引擎 | 节12.5 | ☑ |
+| C5 | 行动建议 | 5-8条 | 你能做什么 | ☑ |
+| C6 | 章节链接 | 前→11章，后→33章 | 开篇、章末 | ☑ |
+
+### D. 图表与代码组
+| # | 场景名 | 要求 | plan节 | 覆盖 |
+|---|--------|------|--------|------|
+| D1 | 图表达标 | ≥2图 | 节12.1流程图+12.5对比表 | ☑ |
+| D2 | 图表标注 | 上标下说 | 所有图 | ☑ |
+| D3 | 代码≤25行 | 前后说明 | 所有代码 | ☑ |
+| D4 | 源码注释 | 先引注释 | 节12.3 | ☑ |
+| D5 | hunter专属 | 适用范围表+模式框 | 节12.5+章末 | ☑ |
+
+### E. 风格符合性组（⛔最高优先级）
+| # | 场景名 | 要求 | plan节 | 覆盖 |
+|---|--------|------|--------|------|
+| E1 | hunter开篇 | 150-200字不引源码 | 开篇 | ☑ |
+| E2 | 对话感 | "我们"，有设问 | 全章 | ☑ |
+| E3 | 信息突出 | 加粗，表格对比 | 关键结论 | ☑ |
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：当 AI 被要求执行 `rm -rf /tmp/project` 时，谁来判断这是危险操作？Claude Code 的答案是：另一个 AI 模型——这就是"模型即规则引擎"模式。
+
+### 节 12.1：问题
+- 核心主张：**规则引擎的核心问题是"枚举不完"——bash 命令的危险性取决于上下文，任何规则集都会有漏洞**
+- 源码锚点：`src/utils/permissions/bashClassifier.ts:12`（ClassifierBehavior：'deny'|'ask'|'allow'，只有三个输出值）
+- 概念层次：定义（规则引擎vs AI分类器）、设计意图（AI理解语义而非规则匹配）、实际案例（同一命令在不同上下文下的危险性差异）
+- 包含元素：**图12-1** — 规则引擎 vs AI 分类器决策流对比
+- 估计字数：600-800字
+
+### 节 12.2：源码实例1 — bashClassifier.ts 的结构
+- 核心主张：**`classifyBashCommand` 是 stub 实现（返回 matches:false）——说明这是功能开关，AI 分类器默认关闭，只有特定环境启用**
+- 源码锚点：
+  - `src/utils/permissions/bashClassifier.ts:5`（type ClassifierResult = { matches, confidence, reason }）
+  - `src/utils/permissions/bashClassifier.ts:40`（classifyBashCommand 实现——返回 'This feature is disabled'）
+  - `src/utils/permissions/bashClassifier.ts:24`（isClassifierPermissionsEnabled()）
+- 概念层次：ClassifierResult 三字段意义、confidence 字段（high/medium/low）、feature flag 控制
+- 估计字数：700-900字
+
+### 节 12.3：源码实例2 — toAutoClassifierInput 接口（工具如何自定义分类器输入）
+- 核心主张：**`toAutoClassifierInput()` 是工具的"分类器视角"接口——每个工具自己决定暴露给分类器什么信息，返回空字符串表示不参与安全审查**
+- 源码锚点：
+  - `src/Tool.ts:556`（toAutoClassifierInput 注释，含设计意图："Return '' to skip this tool in the classifier transcript"）
+  - `src/utils/permissions/classifierDecision.ts:96`（isAutoModeAllowlistedTool — 工具白名单）
+  - `src/utils/permissions/autoModeState.ts:15`（isAutoModeActive — 全局 auto mode 状态）
+- 概念层次：接口职责、默认返回值语义、工具自主性
+- 估计字数：700-900字
+
+### 节 12.4：模式剖析
+- 核心主张：**"模型即规则引擎"的核心是将"规则"从代码移入模型——用自然语言描述"什么是危险的"比写 if/else 规则集更灵活也更容易维护**
+- 估计字数：500-700字
+
+### 节 12.5：适用范围（含表格）
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 操作危险性取决于上下文语义 | ✓ | AI 理解语义，规则引擎不懂上下文 | 复杂规则集（难维护）|
+| 需要覆盖"长尾"边缘案例 | ✓ | AI 泛化能力优于枚举规则 | 机器学习分类器 |
+| 延迟敏感场景（<100ms决策）| ✗ | AI 模型调用有网络延迟 | 规则引擎（本地判断）|
+| 需要可审计/可解释的决策 | ✗（谨慎）| AI 推理不透明（推断）| 规则引擎（每条规则可查）|
+
+### 节 12.6：权衡与局限
+- 延迟（网络调用）、费用（token消耗）、不确定性（同一命令可能得到不同判断）
+- 估计字数：500-700字
+
+### 节 12.7：与已知模式的对话
+- 与 GoF 策略模式：相同——可替换的判断算法；不同——策略模式的算法是确定性的，AI 分类器是概率性的
+- 与规则引擎（如 Drools）：相同——外部化判断逻辑；不同——规则引擎是声明式规则，AI 分类器是隐式神经网络权重
+- 估计字数：500-700字
+
+### 章末：模式提炼
+```
+模式名称：模型即规则引擎（Model-as-Rule-Engine）
+问题：安全判断需要理解自然语言上下文，规则集无法枚举所有危险场景
+解决方案：将判断任务委托给 AI 模型，通过 toAutoClassifierInput() 定义工具的安全语境输入
+前置条件：判断逻辑可以用自然语言表达，延迟和成本可接受
+源码锚点：src/utils/permissions/bashClassifier.ts:40, src/Tool.ts:556
+```
+
+### 章末：你能做什么
+1. 用 toAutoClassifierInput() 接口让工具声明"安全相关输入"，而非在框架层推断
+2. 为 AI 分类器实现 feature flag（isClassifierPermissionsEnabled），默认关闭确保性能
+3. 将 ClassifierResult 设计为三字段（matches/confidence/reason），reason 用于解释给用户
+4. 为 AI 分类器实现白名单（isAutoModeAllowlistedTool），减少对无需检查工具的调用
+5. 用电路断路器（isAutoModeCircuitBroken）防止分类器故障导致主功能中断
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图12-1 | 规则引擎 vs AI分类器决策流 | Mermaid flowchart | 两种判断路径对比 | 12.1 |
+
+## 写作顺序
+1. ⛔读spec + DESIGN.md；2.读前置文件；3.写12.1；4.写12.2；5.写12.3；6.写12.4；7.写12.5适用范围表；8.写12.6权衡；9.写12.7与已知模式；10.写章末+你能做什么；11.最后补写开篇
+
+## 写作前 checklist
+```bash
+sed -n '5p' src/utils/permissions/bashClassifier.ts    # ClassifierResult
+sed -n '12p' src/utils/permissions/bashClassifier.ts   # ClassifierBehavior
+sed -n '24p' src/utils/permissions/bashClassifier.ts   # isClassifierPermissionsEnabled
+sed -n '40p' src/utils/permissions/bashClassifier.ts   # classifyBashCommand
+sed -n '15p' src/utils/permissions/autoModeState.ts    # isAutoModeActive
+sed -n '96p' src/utils/permissions/classifierDecision.ts  # isAutoModeAllowlistedTool
+sed -n '556p' src/Tool.ts                              # toAutoClassifierInput 注释
+```
+
+## ⛔ Spec 一致性声明
+| # | 提取项 | 写入plan | 对应节 |
+|---|--------|---------|--------|
+| 1-16 | 全部16项 | 均 ✓ | 各对应节 |
+
+**⛔ 所有项目均已勾选 ✓，plan 审查通过。**

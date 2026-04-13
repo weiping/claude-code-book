@@ -1,0 +1,611 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 38 章：Marketplace 协议——官方注册表与第三方源 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-38-章marketplace-协议官方注册表与第三方源"><a class="header" href="#第-38-章marketplace-协议官方注册表与第三方源">第 38 章：Marketplace 协议——官方注册表与第三方源</a></h1>
+<blockquote>
+<p>"只有官方 Marketplace 可以被隐式声明——它是我们内置的唯一来源。其他 Marketplace 没有默认来源可以注入。"
+（原文："Only the official marketplace can be implicitly declared — it's the one built-in source we know. Other marketplaces have no default source to inject."）</p>
+</blockquote>
+<hr />
+<p>用户从 GitHub 仓库、企业内部 Git 服务器、URL 甚至本地目录添加插件商店——Claude Code 的 Marketplace 系统支持这所有来源。但每种来源的获取协议完全不同：GitHub 仓库需要 SSH 或 HTTPS 克隆，URL 来源需要 HTTP 请求，本地目录只需要文件系统读取。如果为每种来源写独立的处理逻辑，代码会在三处散开，添加新来源类型时需要修改多个文件。</p>
+<p>Claude Code 用「双源插件注册表（Dual-Source Plugin Registry）」模式解决了这个问题：用 TypeScript 的 discriminated union 把所有来源协议统一为一个 <code>MarketplaceSource</code> 类型，用 switch 语句把协议差异封装在 <code>loadAndCacheMarketplace</code> 函数内部；官方 Marketplace 作为内置默认值被隐式声明，用户声明的第三方 Marketplace 通过相同的接口处理。读完这章，你将理解 <code>marketplaceManager.ts</code> 如何把协议多样性封装在单一函数后面，以及 <code>PluginSourceSchema</code> 中的版本字段如何支持 semver 范围解析。</p>
+<hr />
+<h2 id="节-381问题多协议来源如何统一抽象"><a class="header" href="#节-381问题多协议来源如何统一抽象">节 38.1：问题——多协议来源如何统一抽象</a></h2>
+<p>Claude Code 的插件系统需要支持多种来源类型：</p>
+<ul>
+<li><strong>GitHub</strong>：克隆 <code>owner/repo</code> 仓库（Smart SSH/HTTPS 自动选择）</li>
+<li><strong>Git</strong>：克隆任意 Git 仓库 URL（支持 Azure DevOps、AWS CodeCommit 等）</li>
+<li><strong>URL</strong>：直接 HTTP 下载 <code>marketplace.json</code> 清单文件</li>
+<li><strong>本地文件/目录</strong>：读取本地文件系统中的 <code>marketplace.json</code></li>
+<li><strong>npm</strong>（计划中）：从 npm 包获取 Marketplace</li>
+<li><strong>Settings</strong>（内联）：从 <code>settings.json</code> 直接内嵌 Marketplace 清单</li>
+</ul>
+<p>如果不做抽象，添加一个新来源类型（比如 Bitbucket 或 Gitea）需要修改：注册逻辑、缓存路径生成、进度回调、错误处理四处代码。更复杂的是，官方 Marketplace 需要「自动注入」——用户不需要显式配置就能用官方插件，但自动注入不应该覆盖管理员通过企业内网镜像配置的自定义来源。</p>
+<p>这两个需求（协议多样性 + 官方隐式声明）正是「双源插件注册表」模式要解决的问题。</p>
+<p><strong>图 38-1：Marketplace 来源协议矩阵</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    subgraph declared [声明层]
+        official["官方（隐式注入）\nofficialMarketplace.ts"]
+        user["用户声明（第三方）\nextraKnownMarketplaces"]
+    end
+
+    subgraph protocol [协议层 MarketplaceSource]
+        github["github\n克隆 GitHub 仓库"]
+        git["git\n克隆任意 Git"]
+        url["url\nHTTP 下载 JSON"]
+        file["file\n本地文件"]
+        dir["directory\n本地目录"]
+        npm["npm\n（计划中）"]
+    end
+
+    official --&gt;|sourceIsFallback=true| github
+    user --&gt; github
+    user --&gt; git
+    user --&gt; url
+    user --&gt; file
+    user --&gt; dir
+    user --&gt;|TODO| npm
+
+    github --&gt; cache["~/.claude/plugins/marketplaces/\n缓存目录"]
+    git --&gt; cache
+    url --&gt; cache
+    file --&gt;|"直接读取"| cache
+    dir --&gt;|"直接读取"| cache
+</code></pre>
+<p>官方 Marketplace 只是 <code>github</code> 来源类型的一个特殊实例——<code>{source: 'github', repo: 'anthropics/claude-plugins-official'}</code>。两层分离（声明层 vs 协议层）是这个系统最关键的设计决策。</p>
+<hr />
+<h2 id="节-382源码实例1marketplacesource-判别联合类型--loadandcachemarketplace"><a class="header" href="#节-382源码实例1marketplacesource-判别联合类型--loadandcachemarketplace">节 38.2：源码实例1——MarketplaceSource 判别联合类型 + loadAndCacheMarketplace</a></h2>
+<p><code>schemas.ts</code> 用 TypeScript 的 discriminated union 把所有来源协议统一为一个类型：</p>
+<pre><code class="language-typescript">export const MarketplaceSourceSchema = lazySchema(() =&gt;
+  z.discriminatedUnion('source', [
+    z.object({
+      source: z.literal('url'),
+      url: z.string().url().describe('marketplace.json 文件的直接 URL'),
+      headers: z.record(z.string(), z.string()).optional()
+        .describe('自定义 HTTP 请求头（如用于认证）'),
+    }),
+    z.object({
+      source: z.literal('github'),
+      repo: z.string().describe('GitHub 仓库（owner/repo 格式）'),
+      ref: z.string().optional()
+        .describe('Git 分支或标签（如 "main", "v1.0.0"）'),
+      sparsePaths: z.array(z.string()).optional()
+        .describe('Sparse checkout 的目录列表（用于 monorepo）'),
+    }),
+    z.object({
+      source: z.literal('git'),
+      url: z.string().describe('完整的 Git 仓库 URL'),
+      ...// ref、path、sparsePaths 同 github
+    }),
+    z.object({
+      source: z.literal('npm'),
+      package: NpmPackageNameSchema().describe('包含 marketplace.json 的 npm 包'),
+    }),
+    // file、directory、hostPattern、pathPattern、settings...
+  ])
+)
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/plugins/schemas.ts:906</code></p>
+<p><code>z.discriminatedUnion('source', [...])</code> 是关键：Zod 用 <code>source</code> 字段作为判别符，根据 <code>source</code> 的值选择对应的 schema 进行验证。这让 TypeScript 可以在 switch 分支中精确收窄类型——当 <code>source.source === 'github'</code> 时，TypeScript 知道 <code>source.repo</code> 存在；当 <code>source.source === 'url'</code> 时，TypeScript 知道 <code>source.url</code> 存在。</p>
+<p>这个设计的含义是：<strong>所有来源协议的差异被封装在类型系统中，调用方（<code>loadAndCacheMarketplace</code>）可以用 switch 安全地处理每种情况，TypeScript 编译器保证不遗漏分支</strong>。相比 <code>if (source.type === 'github')</code> 系列，discriminated union + switch 在添加新来源类型时会产生编译错误（「缺少 case 分支」），而非静默跳过。</p>
+<p>现在来看协议分发的核心函数：</p>
+<pre><code class="language-typescript">async function loadAndCacheMarketplace(
+  source: MarketplaceSource,
+  onProgress?: MarketplaceProgressCallback,
+): Promise&lt;LoadedPluginMarketplace&gt; {
+  const cacheDir = getMarketplacesCacheDir()
+  const tempName = getCachePathForSource(source)
+
+  switch (source.source) {
+    case 'url': {
+      // 直接 HTTP 下载 marketplace.json
+      const temporaryCachePath = join(cacheDir, `${tempName}.json`)
+      await cacheMarketplaceFromUrl(
+        source.url, temporaryCachePath, source.headers, onProgress,
+      )
+      marketplacePath = temporaryCachePath
+      break
+    }
+
+    case 'github': {
+      // Smart SSH/HTTPS 选择：先检测 SSH 配置，再决定连接方式
+      const sshConfigured = await isGitHubSshLikelyConfigured()
+      // sshConfigured ? 先 SSH 后 HTTPS 降级 : 先 HTTPS 后 SSH 降级
+      await cacheMarketplaceFromGit(/* ... */)
+      marketplacePath = join(temporaryCachePath, source.path || '.claude-plugin/marketplace.json')
+      break
+    }
+
+    case 'git': {
+      await cacheMarketplaceFromGit(source.url, ...)
+      break
+    }
+
+    case 'npm': {
+      // 尚未实现 npm 包支持
+      throw new Error('NPM marketplace sources not yet implemented')
+    }
+
+    case 'file':
+    case 'directory':
+      // 本地路径直接读取，无网络操作
+      marketplacePath = resolve(source.path)
+      break
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/plugins/marketplaceManager.ts:1433</code>（函数定义）；<code>src/utils/plugins/marketplaceManager.ts:1451</code>（switch 入口）；<code>src/utils/plugins/marketplaceManager.ts:1618</code>（npm TODO）</p>
+<p>这个 switch 语句揭示了系统的三个层次：<strong>网络克隆</strong>（github/git）、<strong>HTTP 获取</strong>（url）、<strong>本地访问</strong>（file/directory）。每个 case 的实现完全不同，但所有 case 通过同一个函数签名（<code>source: MarketplaceSource, onProgress?</code>）对外提供统一接口。调用方不需要知道下面用的是 SSH 还是 HTTPS，是克隆还是下载。</p>
+<p><code>getCachePathForSource</code> 同样体现了这个分离：</p>
+<pre><code class="language-typescript">function getCachePathForSource(source: MarketplaceSource): string {
+  const tempName =
+    source.source === 'github'
+      ? source.repo.replace('/', '-')           // 'anthropics/claude-plugins-official' → 'anthropics-claude-plugins-official'
+      : source.source === 'npm'
+        ? source.package.replace('@', '').replace('/', '-')
+        : source.source === 'file'
+          ? basename(source.path).replace('.json', '')
+          : source.source === 'directory'
+            ? basename(source.path)
+            : 'temp_' + Date.now()
+  return tempName
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/plugins/marketplaceManager.ts:1354</code></p>
+<p>每种来源类型有不同的缓存命名策略：GitHub 仓库用 <code>owner-repo</code> 格式，确保不同仓库不冲突；本地路径用文件名，避免路径中的目录分隔符；其他情况用时间戳避免碰撞。<strong>缓存命名是「协议多样性」的又一个缩影：同样的「给这个来源生成缓存路径」操作，根据来源类型有完全不同的实现</strong>。</p>
+<p><strong>图 38-2：不同来源类型的获取流程对比</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant C as 调用方
+    participant M as loadAndCacheMarketplace
+    participant G as cacheMarketplaceFromGit
+    participant H as cacheMarketplaceFromUrl
+    participant F as 文件系统
+
+    C-&gt;&gt;M: source={source:'github', repo:'anthropics/...'}
+    M-&gt;&gt;G: SSH → 失败 → HTTPS 降级
+    G--&gt;&gt;M: 克隆到缓存目录
+    M--&gt;&gt;C: LoadedPluginMarketplace
+
+    C-&gt;&gt;M: source={source:'url', url:'https://...'}
+    M-&gt;&gt;H: axios.get(url, headers)
+    H--&gt;&gt;M: 写入 .json 缓存
+    M--&gt;&gt;C: LoadedPluginMarketplace
+
+    C-&gt;&gt;M: source={source:'directory', path:'/local/...'}
+    M-&gt;&gt;F: resolve(path) + 直接读取
+    F--&gt;&gt;M: marketplace.json
+    M--&gt;&gt;C: LoadedPluginMarketplace
+</code></pre>
+<p>三种来源，三种完全不同的获取路径，但调用方看到的是同一个函数。</p>
+<hr />
+<h2 id="节-383源码实例2官方-marketplace-隐式声明--版本解析"><a class="header" href="#节-383源码实例2官方-marketplace-隐式声明--版本解析">节 38.3：源码实例2——官方 Marketplace 隐式声明 + 版本解析</a></h2>
+<p>「官方 vs 第三方」的核心差异不在于协议，而在于<strong>谁来声明它</strong>。<code>officialMarketplace.ts</code> 把官方 Marketplace 的来源固化为常量：</p>
+<pre><code class="language-typescript">/**
+ * 官方 Anthropic 插件 Marketplace 的来源配置。
+ * 在启动时自动安装时使用。
+ * （原文："Source configuration for the official Anthropic plugins marketplace.
+ * Used when auto-installing the marketplace on startup."）
+ */
+export const OFFICIAL_MARKETPLACE_SOURCE = {
+  source: 'github',
+  repo: 'anthropics/claude-plugins-official',
+} as const satisfies MarketplaceSource
+
+export const OFFICIAL_MARKETPLACE_NAME = 'claude-plugins-official'
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/plugins/officialMarketplace.ts:15</code></p>
+<p>官方 Marketplace 就是一个 <code>github</code> 来源——和用户添加第三方 GitHub 仓库完全相同的协议。「官方」不是特殊的来源类型，而是一个被内置声明的 <code>github</code> 实例。这个设计意味着：官方 Marketplace 和第三方 Marketplace 走完全相同的获取、缓存、验证流程，没有任何特殊路径。</p>
+<p><code>getDeclaredMarketplaces</code> 函数实现了隐式注入的逻辑：</p>
+<pre><code class="language-typescript">export function getDeclaredMarketplaces(): Record&lt;string, DeclaredMarketplace&gt; {
+  const implicit: Record&lt;string, DeclaredMarketplace&gt; = {}
+
+  // 只有官方 Marketplace 可以被隐式声明——它是我们内置的唯一来源。
+  // 其他 Marketplace 没有默认来源可以注入。
+  const enabledPlugins = { ...getAddDirEnabledPlugins(), ...(getInitialSettings().enabledPlugins ?? {}) }
+  for (const [pluginId, value] of Object.entries(enabledPlugins)) {
+    if (value &amp;&amp; parsePluginIdentifier(pluginId).marketplace === OFFICIAL_MARKETPLACE_NAME) {
+      implicit[OFFICIAL_MARKETPLACE_NAME] = {
+        source: OFFICIAL_MARKETPLACE_SOURCE,
+        sourceIsFallback: true,    // 关键：这是 fallback，不强制覆盖
+      }
+      break
+    }
+  }
+
+  // 优先级：隐式 &lt; --add-dir &lt; merged settings
+  // extraKnownMarketplaces 中对 claude-plugins-official 的显式配置会胜出
+  return {
+    ...implicit,
+    ...getAddDirExtraMarketplaces(),
+    ...(getInitialSettings().extraKnownMarketplaces ?? {}),
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/plugins/marketplaceManager.ts:161</code></p>
+<p><code>sourceIsFallback: true</code> 是这里最关键的字段。<code>DeclaredMarketplace</code> 类型的注释解释了它的用意：</p>
+<blockquote>
+<p>「当设置时，diffMarketplaces 将已物化的条目视为 upToDate，无论来源形状如何——永不报告 sourceChanged。用于官方 Marketplace 的隐式声明：我们希望"如果缺失则从 GitHub 克隆"，而非"如果已存在则替换为 GitHub"。若没有此字段，用内部镜像来源注册了官方 Marketplace 的 seed dir 会被 GitHub 重新克隆所覆盖。」</p>
+</blockquote>
+<p><strong>源码参考：</strong> <code>src/utils/plugins/marketplaceManager.ts:143</code>（<code>DeclaredMarketplace</code> 类型注释）</p>
+<p>这个字段解决了一个微妙的企业场景：企业可能把官方 Marketplace 托管在内部 GitHub Enterprise 上（通过 <code>extraKnownMarketplaces</code> 覆盖配置），<code>sourceIsFallback: true</code> 确保了内部镜像的配置不会被官方 GitHub 来源「踩掉」。隐式注入只在「用户启用了官方插件但还没有配置来源」时生效，一旦有显式配置，隐式注入就让步。</p>
+<p><strong>版本解析：npm/pip 来源的 semver 支持</strong></p>
+<p><code>PluginSourceSchema</code> 为 npm 和 pip 来源定义了版本字段：</p>
+<pre><code class="language-typescript">z.object({
+  source: z.literal('npm'),
+  package: NpmPackageNameSchema().or(z.string()),
+  version: z
+    .string()
+    .optional()
+    .describe('具体版本号或版本范围（如 ^1.0.0, ~2.1.0）'),
+  registry: z.string().url().optional()
+    .describe('自定义 npm registry URL（默认使用系统默认，通常是 npmjs.org）'),
+})
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/plugins/schemas.ts:1069</code>（PluginSourceSchema 中的 npm 对象定义）；<code>src/utils/plugins/schemas.ts:1075</code>（version 字段）</p>
+<p><code>version: '^1.0.0'</code> 这样的 semver 范围字段表明系统设计上预留了「安装特定版本」的能力——当 npm 来源实现完成后，插件作者可以指定依赖版本范围，系统解析 semver 并安装匹配的版本。目前 <code>case 'npm': // TODO: Implement npm package support</code> 抛出异常（<code>marketplaceManager.ts:1618</code>），但模式已通过 schema 定义完整预埋。</p>
+<p><strong>这揭示了「Schema 先行」设计</strong>：版本字段在 schema 中被精确定义（包含 semver 语义的 <code>.describe()</code> 文档），即使对应的获取逻辑尚未实现。schema 是 API 契约，实现可以滞后，但契约要先建立。</p>
+<p><strong>版本解析的四级优先链</strong></p>
+<p>版本字段支持 semver 范围（<code>^1.0.0</code>）、固定版本（<code>1.2.3</code>）和隐式 latest（字段缺省）三种语义。<code>pluginVersioning.ts</code> 的 <code>calculatePluginVersion</code> 函数揭示了插件版本在安装时如何确定——这是与 <code>version</code> 字段直接对应的执行层逻辑：</p>
+<p><strong>图 38-3：版本解析的四级优先链</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    start[calculatePluginVersion 调用] --&gt; check1{manifest.version?}
+    check1 --&gt;|有| v1["返回 semver 固定版本\n如 '1.2.3'"]
+    check1 --&gt;|无| check2{providedVersion?}
+    check2 --&gt;|有| v2["返回调用方传入的版本\n如 '^1.0.0' 或 '~2.1.0'"]
+    check2 --&gt;|无| check3{gitCommitSha?}
+    check3 --&gt;|有| v3["返回 SHA 前12位\n即隐式 latest = 当前 HEAD"]
+    check3 --&gt;|无| check4{installPath?}
+    check4 --&gt;|能读出 SHA| v4[读取安装目录的 git SHA]
+    check4 --&gt;|无法获取| v5["返回 'unknown'"]
+    v4 --&gt; v3
+</code></pre>
+<p><code>version</code> 字段缺省（隐式 latest）在 git/github 来源下退化到第 3 级——Git commit SHA 作为版本标识，语义是「当前 HEAD = 最新版本」，每次重新安装会获得最新提交。这比 npm 的 <code>'latest'</code> 标签更精确：npm latest 是注册表上的浮动标签，git SHA 是不可变的提交快照。</p>
+<pre><code class="language-typescript">/**
+ * 版本来源（按优先级排列）：
+ * 1. plugin.json 的 version 字段（最高优先）
+ * 2. 由调用方传入的 providedVersion（来自 marketplace entry）
+ * 3. 安装路径下的 Git commit SHA
+ * 4. 'unknown' 兜底
+ * （原文：Version sources (in order of priority):...）
+ */
+export async function calculatePluginVersion(
+  pluginId: string,
+  source: PluginSource,
+  manifest?: PluginManifest,
+  installPath?: string,
+  providedVersion?: string,
+  gitCommitSha?: string,
+): Promise&lt;string&gt; {
+  // 1. plugin.json 中的显式版本字段（semver，如 '1.2.3'）
+  if (manifest?.version) { return manifest.version }
+
+  // 2. 调用方传入的版本（来自 marketplace entry 的 version 字段）
+  if (providedVersion) { return providedVersion }
+
+  // 3. 安装路径中的 Git commit SHA（git/github 来源用 SHA 作为版本标识）
+  if (gitCommitSha) { return gitCommitSha.substring(0, 12) }
+  if (installPath) {
+    const sha = await getGitCommitSha(installPath)
+    if (sha) { return sha.substring(0, 12) }
+  }
+
+  // 4. 兜底：无法确定版本时返回 'unknown'
+  return 'unknown'
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/plugins/pluginVersioning.ts:36</code></p>
+<p>三种 <code>version</code> 语义的对应关系：<strong>semver 范围</strong>（<code>^1.0.0</code>, <code>~2.1.0</code>）由调用方传入 <code>providedVersion</code>，系统在安装时将其交给 npm/pip 等包管理器解析出具体版本；<strong>固定版本</strong>（<code>1.2.3</code>）同样通过 <code>providedVersion</code> 传递，直接安装指定版本；<strong>隐式 latest</strong>（version 字段缺省）意味着 <code>providedVersion === undefined</code>，git/github 来源退回到第 3 步——用 Git commit SHA 作为版本标识（「当前 HEAD = latest」），本地来源退回到时间戳或 <code>'unknown'</code>。</p>
+<p><strong>为什么不用 <code>'latest'</code> 字符串而是依赖 version 字段缺省？</strong> 因为不同来源类型的「latest」语义不同：git/github 来源的 latest 是「当前仓库 HEAD」（具体到 commit SHA），npm 的 latest 是「npm registry 上的最新稳定版」。用字段缺省让每种来源按自己的协议解析 latest，而非在函数中堆砌 <code>if source.source === 'npm' &amp;&amp; version === 'latest'</code> 的分支。</p>
+<hr />
+<h2 id="节-384模式剖析双源插件注册表的结构"><a class="header" href="#节-384模式剖析双源插件注册表的结构">节 38.4：模式剖析——双源插件注册表的结构</a></h2>
+<p>「双源插件注册表」模式由三个关键组件构成：</p>
+<p><strong>组件一：协议判别类型（MarketplaceSource）</strong></p>
+<p><code>MarketplaceSource</code> 是一个 discriminated union，把所有来源协议统一在一个类型下。<strong>判别字段 <code>source</code> 是类型系统的钥匙</strong>：Zod 在 runtime 验证时用它确定解析逻辑，TypeScript 在 switch 分支中用它收窄类型，IDE 用它提供精准的类型提示。添加新来源类型只需要在 union 中加一个 case，不需要修改现有的逻辑分支。</p>
+<p><strong>组件二：协议分发函数（loadAndCacheMarketplace）</strong></p>
+<p><code>loadAndCacheMarketplace</code> 是唯一一个「知道所有来源协议细节」的函数。它的 switch 语句是系统中「协议多样性」唯一的聚集点——<strong>从这个函数的外部看，所有 Marketplace 来源都是等价的；从这个函数的内部看，每种来源协议有完全不同的实现</strong>。这是策略模式（Strategy Pattern）的内联版本：没有独立的 Strategy 类，但 switch 语句实现了相同的「按类型分发执行」语义。</p>
+<p><strong>组件三：隐式声明 + sourceIsFallback</strong></p>
+<p>官方 Marketplace 通过 <code>getDeclaredMarketplaces</code> 自动注入，但 <code>sourceIsFallback: true</code> 确保了「注入但不强制」——企业覆盖配置的优先级更高。这是「默认值友好（Default-Friendly）」设计：用内置默认值降低用户的配置负担，同时让企业用户可以无障碍地覆盖默认值。</p>
+<p><strong>图 38-4：双源插件注册表的整体结构</strong></p>
+<pre><code class="language-mermaid">graph TD
+    subgraph schema [Schema 层（类型契约）]
+        MSource["MarketplaceSource\n判别联合类型"]
+        PSource["PluginSourceSchema\n含 version 版本字段"]
+    end
+
+    subgraph declare [声明层（谁来源）]
+        implicit["隐式：官方 Marketplace\n(sourceIsFallback=true)"]
+        explicit["显式：第三方 Marketplace\n(extraKnownMarketplaces)"]
+    end
+
+    subgraph fetch [获取层（如何获取）]
+        load["loadAndCacheMarketplace\nswitch(source.source)"]
+        github_impl["cacheMarketplaceFromGit\nSSH/HTTPS 双降级"]
+        url_impl["cacheMarketplaceFromUrl\naxios.get"]
+        local_impl["本地文件读取\n无网络"]
+    end
+
+    MSource --&gt; load
+    implicit --&gt; load
+    explicit --&gt; load
+    load --&gt;|github/git| github_impl
+    load --&gt;|url| url_impl
+    load --&gt;|file/directory| local_impl
+    load --&gt;|"npm (TODO)"| npm_err["throw Error\n未实现"]
+</code></pre>
+<hr />
+<h2 id="节-385适用范围"><a class="header" href="#节-385适用范围">节 38.5：适用范围</a></h2>
+<p>在来源添加之前，<code>addMarketplaceSource</code> 还有一道策略门禁——企业管理员可以通过 <code>strictKnownMarketplaces</code>（白名单）或 <code>blockedMarketplaces</code>（黑名单）限制允许添加的来源：</p>
+<p><strong>图 38-5：来源策略检查流程</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    add[addMarketplaceSource 调用] --&gt; policy{isSourceAllowedByPolicy}
+    policy --&gt;|被 blockedMarketplaces 命中| err1["抛出：来源被企业策略阻止"]
+    policy --&gt;|不在 strictKnownMarketplaces 中| err2["抛出：来源不在允许列表中"]
+    policy --&gt;|通过| dedup{相同来源已存在?}
+    dedup --&gt;|是| skip[直接返回 alreadyMaterialized=true]
+    dedup --&gt;|否| load["loadAndCacheMarketplace\n（协议分发）"]
+    load --&gt; validate[验证 marketplace.json 格式]
+    validate --&gt; register[写入 known_marketplaces.json]
+</code></pre>
+<p>策略检查在网络/文件系统操作之前执行——「先检查权限，再发起请求」，避免下载了被禁止的内容后才报错。<code>isSourceAllowedByPolicy</code> 先检查黑名单（<code>isSourceInBlocklist</code>），再检查白名单（<code>getStrictKnownMarketplaces</code>）——黑名单优先级高于白名单（<code>src/utils/plugins/marketplaceHelpers.ts:480</code>）。</p>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>需要支持多种协议来源（GitHub/URL/本地）</td><td>✓</td><td>discriminated union + switch 封装协议差异</td><td>每种来源独立处理逻辑（散乱难维护）</td></tr>
+<tr><td>有一个内置默认来源需要自动注入</td><td>✓</td><td>sourceIsFallback 实现「注入不强制」语义</td><td>要求用户显式配置（增加门槛）</td></tr>
+<tr><td>企业场景需要覆盖内置默认值</td><td>✓</td><td>声明层优先级（implicit &lt; 显式配置）</td><td>硬编码来源（无法覆盖）</td></tr>
+<tr><td>来源协议未来需要扩展</td><td>✓</td><td>添加 union case，TypeScript 检查遗漏分支</td><td>if/else 链（TypeScript 无法检查完整性）</td></tr>
+<tr><td>所有来源都需要相同的缓存逻辑</td><td>✓</td><td>loadAndCacheMarketplace 统一入口</td><td>各来源独立缓存（逻辑重复）</td></tr>
+<tr><td>来源之间需要完全不同的处理逻辑</td><td>✗（谨慎）</td><td>switch 可以，但过多 case 会让函数过重</td><td>策略对象（每种来源有独立类）</td></tr>
+<tr><td>版本管理需要实时 semver 解析</td><td>✗（待实现）</td><td>npm 来源版本字段已设计但未实现</td><td>外部版本解析器</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="节-386权衡与局限"><a class="header" href="#节-386权衡与局限">节 38.6：权衡与局限</a></h2>
+<p><strong>权衡1：switch 函数膨胀</strong></p>
+<p><code>loadAndCacheMarketplace</code> 是整个文件的核心，但它的 switch 语句随着来源类型增加而变长——当前 <code>github</code> 分支就有 120+ 行（SSH 选择 + HTTPS 降级 + 错误处理）。函数的内聚性（「把所有协议分发逻辑集中在一处」）和可读性（「200 行的 switch 函数很难快速浏览」）之间存在张力。Claude Code 选择了内聚性优先——单一分发点，代价是函数变长。</p>
+<p><strong>权衡2：npm 来源已设计但未实现</strong></p>
+<p><code>schemas.ts</code> 中 npm 来源的完整 schema 定义（含 version 字段）和 <code>loadAndCacheMarketplace</code> 中的 <code>// TODO: Implement npm package support</code> 形成了有趣的对比：<strong>类型契约已经确立，实现被推迟</strong>。好处是：任何依赖 <code>MarketplaceSource</code> 类型的代码（策略检查、序列化、UI）都可以正确处理 npm 来源的存在，不会因为 npm 未实现而报错；代价是：用户配置了 npm 来源后会在运行时得到一个 <code>throw new Error</code> 而不是 TypeScript 编译错误。这是「渐进式实现」的代价。</p>
+<p><strong>权衡3：sourceIsFallback 的隐式语义</strong></p>
+<p><code>sourceIsFallback: true</code> 的逻辑依赖 <code>diffMarketplaces</code> 在 reconcile 阶段对它的特殊处理——这是一个「隐式约定」：类型中没有方法阻止新代码忽视 <code>sourceIsFallback</code> 标志。如果未来有人在不了解这个约定的情况下添加新的 reconcile 逻辑，可能意外地让官方 Marketplace 的 <code>sourceIsFallback</code> 失效，导致企业镜像配置被覆盖。更明确的做法是用独立函数（如 <code>reconcileWithFallback</code>）显式处理这个语义，而非在类型字段中隐式传递。</p>
+<hr />
+<h2 id="节-387与已知模式的对话"><a class="header" href="#节-387与已知模式的对话">节 38.7：与已知模式的对话</a></h2>
+<p><strong>与策略模式（Strategy Pattern）</strong>：GoF 的策略模式把算法族封装在独立的 Strategy 类中，Context 持有 Strategy 引用并在运行时选择。<code>loadAndCacheMarketplace</code> 是内联版的策略模式：没有独立的 Strategy 类，但 switch 语句实现了相同的「按类型分发执行」语义。两者的权衡是：<strong>内联 switch 减少了文件数量和接口设计的认知负担，但在策略实现增多时会让函数膨胀；独立 Strategy 类便于测试和独立演化，但需要更多抽象层次</strong>。Claude Code 选择了内联方式，适合来源类型数量有限（6-7 种）且协议细节需要共享（如共用 <code>getCachePathForSource</code>）的场景。</p>
+<p><strong>与插件注册表（Plugin Registry / Service Locator）</strong>：Martin Fowler 的 Service Locator 模式通过注册表动态查找服务实现。<code>getDeclaredMarketplaces</code> + <code>loadKnownMarketplacesConfig</code> 组合构成了一个两阶段的插件注册表：第一阶段「声明」（来源记录在 <code>known_marketplaces.json</code>），第二阶段「解析」（reconciler 对比声明和实际状态，触发克隆或更新）。<strong>与标准 Service Locator 不同的是，这个注册表是持久化的（磁盘文件）而非内存的，且有「隐式默认值」机制</strong>——官方 Marketplace 无需用户显式注册即可被发现。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="双源插件注册表dual-source-plugin-registry"><a class="header" href="#双源插件注册表dual-source-plugin-registry">双源插件注册表（Dual-Source Plugin Registry）</a></h3>
+<p><strong>解决的问题</strong>：插件系统需要同时支持内置官方来源（自动可用，无需配置）和用户声明的第三方来源（灵活添加），且两类来源可以使用不同的传输协议（GitHub/URL/本地等），企业用户还需要能覆盖内置默认值。</p>
+<p><strong>核心做法</strong>：用 discriminated union（<code>MarketplaceSource</code>）统一所有协议的类型表达；用单一分发函数（<code>loadAndCacheMarketplace</code>）内联 switch 隔离协议细节；官方来源通过 <code>sourceIsFallback: true</code> 隐式声明，允许企业显式配置覆盖；所有来源走相同的缓存和验证流程，无「官方特殊路径」。</p>
+<p><strong>前置条件</strong>：来源类型是有限的稳定枚举（不超过十种）；不同来源的「类型 shape」差异显著（不能统一为相同字段集）；有一个内置默认来源需要对用户透明地自动注入。</p>
+<p><strong>源码证据</strong>：<code>src/utils/plugins/schemas.ts:906</code>（<code>MarketplaceSourceSchema</code> 判别联合类型定义）；<code>src/utils/plugins/marketplaceManager.ts:1451</code>（<code>loadAndCacheMarketplace</code> switch 分发）；<code>src/utils/plugins/officialMarketplace.ts:15</code>（官方来源固化为常量）；<code>src/utils/plugins/marketplaceManager.ts:143</code>（<code>sourceIsFallback</code> 字段注释说明企业覆盖语义）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>用 discriminated union 统一多协议来源</strong>，用 <code>source</code> 字段作为判别符。TypeScript 的类型收窄确保 switch 分支不遗漏——添加新 case 时，缺少对应分支会产生编译错误，而非运行时静默跳过。</p>
+</li>
+<li>
+<p><strong>把协议多样性封装在单一分发函数内</strong>。调用方只知道「传入 <code>MarketplaceSource</code>，得到加载的 Marketplace」；只有分发函数知道 SSH 克隆还是 HTTP 下载的细节。这让调用方代码在新增来源类型时无需修改。</p>
+</li>
+<li>
+<p><strong>用 <code>sourceIsFallback: true</code> 实现「注入不强制」的默认值</strong>。当你想为用户提供开箱即用的默认配置，同时又不想阻止企业用户覆盖时，这个字段模式比「硬编码 if-else 判断是否是官方来源」更优雅——它把「允许覆盖」的语义表达在数据层，而不是散落在多处条件判断中。</p>
+</li>
+<li>
+<p><strong>Schema 先行，实现可以滞后</strong>。npm 来源的完整 schema（含 version 字段）先于实现存在——这让所有依赖类型系统的代码（验证、序列化、UI 渲染）都能正确处理 npm 来源，而不必等到实现完成。在设计接口时，先把 API 契约（类型）定义清楚，再逐步填充实现，是分阶段交付复杂功能的有效策略。</p>
+</li>
+<li>
+<p><strong>为版本字段使用标准 semver 语义描述</strong>（<code>^1.0.0</code>, <code>~2.1.0</code>），即使当前不做 semver 解析。精确的 <code>.describe()</code> 文档是 schema 的第一手文档——未来的实现者和用户都从这里了解版本字段的语义。</p>
+</li>
+<li>
+<p><strong>用声明层（什么 + 哪里）与获取层（如何拿到）分离</strong>，避免「声明逻辑」和「获取逻辑」混在一起。<code>getDeclaredMarketplaces</code> 只关心「应该存在哪些 Marketplace 及其来源配置」；<code>loadAndCacheMarketplace</code> 只关心「如何根据来源类型获取数据」；reconciler 负责对比两者并触发操作。三层各司其职，修改时影响范围清晰。</p>
+</li>
+</ul>
+<hr />
+<p>第 38 章揭示了 Marketplace 协议的多源设计——discriminated union 统一协议类型，单一分发函数隔离协议细节，官方来源通过 <code>sourceIsFallback</code> 实现透明注入。Marketplace 被加载后，其中的插件包遵循什么样的目录约定和 <code>package.json</code> 契约？这是第 39 章的主题（详见第 39 章）。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part9/ch37.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part9/ch39.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part9/ch37.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part9/ch39.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

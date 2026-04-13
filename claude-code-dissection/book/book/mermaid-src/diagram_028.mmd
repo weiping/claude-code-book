@@ -1,0 +1,15 @@
+graph TD
+    Messages["messages 数组
+（API 调用的全部内容）"]
+    Messages --> SP["系统 prompt
+工具描述 ~3000 token
+CLAUDE.md ~1000 token"]
+    Messages --> History["对话历史
+用户消息 + Claude 回复
+平均 200 token/轮"]
+    Messages --> ToolResults["工具结果
+文件内容、命令输出
+可能 1000-10000 token"]
+    
+    ToolResults -->|"最大风险"| Warning["⚠️ 一个大文件
+就能填满 context window"]

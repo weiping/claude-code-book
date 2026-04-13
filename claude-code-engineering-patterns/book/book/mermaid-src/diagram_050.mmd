@@ -1,0 +1,11 @@
+flowchart TD
+    tool[工具调用请求]
+
+    tool --> check1{在白名单中?}
+    check1 -->|是| allow_fast[直接放行\nisAutoModeAllowlistedTool = true]
+    check1 -->|否| check2{toAutoClassifierInput\n返回空字符串?}
+    check2 -->|是| allow_skip[跳过安全检查\n写入 transcript 时忽略]
+    check2 -->|否| classify[构建 transcript\n调用 AI 分类器]
+    classify --> result["ClassifierResult\n{shouldBlock, confidence, reason}"]
+    result -->|shouldBlock=false| allow_final[放行]
+    result -->|shouldBlock=true| deny[拒绝或询问用户]

@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant Runtime as Bun 运行时
+    participant Main as main.tsx
+    participant Parallel as 并行子任务
+    participant CLI as Commander.js
+    participant REPL as REPL.tsx
+
+    Runtime->>Main: 开始模块加载
+    Main->>Parallel: profileCheckpoint（打入口时间戳）
+    Main->>Parallel: startMdmRawRead（并行读取 MDM 配置，约135ms）
+    Main->>Parallel: startKeychainPrefetch（并行读取 Keychain，约65ms）
+    Main->>Main: 导入其余模块（约135ms）
+    Note over Parallel: 并行期间已完成读取
+    Main->>CLI: 注册 Commander 命令和选项
+    CLI->>Main: 解析命令行参数
+    Main->>REPL: launchRepl()
+    REPL->>REPL: 渲染 Ink TUI

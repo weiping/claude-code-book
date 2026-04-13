@@ -1,0 +1,15 @@
+flowchart TD
+    src["src/main.tsx\nfeature('KAIROS') ? require(...) : null"]
+
+    subgraph 外部用户构建
+        ext_flag["feature('KAIROS') = false"]
+        ext_result["= null\n（require 分支物理删除）"]
+    end
+
+    subgraph 内部用户构建
+        int_flag["feature('KAIROS') = true"]
+        int_result["= require('./assistant/index.js')\n（代码包含在产物中）"]
+    end
+
+    src --> ext_flag --> ext_result
+    src --> int_flag --> int_result

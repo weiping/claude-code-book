@@ -1,0 +1,17 @@
+graph TD
+    A["对话轮次 1-50<br/>Token 线性增长"] -->|60K tokens| B["无压缩状态"]
+    B -->|轮次 51| C{"检查触发条件"}
+    C -->|超过 95%<br/>容量| D["🔴 AutoCompact<br/>删除前 30 轮<br/>降到 90K"]
+    C -->|单条超 50K| E["🟡 MicroCompact<br/>压缩该消息<br/>节省 10-20K"]
+    C -->|冗余 > 40%| F["🟢 SnipCompact<br/>删除重复段落<br/>节省 15-25K"]
+    C -->|用户命令| G["🔵 ReactiveCompact<br/>用户选择范围<br/>节省 20-50K"]
+    D --> H["轮次 51-100<br/>基线保持 90-110K"]
+    E --> H
+    F --> H
+    G --> H
+    H --> I["对话支持到<br/>150+ 轮<br/>✓ 成功"]
+    style D fill:#ffe6e6
+    style E fill:#fff4e6
+    style F fill:#ffffcc
+    style G fill:#e6f2ff
+    style I fill:#e6ffe6

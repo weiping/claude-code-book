@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant Caller
+    participant Handler
+    participant UI as React_UI
+    participant Hook
+    participant Classifier
+
+    Caller->>Handler: handleInteractivePermission(params, resolve)
+    Handler->>UI: ctx.pushToQueue(callbacks)
+    Handler->>Hook: void runHooks()（后台启动）
+    Handler->>Classifier: void executeAsyncClassifier()（后台启动）
+    Handler-->>Caller: return void（立即返回）
+
+    Note over Caller: 等待外部 Promise...
+
+    alt 用户先响应
+        UI->>Handler: onAllow() / onReject()（claim()成功）
+        Handler->>Caller: resolve(decision)
+    else Hook 先响应
+        Hook->>Handler: hookDecision（claim()成功）
+        Handler->>Caller: resolve(hookDecision)
+    else Classifier 先响应
+        Classifier->>Handler: classifierResult（claim()成功）
+        Handler->>Caller: resolve(classifierResult)
+    end

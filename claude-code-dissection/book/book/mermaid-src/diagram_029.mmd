@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant User
+    participant QE as QueryEngine
+    participant AC as AutoCompact
+    participant API as Claude API
+
+    User->>QE: 第 50 轮消息
+    QE->>QE: 计算 token 总量
+    QE->>AC: token > 阈值?
+    AC-->>QE: 是，触发压缩
+
+    QE->>QE: 保留最近 20 轮对话
+    QE->>QE: 压缩早期轮次为摘要
+    QE->>QE: 插入 boundary message
+    
+    QE->>API: 发送压缩后的历史
+    API-->>User: 继续对话（Claude 知道历史被压缩了）

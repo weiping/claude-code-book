@@ -1,0 +1,696 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 29 章：多智能体架构总览——Swarm 的层次模型 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-29-章多智能体系统的三层模型"><a class="header" href="#第-29-章多智能体系统的三层模型">第 29 章：多智能体系统的三层模型</a></h1>
+<blockquote>
+<p>当你在 Claude Code 中调用一个"研究员代理"去搜集信息，同时另一个"验证代理"在验证方案时，这两个 Agent 之间是如何协作的？为什么不直接并行运行，而是需要一个"Swarm"来编排它们？</p>
+</blockquote>
+<hr />
+<p>前面的章节讲的都是单个 Agent 的运行逻辑。但在实际的工作流中，有时候需要多个 Agent 同时工作——研究员搜集信息、编码者写代码、验证者检查质量。
+这样的多 Agent 系统有三个难点：</p>
+<ol>
+<li><strong>隔离性</strong>：每个 Agent 的上下文、权限、内存必须独立，否则会互相污染。</li>
+<li><strong>协调性</strong>：权限决策、结果合并需要一个中心枢纽（Swarm）来协调。</li>
+<li><strong>可扩展性</strong>：有时候 Agent 需要运行在不同的机器或容器中，不能只在单进程内执行。
+Claude Code 的解决方案是一个优雅的三层设计：</li>
+</ol>
+<ul>
+<li><strong>Swarm</strong> 负责全局编排和权限同步</li>
+<li><strong>Task</strong> 根据需要选择合适的隔离策略</li>
+<li><strong>Agent</strong> 核心逻辑保持不变，无需感知多 Agent 的存在
+这一章先讲三层模型的整体架构，后续几章会深入每一层的实现细节。</li>
+</ul>
+<h2 id="291-多智能体协作的困难"><a class="header" href="#291-多智能体协作的困难">29.1 多智能体协作的困难</a></h2>
+<h3 id="定义与问题"><a class="header" href="#定义与问题">定义与问题</a></h3>
+<p>在第 13 章，我们看到了 AgentTool——一个工具可以调用另一个 Agent，形成递归智能体。但这有个本质的限制：<strong>同一时刻只能有一个 Agent 在执行</strong>。当用户想要多个 Agent 同时工作（如"研究员"搜集信息，"编码者"开始写代码），系统需要什么？
+<strong>三个并发问题</strong>：</p>
+<pre><code>问题 1：隔离性
+  两个 Agent 同时运行，但它们各自需要：
+  - 独立的上下文累积（不互相污染）
+  - 独立的工具操作权限检查
+  - 独立的记忆快照（便于回滚或对比）
+  如何在共享底层的 Claude Code 运行时中实现隔离？
+问题 2：协调性
+  当 Agent A 申请权限时（如"允许删除文件"），
+  这个权限请求在 Agent A 自己的进程内部无法显示给用户
+  （用户也许正在与主 Agent 交互）。
+  如何在独立的子 Process/Thread 中通知主进程用户的决策？
+问题 3：资源消耗
+  两个 Agent 同时运行意味着两倍的 API 调用成本。
+  有时用户想要"快速模式"：
+  - 一个 Agent 用快速的 Haiku 模型
+  - 另一个用更强的 Opus 模型
+  系统如何管理这种异构的计算资源？
+</code></pre>
+<h3 id="设计意图"><a class="header" href="#设计意图">设计意图</a></h3>
+<p>Claude Code 引入<strong>三层模型</strong>来解决这些问题：</p>
+<pre><code>第一层：Swarm（群）
+  职责：编排多个 Agent 的生命周期
+  特点：负责启停、权限同步、记忆合并
+  位置：`src/tools/shared/spawnMultiAgent.ts`
+第二层：Task（任务）
+  职责：Agent 的执行容器（InProcess/Remote/等）
+  特点：决定 Agent 如何隔离和执行
+  位置：`src/tasks/`
+第三层：Agent（代理）
+  职责：单个 Agent 的核心循环逻辑
+  特点：与单 Agent 情况完全相同，无需改动
+  位置：`src/tools/AgentTool/runAgent.ts`
+</code></pre>
+<hr />
+<h2 id="292-三层模型的架构"><a class="header" href="#292-三层模型的架构">29.2 三层模型的架构</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p><strong>Swarm</strong>（群）是多个 Agent 的集合。它不是一个单一的概念，而是通过 Task 的组合来实现：</p>
+<pre><code>Swarm 的结构（在应用状态中）：
+  - leaderId：主 Agent 的 ID（通常是 "main"）
+  - teammates：list of TeammateIdentity
+    {
+      agentId: "researcher@my-team"
+      agentName: "researcher"
+      teamName: "my-team"
+      parentSessionId: "session-123"  // 指向主 Agent 的会话
+      planModeRequired: false
+    }
+  - mailbox：权限请求/决策的通道
+</code></pre>
+<h3 id="三种-task-类型"><a class="header" href="#三种-task-类型">三种 Task 类型</a></h3>
+<p>在 <code>src/tasks/</code> 中，Claude Code 定义了多种 Task：</p>
+<div class="table-wrapper"><table><thead><tr><th>Task 类型</th><th>位置</th><th>执行模式</th><th>隔离性</th><th>权限同步</th></tr></thead><tbody>
+<tr><td><strong>InProcessTeammateTask</strong></td><td><code>src/tasks/InProcessTeammateTask/</code></td><td>同进程，不同 AsyncLocalStorage</td><td>中等</td><td>通过 Mailbox 异步</td></tr>
+<tr><td><strong>RemoteAgentTask</strong></td><td><code>src/tasks/RemoteAgentTask/</code></td><td>子进程或远程</td><td>高</td><td>通过 IPC/网络</td></tr>
+<tr><td><strong>LocalAgentTask</strong></td><td><code>src/tasks/LocalAgentTask/</code></td><td>同进程但不同栈帧</td><td>低</td><td>直接共享</td></tr>
+<tr><td><strong>为什么需要三种？</strong></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table>
+</div>
+<pre><code>统一方案（假设只用 InProcessTeammateTask）：
+  所有 Agent 都在同一进程中
+  优点：快速、无 IPC 开销
+  缺点：
+    ✗ 上下文污染（全局状态修改互相影响）
+    ✗ 权限请求难以隔离
+    ✗ 无法在不同机器上运行 Agent
+多 Task 方案（现状）：
+  开发者可以根据场景选择
+  优点：
+    ✓ 同进程快速模式
+    ✓ 子进程隔离模式
+    ✓ 分布式模式
+</code></pre>
+<h3 id="teammateidentity-的设计"><a class="header" href="#teammateidentity-的设计">TeammateIdentity 的设计</a></h3>
+<p>在 <code>src/tasks/InProcessTeammateTask/types.ts</code> 第 6-15 行：</p>
+<pre><code class="language-typescript">export type TeammateIdentity = {
+  agentId: string                    // 唯一标识："researcher@my-team"
+  agentName: string                  // 显示名："researcher"
+  teamName: string                   // 团队名："my-team"
+  color?: string                     // UI 展示颜色
+  planModeRequired: boolean          // 是否需要显式计划批准
+  parentSessionId: string            // 指向主 Agent 的会话
+}
+</code></pre>
+<p><strong>字段的工程意义</strong>：</p>
+<ul>
+<li><code>agentId</code>：全局唯一，便于追踪和调试</li>
+<li><code>parentSessionId</code>：建立 Teammate 与主 Agent 的隶属关系，权限决策时向主窗口展示</li>
+<li><code>planModeRequired</code>：如果 true，该 Teammate 的每个 Planning 阶段需要人工审批</li>
+</ul>
+<hr />
+<h2 id="293-从单-agent-到多-agent-的变化"><a class="header" href="#293-从单-agent-到多-agent-的变化">29.3 从单 Agent 到多 Agent 的变化</a></h2>
+<h3 id="定义与对比"><a class="header" href="#定义与对比">定义与对比</a></h3>
+<p><strong>单 Agent 情况</strong>（第 8 章讲的 query.ts）：</p>
+<pre><code>用户输入
+  ↓
+Query Engine
+  ↓
+query.ts（单轮循环）
+  ↓
+返回结果给用户
+</code></pre>
+<p><strong>多 Agent 情况</strong>（Swarm）：</p>
+<pre><code>用户输入给 Main Agent
+  ↓
+Main Agent 决定启动多个 Teammate
+  ↓
+spawnMultiAgent()（第 1093 行 src/tools/shared/spawnMultiAgent.ts）
+  ├─ Teammate 1（Task 1）
+  ├─ Teammate 2（Task 2）
+  └─ Teammate 3（Task 3）
+      都执行各自的 Query Engine
+  ↓
+权限请求通过 Mailbox 汇聚到 Main
+  ↓
+用户在 Main 窗口中一次性审批所有权限
+  ↓
+结果汇总，返回给用户
+</code></pre>
+<h3 id="设计意图对比"><a class="header" href="#设计意图对比">设计意图对比</a></h3>
+<p><strong>为什么是 spawnMultiAgent 而不是直接启动 runAgent？</strong></p>
+<pre><code>方案 A（直接 runAgent）：
+  Agent A 调用 runAgent(Agent B)
+  Agent B 执行完毕返回结果
+  线性执行，没有并发
+方案 B（spawnMultiAgent + Task）：
+  Agent A 调用 spawnMultiAgent([Agent B, Agent C])
+  返回立即执行（不等待 B、C 完成）
+  B、C 并发运行
+  结果通过 Promise/callback 异步收集
+选择 B 的理由：
+  ✓ 支持真正的并发（多个 Agent 同时工作）
+  ✓ 资源高效（不阻塞主线程等待）
+  ✓ 扩展性（可轻松添加 Task 类型）
+</code></pre>
+<hr />
+<h2 id="294-swarm-中的权限决策流"><a class="header" href="#294-swarm-中的权限决策流">29.4 Swarm 中的权限决策流</a></h2>
+<h3 id="定义-1"><a class="header" href="#定义-1">定义</a></h3>
+<p>当一个 Teammate 需要执行"删除文件"操作时，系统需要向用户请求批准。但 Teammate 可能运行在不同的 Task 容器中，权限对话框该如何显示？
+<strong>解决方案：Mailbox 机制</strong>（详见第 32 章）
+在 <code>src/utils/swarm/permissionSync.ts</code> 第 928 行：</p>
+<pre><code class="language-typescript">// 伪代码表示流程
+function onTeammatePermissionRequest(request: PermissionRequest) {
+  // 1. Teammate 发出权限请求
+  // 2. 通过 Mailbox 发送到主 Agent
+  mailbox.send({
+    from: "researcher@my-team",
+    type: "permission_request",
+    action: "execute_bash",
+    command: "rm -rf /tmp/old_build",
+    timestamp: Date.now()
+  })
+  // 3. 主 Agent 窗口显示对话框
+  // 4. 用户批准或拒绝
+  // 5. 决策通过 Mailbox 返回给 Teammate
+  // 6. Teammate 继续执行或中止
+}
+</code></pre>
+<h3 id="权限同步的三个关键步骤"><a class="header" href="#权限同步的三个关键步骤">权限同步的三个关键步骤</a></h3>
+<p><strong>步骤 1：权限提升（Permission Promotion）</strong>
+当 Teammate 访问某个权限时，需要向上报告给主 Agent：</p>
+<pre><code>Teammate 申请执行 Bash
+  → 检查本地权限规则（严格）
+  → 如果本地拒绝，返回立即拒绝
+  → 如果本地允许，转发给主 Agent 验证
+  → 主 Agent 根据全局规则再次决策
+</code></pre>
+<p><strong>步骤 2：权限缓存（Permission Cache）</strong>
+为了避免重复问用户，系统缓存决策：</p>
+<pre><code>用户第 1 次批准 "bash for research"
+  → 决策存储到本地权限规则
+  → 后续 Teammate 的相同请求不再打扰用户
+</code></pre>
+<p><strong>步骤 3：权限回滚（Permission Rollback）</strong>
+当 Teammate 任务失败或用户取消时，之前的权限提升应被撤销：</p>
+<pre><code>Teammate 失败
+  → 删除临时权限提升
+  → 恢复到初始状态
+</code></pre>
+<hr />
+<h2 id="295-多-agent-的内存管理"><a class="header" href="#295-多-agent-的内存管理">29.5 多 Agent 的内存管理</a></h2>
+<h3 id="定义-2"><a class="header" href="#定义-2">定义</a></h3>
+<p>每个 Agent 维护自己的"思考历史"（对话轮次）。但在 Swarm 中，多个 Agent 的内存如何合并？
+<strong>场景</strong>：</p>
+<pre><code>Main Agent（5 轮对话） + Research Agent（3 轮对话）
+  → 合并后是 8 轮吗？还是分开保存？
+答案：分开保存，但会相互引用
+</code></pre>
+<h3 id="内存快照机制agentmemorysnapshot"><a class="header" href="#内存快照机制agentmemorysnapshot">内存快照机制（agentMemorySnapshot）</a></h3>
+<p>在 <code>src/tools/AgentTool/agentMemorySnapshot.ts</code>：</p>
+<pre><code>Main Agent 内存：
+  [
+    {role: "user", content: "研究 X"},
+    {role: "assistant", content: "我会..."},
+    {role: "user", content: "调用 Research Agent"},
+  ]
+Research Agent 的快照：
+  [
+    {role: "system", content: "You are research expert"},
+    {role: "user", content: "研究 X 详情"},
+    {role: "assistant", content: "我发现..."},
+  ]
+Main Agent 收到结果后：
+  [
+    ...之前的 3 条,
+    {
+      role: "tool",
+      type: "teammate_result",
+      content: {
+        agent: "researcher",
+        result: "...Research Agent 的完整内存...",
+      }
+    }
+  ]
+</code></pre>
+<h3 id="为什么要分开保存"><a class="header" href="#为什么要分开保存">为什么要分开保存？</a></h3>
+<pre><code>优点：
+  ✓ 内存不会无限增长（每个 Agent 独立的 context 上限）
+  ✓ 便于调试（可单独查看每个 Agent 的思考过程）
+  ✓ 便于重用（Research Agent 的结果可复用给其他 Main Agent）
+缺点：
+  ✗ 合并结果时需要"翻译"（将 Research Agent 的 message 转为 Main 可理解的格式）
+  ✗ 总的对话轮数增加，可能导致 context 溢出
+</code></pre>
+<hr />
+<h2 id="296-三种协作拓扑"><a class="header" href="#296-三种协作拓扑">29.6 三种协作拓扑</a></h2>
+<h3 id="定义-3"><a class="header" href="#定义-3">定义</a></h3>
+<p>根据 Swarm 中 Agent 之间的关系，有三种主要的协作拓扑：</p>
+<h4 id="拓扑一星形star-topology"><a class="header" href="#拓扑一星形star-topology">拓扑一：星形（Star Topology）</a></h4>
+<p><strong>结构</strong>：</p>
+<pre><code>       Main Agent
+      /   |   \
+  Agent1 Agent2 Agent3
+</code></pre>
+<p><strong>特点</strong>：</p>
+<ul>
+<li>所有通信通过 Main Agent 中转</li>
+<li>最简单，最容易实现</li>
+<li>如果 Main Agent 出错，所有通信中断
+<strong>代码位置</strong>：这是默认的 Swarm 拓扑
+<strong>适用场景</strong>：</li>
+<li>主要工作由 Main Agent 驱动</li>
+<li>Teammates 是辅助角色</li>
+</ul>
+<h4 id="拓扑二链式linear-topology"><a class="header" href="#拓扑二链式linear-topology">拓扑二：链式（Linear Topology）</a></h4>
+<p><strong>结构</strong>：</p>
+<pre><code>Agent1 → Agent2 → Agent3 → Main
+</code></pre>
+<p><strong>特点</strong>：</p>
+<ul>
+<li>Agent 1 的输出是 Agent 2 的输入</li>
+<li>管道式处理</li>
+<li>如果中间某个 Agent 出错，整条链断裂
+<strong>适用场景</strong>：</li>
+<li>ETL 流程（Extract、Transform、Load）</li>
+<li>数据处理流水线</li>
+</ul>
+<h4 id="拓扑三网格mesh-topology"><a class="header" href="#拓扑三网格mesh-topology">拓扑三：网格（Mesh Topology）</a></h4>
+<p><strong>结构</strong>：</p>
+<pre><code>Agent1 ←→ Agent2
+  ↕       ↕
+Agent3 ←→ Agent4
+</code></pre>
+<p><strong>特点</strong>：</p>
+<ul>
+<li>任意两个 Agent 都可以通信</li>
+<li>最灵活但最复杂</li>
+<li>需要防止循环通信
+<strong>适用场景</strong>：</li>
+<li>复杂的团队协作（如代码审查 + 测试并行执行）
+<strong>当前限制</strong>：第 32 章会讲，目前只支持星形和链式。网格拓扑通过 Mailbox 的消息路由可以部分模拟。</li>
+</ul>
+<hr />
+<h2 id="图解"><a class="header" href="#图解">图解</a></h2>
+<p><strong>图 29-1：单 Agent 与多 Agent 的对比</strong></p>
+<pre><code class="language-mermaid">graph TB
+    subgraph single ["单 Agent 情况"]
+        A1["Main Agent"] --&gt;|执行| B1["query.ts"]
+        B1 --&gt;|返回结果| A1
+    end
+    subgraph multi ["多 Agent 情况（Swarm）"]
+        A2["Main Agent"] --&gt;|spawnMultiAgent| B2["Mailbox"]
+        B2 --&gt;|Task 1| C2["Teammate A"]
+        B2 --&gt;|Task 2| D2["Teammate B"]
+        B2 --&gt;|Task 3| E2["Teammate C"]
+        C2 --&gt;|权限请求| B2
+        D2 --&gt;|权限请求| B2
+        E2 --&gt;|权限请求| B2
+        B2 --&gt;|同步决策| C2
+        B2 --&gt;|同步决策| D2
+        B2 --&gt;|同步决策| E2
+        C2 --&gt;|结果| A2
+        D2 --&gt;|结果| A2
+        E2 --&gt;|结果| A2
+    end
+    style A1 fill:#e6f2ff
+    style B1 fill:#fff4e6
+    style A2 fill:#e6f2ff
+    style B2 fill:#ffffcc
+    style C2 fill:#fff4e6
+    style D2 fill:#fff4e6
+    style E2 fill:#fff4e6
+</code></pre>
+<p><strong>图 29-2：Swarm 的三层模型</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["Swarm（编排层）"] --&gt;|定义拓扑&lt;br/&gt;同步权限| B["Task（容器层）"]
+    B --&gt;|提供隔离环境| C["Agent（执行层）"]
+    A1["spawnMultiAgent()"] -.-&gt;|使用| A
+    B1["InProcessTeammateTask&lt;br/&gt;RemoteAgentTask&lt;br/&gt;LocalAgentTask"] -.-&gt;|实现| B
+    C1["runAgent()"] -.-&gt;|执行| C
+    style A fill:#e6f2ff
+    style B fill:#fff4e6
+    style C fill:#ffffcc
+</code></pre>
+<p><strong>图 29-3：权限决策流</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant User
+    participant MainAgent as Main Agent&lt;br/&gt;（Window）
+    participant Mailbox
+    participant Teammate as Teammate&lt;br/&gt;（InProcess/Remote）
+    User-&gt;&gt;MainAgent: 启动 Swarm
+    MainAgent-&gt;&gt;Teammate: spawnMultiAgent()
+    Teammate-&gt;&gt;Teammate: 执行，需要权限
+    Teammate-&gt;&gt;Mailbox: 发送权限请求
+    Mailbox-&gt;&gt;MainAgent: 转发请求
+    MainAgent-&gt;&gt;User: 显示权限对话框
+    User-&gt;&gt;MainAgent: 批准/拒绝
+    MainAgent-&gt;&gt;Mailbox: 权限决策
+    Mailbox-&gt;&gt;Teammate: 转发决策
+    Teammate-&gt;&gt;Teammate: 继续执行或中止
+    Teammate-&gt;&gt;MainAgent: 返回结果
+</code></pre>
+<p><strong>图 29-4：三种协作拓扑</strong></p>
+<pre><code class="language-mermaid">graph TB
+    subgraph star ["星形拓扑（Star）"]
+        M1["Main"]
+        M1 --- A1["Agent 1"]
+        M1 --- B1["Agent 2"]
+        M1 --- C1["Agent 3"]
+    end
+    subgraph linear ["链式拓扑（Linear）"]
+        A2["Agent 1"] --&gt; B2["Agent 2"]
+        B2 --&gt; C2["Agent 3"]
+        C2 --&gt; M2["Main"]
+    end
+    subgraph mesh ["网格拓扑（Mesh）"]
+        A3["Agent 1"] ---|双向| B3["Agent 2"]
+        A3 ---|双向| C3["Agent 3"]
+        B3 ---|双向| C3
+        M3["Main"] ---|连接| A3
+        M3 ---|连接| B3
+        M3 ---|连接| C3
+    end
+    style M1 fill:#e6f2ff
+    style M2 fill:#e6f2ff
+    style M3 fill:#e6f2ff
+</code></pre>
+<p><strong>表格 29-1：Task 类型对比</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Task 类型</th><th>执行模式</th><th>隔离性</th><th>性能</th><th>权限同步</th><th>适用场景</th></tr></thead><tbody>
+<tr><td>InProcessTeammateTask</td><td>同进程</td><td>中等（AsyncLocalStorage）</td><td>高</td><td>Mailbox</td><td>快速、低开销</td></tr>
+<tr><td>RemoteAgentTask</td><td>子进程</td><td>高（完全隔离）</td><td>中等（IPC）</td><td>Mailbox + IPC</td><td>高隔离需求</td></tr>
+<tr><td>LocalAgentTask</td><td>同进程栈帧</td><td>低（共享全局状态）</td><td>高</td><td>直接共享</td><td>快速原型</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="关键源码索引"><a class="header" href="#关键源码索引">关键源码索引</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>位置</th><th>内容</th><th>意义</th></tr></thead><tbody>
+<tr><td><code>src/utils/swarm/teamHelpers.ts:45</code></td><td><code>SpawnTeamOutput</code> 类型</td><td>团队启动结果，包含 teamName 和 agentId</td></tr>
+<tr><td><code>src/utils/swarm/teamHelpers.ts:57</code></td><td><code>TeamAllowedPath</code> 类型</td><td>所有 Teammate 共享的可编辑路径列表</td></tr>
+<tr><td><code>src/tools/AgentTool/AgentTool.tsx:195</code></td><td><code>Progress</code> 类型</td><td>Agent 执行进度的实时传递</td></tr>
+<tr><td><code>src/tools/AgentTool/AgentTool.tsx:196</code></td><td><code>AgentTool = buildTool(...)</code></td><td>AgentTool 的构建入口</td></tr>
+<tr><td><code>src/tools/AgentTool/runAgent.ts:248</code></td><td><code>runAgent()</code> 函数</td><td>子 Agent 的完整执行循环</td></tr>
+<tr><td><code>src/utils/swarm/permissionSync.ts:49</code></td><td><code>SwarmPermissionRequestSchema</code></td><td>跨进程权限请求的数据结构定义</td></tr>
+</tbody></table>
+</div>
+<h3 id="为什么-swarmtaskagent-要分三层而不是合并成一层"><a class="header" href="#为什么-swarmtaskagent-要分三层而不是合并成一层">为什么 Swarm/Task/Agent 要分三层，而不是合并成一层？</a></h3>
+<p>每层解决不同粒度的问题：</p>
+<ul>
+<li>
+<p><strong>Swarm 层</strong>：解决"多个 Agent 如何协调"——路由策略、结果聚合、全局超时</p>
+<ul>
+<li>为什么不合并到 Agent：Agent 是无状态的对话循环，不应关心"其他 Agent 在做什么"</li>
+</ul>
+</li>
+<li>
+<p><strong>Task 层</strong>：解决"Agent 如何执行"——进程隔离级别、通信方式、生命周期管理</p>
+<ul>
+<li>为什么不合并到 Swarm：Swarm 不知道也不应该知道 Agent 是同进程还是子进程</li>
+</ul>
+</li>
+<li>
+<p><strong>Agent 层</strong>：解决"对话循环如何进行"——LLM 调用、工具执行、消息历史</p>
+<ul>
+<li>为什么不合并到 Task：对话逻辑与运行时隔离机制正交，分离让二者可以独立测试</li>
+</ul>
+</li>
+</ul>
+<p><strong>三层分离的核心价值</strong>：Swarm 策略变化不影响 Task 实现；Task 实现变化不影响 Agent 逻辑。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式一分层隔离与代理模式hierarchical-isolation-with-proxy"><a class="header" href="#模式一分层隔离与代理模式hierarchical-isolation-with-proxy">模式一：分层隔离与代理模式（Hierarchical Isolation with Proxy）</a></h3>
+<p><strong>解决的问题</strong>：多个 Agent 需要并发执行，但又需要在权限和资源上被统一管理。
+<strong>核心做法</strong>：引入 Swarm 和 Task 的抽象层。Swarm 负责编排和权限同步，Task 负责执行隔离。每个 Teammate 通过 Task 容器隔离，但权限决策通过 Swarm 的 Mailbox 中转到主 Agent。
+<strong>前置条件</strong>：需要抽象出 Task 接口、权限同步机制、AsyncLocalStorage 来存储上下文。
+<strong>源码证据</strong>：<code>src/tools/shared/spawnMultiAgent.ts</code>、<code>src/tasks/InProcessTeammateTask/</code>、<code>src/utils/swarm/permissionSync.ts</code></p>
+<hr />
+<h3 id="模式二内存快照与上下文隔离memory-snapshot-isolation"><a class="header" href="#模式二内存快照与上下文隔离memory-snapshot-isolation">模式二：内存快照与上下文隔离（Memory Snapshot Isolation）</a></h3>
+<p><strong>解决的问题</strong>：多个 Agent 的对话历史如何在不污染的前提下共存？
+<strong>核心做法</strong>：每个 Agent 维护独立的内存（消息历史），当合并到主 Agent 时，用一个特殊的 <code>teammate_result</code> 消息来包装，而不是直接拼接。
+<strong>前置条件</strong>：需要定义标准的消息类型、支持嵌套的消息结构。
+<strong>源码证据</strong>：<code>src/tools/AgentTool/agentMemorySnapshot.ts</code></p>
+<hr />
+<h3 id="模式三三层解耦与扩展点three-layer-decoupling"><a class="header" href="#模式三三层解耦与扩展点three-layer-decoupling">模式三：三层解耦与扩展点（Three-Layer Decoupling）</a></h3>
+<p><strong>解决的问题</strong>：如何在不修改 Agent 核心逻辑的前提下，支持多个执行模式（同进程、子进程、远程）？
+<strong>核心做法</strong>：通过 Swarm → Task → Agent 的三层设计，使得不同的 Task 类型可以提供不同的隔离策略，而 Agent 层始终保持不变。
+<strong>前置条件</strong>：需要定义 Task 的统一接口、支持可插拔的 Task 类型。
+<strong>源码证据</strong>：<code>src/tasks/</code> 目录下的多种 Task 实现</p>
+<hr />
+<h2 id="延伸spawnteamoutput-与-agenttool-的连接点"><a class="header" href="#延伸spawnteamoutput-与-agenttool-的连接点">延伸：SpawnTeamOutput 与 AgentTool 的连接点</a></h2>
+<p>多智能体系统的团队结构定义在 <code>src/utils/swarm/teamHelpers.ts</code>：</p>
+<pre><code class="language-typescript">// src/utils/swarm/teamHelpers.ts:45
+export type SpawnTeamOutput = {
+  teamName: string
+  agentId: AgentId
+  // 其他团队元数据
+}
+
+// src/utils/swarm/teamHelpers.ts:57
+export type TeamAllowedPath = {
+  path: string
+  recursive: boolean
+}
+// 所有团队成员可以无需询问就编辑的路径列表
+</code></pre>
+<p><code>TeamAllowedPath</code> 是多智能体系统的权限共享机制——主 Agent 把允许的路径列表传给子 Agent，子 Agent 在这些路径上操作不需要每次触发权限确认。这避免了多 Agent 并行工作时频繁弹出权限对话框的体验问题。</p>
+<p><code>AgentTool</code> 连接层的 Progress 类型（<code>src/tools/AgentTool/AgentTool.tsx</code>）展示了 AgentTool 如何把子 Agent 的执行状态实时传递给 UI 层：</p>
+<pre><code class="language-typescript">// src/tools/AgentTool/AgentTool.tsx（Progress 类型）
+type Progress = {
+  type: 'progress'
+  agentId: AgentId
+  status: 'running' | 'done' | 'error'
+  // 实时进度信息
+}
+</code></pre>
+<p><strong>AgentTool 与 Task 的连接</strong>：AgentTool 的 <code>call()</code> 方法创建 Task（<code>InProcessTeammateTask</code> 或 <code>LocalAgentTask</code>），Task 负责实际执行，AgentTool 负责把 Task 的 Progress 事件 yield 给 <code>query.ts</code>，最终展示在 UI 上（<code>src/tools/AgentTool/AgentTool.tsx</code>）。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-主-agent-同步等待所有子-agent-完成失去并行优势"><a class="header" href="#-主-agent-同步等待所有子-agent-完成失去并行优势">❌ 主 Agent 同步等待所有子 Agent 完成，失去并行优势</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：串行等待，和单 Agent 没区别
+for (const subAgent of subAgents) {
+  const result = await subAgent.run()  // 每个串行等待
+  results.push(result)
+}
+</code></pre>
+<p>子 Agent 的核心价值是并行执行。应该用 <code>Promise.all()</code> 或轮询机制并发启动所有子 Agent（<code>src/agents/</code>）。</p>
+<h3 id="-子-agent-之间直接通信形成复杂的通信图"><a class="header" href="#-子-agent-之间直接通信形成复杂的通信图">❌ 子 Agent 之间直接通信，形成复杂的通信图</a></h3>
+<p>子 Agent A 直接调用子 Agent B 的 API，绕过主 Agent 的协调。当 A 和 B 之间产生循环依赖，或者 B crash 而 A 在等待时，整个系统会陷入死锁。所有子 Agent 间的通信都应该通过主 Agent 路由。</p>
+<h3 id="-没有设置子-agent-的最大执行时间"><a class="header" href="#-没有设置子-agent-的最大执行时间">❌ 没有设置子 Agent 的最大执行时间</a></h3>
+<p>某个子 Agent 陷入工具调用的无限循环，主 Agent 的 <code>Promise.all</code> 永远不会 resolve。所有子 Agent 都应该有超时限制，超时后强制终止并报告超时原因。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用 Promise.all 并发启动子 Agent</strong>：不要串行等待，让子 Agent 真正并行执行</li>
+<li><strong>通过主 Agent 路由所有子 Agent 间通信</strong>：避免形成难以追踪的 peer-to-peer 通信网格</li>
+<li><strong>为每个子 Agent 设置超时</strong>：防止单个子 Agent 的 hang 拖垮整个系统</li>
+<li><strong>汇总子 Agent 的执行轨迹</strong>：记录每个子 Agent 执行了什么工具、用了多少 token，便于调试和成本分析</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part7/ch28.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part8/ch30.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part7/ch28.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part8/ch30.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

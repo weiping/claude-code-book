@@ -1,0 +1,10 @@
+flowchart LR
+    call["调用方 - 需要 thinking 配置"] --> check{modelSupportsThinking?}
+    check -->|否| disabled["ThinkingConfig\n{ type: 'disabled' }"]
+    check -->|是| adaptive_check{modelSupportsAdaptiveThinking?}
+    adaptive_check -->|是| adaptive["ThinkingConfig\n{ type: 'adaptive' }\n模型自主决定 budget"]
+    adaptive_check -->|否| default_check{shouldEnableThinkingByDefault?}
+    default_check -->|否| disabled
+    default_check -->|是| budget{"有 budgetTokens\nMAX_THINKING_TOKENS?"}
+    budget -->|"有（env/config 设定）"| enabled["ThinkingConfig\n{ type: 'enabled', budgetTokens: N }"]
+    budget -->|"无"| adaptive2["ThinkingConfig\n{ type: 'adaptive' }"]

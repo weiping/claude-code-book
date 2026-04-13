@@ -1,0 +1,574 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 32 章：Swarm 权限同步——沙箱中的信任传递 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-32-章权限请求的跨进程-mailbox-机制"><a class="header" href="#第-32-章权限请求的跨进程-mailbox-机制">第 32 章：权限请求的跨进程 Mailbox 机制</a></h1>
+<blockquote>
+<p>当一个在子进程中运行的 Teammate 需要执行"删除文件"操作时，它无法直接显示权限对话框给用户（对话框在主窗口中）。系统如何在子进程和主进程之间异步地传递权限请求，然后回传用户的决策？</p>
+</blockquote>
+<hr />
+<h2 id="321-跨进程通信的困难"><a class="header" href="#321-跨进程通信的困难">32.1 跨进程通信的困难</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p>在第 30 章，我们看到了三种 Task 执行模式。其中，<strong>RemoteAgentTask 在完全独立的子进程中运行</strong>。
+但独立的子进程有一个核心问题：<strong>无法直接与主进程的 UI 通信</strong>。</p>
+<pre><code>子进程（Agent B）
+  ├─ 需要执行"删除文件"
+  ├─ 检查权限规则 → 规则说"需要用户批准"
+  ├─ 想要显示权限对话框
+  └─ ❌ 但对话框库是主进程的，子进程无法控制它
+子进程该怎么办？
+  A) 阻塞等待？ → 会导致死锁（主进程等子进程结果，子进程等主进程批准）
+  B) 直接拒绝？ → 太严格，限制功能
+  C) 异步通信？ → ✅ 这就是 Mailbox 的作用
+</code></pre>
+<h3 id="设计意图mailbox-机制"><a class="header" href="#设计意图mailbox-机制">设计意图：Mailbox 机制</a></h3>
+<p><strong>Mailbox</strong> 是一个消息队列系统，用于在主进程和子进程之间进行异步通信。
+在 <code>src/utils/mailbox.ts</code> 第 1-50 行：</p>
+<pre><code class="language-typescript">export type Message = {
+  id: string
+  source: MessageSource        // 'user' | 'teammate' | 'system' | ...
+  content: string
+  from?: string               // 发件人（如 "researcher@my-team"）
+  color?: string              // UI 颜色
+  timestamp: string
+}
+export class Mailbox {
+  private queue: Message[] = []
+  private waiters: Waiter[] = []  // 等待特定消息的处理器
+  send(msg: Message): void {
+    // 如果有人在等这个消息，直接转移到他们
+    // 否则放入队列
+  }
+  poll(fn: (msg: Message) =&gt; boolean): Message | undefined {
+    // 从队列中提取一条消息
+  }
+  wait(fn: (msg: Message) =&gt; boolean): Promise&lt;Message&gt; {
+    // 异步等待一条消息
+  }
+}
+</code></pre>
+<p><strong>关键设计</strong>：Mailbox 不是一个"消息总线"，而是一个<strong>基于预期的匹配系统</strong>——发件人发消息时，如果有人在等待这种消息，会被直接转移而不进入队列。</p>
+<hr />
+<h2 id="322-权限请求的完整流程"><a class="header" href="#322-权限请求的完整流程">32.2 权限请求的完整流程</a></h2>
+<h3 id="流程步骤"><a class="header" href="#流程步骤">流程步骤</a></h3>
+<p>当 Sub Agent 需要权限时，会发生什么？
+<strong>步骤 1：权限检查失败</strong></p>
+<pre><code class="language-typescript">// Sub Agent 执行
+const result = await executeBash("rm -rf /data")
+// 权限检查层
+if (permissionMode === 'plan') {
+  // 需要用户批准，但无法直接显示对话框
+  // → 发送权限请求到 Mailbox
+}
+</code></pre>
+<p><strong>步骤 2：构造权限请求消息</strong></p>
+<pre><code class="language-typescript">// 在 Sub Agent（子进程）中
+const permissionRequest: Message = {
+  id: generateRequestId(),
+  source: 'teammate',
+  from: 'researcher@my-team',
+  content: JSON.stringify({
+    type: 'permission_request',
+    action: 'bash_execute',
+    command: 'rm -rf /data',
+    timestamp: Date.now(),
+  }),
+  timestamp: new Date().toISOString()
+}
+// 发送到 Mailbox
+mailbox.send(permissionRequest)
+</code></pre>
+<p><strong>步骤 3：主进程接收并显示</strong></p>
+<pre><code class="language-typescript">// 在主进程中
+const permissionMsg = await mailbox.wait(
+  msg =&gt; msg.source === 'teammate' &amp;&amp; msg.content.type === 'permission_request'
+)
+// Main Agent 的 UI 显示权限对话框
+showPermissionDialog({
+  from: permissionMsg.from,
+  action: permissionMsg.content.action,
+  command: permissionMsg.content.command,
+})
+// 用户做出决策
+const userDecision = await getUserInput()  // "approve" | "deny"
+</code></pre>
+<p><strong>步骤 4：回传决策</strong></p>
+<pre><code class="language-typescript">// 主进程发送决策到 Mailbox
+const decisionMessage: Message = {
+  id: generateRequestId(),
+  source: 'system',
+  from: 'main',
+  content: JSON.stringify({
+    type: 'permission_decision',
+    requestId: permissionRequest.id,
+    decision: userDecision,
+    timestamp: Date.now(),
+  })
+}
+mailbox.send(decisionMessage)
+</code></pre>
+<p><strong>步骤 5：Sub Agent 继续执行</strong></p>
+<pre><code class="language-typescript">// 回到子进程
+const decisionMsg = await mailbox.wait(
+  msg =&gt; msg.content.requestId === permissionRequest.id
+)
+if (decisionMsg.content.decision === 'approve') {
+  // 执行删除
+  await executeBash("rm -rf /data")
+} else {
+  // 拒绝
+  throw new PermissionDeniedError(...)
+}
+</code></pre>
+<hr />
+<h2 id="323-两种-mailbox-实现"><a class="header" href="#323-两种-mailbox-实现">32.3 两种 Mailbox 实现</a></h2>
+<h3 id="实现一内存型-mailboxinprocessteammatetask"><a class="header" href="#实现一内存型-mailboxinprocessteammatetask">实现一：内存型 Mailbox（InProcessTeammateTask）</a></h3>
+<p>在 <code>src/utils/mailbox.ts</code> 中：</p>
+<pre><code class="language-typescript">// 同一进程中，Mailbox 就是内存中的队列
+export class Mailbox {
+  private queue: Message[] = []
+  send(msg: Message): void {
+    // 直接放入队列
+    this.queue.push(msg)
+  }
+  wait(fn: (msg: Message) =&gt; boolean): Promise&lt;Message&gt; {
+    // 立即检查队列
+    const existing = this.queue.find(fn)
+    if (existing) {
+      return Promise.resolve(existing)
+    }
+    // 否则注册一个"等待者"
+    // 下次 send() 时，会检查是否有匹配的等待者
+    return new Promise(resolve =&gt; {
+      this.waiters.push({ fn, resolve })
+    })
+  }
+}
+</code></pre>
+<p><strong>性能</strong>：</p>
+<ul>
+<li>超快（内存操作，毫秒）</li>
+<li>无 IPC 开销</li>
+<li>但需要代码纪律（防止状态污染）</li>
+</ul>
+<h3 id="实现二文件型-mailboxremoteagenttask"><a class="header" href="#实现二文件型-mailboxremoteagenttask">实现二：文件型 Mailbox（RemoteAgentTask）</a></h3>
+<p>在 <code>src/utils/teammateMailbox.ts</code> 中：</p>
+<pre><code class="language-typescript">/**
+ * Teammate Mailbox - File-based messaging system
+ *
+ * Each teammate has an inbox file at:
+ * .claude/teams/{team_name}/inboxes/{agent_name}.json
+ * 
+ * Other teammates can write messages to it.
+ */
+</code></pre>
+<p><strong>结构</strong>：</p>
+<pre><code>.claude/teams/my-team/inboxes/
+  ├── researcher.json       # researcher Agent 的收件箱
+  │   {
+  │     "messages": [
+  │       {"id": "msg-1", "type": "permission_request", ...},
+  │       {"id": "msg-2", "type": "permission_decision", ...}
+  │     ]
+  │   }
+  │
+  ├── coder.json           # coder Agent 的收件箱
+  │
+  └── .lock               # 防止并发写入
+</code></pre>
+<p><strong>工作原理</strong>：</p>
+<pre><code class="language-typescript">// Sub Agent 发送消息
+const inbox = getTeammateInbox('researcher@my-team')
+appendMessageToInbox(inbox, permissionRequest)
+// Main Agent 定期轮询
+while (true) {
+  const newMessages = readInbox('researcher@my-team')
+  for (const msg of newMessages) {
+    handlePermissionRequest(msg)
+  }
+  await sleep(100)  // 轮询间隔
+}
+// Main Agent 回复
+appendMessageToInbox(
+  getTeammateInbox('researcher@my-team'),
+  decisionMessage
+)
+</code></pre>
+<p><strong>性能</strong>：</p>
+<ul>
+<li>有磁盘 I/O 延迟（几毫秒到几十毫秒）</li>
+<li>IPC 开销（进程间协调）</li>
+<li>但支持完全隔离和远程执行</li>
+</ul>
+<hr />
+<h2 id="324-mailbox-的三个关键特性"><a class="header" href="#324-mailbox-的三个关键特性">32.4 Mailbox 的三个关键特性</a></h2>
+<h3 id="特性-1非阻塞异步"><a class="header" href="#特性-1非阻塞异步">特性 1：非阻塞异步</a></h3>
+<p>Mailbox 的 <code>wait()</code> 方法是异步的，<strong>不会阻塞整个进程</strong>：</p>
+<pre><code class="language-typescript">// Main Agent 的主循环不会被卡住
+async function mainAgentLoop() {
+  while (true) {
+    // 处理用户输入
+    const userMsg = await getUserInput()  // 不会被权限请求卡住
+    // 同时，后台监听权限请求
+    const permissionPromise = mailbox.wait(
+      msg =&gt; msg.source === 'teammate'
+    )  // 这是异步的，不会阻塞
+    // 处理消息
+    await Promise.race([
+      processUserMessage(userMsg),
+      handlePermissionRequest(permissionPromise)
+    ])
+  }
+}
+</code></pre>
+<h3 id="特性-2请求-响应配对"><a class="header" href="#特性-2请求-响应配对">特性 2：请求-响应配对</a></h3>
+<p>每个权限请求都有唯一的 ID，响应必须包含这个 ID。这防止了响应错配：</p>
+<pre><code class="language-typescript">// 请求
+{
+  id: "req-123",
+  type: "permission_request",
+  action: "delete_file"
+}
+// 响应必须包含相同的 ID
+{
+  requestId: "req-123",
+  decision: "approve"
+}
+</code></pre>
+<p><strong>为什么重要？</strong></p>
+<pre><code>假设有两个子进程同时发送权限请求：
+  Sub A: id=req-123, action=delete (危险)
+  Sub B: id=req-124, action=read (安全)
+如果没有 ID 配对，响应可能乱序：
+  Main 批准了 req-123 (delete)
+  但子 B 收到了响应 → 子 B 执行 delete，错误！
+有 ID 配对，每个子进程知道自己的响应是哪个。
+</code></pre>
+<h3 id="特性-3超时机制"><a class="header" href="#特性-3超时机制">特性 3：超时机制</a></h3>
+<p>为防止子进程无限等待，Mailbox 支持超时：</p>
+<pre><code class="language-typescript">const decisionMessage = await Promise.race([
+  mailbox.wait(msg =&gt; msg.requestId === permissionRequest.id),
+  sleep(30 * 1000)  // 30 秒超时
+])
+if (!decisionMessage) {
+  // 超时了，用户没有及时回应
+  throw new TimeoutError("Permission request timed out")
+}
+</code></pre>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式一异步消息队列与等待者模式async-queue-with-waiter-pattern"><a class="header" href="#模式一异步消息队列与等待者模式async-queue-with-waiter-pattern">模式一：异步消息队列与等待者模式（Async Queue with Waiter Pattern）</a></h3>
+<p><strong>解决的问题</strong>：在不阻塞主进程的情况下，如何让多个子进程等待主进程的响应？
+<strong>核心做法</strong>：</p>
+<ul>
+<li>消息到达时，先检查是否有"等待者"在等这个消息</li>
+<li>如果有，直接转移给等待者（不进队列）</li>
+<li>如果没有，放入队列</li>
+<li>等待者通过 Promise 异步等待
+<strong>前置条件</strong>：需要支持异步/await，且消息必须有清晰的匹配谓词。
+<strong>源码证据</strong>：<code>src/utils/mailbox.ts</code></li>
+</ul>
+<hr />
+<h3 id="模式二文件系统作为-ipc-通道filesystem-based-ipc"><a class="header" href="#模式二文件系统作为-ipc-通道filesystem-based-ipc">模式二：文件系统作为 IPC 通道（Filesystem-based IPC）</a></h3>
+<p><strong>解决的问题</strong>：跨进程、跨机器的通信，但又不想依赖复杂的 RPC 框架。
+<strong>核心做法</strong>：</p>
+<ul>
+<li>每个 Agent 有自己的"收件箱"文件</li>
+<li>其他 Agent 通过写入文件来发送消息</li>
+<li>使用锁文件防止并发写冲突</li>
+<li>定期轮询检查新消息
+<strong>前置条件</strong>：需要共享的文件系统，且支持原子写入和文件锁。
+<strong>源码证据</strong>：<code>src/utils/teammateMailbox.ts</code></li>
+</ul>
+<hr />
+<h3 id="模式三请求-响应的-id-配对request-response-id-pairing"><a class="header" href="#模式三请求-响应的-id-配对request-response-id-pairing">模式三：请求-响应的 ID 配对（Request-Response ID Pairing）</a></h3>
+<p><strong>解决的问题</strong>：多个并发请求时，响应可能乱序。
+<strong>核心做法</strong>：</p>
+<ul>
+<li>每个请求生成唯一 ID</li>
+<li>响应必须包含请求 ID</li>
+<li>等待时指定 "等待 ID 为 X 的响应"
+<strong>前置条件</strong>：消息结构必须支持 ID 字段。</li>
+</ul>
+<hr />
+<h2 id="326-权限决策的缓存与审计"><a class="header" href="#326-权限决策的缓存与审计">32.6 权限决策的缓存与审计</a></h2>
+<h3 id="缓存策略"><a class="header" href="#缓存策略">缓存策略</a></h3>
+<p>为了避免重复问用户相同的权限，系统缓存决策：</p>
+<pre><code>首次：Sub Agent 执行 bash → 询问用户 → 获得批准
+第二次：Sub Agent 执行相同的 bash → 查询缓存 → 直接批准（无需提问）
+缓存键：
+  {
+    agent: "researcher@my-team",
+    action: "bash_execute",
+    command: "rm -rf /data"
+  }
+</code></pre>
+<p><strong>缓存的好处</strong>：</p>
+<ul>
+<li>减少用户交互</li>
+<li>加快 Agent 执行
+<strong>缓存的风险</strong>：</li>
+<li>如果 Agent 被劫持，缓存的权限可能被滥用</li>
+</ul>
+<h3 id="审计日志"><a class="header" href="#审计日志">审计日志</a></h3>
+<p>每次权限决策都被记录：</p>
+<pre><code class="language-json">{
+  "timestamp": "2026-04-04T21:55:00Z",
+  "requestId": "req-123",
+  "agent": "researcher@my-team",
+  "action": "bash_execute",
+  "command": "rm -rf /data",
+  "decision": "approve",
+  "decidedBy": "user",
+  "cacheHit": false
+}
+</code></pre>
+<hr />
+<h2 id="延伸swarmpermissionrequest-与-leaderpermissionbridge"><a class="header" href="#延伸swarmpermissionrequest-与-leaderpermissionbridge">延伸：SwarmPermissionRequest 与 leaderPermissionBridge</a></h2>
+<p>Mailbox 机制的核心数据结构定义在 <code>src/utils/swarm/permissionSync.ts:49</code>：</p>
+<pre><code class="language-typescript">// src/utils/swarm/permissionSync.ts:49
+export const SwarmPermissionRequestSchema = lazySchema(() =&gt;
+  z.object({
+    requestId: z.string(),    // generateRequestId() 生成的幂等 ID
+    toolName: z.string(),
+    toolInput: z.unknown(),
+    agentId: z.string(),
+    // 其他字段
+  })
+)
+</code></pre>
+<p><code>generateRequestId</code>（<code>src/utils/swarm/permissionSync.ts:160</code>）确保权限请求的幂等性——如果 Worker Agent 因网络问题重发同一个权限请求，Leader 能识别出是重复请求，不会重复弹出对话框。</p>
+<p><code>leaderPermissionBridge</code>（<code>src/utils/swarm/leaderPermissionBridge.ts</code>）解决了一个微妙的问题：同进程 Worker（<code>InProcessTeammateTask</code>）无法通过文件系统 Mailbox 通信，但需要使用 Leader 的权限对话框。Bridge 模式让 Leader 的 React 状态（<code>setToolUseConfirmQueue</code>）对非 React 代码可访问：</p>
+<pre><code class="language-typescript">// src/utils/swarm/leaderPermissionBridge.ts:30
+export function registerLeaderToolUseConfirmQueue(
+  setter: SetToolUseConfirmQueueFn
+): void {
+  registeredSetter = setter  // REPL 注册自己的 setState
+}
+// 同进程 Worker 调用此函数，效果等同于 Leader 弹出权限对话框
+</code></pre>
+<p>这是 Claude Code 少数几个需要打破 React 单向数据流的地方——跨进程的权限同步逼得系统设计绕开了 React 的状态管理。</p>
+<p><strong>Mailbox 目录结构</strong>：<code>getPermissionDir(teamName)</code>（<code>src/utils/swarm/permissionSync.ts:112</code>）返回类似 <code>~/.claude/swarm/{teamName}/permissions/</code> 的路径。每个待处理的权限请求在这个目录下创建一个 JSON 文件，文件名是 <code>generateRequestId()</code>（<code>src/utils/swarm/permissionSync.ts:160</code>）生成的唯一 ID。Leader 轮询这个目录，发现新文件就弹出对话框；用户响应后，Leader 将结果写入对应的 response 文件。这是文件系统作为异步消息队列的经典用法——简单、可靠、崩溃安全。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-权限请求的-reply-没有超时机制发送方永久等待"><a class="header" href="#-权限请求的-reply-没有超时机制发送方永久等待">❌ 权限请求的 reply 没有超时机制，发送方永久等待</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：如果接收方 crash，这个 Promise 永远不会 resolve
+const approval = await mailbox.request(PermissionRequest)
+</code></pre>
+<p>用户关闭了权限对话框、接收方进程 crash——任何情况都可能导致 reply 永不到达。权限请求应该有超时（比如 30 秒），超时后自动拒绝（<code>src/utils/mailbox.ts</code>）。</p>
+<h3 id="-用共享内存替代-mailbox-进行跨进程状态共享"><a class="header" href="#-用共享内存替代-mailbox-进行跨进程状态共享">❌ 用共享内存替代 Mailbox 进行跨进程状态共享</a></h3>
+<p>Node.js 进程间通过 <code>SharedArrayBuffer</code> 共享内存，看起来很高效，但进程 crash 后共享内存的状态是不确定的，另一个进程可能读到损坏的数据。Mailbox 的消息传递模型保证了进程隔离。</p>
+<h3 id="-把权限请求和普通消息放在同一个-mailbox-队列里"><a class="header" href="#-把权限请求和普通消息放在同一个-mailbox-队列里">❌ 把权限请求和普通消息放在同一个 Mailbox 队列里</a></h3>
+<p>如果队列里有 100 个普通消息待处理，权限请求要排在最后。但权限请求通常有时效性（用户在等待），需要单独的高优先级通道或超时机制。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>给所有 Mailbox 请求加超时</strong>：权限请求 30 秒无响应自动拒绝，不要让 UI 永久卡在等待状态</li>
+<li><strong>用 Mailbox 代替共享内存做跨进程通信</strong>：消息传递保证进程隔离，一个进程 crash 不会损坏另一个进程的状态</li>
+<li><strong>为权限请求设置优先级队列</strong>：权限请求有时效性，应该优先于普通消息被处理</li>
+<li><strong>在 Mailbox 消息里包含 traceId</strong>：请求和响应的关联通过 traceId 追踪，便于调试异步流程</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part8/ch31.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part9/ch33.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part8/ch31.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part9/ch33.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

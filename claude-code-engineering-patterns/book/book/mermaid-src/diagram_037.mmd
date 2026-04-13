@@ -1,0 +1,8 @@
+flowchart TD
+    API["Anthropic API\nSSE 字节流"] --> adapt["适配层\nqueryModel()\nclaude.ts:1017"]
+    adapt -->|"yield StreamEvent\nyield AssistantMessage"| loop["循环层\nquery() → queryLoop()\nquery.ts:219, 241"]
+    loop -->|"yield* 或 yield SDKMessage"| consume["消费层\nask() / submitMessage()\nexecAgentHook()"]
+    consume -->|"for await"| user["调用方\nREPL / SDK / Hook"]
+
+    backpressure["⬇ 背压方向（消费者控制节奏）"] -.->|"next() 驱动"| loop
+    backpressure -.->|"next() 驱动"| adapt

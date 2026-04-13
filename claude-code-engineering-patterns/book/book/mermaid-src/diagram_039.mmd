@@ -1,0 +1,24 @@
+flowchart LR
+    tooldef["ToolDef&lt;D&gt;\n你声明的意图\ncall + description + inputSchema"]
+    defaults["TOOL_DEFAULTS\nfail-closed 默认值\n7个安全字段"]
+    factory["buildTool()"]
+    built["BuiltTool&lt;D&gt;\n完整契约对象\n必填 + 默认 + 覆盖"]
+
+    tooldef --> factory
+    defaults --> factory
+    factory --> built
+
+    subgraph mandatory["必填字段（省略=编译错误）"]
+        m1[call]
+        m2[description]
+        m3[inputSchema]
+    end
+
+    subgraph defaultable["可默认字段（省略=自动补齐）"]
+        d1["isConcurrencySafe: false"]
+        d2["isReadOnly: false"]
+        d3["toAutoClassifierInput: ''"]
+    end
+
+    mandatory --> tooldef
+    defaultable --> defaults

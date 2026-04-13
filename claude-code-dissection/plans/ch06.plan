@@ -1,0 +1,77 @@
+# 第6章写作计划
+
+**批次**：批次 2
+**章节**：ch06 — 用户输入的三条分叉路
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/processUserInput/processUserInput.ts | processUserInput 函数签名(85行)、分流逻辑(518-580行) | 85-105, 450-585行 |
+| 2 | src/utils/processUserInput/processBashCommand.tsx | Bash 命令处理入口 | 1-30行 |
+| 3 | src/utils/processUserInput/processSlashCommand.tsx | Slash 命令处理入口 | 1-40行 |
+| 4 | src/utils/processUserInput/processTextPrompt.ts | 文本提示处理 | 1-30行 |
+
+```bash
+ls src/utils/processUserInput/
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「你输入 `/clear`、`!ls -la`、还是普通问题——三种输入路径完全不同，但 Claude Code 都从同一个函数开始处理。」
+- 三个问题：1）分流判断的优先级是什么？2）Bash 模式和 Slash 命令如何绕过 LLM？3）空输入或无效命令怎么处理？
+
+### 节 6.1：processUserInput 的三条分叉路
+- 核心主张：一个函数按优先级将输入分发到三条路径：Ultraplan 关键词 → Slash 命令 → Bash 模式 → 文本提示（后者是默认路径）
+- 源码锚点：`src/utils/processUserInput/processUserInput.ts:85`（函数签名）、第518-540行（Bash分叉）、第538-570行（Slash分叉）、第578行（文本提示）
+- 包含元素：Mermaid flowchart 展示完整分流决策树
+- 权衡分析：为什么用单个大函数而非 strategy 模式
+- 估计字数：700字
+
+### 节 6.2：Slash 命令如何绕过 LLM 直接执行？
+- 核心主张：`/` 开头的输入进入 `processSlashCommand`，结果是 `SystemLocalCommandMessage`，不触发 `query.ts` 的 LLM 调用
+- 源码锚点：`src/utils/processUserInput/processSlashCommand.tsx:34`（isSystemLocalCommandMessage 导入）
+- 包含元素：对比表（Slash 命令 vs 普通文本的消息类型差异）
+- 估计字数：500字
+
+### 节 6.3：优先级队列如何处理并发输入？
+- 源码锚点：`src/utils/messageQueueManager.ts` 中的 `getCommandsByMaxPriority`
+- 说明快速连续输入时的队列处理
+- 估计字数：400字
+
+### 节 6.4：边界情况——空输入和无效命令
+- 源码锚点：processUserInput.ts 中的空字符串/未知命令处理逻辑
+- 包含元素：简短说明 fallthrough 到文本提示的机制
+- 估计字数：300字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 优先级分流（Priority-Based Routing）| 多种输入类型需要不同处理路径 | 按优先级依次检查，首次匹配即路由，默认路径兜底 | 输入类型有明确优先级关系 | `processUserInput.ts:518-578` |
+| 本地执行绕过（Local Execution Bypass）| 部分命令不需要 LLM 参与 | Slash 命令返回 SystemLocalCommandMessage，跳过 query.ts | 有不需要 AI 的确定性操作 | `processSlashCommand.tsx:34` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图6-1 | 用户输入分流决策树 | Mermaid flowchart | 输入→优先级检查→三条路径 | 6.1 |
+| 图6-2 | 消息类型对比 | 表格或 ASCII | SystemLocalCommandMessage vs UserMessage 的区别 | 6.2 |
+
+## 写作顺序
+1. 先写节 6.1（分流逻辑主体，画流程图）
+2. 写节 6.2（Slash 绕过 LLM 机制）
+3. 写节 6.3（优先级队列）
+4. 写节 6.4（边界情况）
+5. 模式提炼，开篇
+
+## 写作前 checklist
+```bash
+sed -n '85,100p' src/utils/processUserInput/processUserInput.ts
+sed -n '518,545p' src/utils/processUserInput/processUserInput.ts
+sed -n '34p' src/utils/processUserInput/processSlashCommand.tsx
+```
+
+## 估算
+- 目标字数：2000-2400字
+- 预计轮次：6轮（含2轮验证）

@@ -1,0 +1,30 @@
+sequenceDiagram
+    participant U as User
+    participant C as Coordinator
+    participant RA as Worker-A
+    participant RB as Worker-B
+    participant RC as Worker-C
+    participant WI as Impl-Worker
+    participant WV as Verify-Worker
+
+    U->>C: Add OAuth to login
+    par Research
+        C->>RA: Research login code
+        C->>RB: Research OAuth practices
+        C->>RC: Research test coverage
+    end
+
+    RA-->>C: task-notification
+    RB-->>C: task-notification
+    RC-->>C: task-notification
+    Note over C: Synthesize into self-contained spec
+
+    C->>WI: Implementation spec
+    Note over WI: One at a time per file set
+    WI-->>C: task-notification
+
+    C->>WV: Verification task
+    Note over WV: Independent adversarial verify
+    WV-->>C: VERDICT PASS or FAIL
+
+    C->>U: Synthesized report

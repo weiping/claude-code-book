@@ -1,0 +1,11 @@
+graph TD
+    A["用户配置 MCP 服务器"] --> B{"type字段 指定?"}
+    B -->|type: sse| C["使用 SSE"]
+    B -->|type: stdio| D["使用 Stdio"]
+    B -->|type: http| E["使用 StreamableHTTP"]
+    B -->|未指定| F{"有 url?"}
+    F -->|有 URL| G{"高吞吐 需求?"}
+    F -->|有命令| H["使用 Stdio"]
+    F -->|都没有| I["默认 Stdio"]
+    G -->|是| E
+    G -->|否| C

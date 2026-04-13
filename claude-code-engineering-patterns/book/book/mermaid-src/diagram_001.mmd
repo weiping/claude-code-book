@@ -1,0 +1,44 @@
+graph TD
+    subgraph L1["① CLI 接入 / 交互层"]
+        REPL["REPL.tsx\n(Ink TUI)"]
+        CMD["commands/\n(94 个命令目录)"]
+    end
+
+    subgraph L2["② 编排 / 代理层"]
+        QE["QueryEngine\n(主循环)"]
+        QL["query.ts\n(流式生成器)"]
+    end
+
+    subgraph L3["③ 记忆 / 知识层"]
+        MEM["memdir/\n(CLAUDE.md)"]
+        CMP["services/compact/\n(上下文压缩)"]
+    end
+
+    subgraph L4["④ 工具 / 行动层"]
+        TOOL["tools/\n(56 个工具目录)"]
+        TASK["tasks/\n(7 种任务类型)"]
+    end
+
+    subgraph L5["⑤ 扩展协议层"]
+        MCP["services/mcp/\n(MCP 协议)"]
+        SWM["utils/swarm/\n(3 种后端)"]
+    end
+
+    subgraph L6["⑥ 模型 / 推理层"]
+        API["services/api/\n(Anthropic API)"]
+        MDL["utils/model/\n(模型路由)"]
+    end
+
+    subgraph L7["⑦ 基础设施层"]
+        BST["bootstrap/state\n(50+ 全局状态)"]
+        PERM["utils/permissions/\n(权限决策)"]
+    end
+
+    L1 --> L2
+    L2 <--> L3
+    L2 --> L4
+    L4 --> L6
+    L5 --> L2
+    L2 --> L6
+    L7 -. 状态注入 .-> L2
+    L7 -. 权限门禁 .-> L4

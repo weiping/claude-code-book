@@ -1,0 +1,429 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 34 章：PermissionRule 规则引擎——allowedTools 的 glob 匹配与优先级链 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-34-章permissionrule-规则引擎allowedtools-的-glob-匹配与优先级链"><a class="header" href="#第-34-章permissionrule-规则引擎allowedtools-的-glob-匹配与优先级链">第 34 章：PermissionRule 规则引擎——<code>allowedTools</code> 的 glob 匹配与优先级链</a></h1>
+<blockquote>
+<p>"用户写下一行字符串，系统需要精确解析它——括号里可能有括号，星号不一定是通配符。"</p>
+</blockquote>
+<hr />
+<p>用户在权限配置中写下 <code>Bash(npm install)</code> 就能允许 npm 安装命令，写下 <code>Bash(git:*)</code> 就能允许所有 git 命令。这看起来简单，但内部有两层非平凡的工程问题：<strong>如果用户要允许包含括号的命令</strong>（如 <code>python -c "print(1)"</code>），括号会破坏 <code>Bash(content)</code> 格式的解析；<strong><code>git:*</code> 和 <code>git *</code> 是不同的语法</strong>，一个是旧版前缀匹配，一个是新版 glob 通配符，两者共存需要兼容层。</p>
+<p>Claude Code 的规则解析引擎用两个文件解决了这两个问题：<code>permissionRuleParser.ts</code>（198 行）处理转义和解析，<code>shellRuleMatching.ts</code>（228 行）处理三种匹配语义（精确/前缀/通配符）。这是<strong>声明式规则解析引擎</strong>（Declarative Rule Parser）模式：格式即契约，规则字符串本身是完整的权限声明，不需要代码配置，解析层负责将用户输入的字符串精确还原为结构化决策。</p>
+<hr />
+<h2 id="问题括号格式与转义的设计空间"><a class="header" href="#问题括号格式与转义的设计空间">问题：括号格式与转义的设计空间</a></h2>
+<p><code>Bash(npm install)</code> 格式用括号分隔工具名和内容。简洁直观，但有一个问题：如果内容本身包含括号呢？</p>
+<p>比如用户想允许 <code>python -c "print(1)"</code> 命令，规则字符串应该是 <code>Bash(python -c "print(1)")</code>——但这个字符串有三对括号，解析时如何知道哪个 <code>)</code> 是内容的结尾？</p>
+<p>简单的 <code>indexOf(')')</code> 会在第一个 <code>)</code> 处截断，得到错误的解析结果。需要一个支持转义的解析机制。</p>
+<p><code>permissionRuleValueFromString</code> 的注释给出了三个示例（<code>src/utils/permissions/permissionRuleParser.ts:90</code>），清楚地展示了这个转义需求：</p>
+<pre><code>permissionRuleValueFromString('Bash')
+// =&gt; { toolName: 'Bash' }
+
+permissionRuleValueFromString('Bash(npm install)')
+// =&gt; { toolName: 'Bash', ruleContent: 'npm install' }
+
+permissionRuleValueFromString('Bash(python -c "print\\(1\\)")')
+// =&gt; { toolName: 'Bash', ruleContent: 'python -c "print(1)"' }
+</code></pre>
+<p>第三个示例揭示了转义机制：括号在存储时用 <code>\(</code> 和 <code>\)</code> 转义，反斜杠本身用 <code>\\</code> 转义。解析时用 <code>findFirstUnescapedChar</code> 找到真正的格式括号，不被内容中的括号迷惑。</p>
+<p><strong>图 34-1：规则字符串格式与匹配语义</strong></p>
+<pre><code>规则字符串格式：
+  ┌──────────────────────────────────────────┐
+  │  工具名 ( 内容（可含转义括号） )           │
+  │  Bash  ( python -c "print\(1\)"  )       │
+  │        ↑                          ↑      │
+  │   第一个未转义的 (         最后一个未转义的 )│
+  └──────────────────────────────────────────┘
+
+匹配语义（shellRuleMatching.ts）：
+  精确匹配：  Bash(npm install)    → 只匹配 "npm install"
+  前缀匹配：  Bash(npm:*)          → 匹配 "npm" 开头的所有命令（legacy）
+  通配符匹配：Bash(npm * install)  → 使用 glob，* 匹配任意序列
+</code></pre>
+<hr />
+<h2 id="源码实例-1permissionruleparser转义的对称性"><a class="header" href="#源码实例-1permissionruleparser转义的对称性">源码实例 1：permissionRuleParser——转义的对称性</a></h2>
+<p><code>escapeRuleContent</code> 和 <code>unescapeRuleContent</code> 是规则字符串序列化/反序列化的核心（<code>src/utils/permissions/permissionRuleParser.ts:55</code>）：</p>
+<pre><code class="language-typescript">// src/utils/permissions/permissionRuleParser.ts:55-80（含注释）
+/**
+ * 转义顺序很重要：
+ * 1. 先转义已有的反斜杠（\ -&gt; \\）
+ * 2. 再转义括号（( -&gt; \(, ) -&gt; \)）
+ */
+export function escapeRuleContent(content: string): string {
+  return content
+    .replace(/\\/g, '\\\\')  // 先转义反斜杠
+    .replace(/\(/g, '\\(')   // 再转义开括号
+    .replace(/\)/g, '\\)')   // 再转义闭括号
+}
+
+/**
+ * 反转义顺序（与转义相反）：
+ * 1. 先反转义括号（\( -&gt; (, \) -&gt; )）
+ * 2. 再反转义反斜杠（\\ -&gt; \）
+ */
+export function unescapeRuleContent(content: string): string {
+  return content
+    .replace(/\\\(/g, '(')   // 先反转义括号
+    .replace(/\\\)/g, ')')
+    .replace(/\\\\/g, '\\')  // 再反转义反斜杠
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/permissionRuleParser.ts:55</code></p>
+<p>注释中明确强调"转义顺序很重要"——这是一个经典的双重转义陷阱。</p>
+<p><strong>为什么反斜杠必须第一个被转义？</strong> 设想内容是 <code>test\(value</code>（含一个反斜杠和一个括号）。如果先转义括号得到 <code>test\\(value</code>（反斜杠+括号 → 两个字符），再转义反斜杠会把这个新产生的 <code>\\</code> 也转义成 <code>\\\\</code>，最终变成 <code>test\\\\(value</code>——错误地双重转义了原来的反斜杠。正确顺序是先把所有已有的 <code>\</code> 变成 <code>\\</code>（扩充为转义形式），再把 <code>(</code> 变成 <code>\(</code>（用已安全的反斜杠前缀标记括号）。</p>
+<p>反转义是完全对称的逆操作——先还原括号（因为 <code>\(</code> 中的反斜杠还是转义状态），再还原反斜杠（此时 <code>\\</code> 才能安全地变回 <code>\</code>）。顺序反转会导致 <code>\(</code> 中的 <code>\</code> 被先还原成没有意义的字符，破坏后续的括号还原。</p>
+<p><code>permissionRuleValueFromString</code> 的解析逻辑（<code>src/utils/permissions/permissionRuleParser.ts:93</code>）展示了如何用"找第一个未转义的 <code>(</code>"来处理嵌套括号：</p>
+<pre><code class="language-typescript">// src/utils/permissions/permissionRuleParser.ts:93-130（简化）
+export function permissionRuleValueFromString(ruleString: string): PermissionRuleValue {
+  // 找第一个未转义的开括号
+  const openParenIndex = findFirstUnescapedChar(ruleString, '(')
+  if (openParenIndex === -1) {
+    return { toolName: normalizeLegacyToolName(ruleString) }  // 纯工具名
+  }
+
+  // 找最后一个未转义的闭括号
+  const closeParenIndex = findLastUnescapedChar(ruleString, ')')
+  if (closeParenIndex !== ruleString.length - 1) {
+    return { toolName: normalizeLegacyToolName(ruleString) }  // 格式错误
+  }
+
+  const toolName = ruleString.substring(0, openParenIndex)
+  const rawContent = ruleString.substring(openParenIndex + 1, closeParenIndex)
+
+  // 特殊情况：空内容或单独的 * 视为纯工具名规则
+  if (rawContent === '' || rawContent === '*') {
+    return { toolName: normalizeLegacyToolName(toolName) }
+  }
+
+  return { toolName: normalizeLegacyToolName(toolName), ruleContent: unescapeRuleContent(rawContent) }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/permissionRuleParser.ts:93</code></p>
+<p><code>findFirstUnescapedChar</code> 的逻辑是：找到目标字符后，向前数连续反斜杠的数量——如果是<strong>偶数</strong>（包括 0），字符未被转义（偶数个反斜杠两两抵消，最后没有剩余的转义符）；如果是<strong>奇数</strong>，字符被转义（奇数个反斜杠，最后一个充当转义符）。这个"奇偶判断法"是处理嵌套转义的标准技巧。</p>
+<p><code>normalizeLegacyToolName</code> 处理工具重命名的向后兼容：旧版 Claude Code 用 <code>Task</code> 作为工具名，现在叫 <code>Agent</code>。用户在旧版配置中写的规则 <code>Task(npm install)</code> 在新版中应该继续工作——<code>normalizeLegacyToolName('Task')</code> 返回 <code>'Agent'</code>，让旧规则透明地映射到新工具名。这个兼容层集中在解析函数中，不污染业务逻辑。</p>
+<hr />
+<h2 id="源码实例-2shellrulematching三种匹配语义与空字节哨兵"><a class="header" href="#源码实例-2shellrulematching三种匹配语义与空字节哨兵">源码实例 2：shellRuleMatching——三种匹配语义与空字节哨兵</a></h2>
+<p><code>shellRuleMatching.ts</code> 把内容字符串解析为三种匹配规则（<code>src/utils/permissions/shellRuleMatching.ts:25</code>）：</p>
+<pre><code class="language-typescript">// src/utils/permissions/shellRuleMatching.ts:25-36
+export type ShellPermissionRule =
+  | { type: 'exact'; command: string }    // 精确匹配
+  | { type: 'prefix'; prefix: string }    // 前缀匹配（legacy :* 语法）
+  | { type: 'wildcard'; pattern: string } // 通配符匹配（glob * 语法）
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/shellRuleMatching.ts:25</code></p>
+<p><code>parsePermissionRule</code> 按优先级依次判断是哪种类型（legacy 前缀 → glob 通配符 → 精确匹配）。<code>permissionRuleExtractPrefix</code>（第 43 行）处理 <code>:*</code> 语法：</p>
+<pre><code class="language-typescript">// src/utils/permissions/shellRuleMatching.ts:43-48
+export function permissionRuleExtractPrefix(permissionRule: string): string | null {
+  const match = permissionRule.match(/^(.+):\*$/)
+  return match?.[1] ?? null  // "npm:*" → "npm"，否则 null
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/shellRuleMatching.ts:43</code></p>
+<p><code>:*</code> 是历史遗留语法——最初的规则系统用 <code>npm:*</code> 表示"允许所有 npm 子命令"。新版引入了 glob <code>*</code>，<code>npm *</code> 可以表达相同含义，且更灵活（<code>npm * install</code> 可以表达 npm 的任意子命令加上 install 参数）。两种语法共存，<code>permissionRuleExtractPrefix</code> 先检查是否是 <code>:*</code> 结尾的 legacy 格式。</p>
+<p><code>hasWildcards</code>（第 54 行）判断是否使用 glob <code>*</code>，同时跳过 legacy <code>:*</code> 语法：</p>
+<pre><code class="language-typescript">// src/utils/permissions/shellRuleMatching.ts:54-72
+export function hasWildcards(pattern: string): boolean {
+  if (pattern.endsWith(':*')) {
+    return false  // legacy 语法，不是 glob 通配符
+  }
+  // 检查任何位置的未转义 * （同样用奇偶判断法）
+  for (let i = 0; i &lt; pattern.length; i++) {
+    if (pattern[i] === '*') {
+      let backslashCount = 0
+      let j = i - 1
+      while (j &gt;= 0 &amp;&amp; pattern[j] === '\\') { backslashCount++; j-- }
+      if (backslashCount % 2 === 0) return true  // 未转义的 *
+    }
+  }
+  return false
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/shellRuleMatching.ts:54</code></p>
+<p>最精妙的实现细节在文件顶部的<strong>空字节哨兵</strong>（<code>src/utils/permissions/shellRuleMatching.ts:12</code>）：</p>
+<pre><code class="language-typescript">// src/utils/permissions/shellRuleMatching.ts:12-20
+// 模块级的空字节哨兵，用于通配符模式转义——
+// 模块级定义让 RegExp 对象只编译一次，而非每次权限检查时都编译。
+const ESCAPED_STAR_PLACEHOLDER = '\x00ESCAPED_STAR\x00'
+const ESCAPED_BACKSLASH_PLACEHOLDER = '\x00ESCAPED_BACKSLASH\x00'
+const ESCAPED_STAR_PLACEHOLDER_RE = new RegExp(ESCAPED_STAR_PLACEHOLDER, 'g')
+const ESCAPED_BACKSLASH_PLACEHOLDER_RE = new RegExp(ESCAPED_BACKSLASH_PLACEHOLDER, 'g')
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/shellRuleMatching.ts:12</code></p>
+<p><code>matchWildcardPattern</code> 需要把通配符 <code>*</code> 转换为正则表达式 <code>.*</code>，但 <code>\*</code>（用户转义的字面量星号）不应该被转换。直接的实现方案是在替换时做条件判断，但正则替换的条件逻辑很复杂。空字节哨兵提供了一个更简洁的两步方案：</p>
+<ol>
+<li><strong>第一步</strong>：把 <code>\*</code> 替换为 <code>\x00ESCAPED_STAR\x00</code>（一个普通的用户输入不可能包含的字符序列）</li>
+<li><strong>第二步</strong>：现在所有剩余的 <code>*</code> 都是未转义的通配符，可以安全地替换为 <code>.*</code></li>
+<li><strong>第三步</strong>：把 <code>\x00ESCAPED_STAR\x00</code> 还原为 <code>\*</code>（正则表达式中的字面量星号）</li>
+</ol>
+<p>哨兵字符是 <code>\x00</code>（null 字节）——用户的命令字符串不可能包含 null 字节，所以这个占位符不会与真实内容冲突。模块级定义（而非函数内定义）是性能优化：<code>RegExp</code> 对象只编译一次，每次权限检查时复用。</p>
+<p><code>matchWildcardPattern</code> 还有一个细节：当 pattern 以 <code> *</code>（空格加单个通配符）结尾时，把最后的 <code>.*</code> 改为 <code>( .*)?</code>（可选的空格加任意字符），这样 <code>git *</code> 既能匹配 <code>git add</code> 也能匹配裸 <code>git</code>（没有参数）。这个行为与 legacy 前缀语法一致——<code>git:*</code> 通常意味着"允许 git 以及所有 git 子命令"。</p>
+<hr />
+<h2 id="模式剖析声明式规则解析引擎的三个层次"><a class="header" href="#模式剖析声明式规则解析引擎的三个层次">模式剖析：声明式规则解析引擎的三个层次</a></h2>
+<p><strong>声明式规则解析引擎</strong>由三个递进的层次构成：</p>
+<p><strong>1. 格式层（Format Contract）</strong>：<code>Tool(content)</code> 格式是规则的表示语言，转义机制（<code>\(</code>、<code>\)</code>、<code>\\</code>）让内容可以包含任意字符而不破坏格式。格式足够简洁（用户可以手写），也足够精确（机器可以准确解析）。</p>
+<p><strong>2. 解析层（Parsing）</strong>：<code>permissionRuleValueFromString</code> 将字符串分解为 <code>{toolName, ruleContent}</code> 结构体，处理转义和向后兼容（legacy 工具名别名）。解析层是纯函数——同样的输入永远产生同样的输出，无副作用，易于测试。</p>
+<p><strong>3. 匹配层（Matching）</strong>：<code>parsePermissionRule</code> 将内容字符串分类为三种规则类型（exact/prefix/wildcard），每种类型有不同的匹配语义。分类在使用前完成，运行时只需根据类型做对应的比较（字符串相等/前缀检查/正则匹配），不需要每次都重新解析规则字符串。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>用户声明"允许执行 npm 开头的命令"</td><td>✓</td><td><code>Bash(npm:*)</code> 格式直观简洁</td><td>代码配置（需要技术背景）</td></tr>
+<tr><td>规则需要版本控制（放在配置文件）</td><td>✓</td><td>字符串格式可 git commit，可 diff</td><td>数据库存储（不随代码走）</td></tr>
+<tr><td>允许含括号的命令（如 Python 函数调用）</td><td>✓</td><td>转义机制处理内容中的括号</td><td>禁止括号（限制了可表达的命令）</td></tr>
+<tr><td>复杂条件权限（AND/OR 组合、时间限制）</td><td>✗</td><td>格式只支持单条规则，无组合逻辑</td><td>规则表达式语言（如 OPA/Rego）</td></tr>
+<tr><td>跨工具的通配规则（一条规则覆盖多工具）</td><td>✗</td><td>每条规则绑定到单一工具名</td><td>工具组（需要额外抽象）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p><strong>权衡 1：双重转义的认知负担</strong></p>
+<p>用户手写规则时，如果内容包含括号，需要了解转义语法：<code>python -c "print(1)"</code> 要写成 <code>Bash(python -c "print\(1\)")</code>。对于不了解转义规则的用户，括号需求是一个隐藏的复杂度。UI 层（如"始终允许"对话框）通过自动调用 <code>escapeRuleContent</code> 隐藏了这个细节，但手动编辑配置文件的用户需要了解转义规则。</p>
+<p><strong>权衡 2：<code>:*</code> 和 glob <code>*</code> 语法并存</strong></p>
+<p>两种通配符语法（<code>npm:*</code> legacy 和 <code>npm *</code> new）表达相似但略有差异的语义，长期并存增加了用户的认知成本——用户需要知道哪个是"旧的"哪个是"新的"，以及它们在边缘情况下的行为差异（如 <code>git:*</code> vs <code>git *</code> 在匹配裸 <code>git</code> 时的行为）。当前 <code>matchWildcardPattern</code> 已经尝试统一两者的行为（trailing <code> *</code> 变可选），但这是向后兼容的权宜之计，不是根本解决方案。</p>
+<p><strong>权衡 3：正则表达式的安全性</strong></p>
+<p><code>matchWildcardPattern</code> 把用户输入的模式转换为正则表达式。虽然 <code>escapeRegExp</code> 已经转义了大部分特殊字符，但这条从用户输入到正则表达式的路径需要特别小心——正则 DoS（ReDoS）攻击可以通过精心构造的模式字符串让匹配时间呈指数增长。当前实现对输入做了充分的转义处理，但任何维护者修改这段代码时都需要了解这个风险。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与 Unix glob</strong>：Unix glob 是最直接的参照——<code>*</code> 匹配任意字符序列，<code>?</code> 匹配单个字符。本系统的 glob 只使用 <code>*</code>（不支持 <code>?</code>），并且加了 <code>Tool(content)</code> 的工具名前缀层。另一个区别是 Unix glob 通常不支持转义（因为 shell 本身处理转义），本系统需要在字符串层面处理转义，因为规则字符串存储在 JSON 配置文件中，没有 shell 的转义层。</p>
+<p><strong>与 SQL LIKE 语法</strong>：SQL <code>LIKE</code> 用 <code>%</code> 表示任意字符序列，<code>_</code> 表示单个字符。本系统的 <code>:*</code> legacy 语法与 SQL LIKE 类似（都是特殊字符表示通配），但新 glob 语法更接近标准 glob。两个系统都需要转义机制处理字面量通配符，SQL 用 <code>ESCAPE</code> 子句，本系统用 <code>\</code> 前缀。</p>
+<p><strong>与 DSL（领域特定语言）</strong>：<code>Bash(npm install)</code> 是一个微型 DSL——完整语法是 <code>ToolName</code>（仅工具名）或 <code>ToolName(content)</code>（工具名加内容），content 中支持 <code>:*</code> 和 glob <code>*</code> 通配符，以及 <code>\(</code>、<code>\)</code>、<code>\\</code> 转义序列。这个语法刚好够用（覆盖了权限配置的所有需求），没有引入不必要的复杂性——如果加了条件表达式，就会变成需要完整解析器的真正 DSL，维护成本急剧增加。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="声明式规则解析引擎declarative-rule-parser"><a class="header" href="#声明式规则解析引擎declarative-rule-parser">声明式规则解析引擎（Declarative Rule Parser）</a></h3>
+<p><strong>解决的问题</strong>：权限规则需要由用户以字符串形式配置，但用户输入的字符串可能包含格式分隔符（括号），需要精确的解析和转义机制。</p>
+<p><strong>核心做法</strong>：定义 <code>Tool(content)</code> 格式；<code>escapeRuleContent</code> 先转义反斜杠再转义括号；<code>unescapeRuleContent</code> 逆序反转；<code>findFirstUnescapedChar</code> 用奇偶计数法处理嵌套转义；<code>normalizeLegacyToolName</code> 在解析层集中处理工具名别名。</p>
+<p><strong>前置条件</strong>：规则格式简单且稳定（不需要完整解析器）；转义字符（<code>\</code>）不在合法内容中大量出现；有 legacy 兼容需求可以在解析函数入口处集中处理。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/permissionRuleParser.ts:93</code>（<code>permissionRuleValueFromString</code>，完整的解析加工具名别名）；<code>src/utils/permissions/permissionRuleParser.ts:55</code>（<code>escapeRuleContent</code>，注释说明转义顺序）</p>
+<hr />
+<h3 id="哨兵占位替换sentinel-placeholder-substitution"><a class="header" href="#哨兵占位替换sentinel-placeholder-substitution">哨兵占位替换（Sentinel Placeholder Substitution）</a></h3>
+<p><strong>解决的问题</strong>：在字符串处理中，需要临时区分"用户转义的 <code>*</code>"和"真正的通配符 <code>*</code>"，直接正则替换容易误伤转义的字符。</p>
+<p><strong>核心做法</strong>：用进程空间不可能出现的字符序列（如 <code>\x00ESCAPED_STAR\x00</code>）作为哨兵，将转义字符临时替换为哨兵，处理完未转义的字符后，再将哨兵还原为正确的转义序列；哨兵的 <code>RegExp</code> 对象模块级定义，只编译一次。</p>
+<p><strong>前置条件</strong>：哨兵字符序列不会出现在合法输入中（null 字节不在命令字符串中）；处理步骤数量有限（哨兵只是临时中转，不需要持久存储）。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/shellRuleMatching.ts:12</code>（<code>ESCAPED_STAR_PLACEHOLDER = '\x00ESCAPED_STAR\x00'</code>，模块级定义）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>用 <code>Tool(content)</code> 格式设计权限规则字符串</strong>，分离工具名和内容模式。工具名是路由键，内容是匹配内容，格式清晰可读，易于版本控制。</p>
+</li>
+<li>
+<p><strong>实现对称的 escape/unescape 函数对</strong>，且转义顺序必须正确：先转义反斜杠，再转义格式分隔符；反转义时逆序。对称性保证序列化/反序列化不丢信息，测试时用 roundtrip 测试（<code>unescape(escape(s)) === s</code>）验证对称性。</p>
+</li>
+<li>
+<p><strong>用奇偶计数法（而非简单 <code>indexOf</code>）处理转义字符的位置检测</strong>：向前数连续反斜杠数量，偶数个表示字符未被转义（反斜杠成对抵消），奇数个表示字符被转义（最后一个是转义符）。</p>
+</li>
+<li>
+<p><strong>将 legacy 格式的兼容逻辑集中在解析函数入口</strong>（<code>normalizeLegacyToolName</code>），不让 legacy 别名泄漏到业务逻辑。解析函数是 legacy 知识的单一终点，业务代码只处理规范化后的名称。</p>
+</li>
+<li>
+<p><strong>用空字节哨兵进行临时字符替换</strong>：在需要区分"已转义的通配符"和"真正的通配符"时，先用不可能出现在合法输入中的字符序列替换已转义的部分，处理完未转义部分后再还原。哨兵的正则表达式模块级定义，避免每次调用都重新编译。</p>
+</li>
+</ul>
+<hr />
+<p>规则引擎解析了用户的规则字符串，确定了"这个工具调用是否匹配规则"。当规则匹配到"需要询问用户"时，究竟是展示交互式对话框、自动拒绝、还是由 Agent 自行决策——这是权限处理器三态的职责，第 35 章将展开这个机制（详见第 35 章）。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part8/ch33.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part8/ch35.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part8/ch33.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part8/ch35.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

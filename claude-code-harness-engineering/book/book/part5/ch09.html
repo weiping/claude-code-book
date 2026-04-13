@@ -1,0 +1,366 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 9 章：渐进式安全 - 从 Claude Code 源码提炼的 Harness 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">从 Claude Code 源码提炼的 Harness 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-9-章渐进式安全"><a class="header" href="#第-9-章渐进式安全">第 9 章:渐进式安全</a></h1>
+<blockquote>
+<p>"最好的安全护栏是透明的--用户感知不到它,但越界的模型行为不可能穿过它。"</p>
+</blockquote>
+<p>安全不是一个开关,是一条连续谱。从"每步都问用户"到"完全不问"之间,Claude Code 设计了 5 个精确的档位,每个档位有不同的守卫机制。最精妙的一档用 Claude 自己来判断 Claude 的行为是否安全--这是 Harness 在安全性上的递归应用。读完本章,你将理解 4 个子系统如何构成纵深防御,以及"默认拒绝、逐级放行"的安全谱系如何覆盖从个人开发到企业 CI 的全部场景。</p>
+<h2 id="问题--单一权限开关为什么不够"><a class="header" href="#问题--单一权限开关为什么不够">问题--单一权限开关为什么不够</a></h2>
+<p>不同使用场景需要不同的安全级别。个人开发者可能希望文件编辑自动通过但命令执行需要确认;企业 CI/CD 管道需要完全自主执行不需要人工干预;代码审查场景需要模型只读不写。一个简单的"开/关"无法覆盖这些截然不同的需求。</p>
+<p>Claude Code 的解法是一个权限谱系--<code>EXTERNAL_PERMISSION_MODES</code> 定义了 5 个面向用户的权限模式(<code>acceptEdits</code>、<code>bypassPermissions</code>、<code>default</code>、<code>dontAsk</code>、<code>plan</code>),<code>INTERNAL_PERMISSION_MODES</code> 在此基础上增加了 2 个内部模式(<code>auto</code>、<code>bubble</code>),共 7 个模式覆盖从"完全手动"到"完全自主"的全部场景。</p>
+<div class="table-wrapper"><table><thead><tr><th>模式</th><th>安全级别</th><th>用户交互</th><th>典型场景</th></tr></thead><tbody>
+<tr><td><code>default</code></td><td>最高</td><td>每次操作都确认</td><td>首次使用、高风险操作</td></tr>
+<tr><td><code>acceptEdits</code></td><td>高</td><td>文件编辑自动通过,命令需确认</td><td>日常开发</td></tr>
+<tr><td><code>plan</code></td><td>限制性</td><td>只读探索,无写权限(详见第 8 章)</td><td>架构分析、方案设计</td></tr>
+<tr><td><code>dontAsk</code></td><td>中低</td><td>静默拒绝代替询问</td><td>批量非交互场景</td></tr>
+<tr><td><code>bypassPermissions</code></td><td>无</td><td>无任何护栏</td><td>受控 CI 环境</td></tr>
+<tr><td><code>auto</code>(内部)</td><td>中</td><td>AI 分类器自动判断</td><td>内部用户半自主模式</td></tr>
+</tbody></table>
+</div>
+<p><strong>原则 9.1:安全谱系覆盖全场景</strong> - Agent 系统的安全策略<strong>必须</strong>提供连续的权限档位而非单一开关。不同场景的安全需求是量变的,不是质变的--用一个模式覆盖所有场景等于用一种安全级别应对所有风险。</p>
+<h2 id="黄金法则--安全谱系是从严到宽的单向门"><a class="header" href="#黄金法则--安全谱系是从严到宽的单向门">黄金法则--安全谱系是从严到宽的单向门</a></h2>
+<p>权限谱系的设计原则是“从最严开始，用户主动解锁更宽”——默认值是 <code>default</code>（最严格），用户通过 Shift+Tab 循环解锁更宽松的模式。<code>getNextPermissionMode</code> 的 switch-case 结构是谱系顺序最直接的源码证据：<code>default → acceptEdits → plan → bypassPermissions → default</code>（循环）。</p>
+<p>向右移动解锁更多自主性,向左移动增加安全护栏。注释说明了内部用户的谱系差异:"Ants skip acceptEdits and plan - auto mode replaces them"(译:内部用户跳过 acceptEdits 和 plan--auto 模式替代它们)。内部用户的谱系是 <code>default → auto → bypassPermissions</code>,更激进但也更有 AI 监督。</p>
+<p>谱系的关键设计:系统<strong>始终可以从任何模式回到 default</strong>。这不是说用户不能手动选择更严格的模式,而是系统的默认行为是"从严开始"。即使当前处于 <code>bypassPermissions</code>(无护栏),下一次循环回到 <code>default</code> 时所有安全机制重新生效。</p>
+<p><strong>原则 9.2:默认值是最安全的选项</strong> - 系统的初始权限模式<strong>必须</strong>是最严格的。向宽松方向移动需要用户主动操作(如 Shift+Tab),向严格方向移动是默认行为。<strong>禁止</strong>将宽松模式设为默认值。</p>
+<h2 id="适用场景--哪个权限档位用于哪个场景"><a class="header" href="#适用场景--哪个权限档位用于哪个场景">适用场景--哪个权限档位用于哪个场景</a></h2>
+<p>5 个权限档位各有精确的适用场景,从交互式开发到无人值守 CI 全覆盖。</p>
+<p><code>PERMISSION_MODE_CONFIG</code> 为每个模式配置了 title、shortTitle 和 color。<code>color = 'error'</code> 标记高危模式--<code>bypassPermissions</code> 和 <code>dontAsk</code> 都是 error 级,提醒用户当前处于危险区域。这不是装饰性的颜色编码,而是 UI 层面对安全等级的视觉表达。</p>
+<p><strong><code>default</code>--每次操作需确认</strong>:适合首次使用 Claude Code 或执行高风险操作。代价是频繁的权限弹窗打断工作流--每读一个文件、执行一个命令都需要确认。</p>
+<p><strong><code>acceptEdits</code>--文件编辑自动通过</strong>:日常开发的最佳平衡。读文件和编辑文件不需要确认,但执行命令(如 <code>npm test</code>)仍需确认。这是大多数开发者选择的档位。</p>
+<p><strong><code>plan</code>--只读探索</strong>:详见第 8 章。模型只能读文件和搜索代码,不能写任何内容。</p>
+<p><strong><code>dontAsk</code>--静默拒绝</strong>:模型尝试执行不允许的操作时不弹窗询问用户,而是直接拒绝并继续。适合批量非交互场景,避免弹窗阻塞管道。</p>
+<p><strong><code>bypassPermissions</code>--无护栏</strong>:所有 4 层防御全部关闭。仅在完全受控的 CI 环境(无用户交互、操作可回滚)中使用。</p>
+<h2 id="工作原理--4-个子系统构成的纵深防御"><a class="header" href="#工作原理--4-个子系统构成的纵深防御">工作原理--4 个子系统构成的纵深防御</a></h2>
+<p>Harness 的权限判断不是一个 if-else,而是 4 个子系统串联:规则分类器 → 危险模式库 → AI 分类器 → 否决追踪。<code>hasPermissionsToUseTool</code> 是 4 层判断的入口。</p>
+<p><strong>图 9-1:auto 模式 4 层纵深防御</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    A["hasPermissionsToUseTool\n入口"] --&gt; B{第1层:规则分类器}
+    B --&gt;|"用户配置的\nallow 规则匹配"| Z["✅ 允许"]
+    B --&gt;|"用户配置的\ndeny 规则匹配"| Y["❌ 拒绝"]
+    B --&gt;|"无匹配"| C{第2层:危险模式库}
+
+    C --&gt;|"命令匹配\nCROSS_PLATFORM_CODE_EXEC"| Y
+    C --&gt;|"不匹配"| D{第3层:AI 分类器}
+
+    D --&gt;|"classifyYoloAction\nshouldBlock=true"| Y
+    D --&gt;|"shouldBlock=false"| E{第4层:否决追踪}
+
+    E --&gt;|"consecutiveDenials\n&gt;=3"| F["⚠️ 回退人工确认"]
+    E --&gt;|"totalDenials\n&gt;=20"| F
+    E --&gt;|"未超限"| Z
+
+    D -.- Note1["递归设计:\nClaude 判断 Claude"]
+    C -.- Note2["硬编码拒绝\n不可绕过"]
+</code></pre>
+<p><strong>第 1 层:规则分类器</strong></p>
+<p>检查用户配置的允许/拒绝规则。用户可以通过配置文件声明"允许 Bash(git:<em>)"或"拒绝 Edit(</em>)"--这些规则是最高优先级的判断。如果用户配置了明确的 allow 规则,后续 3 层检查全部跳过。这是"用户主权"的体现--用户的显式配置高于一切自动判断。</p>
+<p><strong>第 2 层:危险模式库</strong></p>
+<p><code>CROSS_PLATFORM_CODE_EXEC</code> 是一个硬编码的危险模式列表--包含 <code>python</code>、<code>node</code>、<code>bash</code>、<code>sh</code> 等跨平台代码执行入口点。源码注释说明了这个库的用途:"An allow rule like Bash(python:<em>) lets the model run arbitrary code via that interpreter, bypassing the auto-mode classifier. These lists feed the isDangerousBashPermission predicates, which strip such rules at auto-mode entry."(译:一条 Bash(python:</em>) 的允许规则让模型可以通过该解释器运行任意代码,绕过 auto 模式分类器。这些列表提供给 isDangerousBashPermission 断言,在进入 auto 模式时剥离此类规则)。</p>
+<p>这层的关键特性是<strong>不可绕过</strong>--即使用户配置了 <code>Bash(python:*)</code> 的 allow 规则,进入 auto 模式时这条规则也会被自动剥离。硬编码拒绝是 AI 分类器的前置守卫。</p>
+<p><strong>第 3 层:AI 分类器</strong></p>
+<p><code>classifyYoloAction</code> 是最精妙的设计--它把整个对话历史发给 Claude 模型,让 Claude 判断当前操作是否安全。这是 Harness 在安全性上的递归应用:用 Claude 监督 Claude。<code>AutoModeRules</code> 定义了 AI 分类器的规则配置,规则可配置而非硬编码,说明分类器的行为可以按场景调整。</p>
+<p>AI 分类器能理解上下文--它看到完整的对话历史,知道"这个 Bash 命令是在执行用户明确要求的重构任务"还是"模型在尝试绕过安全限制"。这种上下文理解是纯规则匹配无法实现的。</p>
+<p><strong>第 4 层:否决追踪</strong></p>
+<p><code>DENIAL_LIMITS</code> 定义了精确的否决上限:<code>maxConsecutive: 3</code>(连续否决不超过 3 次)、<code>maxTotal: 20</code>(总计否决不超过 20 次)。<code>shouldFallbackToPrompting</code> 检查否决计数--如果超限,强制退出 auto 模式,回退到人工确认。</p>
+<div class="table-wrapper"><table><thead><tr><th>防御层</th><th>输入</th><th>输出</th><th>失败时行为</th></tr></thead><tbody>
+<tr><td>规则分类器</td><td>用户配置</td><td>allow/deny</td><td>无匹配时传递给下一层</td></tr>
+<tr><td>危险模式库</td><td>工具名+参数</td><td>硬拒绝</td><td>不在危险列表中时传递给下一层</td></tr>
+<tr><td>AI 分类器</td><td>完整对话历史</td><td>shouldBlock</td><td>shouldBlock=false 时传递给下一层</td></tr>
+<tr><td>否决追踪</td><td>否决计数</td><td>是否超限</td><td>超限时强制回退人工确认</td></tr>
+</tbody></table>
+</div>
+<h2 id="权衡--ai-分类器的-3-个设计代价"><a class="header" href="#权衡--ai-分类器的-3-个设计代价">权衡--AI 分类器的 3 个设计代价</a></h2>
+<p>AI 分类器在安全性和自主性之间找到了独特平衡点,但引入了 3 个不可忽视的代价。</p>
+<div class="table-wrapper"><table><thead><tr><th>决策维度</th><th>选择 A(本系统)</th><th>选择 B</th><th>核心权衡</th></tr></thead><tbody>
+<tr><td>AI 监督</td><td>用 Claude 判断 Claude</td><td>纯规则匹配</td><td>上下文理解能力 vs 对抗性风险</td></tr>
+<tr><td>否决阈值</td><td>3 次连续 / 20 次总计</td><td>无上限或更低阈值</td><td>自主模式持续性 vs 安全兜底频率</td></tr>
+<tr><td>auto 模式暴露</td><td>内部专用(Feature Flag)</td><td>对所有用户开放</td><td>验证可靠性 vs 功能可达性</td></tr>
+</tbody></table>
+</div>
+<p><strong>代价一:AI 分类器的对抗性</strong></p>
+<p>用 Claude 判断 Claude 的行为,在提示词注入场景下可能被绕过--攻击者可能在对话历史中注入误导性内容,让 AI 分类器误判操作为安全。这个代价的缓解方案是危险模式库--代码执行入口点(python/node/bash)的硬编码拒绝不经过 AI 分类器,即使在 auto 模式下也有效。</p>
+<p><strong>代价二:否决阈值的精确校准</strong></p>
+<p><code>maxConsecutive: 3</code> 和 <code>maxTotal: 20</code> 是精确校准的数字。如果阈值太低(如 1 次连续否决就退出),auto 模式频繁退出,用户体验差;如果阈值太高(如 100 次总计才退出),连续错误操作无法被人类干预,安全风险大。3 和 20 的比例设计编码了一个判断--"连续 3 次错误操作"比"分散的 20 次错误操作"更危险。</p>
+<p><strong>代价三:auto 模式不对外开放</strong></p>
+<p><code>auto</code> 模式通过 <code>USER_TYPE === 'ant'</code> 判断和 Feature Flag 控制,仅内部用户可用。这暗示 AI 分类器的可靠性尚未达到对所有用户开放的水平(推断)。内部用户对系统行为有更高的容忍度和理解力,外部用户遇到误判会造成信任损失。</p>
+<h2 id="踩坑指南--权限系统中的常见错误"><a class="header" href="#踩坑指南--权限系统中的常见错误">踩坑指南--权限系统中的常见错误</a></h2>
+<p><strong>陷阱一:通配 allow 规则绕过 AI 分类器</strong></p>
+<p>源码注释明确警告:<code>Bash(python:*)</code> 这样的通配允许规则让模型可以通过 python 解释器运行任意代码,绕过 auto 模式的 AI 分类器。虽然 auto 模式进入时会自动剥离此类规则,但在非 auto 模式下这些规则仍然生效。</p>
+<p>❌ 错误做法:配置 <code>Bash(python:*)</code> 或 <code>Bash(node:*)</code> 的通配允许规则,以为"我只在受控环境中用"。
+✓ 正确做法:如果需要允许 python 执行,使用精确的命令匹配(如 <code>Bash(python:my_script.py)</code>),避免通配符。理解通配 allow 规则会完全绕过危险模式库。</p>
+<p><strong>陷阱二:auto 模式下高频操作触发否决累积</strong></p>
+<p>auto 模式下,每次 AI 分类器拒绝操作都会增加否决计数。如果一个任务类型频繁触发 AI 分类器的误判,否决计数迅速累积到上限(3 次连续或 20 次总计),auto 模式被强制退出。</p>
+<p>❌ 错误做法:在 auto 模式下执行大量高风险操作(如频繁的 rm 命令),不监控否决计数。
+✓ 正确做法:监控 <code>shouldFallbackToPrompting</code> 的触发频率。高频触发说明 AI 分类器在当前任务类型上不可靠,应切换到更宽松或更严格的模式。</p>
+<p><strong>陷阱三:误以为 bypassPermissions 只是"不问用户"</strong></p>
+<p><code>bypassPermissions</code> 不是跳过确认弹窗--它完全移除了 4 层防御。规则分类器、危险模式库、AI 分类器、否决追踪全部失效。模型可以执行任何操作,没有安全网。</p>
+<p>❌ 错误做法:在交互式开发中使用 bypassPermissions "减少打扰"。
+✓ 正确做法:bypassPermissions 仅在完全受控的 CI 环境中使用--没有用户交互、所有操作可回滚、输出经过审计。</p>
+<h2 id="实证--一次-auto-模式工具调用的决策链"><a class="header" href="#实证--一次-auto-模式工具调用的决策链">实证--一次 auto 模式工具调用的决策链</a></h2>
+<p>在 auto 模式下,一次工具调用在执行前经过了至少 4 次独立判断。以 <code>Bash("rm -rf /tmp/old")</code> 为例追踪完整决策路径。</p>
+<p><strong>入口</strong>:<code>hasPermissionsToUseTool</code>(<code>src/utils/permissions/permissions.ts:473</code>)接收工具名(Bash)、参数(rm -rf /tmp/old)和当前权限上下文(mode=auto),启动 4 层判断。</p>
+<p><strong>第 1 层(规则分类器)</strong>:检查用户配置的 allow/deny 规则。如果用户配置了 <code>Bash(rm:*)</code> 的 allow 规则,直接允许,跳过后续 3 层。假设无匹配规则,传递给第 2 层。</p>
+<p><strong>第 2 层(危险模式库)</strong>:检查 <code>rm -rf /tmp/old</code> 是否匹配 <code>CROSS_PLATFORM_CODE_EXEC</code>(<code>src/utils/permissions/dangerousPatterns.ts:15</code>)中的代码执行入口点。<code>rm</code> 不在 python/node/bash 列表中--通过。传递给第 3 层。</p>
+<p><strong>第 3 层(AI 分类器)</strong>:<code>classifyYoloAction</code>(<code>src/utils/permissions/yoloClassifier.ts:1012</code>)把完整对话历史(包括用户最初的请求、模型之前的操作、当前要执行的命令)发给 Claude API。Claude 看到用户要求"清理临时文件",判断 <code>rm -rf /tmp/old</code> 是合理的清理操作,返回 <code>shouldBlock=false</code>。传递给第 4 层。</p>
+<p><strong>第 4 层(否决追踪)</strong>:<code>shouldFallbackToPrompting</code>(<code>src/utils/permissions/denialTracking.ts:40</code>)检查否决计数。<code>consecutiveDenials=0 &lt; 3</code>,<code>totalDenials=0 &lt; 20</code>--未超限。最终判定:<strong>允许执行</strong>。</p>
+<p>如果第 3 层 AI 分类器返回 <code>shouldBlock=true</code>(例如模型尝试执行 <code>rm -rf /</code>),否决计数增加到 <code>consecutiveDenials=1</code>。如果连续 3 次被阻止,<code>shouldFallbackToPrompting=true</code>,auto 模式强制退出,回退到人工确认。</p>
+<p>这条路径验证了纵深防御的核心价值:每一层独立判断,层与层之间不共享决策逻辑。一层的误判可以被下一层纠正--规则分类器的遗漏被危险模式库兜底,危险模式库的遗漏被 AI 分类器兜底,AI 分类器的误判被否决追踪兜底。</p>
+<p><strong>图 9-2:权限谱系从严到宽的循环</strong></p>
+<pre><code class="language-mermaid">graph LR
+    A["default\n每步确认"] --&gt;|"Shift+Tab\n解锁"| B["acceptEdits\n编辑自动通过"]
+    B --&gt; C["plan\n只读探索"]
+    C --&gt; D["bypassPermissions\n无护栏"]
+    D --&gt;|"循环回到"| A
+
+    A -.- Note1["color: 默认"]
+    B -.- Note2["color: 默认"]
+    D -.- Note3["color: error\n⚠️ 高危"]
+
+    subgraph 内部谱系
+        E["default"] --&gt;|"ant-only"| F["auto\nAI分类器"]
+        F --&gt; G["bypassPermissions"]
+    end
+</code></pre>
+<h2 id="本章主成分渐进式安全"><a class="header" href="#本章主成分渐进式安全">本章主成分:渐进式安全</a></h2>
+<p><strong>本质</strong>:5 个权限档位构成从严到宽的单向解锁谱系。auto 档位通过 AI 递归判断实现"让 Claude 监督 Claude"--4 层纵深防御确保即使 AI 分类器被绕过,硬编码的危险模式库和否决追踪仍能兜底。</p>
+<p><strong>关键机制</strong>:</p>
+<ul>
+<li>5 个外部模式 + 2 个内部模式覆盖全部安全场景</li>
+<li><code>getNextPermissionMode</code> 的谱系循环:default → acceptEdits → plan → bypassPermissions</li>
+<li>4 层纵深防御:规则分类器 → 危险模式库 → AI 分类器 → 否决追踪</li>
+<li><code>DENIAL_LIMITS</code>(maxConsecutive=3, maxTotal=20)作为 auto 模式的安全网</li>
+</ul>
+<p><strong>适用边界</strong>:</p>
+<ul>
+<li>✓ 适合:需要不同安全级别的多场景 Agent 系统</li>
+<li>✓ 适合:需要在安全性和自主性之间找到平衡的半自主模式</li>
+<li>✗ 不适合:所有操作安全等级完全相同的简单系统</li>
+</ul>
+<p><strong>与其他模式的关系</strong>:</p>
+<ul>
+<li>本章是第 7 章(工具基座 <code>checkPermissions</code>)的运行时实现</li>
+<li>第 8 章(Plan Mode)是权限谱系中 <code>plan</code> 档位的具体应用</li>
+<li>第 10 章(Hooks 系统)在权限决策后提供进一步的行为拦截</li>
+</ul>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>审视你的 Agent 使用了哪个权限档位</strong>。生产环境应避免 <code>bypassPermissions</code>--如果需要自主执行,考虑 auto 模式(需要实现 AI 分类器)而非完全移除护栏。</li>
+<li><strong>为你的工具实现 <code>toAutoClassifierInput</code></strong>。AI 分类器能看到的安全信息越多,判断越准确--告诉分类器工具的用途和风险等级(详见第 7 章)。</li>
+<li><strong>检查你的 allow 规则是否包含代码执行入口点</strong>。<code>Bash(python:*)</code> 或 <code>Bash(node:*)</code> 会绕过危险模式库和 AI 分类器--使用精确匹配而非通配符。</li>
+<li><strong>设置合理的否决上限</strong>。参考 <code>maxConsecutive=3</code> 和 <code>maxTotal=20</code> 的比例设计--连续否决比分散否决更危险,连续阈值应远低于总计阈值。</li>
+<li><strong>为高危操作构建专用的危险模式库</strong>。代码执行入口点(python/node/bash)应在 AI 分类器之前提供硬拒绝--这是不可绕过的安全底线。</li>
+<li><strong>监控 <code>shouldFallbackToPrompting</code> 的触发频率</strong>。高频触发说明 AI 分类器在当前任务类型上不可靠,应调整分类器规则或切换模式。</li>
+<li><strong>理解 auto 模式的递归性质</strong>。AI 分类器本身也可能被误导--否决追踪是最后的安全网,确保即使分类器失效,系统也不会无限执行危险操作。</li>
+</ul>
+<hr />
+<p><strong>下一章导读</strong>:本章看到了权限系统如何通过 4 层纵深防御保护每次工具调用。但权限决策只是 Harness 控制模型行为的一种方式--第 10 章将展示 Hooks 系统如何在权限决策之后、工具执行前后提供额外的行为拦截和审计能力。这是 Harness 的"神经末梢"--最靠近执行层的控制点。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part5/part5.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part5/ch10.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part5/part5.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part5/ch10.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

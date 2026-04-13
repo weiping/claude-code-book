@@ -1,0 +1,116 @@
+# 第 19 章写作计划
+
+**批次**：批次 8b（来自 plans/batch.md）
+**章节**：ch19 — 第19章：记忆系统——本地、跨会话与团队记忆的三层架构
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 `src/memdir/` 目录中本地记忆（memdir.ts）、跨会话提取（memoryScan.ts）、团队共享（teamMemPaths.ts/teamMemPrompts.ts）三层记忆架构的边界与同步机制。读者读完后能理解 Agent 记忆的分层设计原则，并能在自己的系统中实现范围边界清晰的记忆管理。
+
+## 通用约束
+**排除范围**：CLAUDE.md 层级扫描（第16章）、src stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「分层记忆架构」（Layered Memory Architecture）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（本地memdir + 团队teamMem），适用范围表，与已知模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/memdir/memdir.ts | buildMemoryPrompt(272行)、buildMemoryLines(199行)、ensureMemoryDirExists(129行) | 125-145, 195-325 |
+| 2 | src/memdir/memoryScan.ts | scanMemoryFiles(35行) | 全文 |
+| 3 | src/memdir/teamMemPaths.ts | isTeamMemoryEnabled(73行)、getTeamMemPath(84行)、getTeamMemEntrypoint(92行) | 67-100 |
+| 4 | src/memdir/teamMemPrompts.ts | buildCombinedMemoryPrompt(22行) | 全文(100行) |
+
+```bash
+ls src/memdir/memdir.ts src/memdir/memoryScan.ts src/memdir/teamMemPaths.ts src/memdir/teamMemPrompts.ts
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：Agent 的"记忆"不是单一的存储，而是三个相互隔离的层级——会话内日志、跨会话提炼、团队共享——每层有不同的读写时机和共享范围。
+
+### 节 19.1：问题
+- 核心主张：**Agent 记忆有三种根本不同的时间维度：单次会话（当前对话）、跨会话（历史提炼）、跨用户（团队共享）——混用会导致隐私泄漏或记忆过载**
+- 源码锚点：`src/memdir/teamMemPaths.ts:73`（isTeamMemoryEnabled — 团队记忆依赖 auto memory 开启）
+- 包含元素：**图19-1** — Mermaid，3层架构（本地/跨会话/团队）的范围和同步关系
+- 估计字数：600-800字
+
+### 节 19.2：源码实例1 — 本地记忆（memdir.ts）
+- 核心主张：**buildMemoryPrompt 是将文件系统上的记忆目录"注入"到当前系统提示的核心函数——它同步读取、截断过长内容，但不修改记忆文件**
+- 源码锚点：
+  - `src/memdir/memdir.ts:272`（buildMemoryPrompt）
+  - `src/memdir/memdir.ts:129`（ensureMemoryDirExists — 幂等创建）
+  - `src/memdir/memdir.ts:57`（truncateEntrypointContent — 截断逻辑）
+- 概念层次：MEMORY.md 作为记忆入口点、日志文件（每日日志）的 append-only 策略、截断保护（防止超大记忆文件撑爆提示词）
+- 估计字数：800-1000字
+
+### 节 19.3：源码实例2 — 团队记忆（teamMemPaths + teamMemPrompts）
+- 核心主张：**团队记忆路径是 auto-memory 的子目录——`<memoryBase>/projects/<sanitized-project-root>/memory/team/`——子目录隔离保证不同项目的团队不会共享记忆**
+- 源码锚点：
+  - `src/memdir/teamMemPaths.ts:84`（getTeamMemPath — `<memoryBase>/projects/<sanitized-project-root>/memory/team/`）
+  - `src/memdir/teamMemPaths.ts:22`（sanitizePathKey — 路径 key 净化防目录遍历）
+  - `src/memdir/teamMemPrompts.ts:22`（buildCombinedMemoryPrompt — 合并本地+团队记忆）
+  - `src/memdir/teamMemPaths.ts:10`（PathTraversalError — 安全防护错误类型）
+- 概念层次：路径清洗防目录穿越、本地记忆 vs 团队记忆的合并策略、团队记忆同步触发条件
+- 估计字数：700-900字
+
+### 节 19.4：模式剖析
+- 核心主张：**分层记忆的本质是"范围即边界"——每层记忆只在其声明的范围内可见，层与层之间通过明确的"提炼"操作升级**
+- 估计字数：500-700字
+
+### 节 19.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 单用户、多会话 Agent | ✓ | 跨会话记忆提炼积累经验 | 每次重新开始 |
+| 团队共享 AI 项目知识 | ✓ | 团队记忆层隔离保护个人隐私 | 共享 CLAUDE.md（但无法自动更新）|
+| 需要实时查询历史对话 | ✗ | memoryScan 是批量提炼，不是实时检索 | 向量数据库 |
+| 短任务无需持久记忆 | ✗ | 记忆系统增加 IO 和 token 成本 | 无记忆模式（--bare）|
+
+### 节 19.6：权衡与局限
+- 同步读取的性能问题（buildMemoryPrompt 用 readFileSync）、记忆文件增长、团队记忆同步延迟
+- 估计字数：500-700字
+
+### 节 19.7：与已知模式的对话
+- 与分级存储（L1/L2/L3 缓存）：相同——不同层级有不同速度和容量；差异——记忆层不是速度分级，而是范围分级
+
+### 章末：模式提炼
+```
+模式名称：分层记忆架构（Layered Memory Architecture）
+问题：Agent 需要在不同时间维度和范围上管理记忆，混用会导致隐私泄漏或信息过载
+解决方案：按范围划分三层（会话内/跨会话/团队），每层独立读写，通过"提炼"操作升级记忆层级
+前置条件：有明确的范围边界语义（谁能读写哪层记忆）
+源码锚点：src/memdir/teamMemPaths.ts:84 (getTeamMemPath), src/memdir/memdir.ts:272 (buildMemoryPrompt)
+```
+
+### 章末：你能做什么
+1. 按时间维度和共享范围设计记忆层级（会话内/跨会话/团队），层间边界清晰
+2. 用路径净化（sanitizePathKey）防止用户输入的项目名导致目录穿越攻击
+3. 将 MEMORY.md 设计为"提炼索引"而非原始日志，每日日志 append-only，定期提炼到索引
+4. 为记忆文件实现截断保护（最大行数/字节数），防止超大记忆文件撑爆系统提示词
+5. 团队记忆使用"项目根目录的清洗 key"作为路径，确保不同项目的团队隔离
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图19-1 | 三层记忆架构 | Mermaid flowchart | 本地→跨会话→团队 的范围和数据流 | 19.1 |
+
+## 写作前 checklist
+```bash
+sed -n '129p' src/memdir/memdir.ts   # ensureMemoryDirExists
+sed -n '272p' src/memdir/memdir.ts   # buildMemoryPrompt
+sed -n '35p' src/memdir/memoryScan.ts  # scanMemoryFiles
+sed -n '73p' src/memdir/teamMemPaths.ts  # isTeamMemoryEnabled
+sed -n '84p' src/memdir/teamMemPaths.ts  # getTeamMemPath
+sed -n '22p' src/memdir/teamMemPrompts.ts  # buildCombinedMemoryPrompt
+```
+
+## ⛔ Spec 一致性声明
+所有 16 项均 ✓，plan 审查通过。

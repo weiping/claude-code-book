@@ -1,0 +1,402 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 5 章：Bootstrap 全局状态——进程的状态脊梁 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第5章bootstrap-全局状态进程的状态脊梁"><a class="header" href="#第5章bootstrap-全局状态进程的状态脊梁">第5章：Bootstrap 全局状态——进程的状态脊梁</a></h1>
+<blockquote>
+<p><em>"Global state is a code smell—unless it's the only honest way to model the truth."</em></p>
+</blockquote>
+<blockquote>
+<p><code>src/bootstrap/state.ts</code> 有一行注释：<code>DO NOT ADD MORE STATE HERE</code>。这个模块有 80 个字段，包含 8 个 OpenTelemetry 对象。它是设计失误还是刻意为之？为什么 ESLint 有一条专门限制它的自定义规则？本章回答"什么状态值得全局化"。</p>
+</blockquote>
+<p><code>src/bootstrap/state.ts</code> 的第 31 行有一条警告：</p>
+<pre><code class="language-typescript">// DO NOT ADD MORE STATE HERE - BE JUDICIOUS WITH GLOBAL STATE
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:31</code></p>
+<p>这种注释很少见。它说的不是"不能用这个文件"，而是"你知道你在干什么之前，不要向这里加东西"。这是一个有意识地维护的全局状态模块，<strong>不是历史遗留的意外</strong>。</p>
+<p>为什么一个设计良好的系统会需要全局状态？为什么 OpenTelemetry 的指标对象会出现在这个文件里？为什么有一条专门的 ESLint 规则（<code>bootstrap-isolation</code>）来限制这个模块的 import 范围？</p>
+<p>这三个问题共享同一个答案：<strong>当状态需要被整个进程共享，且初始化顺序是关键约束时，全局模块比依赖注入更诚实</strong>。</p>
+<p>读完这章，你能识别哪些状态适合全局模式、哪些不适合，以及如何用自定义 ESLint 规则防止这种设计被滥用。</p>
+<h2 id="51-80-个状态变量集中在一个模块这是设计还是债务"><a class="header" href="#51-80-个状态变量集中在一个模块这是设计还是债务">5.1 80 个状态变量集中在一个模块——这是设计还是债务？</a></h2>
+<p>先看 <code>State</code> 类型的规模：</p>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:45
+type State = {
+  originalCwd: string
+  projectRoot: string
+  totalCostUSD: number
+  totalAPIDuration: number
+  // ... 
+  kairosActive: boolean
+  // ...
+  meter: Meter | null
+  sessionCounter: AttributedCounter | null
+  locCounter: AttributedCounter | null
+  // ... 还有约 60 个字段
+  sessionId: SessionId
+  // ...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:45</code></p>
+<p>约 80 个字段，覆盖四个关注点：</p>
+<div class="table-wrapper"><table><thead><tr><th>分组</th><th>代表字段</th><th>用途</th></tr></thead><tbody>
+<tr><td>会话标识</td><td><code>sessionId</code>, <code>originalCwd</code>, <code>projectRoot</code></td><td>跨模块定位当前会话</td></tr>
+<tr><td>成本追踪</td><td><code>totalCostUSD</code>, <code>totalAPIDuration</code>, <code>totalLinesAdded</code></td><td>跨工具调用的累计统计</td></tr>
+<tr><td>模型配置</td><td><code>mainLoopModelOverride</code>, <code>initialMainLoopModel</code></td><td>当前会话的模型设置</td></tr>
+<tr><td>遥测</td><td><code>meter</code>, <code>sessionCounter</code>, <code>tokenCounter</code></td><td>OpenTelemetry 指标句柄</td></tr>
+</tbody></table>
+</div>
+<h3 id="为什么不用依赖注入"><a class="header" href="#为什么不用依赖注入">为什么不用依赖注入？</a></h3>
+<p><code>totalCostUSD</code> 在哪里会被更新？<code>QueryEngine</code>、<code>BashTool</code>、<code>AgentTool</code>——每次调用 LLM 或执行工具后都会更新。如果用依赖注入，这意味着每个工具的 <code>call()</code> 函数都需要接受一个 <code>costTracker</code> 参数，每个中间层都要透传它。</p>
+<p>**工具接口（<code>src/Tool.ts:362</code>）**已经有 5 个参数：</p>
+<pre><code class="language-typescript">call(
+  args: z.infer&lt;Input&gt;,
+  context: ToolUseContext,
+  canUseTool: CanUseToolFn,
+  parentMessage: AssistantMessage,
+  onProgress?: ToolCallProgress&lt;P&gt;,
+): Promise&lt;ToolResult&lt;Output&gt;&gt;
+</code></pre>
+<p>再加 <code>costTracker</code>、<code>metricCounter</code>、<code>sessionId</code>…参数列表会变成 10 个。</p>
+<p><strong>核心权衡</strong>：</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>依赖注入</th><th>全局状态（bootstrap）</th></tr></thead><tbody>
+<tr><td>可测试性</td><td>✅ 高（可替换依赖）</td><td>⚠️ 需 mock 模块</td></tr>
+<tr><td>代码噪声</td><td>❌ 高（透传参数）</td><td>✅ 低（直接调用）</td></tr>
+<tr><td>隐藏依赖</td><td>✅ 无（接口显式）</td><td>❌ 有（调用方不知道依赖）</td></tr>
+<tr><td>适用场景</td><td>局部状态、可替换策略</td><td>进程级单例、跨层共享</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 的选择</strong>：<code>totalCostUSD</code> 这类字段确实是进程级单例——整个进程只有一份成本计数（初始化为 <code>0</code>，见 <code>src/bootstrap/state.ts:280</code>）。<strong>当"全局唯一"是业务事实而非设计选择时，全局状态是诚实的</strong>，依赖注入反而在假装它可以被替换。</p>
+<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:280</code></p>
+<p><strong>图 5-1：State 字段分组</strong></p>
+<pre><code class="language-mermaid">graph LR
+    State["bootstrap/state.ts\nState 对象"]
+
+    subgraph 会话标识
+        S1["sessionId"]
+        S2["originalCwd"]
+        S3["projectRoot"]
+    end
+
+    subgraph 成本追踪
+        C1["totalCostUSD"]
+        C2["totalAPIDuration"]
+        C3["totalLinesAdded/Removed"]
+    end
+
+    subgraph 模型配置
+        M1["mainLoopModelOverride"]
+        M2["initialMainLoopModel"]
+        M3["kairosActive"]
+    end
+
+    subgraph 遥测句柄
+        T1["meter: Meter"]
+        T2["sessionCounter: AttributedCounter"]
+        T3["tokenCounter: AttributedCounter"]
+    end
+
+    State --&gt; 会话标识
+    State --&gt; 成本追踪
+    State --&gt; 模型配置
+    State --&gt; 遥测句柄
+</code></pre>
+<h2 id="52-bootstrap-isolation-规则如何防止依赖循环"><a class="header" href="#52-bootstrap-isolation-规则如何防止依赖循环">5.2 bootstrap-isolation 规则如何防止依赖循环？</a></h2>
+<p><code>bootstrap/state.ts</code> 是整个系统的<strong>叶子节点</strong>——它不能 import 任何业务模块，否则会形成循环依赖。举一个真实例子：</p>
+<pre><code>权限系统（permissions.ts）
+  → 使用 sessionId（需要 bootstrap/state）
+  
+bootstrap/state.ts
+  → 如果 import permissions.ts（需要验证权限）
+  → 循环！
+</code></pre>
+<p>为了防止这种情况，代码库有一个自定义 ESLint 规则 <code>bootstrap-isolation</code>。看 <code>state.ts</code> 顶部的注释：</p>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:15-17
+// zero circular-dep risk. Path-alias import bypasses bootstrap-isolation
+// (rule only checks ./ and / prefixes); explicit disable documents intent.
+// eslint-disable-next-line custom-rules/bootstrap-isolation
+import { randomUUID } from 'src/utils/crypto.js'
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:15</code></p>
+<p>这行注释说明：<code>bootstrap-isolation</code> 规则检查 <code>./</code> 或 <code>/</code> 前缀的相对路径 import，路径别名 <code>src/</code> 可以绕过。但这里<strong>显式加了 <code>eslint-disable</code> 注释来文档化这是有意为之的特例</strong>——这是"受控例外"的写法，不是悄悄绕过规则。</p>
+<p><strong>图 5-2：bootstrap-isolation 防止循环依赖</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    permission["权限系统\npermissions.ts"]
+    bootstrap["bootstrap/state.ts\n（叶子节点）"]
+    tool["工具系统\nTool.ts"]
+    query["query.ts"]
+
+    permission --&gt;|"读取 sessionId"| bootstrap
+    tool --&gt;|"读取 kairosActive"| bootstrap
+    query --&gt;|"读取/更新 totalCostUSD"| bootstrap
+    bootstrap -.-&gt;|"❌ bootstrap-isolation\n规则禁止这类 import"| permission
+    bootstrap -.-&gt;|"❌ 同上"| tool
+</code></pre>
+<p><strong>结论</strong>：<code>bootstrap-isolation</code> 是把架构约束（"bootstrap 是叶子"）转化为<strong>可自动检查的规则</strong>。违反这条规则意味着引入了循环依赖，构建会报错。</p>
+<h2 id="53-遥测指标为什么不是独立的-otel-单例而是嵌入-state"><a class="header" href="#53-遥测指标为什么不是独立的-otel-单例而是嵌入-state">5.3 遥测指标为什么不是独立的 OTel 单例，而是嵌入 State？</a></h2>
+<p>State 里有 8 个 OTel 相关字段：<code>meter</code>、<code>sessionCounter</code>、<code>locCounter</code>、<code>prCounter</code>、<code>commitCounter</code>、<code>costCounter</code>、<code>tokenCounter</code>、<code>codeEditToolDecisionCounter</code>。</p>
+<p>这看起来很奇怪——OTel 通常是独立的 SDK，为什么要把它的句柄放进业务状态对象？</p>
+<p>原因在注释中没有明说，但可以从代码结构推断：<strong>遥测指标需要在会话开始时初始化，在会话结束时上报</strong>。如果 OTel 是独立的单例，初始化顺序就需要额外管理——谁先初始化，谁可以使用。</p>
+<p>把 OTel 句柄放进 <code>State</code>，则初始化顺序自然变成：<strong>初始化 <code>State</code> 时一并初始化所有 OTel 对象</strong>。任何访问 <code>totalCostUSD</code> 的代码，都可以顺手调用 <code>costCounter.add(delta)</code>，不需要知道 OTel 是否已经初始化。</p>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:95（示意）
+meter: Meter | null
+sessionCounter: AttributedCounter | null
+costCounter: AttributedCounter | null
+tokenCounter: AttributedCounter | null
+</code></pre>
+<p><code>null</code> 是重要的：State 初始化时所有 OTel 字段为 <code>null</code>（<code>src/bootstrap/state.ts:277</code>），OTel SDK 初始化成功后才填充句柄。调用方只需 <code>costCounter?.add(delta)</code> 即可安全使用。这种"先 null 后填充"模式让 OTel 的初始化时序与会话启动时序完全解耦。</p>
+<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:277</code>（state 对象初始化赋值）</p>
+<p><strong>核心权衡</strong>：OTel 内嵌 State 的代价是 <code>State</code> 类型承担了遥测职责，不够"纯粹"；收益是生命周期自动对齐——不会出现"会话已结束但 OTel 还未关闭"或"OTel 已初始化但 sessionId 还未就绪"的时序问题。</p>
+<h2 id="54-状态变化通知不用-eventemitter用-createsignal-解决什么问题"><a class="header" href="#54-状态变化通知不用-eventemitter用-createsignal-解决什么问题">5.4 状态变化通知：不用 EventEmitter，用 createSignal 解决什么问题？</a></h2>
+<p>State 里有一些需要被观察的字段。以会话切换为例：</p>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:481
+const sessionSwitched = createSignal&lt;[id: SessionId]&gt;()
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:481</code></p>
+<p><code>createSignal</code> 创建一个轻量级事件信号——不是 RxJS Observable，而是一个简单的发布-订阅机制。<code>switchSession()</code> 函数在切换会话时 emit 这个信号，订阅方（如会话持久化模块）可以响应并做清理。</p>
+<p>这在第23章（会话系统）中有详细分析。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="有注释的全局状态annotated-global-state"><a class="header" href="#有注释的全局状态annotated-global-state">有注释的全局状态（Annotated Global State）</a></h3>
+<p><strong>解决的问题</strong>：全局状态容易被滥用——每次"暂时需要"时就加一个字段，最终成为无人敢动的大泥球。</p>
+<p><strong>核心做法</strong>：集中存放，但在文件顶部加"不要随意添加"的警告注释；配合自定义 lint 规则强制执行依赖约束；字段加注释说明为什么需要全局化。</p>
+<p><strong>前置条件</strong>：确实需要跨多个子系统共享的进程级唯一状态，且无法通过参数传递实现。</p>
+<p><strong>源码证据</strong>：<code>src/bootstrap/state.ts:31</code> — <code>// DO NOT ADD MORE STATE HERE - BE JUDICIOUS WITH GLOBAL STATE</code>，明确说明这不是随意添加的地方。</p>
+<h3 id="架构约束代码化codified-architecture-constraint"><a class="header" href="#架构约束代码化codified-architecture-constraint">架构约束代码化（Codified Architecture Constraint）</a></h3>
+<p><strong>解决的问题</strong>："bootstrap 模块不能 import 业务模块"这类规则只靠 code review 难以持续执行。</p>
+<p><strong>核心做法</strong>：将依赖方向约束写成自定义 ESLint 规则（<code>bootstrap-isolation</code>），使违规在开发时立即可见。</p>
+<p><strong>前置条件</strong>：有明确的模块依赖层次规范，且层次规范需要长期维护。</p>
+<p><strong>源码证据</strong>：<code>src/bootstrap/state.ts:17</code> — <code>// eslint-disable-next-line custom-rules/bootstrap-isolation</code>，规则存在且被执行，例外情况须显式注释说明原因。</p>
+<h3 id="遥测生命周期对齐telemetry-lifecycle-alignment"><a class="header" href="#遥测生命周期对齐telemetry-lifecycle-alignment">遥测生命周期对齐（Telemetry Lifecycle Alignment）</a></h3>
+<p><strong>解决的问题</strong>：OTel 对象独立管理时，初始化顺序和会话生命周期难以对齐，容易出现"use before init"或"report after session end"的时序问题。</p>
+<p><strong>核心做法</strong>：将遥测句柄内嵌为 State 的字段，随 State 一起初始化和销毁；用 <code>null</code> 表示未初始化，调用方用 <code>?.add()</code> 安全访问。</p>
+<p><strong>前置条件</strong>：遥测需要按会话粒度统计，且遥测的生命周期与会话完全对应。</p>
+<p><strong>源码证据</strong>：<code>src/bootstrap/state.ts:95</code> — <code>meter: Meter | null</code>，8 个遥测字段全部随 State 初始化，字段类型允许 <code>null</code> 处理未就绪状态。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-无视注释往-statets-里堆字段"><a class="header" href="#-无视注释往-statets-里堆字段">❌ 无视注释往 state.ts 里堆字段</a></h3>
+<p><code>src/bootstrap/state.ts:31</code> 的警告 <code>DO NOT ADD MORE STATE HERE - BE JUDICIOUS WITH GLOBAL STATE</code> 被忽略的代价是：模块体积增长，初始化时间延长，字段的生命周期没有人负责。</p>
+<p><strong>判断标准</strong>：这个状态是"进程级唯一、整个生命周期都需要"的吗？如果不是，放在使用方的本地作用域。</p>
+<h3 id="-在-bootstrap-初始化之前读取状态"><a class="header" href="#-在-bootstrap-初始化之前读取状态">❌ 在 Bootstrap 初始化之前读取状态</a></h3>
+<pre><code class="language-typescript">// ❌ getSessionId() 返回 undefined
+import { getSessionId } from './bootstrap/state.ts'
+const sid = getSessionId()  // 调用时 state 未初始化
+</code></pre>
+<p>这类 bug 只在首次运行时出现，且 undefined 会静默传播到日志和遥测，造成数据损坏。<strong>ESLint 规则 <code>bootstrap-isolation</code> 专门用来防止这类 import 顺序错误</strong>（<code>src/bootstrap/state.ts:31</code>）。</p>
+<h3 id="-绕过-gettersetter-直接修改-state-对象引用"><a class="header" href="#-绕过-gettersetter-直接修改-state-对象引用">❌ 绕过 getter/setter 直接修改 state 对象引用</a></h3>
+<pre><code class="language-typescript">import { state } from './bootstrap/state.ts'
+state.totalCostUSD += 0.05  // ❌ 绕过 addCost() 函数
+</code></pre>
+<p>setter 函数里可以埋日志、触发事件、做校验。直接修改对象引用，成本统计异常时无法追踪到修改点。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>在引入全局状态前问自己</strong>：这个状态真的是进程级唯一的吗？还是我只是懒得传参？只有前者才适合全局模块</li>
+<li><strong>为全局状态模块加"不要随意添加"注释</strong>：明确意图，防止 code review 时被忽视的字段悄悄增长</li>
+<li><strong>用自定义 ESLint 规则固化依赖层次</strong>：与其在 PR 评论里说"这里不该 import"，不如一次性写成规则让 CI 自动检查</li>
+<li><strong>遥测句柄随业务状态一起初始化</strong>：避免独立的 OTel 单例，将 <code>Meter</code>/<code>Counter</code> 等句柄放在与其生命周期一致的对象中</li>
+</ul>
+<hr />
+<p><em>第5章完成了第一篇"地基"的最后一章。第6章开始进入第二篇——Agent 主循环：当用户按下回车，第一个处理这个输入的函数是什么，它怎么决定把输入交给谁？</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part1/ch04.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part2/ch06.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part1/ch04.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part2/ch06.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

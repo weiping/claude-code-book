@@ -1,0 +1,417 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 41 章：从 CLI 到 Agent 平台——架构跃迁的路线图 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-41-章从-cli-到-agent-平台架构跃迁的路线图"><a class="header" href="#第-41-章从-cli-到-agent-平台架构跃迁的路线图">第 41 章：从 CLI 到 Agent 平台——架构跃迁的路线图</a></h1>
+<blockquote>
+<p>"不是从头设计，是在压力下演化。"</p>
+</blockquote>
+<hr />
+<p>这不是一个 CLI——这是一套演化中的 Agent Harness，每条架构跃迁都在源码中留有痕迹。27 个钩子事件，来自一开始只有 3 个的扩展；7 种 Task 类型，来自最初只有本地 Shell 调用；3 套 Swarm 后端，来自最初单进程的工具调用；60+ 个工具，背后是一个统一的 <code>buildTool</code> 契约。这些数字不是设计目标，而是生产压力积累的结果——每次积累都对应一次架构层次的跃迁。</p>
+<p>本章提炼的模式是「渐进式架构跃迁（Incremental Architecture Leap）」——在功能压力信号出现时，用最小侵入的方式引入新的抽象层次，而不是预先设计所有层次。这条路径比任何框架的教程都真实，因为它是在 Claude Code 的 40,000 行源码和数百次提交中实证过的。读完这章，你将能为自己的产品绘制一张相同的演化路线图。</p>
+<hr />
+<h2 id="节-411四阶段演化的源码证据"><a class="header" href="#节-411四阶段演化的源码证据">节 41.1：四阶段演化的源码证据</a></h2>
+<p>Claude Code 经历了四个可辨识的架构阶段，每个阶段都有对应的源码演化痕迹。</p>
+<p><strong>图 41-1：Claude Code 四阶段架构演化时间线</strong></p>
+<pre><code class="language-mermaid">timeline
+    title Claude Code 架构演化路径
+    section 阶段1 CLI 工具
+        单进程 Shell 调用 : 无 Task 系统
+        简单的工具调用接口 : 无 Hook 事件
+    section 阶段2 工具宿主
+        buildTool 统一契约 : Tool.ts:783
+        60+ 工具统一接口 : MCP 协议适配
+        技能系统 SkillTool : CLAUDE.md 层级扫描
+    section 阶段3 Agent Harness
+        QueryEngine 多轮循环 : QueryEngine.ts:675
+        分层提示词上下文 : 写入先于执行
+        Task 系统 7 种类型 : tasks/types.ts:12
+        Hook 事件总线 27 个 : hooksConfigManager.ts:29
+    section 阶段4 多智能体平台
+        Swarm 3 套后端 : swarm/backends/registry.ts
+        领导者-队友协调 : 跨进程权限协商
+        可插拔运行时后端 : ITermBackend/TmuxBackend
+</code></pre>
+<p><strong>阶段一：CLI 工具</strong>（一个进程，一个对话，一次回答）</p>
+<p>单进程、无任务系统、无钩子。工具调用是直接的，没有可中断性，没有事件通知，没有跨会话记忆。源码在这个阶段的痕迹是缺席——没有 <code>tasks/</code> 目录，没有 <code>hooks/</code> 子系统，没有 <code>QueryEngine.ts</code> 的多轮控制逻辑。</p>
+<p><strong>阶段二：工具宿主</strong>（统一接口 + 协议适配）</p>
+<p><code>buildTool</code> 是阶段二到来的标志。<code>Tool.ts:783</code> 的 <code>buildTool</code> 函数注释写道：</p>
+<blockquote>
+<p>「类型语义已被 60+ 个工具的零错误类型检查所证明。」</p>
+</blockquote>
+<p><strong>源码参考：</strong> <code>src/Tool.ts:783</code></p>
+<p>60+ 个工具需要一个稳定的契约——每个工具独立演化，但对 QueryEngine 主循环暴露统一的 <code>execute/isAllowed/isEnabled</code> 接口。这是抽象层次首次出现的信号：<strong>当工具超过 10 个，统一接口的维护收益开始超过引入它的成本</strong>。</p>
+<p>CLAUDE.md 层级扫描（<code>attachments.ts:1649</code>）也在这个阶段形成——用文件系统层级代替配置文件，把「项目级指令」和「用户级指令」通过目录位置声明，而非注册表管理：</p>
+<pre><code>// 从 CWD 向上遍历，收集所有层级的 CLAUDE.md 文件
+// nestedDirs: Directories between CWD and targetPath
+// (processed for CLAUDE.md + all rules)
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/attachments.ts:1649</code></p>
+<p><strong>阶段三：Agent Harness</strong>（多轮控制 + 可观测性 + 任务系统）</p>
+<p>三个子系统标志了阶段三的到来：</p>
+<p>第一，<code>QueryEngine.ts:675</code> 的 for-await 多轮循环——AI 开始需要多步推理，单次响应不再足够（详见第 8 章）。</p>
+<p>第二，Task 类型从 1 种演化到 7 种。<code>tasks/types.ts:12</code> 的 union 类型定义是这段历史的快照：</p>
+<pre><code class="language-typescript">export type TaskState =
+  | LocalShellTaskState        // 最初的唯一类型
+  | LocalAgentTaskState        // 本地 Agent 任务
+  | RemoteAgentTaskState       // 远程 Agent
+  | InProcessTeammateTaskState // 进程内队友
+  | LocalWorkflowTaskState     // 工作流
+  | MonitorMcpTaskState        // MCP 监控
+  | DreamTaskState             // 梦境任务（推断：实验性功能）
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tasks/types.ts:12</code></p>
+<p>每种新 TaskState 的添加都对应一个新的用户场景压力：后台任务需求 → <code>LocalAgentTask</code>；多工作区需求 → <code>InProcessTeammateTask</code>；工作流编排需求 → <code>LocalWorkflowTask</code>。</p>
+<p>第三，Hook 事件系统从零增长到 27 个。<code>hooksConfigManager.ts:29</code> 中列出的事件是演化历史的索引：</p>
+<pre><code class="language-typescript">PreToolUse: { ... }          // 最早的核心钩子
+PostToolUse: { ... }
+PostToolUseFailure: { ... }
+// ── 之后逐步追加 ──
+SessionStart: { ... }
+SubagentStart: { ... }       // Swarm 到来时添加
+TeammateIdle: { ... }        // 协作场景需要
+TaskCreated: { ... }         // Task 系统到来时添加
+Elicitation: { ... }         // 用户交互场景
+WorktreeCreate: { ... }      // Git Worktree 功能
+CwdChanged: { ... }          // 目录切换感知
+FileChanged: { ... }         // 文件系统监听（最新）
+// ── 共 27 个事件 ──
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks/hooksConfigManager.ts:29</code>（第一个事件定义起点）</p>
+<p><strong>每个新事件都是一次新的扩展点</strong>——不是修改已有代码，而是增加一个新的钩子位置，让外部系统可以在这里观测或干预 Agent 行为。</p>
+<p><strong>阶段四：多智能体平台</strong>（多进程 + 可插拔后端）</p>
+<p>Swarm 后端注册表（<code>swarm/backends/registry.ts</code>）是阶段四的入口：</p>
+<pre><code class="language-typescript">import { createInProcessBackend } from './InProcessBackend.ts'   // 进程内
+import { createPaneBackendExecutor } from './PaneBackendExecutor.ts'  // 终端面板
+// TmuxBackend 和 ITermBackend 通过注册表动态注入
+let TmuxBackendClass: (new () =&gt; PaneBackend) | null = null
+let ITermBackendClass: (new () =&gt; PaneBackend) | null = null
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/swarm/backends/registry.ts:11</code></p>
+<p>三种后端（InProcess/Tmux/iTerm2）对应三种运行环境——每种环境有不同的终端能力，但通过统一的 <code>PaneBackend</code> 接口对外屏蔽差异。这是阶段四的典型压力信号：<strong>当多 Agent 协作需要在不同终端环境工作，可插拔后端的价值开始凸显</strong>（详见第 31 章）。</p>
+<hr />
+<h2 id="节-412演化规律压力信号触发架构层次"><a class="header" href="#节-412演化规律压力信号触发架构层次">节 41.2：演化规律——压力信号触发架构层次</a></h2>
+<p>从三组数字（Hook 事件 3→27、Task 类型 1→7、Swarm 后端 1→3）可以提炼出一条演化规律：</p>
+<p><strong>压力信号→单一职责边界→接口膨胀→抽象新层次→新层次稳定→暴露新扩展点</strong></p>
+<p>这条规律对应 Claude Code 每次重大架构演化：</p>
+<ul>
+<li>
+<p><strong>Hook 系统</strong>：最初只有 <code>PreToolUse/PostToolUse</code>，能满足基本的工具前后钩挂需求。当 Swarm 加入时，需要感知子 Agent 的启停（→<code>SubagentStart/Stop</code>）；当任务系统到来时，需要感知任务生命周期（→<code>TaskCreated/Completed</code>）；每个新场景都追加新事件，而不修改已有事件的语义。<strong>扩展点的稳定性，来自每个事件的语义边界清晰，不随时间漂移</strong>。</p>
+</li>
+<li>
+<p><strong>Task 系统</strong>：最初可能只有本地 Shell 执行，一切都是同步的、单进程的。当需要后台 Agent 时，<code>LocalAgentTask</code> 作为新类型加入 union；当需要进程内队友时，<code>InProcessTeammateTask</code> 加入——每次加入都用新类型表达新语义，而不是在已有类型上堆 if/else。<strong>discriminated union 让类型边界变成编译器保障的契约，不是口头约定</strong>。</p>
+</li>
+<li>
+<p><strong>Swarm 后端</strong>：最初只有单进程，所有 Agent 在同一进程内执行。当用户希望在终端多面板中看到 Agent 并行工作时，<code>PaneBackendExecutor</code> 诞生；当需要适配 Tmux 和 iTerm2 两种主流终端多路复用工具时，后端注册表出现。<strong>可插拔后端让运行时环境差异不侵入业务逻辑</strong>。</p>
+</li>
+</ul>
+<p>这条规律的核心是：<strong>每次架构演化都是被动的</strong>——不是预先设计好的，而是在功能压力下找到了新的抽象层次。这让 Claude Code 的演化路径比预先设计的框架更贴近工程现实。</p>
+<hr />
+<h2 id="节-413你的产品五个跃迁信号"><a class="header" href="#节-413你的产品五个跃迁信号">节 41.3：你的产品——五个跃迁信号</a></h2>
+<p><strong>图 41-2：从 CLI 到 Agent 平台的架构跃迁决策树</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    start["你的 CLI 产品"] --&gt; s1{工具调用超过 10 个?}
+    s1 --&gt;|是| a1["引入 buildTool 统一契约\n（第10章模式）"]
+    s1 --&gt;|否| wait1["继续积累，暂缓引入"]
+
+    a1 --&gt; s2{上下文/提示词代码\n散布各处?}
+    s2 --&gt;|是| a2["引入分层提示词组装\n（第15章模式）"]
+    s2 --&gt;|否| wait2["保持现有结构"]
+
+    a2 --&gt; s3{需要钩入 AI\n操作进行审计/监控?}
+    s3 --&gt;|是| a3["引入 Hook 事件总线\n（第20-22章模式）"]
+    s3 --&gt;|否| wait3["继续观察"]
+
+    a3 --&gt; s4{任务需要后台化\n或并发执行?}
+    s4 --&gt;|是| a4["引入 Task 系统\n（第25-28章模式）"]
+    s4 --&gt;|否| wait4["单线程足够"]
+
+    a4 --&gt; s5{需要多 Agent\n并行协作?}
+    s5 --&gt;|是| a5["引入 Swarm 架构\n（第29-32章模式）"]
+    s5 --&gt;|否| wait5["单 Agent 已满足需求"]
+
+    a5 --&gt; platform["你的 Agent 平台"]
+    a1 &amp; a2 &amp; a3 &amp; a4 --&gt; sec["始终需要：\n分层安全防线\n（第33章）"]
+</code></pre>
+<p><strong>信号1：工具调用超过 10 个</strong> → 引入 <code>buildTool</code> 统一契约</p>
+<p>每个工具独立编写的代价在 10 个工具时开始显现：添加新工具需要理解已有工具的实现细节，权限检查逻辑散落各处，测试难以复用。<code>buildTool</code> 把工具的四个关注点分离（<code>execute/isAllowed/isEnabled/name</code>），让新工具的编写成为填空而非从头设计（详见第 10 章）。</p>
+<p><strong>信号2：上下文/提示词代码散落各处</strong> → 引入分层提示词组装</p>
+<p>当「系统提示词该放哪里」开始引发讨论，当「这个功能需要的上下文从哪里来」需要翻源码才能回答，就是引入分层提示词组装的时机。把全局指令、项目指令、会话指令分到不同层次，各层独立维护，组装时按优先级合并（详见第 15 章）。</p>
+<p><strong>信号3：需要在 AI 操作前后注入逻辑</strong> → 引入 Hook 事件总线</p>
+<p>监控、审计、安全检查——这些「横切关注点」如果直接修改 Agent 主逻辑，会让主逻辑代码越来越难维护。Hook 事件总线让这些关注点作为订阅者注册，而不侵入主逻辑（详见第 20-22 章）。<strong>先建立事件发布基础设施，再添加订阅者</strong>，不要反过来。</p>
+<p><strong>信号4：任务需要后台化或并发</strong> → 引入 Task 系统</p>
+<p>当用户说「我想在 Agent 工作时做其他事情」，当两个独立的工作流需要并行进行，就是 Task 系统入场的时机。Task 系统把「一次 Agent 执行」封装为有生命周期（pending/running/complete/failed）的对象，可以被调度、取消、恢复（详见第 25-28 章）。</p>
+<p><strong>信号5：需要多个 Agent 并行协作</strong> → 引入 Swarm 架构</p>
+<p>Swarm 是所有信号中最昂贵的——它放大了单 Agent 的所有问题（权限复杂度×N，状态同步复杂度×N²）。<strong>只有在前四个信号都被稳定解决后，才考虑引入 Swarm</strong>。引入顺序：先进程内队友（<code>InProcessTeammate</code>，最简单的共享内存协作）→ 再终端面板后端（可视化的多进程）→ 最后远程 Agent（真正的分布式）（详见第 29-32 章）。</p>
+<hr />
+<h2 id="节-414与已知-agent-框架的对话"><a class="header" href="#节-414与已知-agent-框架的对话">节 41.4：与已知 Agent 框架的对话</a></h2>
+<p><strong>与 LangChain/LangGraph</strong>：LangChain 从一开始就设计了「链」（Chain）和「图」（Graph）的概念，试图提供统一的工作流编排框架。Claude Code 的演化路径相反——它先有工具调用，再有 Task 系统，再有 Swarm。两者的差异是<strong>框架设计 vs 演化生长</strong>：框架提供了更一致的 API，但需要用户理解抽象才能入门；演化路径更贴近真实需求，但每个抽象层次的边界是生产压力磨合出来的，不是预先规划的。</p>
+<p><strong>与 AutoGen/CrewAI</strong>：AutoGen 和 CrewAI 把多 Agent 协作作为一等公民——从框架设计之初就围绕「多智能体对话」展开。Claude Code 的 Swarm 系统（详见第 29-32 章）是在单 Agent 成熟后才加入的，<strong>保留了「单 Agent 路径仍然是主路径」的设计选择</strong>——大多数用户不需要多 Agent，用普通的 QueryEngine 循环就够了。Swarm 是可选的扩展，而非强制的架构前提。</p>
+<p><strong>与 POSA 的「层次架构」</strong>：《Pattern-Oriented Software Architecture》的层次架构（Layers）强调每层只与相邻层交互。Claude Code 的四阶段演化是层次架构的渐进实践——<strong>不是一次性设计所有层，而是在需要时才增加新层</strong>。这是层次架构的自然成长路径：先有核心（CLI），再有扩展点（工具契约），再有控制层（Harness），再有协调层（Swarm）。每一层的引入都是因为下一层的抽象泄漏变得不可忍受。</p>
+<hr />
+<h2 id="节-415适用范围哪类产品适合这条演化路径"><a class="header" href="#节-415适用范围哪类产品适合这条演化路径">节 41.5：适用范围——哪类产品适合这条演化路径</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>产品类型</th><th>适用性</th><th>理由</th><th>替代路径</th></tr></thead><tbody>
+<tr><td>从 CLI 工具演化的 AI 产品</td><td>✓</td><td>演化路径与 Claude Code 最接近，可直接参照</td><td>从头设计 Agent 框架（成本高）</td></tr>
+<tr><td>内嵌 AI 能力的现有应用</td><td>✓</td><td>可选择性引入哪些层次，不必全盘采用</td><td>使用 LangChain 等现有框架</td></tr>
+<tr><td>需要插件化的 AI 工具</td><td>✓</td><td>声明式能力包（阶段2）是插件系统的成熟模式</td><td>自研插件注册表</td></tr>
+<tr><td>面向企业的 AI Agent</td><td>✓</td><td>分层安全防线（贯穿各阶段）有成熟的实现参照</td><td>商业安全框架</td></tr>
+<tr><td>纯研究/实验性 Agent</td><td>✗（谨慎）</td><td>生产演化路径偏向稳定性，不适合快速实验</td><td>更灵活的 notebook 式框架</td></tr>
+<tr><td>需要实时多模态的 Agent</td><td>✗（不完整）</td><td>Claude Code 的演化路径聚焦文本/代码场景</td><td>专用的多模态 Agent 框架</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="节-416权衡渐进式演化-vs-预先设计"><a class="header" href="#节-416权衡渐进式演化-vs-预先设计">节 41.6：权衡——渐进式演化 vs 预先设计</a></h2>
+<p><strong>权衡1：演化路径的摩擦成本</strong></p>
+<p>渐进式演化的代价是「重构摩擦」——每次引入新层次都需要改造已有代码，而不是直接使用预设的框架接口。Claude Code 的演化中留下了这些摩擦的痕迹：Task 类型名称不统一（<code>LocalAgentTaskState</code> vs <code>DreamTaskState</code>），Swarm 后端的注册机制经历了多次重构（见 <code>registry.ts</code> 中的 <code>TmuxBackendClass</code> 占位符注释）。<strong>演化的真实性来自这些摩擦，框架的整洁性来自预先规划——两者之间没有免费的午餐</strong>。</p>
+<p><strong>权衡2：单 Agent 路径 vs 多 Agent 路径的维护分叉</strong></p>
+<p>引入 Swarm 后，代码库需要同时维护两条路径：「没有 Swarm 的普通 QueryEngine 执行」和「有 Swarm 的 Leader-Teammate 执行」。两条路径的权限检查、上下文管理、错误处理逻辑可能逐渐分化，形成维护负担。Claude Code 通过「Swarm 作为可选扩展，而非替换核心循环」来缓解这个问题——单 Agent 路径保持稳定，Swarm 只是在上层协调多个单 Agent 实例（详见第 29 章）。</p>
+<p><strong>权衡3：框架依赖的锁定风险</strong></p>
+<p>使用 LangChain 这类框架，可以快速获得成熟的链式调用接口，但框架的抽象泄漏时（如框架版本升级导致 API 不兼容），迁移成本很高。<strong>渐进式演化路径把「架构决策」留在内部，降低了框架锁定风险</strong>，代价是需要自己解决每个层次的工程问题，而不是依赖框架的现成解。这对小团队是额外负担，对需要深度定制的团队是优势。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与 Strangler Fig Pattern（绞杀榕模式）</strong>：Martin Fowler 的绞杀榕模式用于系统迁移——在旧系统外围逐步建立新系统，最终「绞杀」旧系统。Claude Code 的四阶段演化是绞杀榕模式的自内而外版本：不是在旧系统外建新系统，而是在核心功能稳定后向外扩展新的能力层次。两者相同的是「渐进替换而非一次性重写」，不同的是方向——绞杀榕是由外向内，Claude Code 是由内向外。</p>
+<p><strong>与 POSA 的 Microkernel 架构</strong>：Microkernel 把最小核心和可替换插件分开。Claude Code 的演化路径可以看作 Microkernel 的自然生长：CLI 工具是最小内核，工具宿主阶段加入了「工具插槽」，Harness 阶段加入了「钩子插槽」，Swarm 阶段加入了「后端插槽」。<strong>每次「插槽」的增加都是一次架构层次的显化</strong>——原本散落在代码中的扩展需求，被识别、命名、抽象为可替换的接口。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="渐进式架构跃迁incremental-architecture-leap"><a class="header" href="#渐进式架构跃迁incremental-architecture-leap">渐进式架构跃迁（Incremental Architecture Leap）</a></h3>
+<p><strong>解决的问题</strong>：AI Agent 产品的功能需求在早期难以预测，预先设计所有架构层次会造成过度工程；但等到需求清晰后再引入架构层次，往往面临大规模重构。</p>
+<p><strong>核心做法</strong>：识别架构跃迁的功能压力信号（工具数量、上下文复杂度、可观测需求、并发需求、协作需求），每次只在信号出现时引入下一个层次的抽象；每个新抽象层次以「不侵入现有逻辑」为约束（新接口、新目录、新 union 类型），旧代码路径保持稳定。</p>
+<p><strong>前置条件</strong>：团队有能力识别「信号」（不是每次功能请求都触发架构变化）；愿意接受演化路径的重构摩擦成本；有能力写覆盖率足够的测试，确保每次演化不破坏现有行为。</p>
+<p><strong>源码证据</strong>：<code>src/Tool.ts:783</code>（60+ 工具的统一契约——工具数量压力）；<code>src/tasks/types.ts:12</code>（7 种 TaskState——任务并发压力）；<code>src/utils/hooks/hooksConfigManager.ts:29</code>（27 个 Hook 事件——可观测性压力）；<code>src/utils/swarm/backends/registry.ts:11</code>（3 套后端——多 Agent 协作压力）</p>
+<hr />
+<h2 id="你的下一步"><a class="header" href="#你的下一步">你的下一步</a></h2>
+<ul>
+<li>
+<p><strong>先识别你的产品在哪个演化阶段</strong>，再决定引入哪个层次。从阶段 1 直接跳到阶段 4 是过度工程的最常见来源——你的工具调用可能只有 3 个，Swarm 架构对你没有意义。</p>
+</li>
+<li>
+<p><strong>用 <code>buildTool</code> 统一契约作为「工具宿主」阶段的起点</strong>。这个模式的引入成本最低（只需定义一个工厂函数），但收益最持久——它为后续所有工具的扩展点奠基（详见第 10 章）。</p>
+</li>
+<li>
+<p><strong>用 Hook 事件总线作为「Agent Harness」阶段的最小入口</strong>。你不需要从零实现所有 27 个事件——从 3 个开始（工具调用前/后/错误），在新需求到来时追加。事件发布的代价几乎为零，但它为未来的审计、监控、安全检查保留了插槽。</p>
+</li>
+<li>
+<p><strong>在引入 Task 系统前先确保 Hook 系统稳定</strong>。Task 依赖 Hook 事件驱动生命周期通知（<code>TaskCreated/Completed</code>）。反过来的顺序会导致 Task 系统内部需要手动触发本应由 Hook 自动处理的通知，产生重复逻辑。</p>
+</li>
+<li>
+<p><strong>在进入多智能体阶段前先解决单 Agent 的安全和可靠性</strong>。Swarm 放大单 Agent 的所有问题：如果单 Agent 的权限检查不严格，N 个 Agent 就有 N 倍的权限漏洞；如果单 Agent 的错误处理不完善，多 Agent 协作时的级联失败会更难调试（详见第 33 章）。</p>
+</li>
+<li>
+<p><strong>把这 12 个模式当作词汇表，而非必须实现的清单</strong>。不是每个 Agent 系统都需要所有 12 个模式——它们是可组合的选项，而非固定的套餐。根据你的产品特征，选择适合的子集。</p>
+</li>
+</ul>
+<hr />
+<h2 id="猎人自白39-章追踪的终点"><a class="header" href="#猎人自白39-章追踪的终点">猎人自白——39 章追踪的终点</a></h2>
+<p>我们从第 1 章开始追踪，一共追踪了 40 个目标。每个目标是一段源码，每段源码背后是一个工程决策。当我们把所有决策放在一起，Claude Code 的全貌才真正浮现：<strong>它不是一个聪明的 AI 应用，而是一套在不确定性边界上精心铺设的工程护栏</strong>。</p>
+<p>这些护栏有名字：可中断多轮工具调用循环、分层提示词组装、写入先于执行、可观测 Agent 事件总线……每个名字背后都是一个团队面对过的真实工程问题，以及他们在生产约束下找到的答案。</p>
+<p>带走这 12 个名字，回到你自己的代码库，找到你已经在做但还没有命名的模式，找到你面对的工程压力信号，找到下一个该引入的层次——这就是猎人的工作：命名、定位、携带。</p>
+<hr />
+<p>第 41 章是正文的终点。附录 A-F 提供了快速查阅资源：Hook 事件速查表（附录 A）、工具权限矩阵（附录 B）、MCP 协议参考（附录 C）、配置文件格式（附录 D）、环境变量速查（附录 E）和模式索引（附录 F）。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part10/ch40.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../appendix-a.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part10/ch40.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../appendix-a.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

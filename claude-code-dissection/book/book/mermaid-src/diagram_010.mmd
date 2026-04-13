@@ -1,0 +1,17 @@
+flowchart TD
+    input["用户输入\n（string | ContentBlock[]）"]
+    ultraplan{feature ULTRAPLAN\n且含关键词?}
+    bash_mode{mode === bash\n或 ! 前缀?}
+    slash{startsWith / ?}
+    text["processTextPrompt()\n→ UserMessage\n→ 触发 LLM 调用"]
+    bash_exec["processBashCommand()\n→ 本地执行\n→ SystemLocalCommandMessage"]
+    slash_exec["processSlashCommand()\n→ 命令执行\n→ SystemLocalCommandMessage"]
+    ultraplan_exec["路由到 /ultraplan\n→ 远程 Plan 会话"]
+
+    input --> ultraplan
+    ultraplan -->|是| ultraplan_exec
+    ultraplan -->|否| bash_mode
+    bash_mode -->|是| bash_exec
+    bash_mode -->|否| slash
+    slash -->|是| slash_exec
+    slash -->|否| text

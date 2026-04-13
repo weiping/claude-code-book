@@ -1,0 +1,14 @@
+graph LR
+    subgraph "字符串搜索（不准确）"
+        s1["'TODO:' 搜索"]
+        s2["命中：代码里的 TODO"]
+        s3["误报：注释里的 TODO"]
+        s4["误报：字符串里的 TODO"]
+        s1 --> s2 & s3 & s4
+    end
+    subgraph "AST 分析（精确）"
+        a1["Comment 节点搜索"]
+        a2["精确命中注释 TODO"]
+        a3["不会误报代码或字符串"]
+        a1 --> a2 & a3
+    end

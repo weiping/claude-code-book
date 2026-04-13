@@ -1,0 +1,20 @@
+flowchart TD
+    input[fetchSystemPromptParts 调用]
+    
+    input --> pa[Promise.all 并行拉取]
+    
+    pa --> p1[getSystemPrompt\n工具声明+核心指令]
+    pa --> p2[getUserContext\nCLAUDE.md+用户上下文]
+    pa --> p3[getSystemContext\n环境上下文]
+    
+    p1 --> r[返回三元结构]
+    p2 --> r
+    p3 --> r
+    
+    r --> caller[调用方\nQueryEngine/buildSideQuestionFallbackParams]
+    caller --> final[最终系统提示\n由调用方叠加 extras]
+    
+    custom[customSystemPrompt 已设置?]
+    input --> custom
+    custom -->|是| override[defaultSystemPrompt=\nystemContext=空]
+    override --> r

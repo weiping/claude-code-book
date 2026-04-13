@@ -1,0 +1,460 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 15 章：提示词装配——fetchSystemPromptParts() 的分层组装 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第15章提示词装配fetchsystempromptparts-的分层组装"><a class="header" href="#第15章提示词装配fetchsystempromptparts-的分层组装">第15章：提示词装配——fetchSystemPromptParts() 的分层组装</a></h1>
+<blockquote>
+<p>"系统提示不是一段文字，而是一次并行拉取、按层组合的结构化装配。"</p>
+</blockquote>
+<p>每次向 Claude API 发请求前，系统提示要从工具声明、CLAUDE.md 配置、环境上下文三处拉取——串行拉取会累加延迟，直接拼接则顺序变了行为就变了，出错时没有追踪入口。</p>
+<p>Claude Code 的解法是<strong>分层提示词组装（Layered System Prompt Assembly）</strong>：三层并行拉取，结构化返回三元组，最终装配延迟到调用方。</p>
+<p>读完本章，你能理解为什么分层比拼接更可维护，并能在自己的 Agent 系统中设计可组合的系统提示结构。</p>
+<hr />
+<h2 id="问题多来源系统提示的两个陷阱"><a class="header" href="#问题多来源系统提示的两个陷阱">问题：多来源系统提示的两个陷阱</a></h2>
+<p>为什么系统提示的组装需要专门设计？</p>
+<p><strong>陷阱一：顺序语义隐性化</strong>。系统提示各部分的顺序不是中立的——靠前的内容在 AI 模型的注意力机制中通常优先级更高。如果工具声明、用户指令、环境上下文直接拼接，新的需求一旦改变顺序，就会无声地改变行为，调试时完全不知道从何入手。</p>
+<p><strong>陷阱二：串行拉取浪费延迟</strong>。系统提示的每一部分可能来自不同来源——工具声明需要遍历工具列表，用户上下文需要读 CLAUDE.md 文件（详见第16章），环境上下文需要查询目录状态。串行拉取意味着总延迟是各部分之和；而这三个来源之间没有依赖关系，可以并行。</p>
+<p><code>queryContext.ts</code> 文件的模块注释点明了第三个隐性设计压力——<strong>循环依赖</strong>。注释（<code>src/utils/queryContext.ts:1-9</code>）写道：</p>
+<blockquote>
+<p>"Lives in its own file because it imports from context.ts and constants/prompts.ts, which are high in the dependency graph. Putting these imports in systemPrompt.ts or sideQuestion.ts (both reachable from commands.ts) would create cycles."</p>
+<p>（翻译：独立成文件是因为它从 context.ts 和 constants/prompts.ts 导入——这两个文件在依赖图中层级很高。如果把这些导入放在 systemPrompt.ts 或 sideQuestion.ts 中（两者都可从 commands.ts 到达），就会产生循环依赖。只有入口层文件才从这里导入——QueryEngine.ts 和 cli/print.ts。）</p>
+</blockquote>
+<p><strong>三个压力，一个解法</strong>：将系统提示组装逻辑独立到 <code>queryContext.ts</code>，设计三层固定结构，并行拉取，返回结构化结果。</p>
+<p><strong>图 15-1：系统提示的三层来源与组装流程</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    input[fetchSystemPromptParts 调用]
+    
+    input --&gt; pa[Promise.all 并行拉取]
+    
+    pa --&gt; p1[getSystemPrompt\n工具声明+核心指令]
+    pa --&gt; p2[getUserContext\nCLAUDE.md+用户上下文]
+    pa --&gt; p3[getSystemContext\n环境上下文]
+    
+    p1 --&gt; r[返回三元结构]
+    p2 --&gt; r
+    p3 --&gt; r
+    
+    r --&gt; caller[调用方\nQueryEngine/buildSideQuestionFallbackParams]
+    caller --&gt; final[最终系统提示\n由调用方叠加 extras]
+    
+    custom[customSystemPrompt 已设置?]
+    input --&gt; custom
+    custom --&gt;|是| override[defaultSystemPrompt=\nystemContext=空]
+    override --&gt; r
+</code></pre>
+<p><strong>图 15-1：三层并行组装。</strong> 注意 customSystemPrompt 分支的双重清空——自定义提示不是追加，而是完全替换默认提示和系统上下文。</p>
+<p><strong>最终组装次序</strong>：<code>fetchSystemPromptParts</code> 返回原材料三元组后，调用方（<code>query.ts</code>）按固定次序完成装配：</p>
+<div class="table-wrapper"><table><thead><tr><th>次序</th><th>内容来源</th><th>对应字段</th><th>注入路径</th></tr></thead><tbody>
+<tr><td>第 1 层</td><td>工具声明 + 核心指令</td><td><code>defaultSystemPrompt</code></td><td>→ API <code>system</code> 参数（<code>asSystemPrompt</code>）</td></tr>
+<tr><td>第 2 层</td><td>环境上下文（目录/git 状态）</td><td><code>systemContext</code></td><td>→ 追加到 <code>system</code> 末尾（<code>appendSystemContext</code>，<code>src/utils/api.ts:437</code>）</td></tr>
+<tr><td>消息层</td><td>CLAUDE.md / 用户配置</td><td><code>userContext</code></td><td>→ 前置为 <code>&lt;system-reminder&gt;</code> 消息（<code>prependUserContext</code>，<code>src/utils/api.ts:449</code>）</td></tr>
+</tbody></table>
+</div>
+<p>⚠️ <strong>关键细节</strong>：<code>userContext</code>（CLAUDE.md 内容）<strong>不在 API system 参数中</strong>，而是以 <code>&lt;system-reminder&gt;</code> 前置消息的形式注入对话历史。这也揭示了为什么 customSystemPrompt 会清空 <code>systemContext</code>（同在 system 参数中，覆盖后追加无意义）而保留 <code>userContext</code>（不同路径，独立生效）。</p>
+<p><strong>源码参考：</strong> <code>src/query.ts:450</code>（<code>fullSystemPrompt = asSystemPrompt(appendSystemContext(systemPrompt, systemContext))</code>）、<code>src/query.ts:660</code>（<code>prependUserContext(messagesForQuery, userContext)</code>）</p>
+<hr />
+<h2 id="源码实例-1fetchsystempromptparts-的并行策略与覆盖语义"><a class="header" href="#源码实例-1fetchsystempromptparts-的并行策略与覆盖语义">源码实例 1：fetchSystemPromptParts 的并行策略与覆盖语义</a></h2>
+<p>我们来看核心函数的完整设计。这个函数只有 30 行，但每一行都有明确的工程含义。</p>
+<p><strong>返回类型契约</strong></p>
+<p>函数签名首先定义了返回结构（<code>src/utils/queryContext.ts:57-59</code>）：</p>
+<pre><code class="language-typescript">// src/utils/queryContext.ts:56
+}): Promise&lt;{
+  defaultSystemPrompt: string[]
+  userContext: { [k: string]: string }
+  systemContext: { [k: string]: string }
+}&gt;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/queryContext.ts:56-60</code></p>
+<p>三个字段的类型不同：<code>defaultSystemPrompt</code> 是字符串数组（多段提示词），<code>userContext</code> 和 <code>systemContext</code> 是字典（键值对上下文）。<strong>这个类型差异不是偶然——它反映了三层内容的本质不同</strong>：默认提示是有序的文本段落，上下文是无序的键值信息。调用方可以根据类型决定如何处理每一层，而不是把所有内容混在一个字符串里。</p>
+<p><strong>并行拉取的实现</strong></p>
+<pre><code class="language-typescript">// src/utils/queryContext.ts:61
+const [defaultSystemPrompt, userContext, systemContext] = await Promise.all([
+  customSystemPrompt !== undefined
+    ? Promise.resolve([])
+    : getSystemPrompt(tools, mainLoopModel, additionalWorkingDirectories, mcpClients),
+  getUserContext(),
+  customSystemPrompt !== undefined ? Promise.resolve({}) : getSystemContext(),
+])
+return { defaultSystemPrompt, userContext, systemContext }
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/queryContext.ts:61-73</code></p>
+<p><code>Promise.all</code> 同时启动三个异步任务：<code>getSystemPrompt</code>（工具声明+核心指令，需要遍历所有工具）、<code>getUserContext</code>（CLAUDE.md 文件读取）、<code>getSystemContext</code>（目录状态查询）。三者之间没有数据依赖，完全可以并行——<code>Promise.all</code> 让总延迟从"三者之和"降为"三者中最慢的一个"。</p>
+<p><strong>覆盖语义的双重清空</strong></p>
+<p>注意 <code>customSystemPrompt</code> 的处理方式——它出现了<strong>两次</strong>：</p>
+<ol>
+<li>第一处（line 62-63）：<code>customSystemPrompt !== undefined ? Promise.resolve([]) : getSystemPrompt(...)</code>——自定义提示存在时，<code>defaultSystemPrompt</code> 返回空数组</li>
+<li>第二处（line 71）：<code>customSystemPrompt !== undefined ? Promise.resolve({}) : getSystemContext()</code>——自定义提示存在时，<code>systemContext</code> 也返回空字典</li>
+</ol>
+<p>函数 JSDoc 注释解释了这个设计（<code>src/utils/queryContext.ts:34-37</code>）：</p>
+<blockquote>
+<p>"When customSystemPrompt is set, the default getSystemPrompt build and getSystemContext are skipped — the custom prompt replaces the default entirely, and systemContext would be appended to a default that isn't being used."</p>
+<p>（翻译：当 customSystemPrompt 设置时，默认 getSystemPrompt 构建和 getSystemContext 都被跳过——自定义提示完整替换默认提示，而 systemContext 会附加到一个未被使用的默认提示上，因此也跳过。）</p>
+</blockquote>
+<p><strong>这是"替换"而非"追加"的覆盖语义</strong>——用户提供自定义提示时，整套默认体系清空，只保留 <code>userContext</code>（CLAUDE.md 文件的内容仍然生效）。为什么 <code>userContext</code> 不清空？因为它代表用户在项目中放置的配置（CLAUDE.md），这是用户的声明，即使提供了自定义系统提示也应该生效。</p>
+<p><strong>图 15-2：customSystemPrompt 的双重清空逻辑</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    has_custom{customSystemPrompt\n已设置?}
+    
+    has_custom --&gt;|否| normal_path[正常路径]
+    normal_path --&gt; dp[defaultSystemPrompt\n工具声明+核心指令]
+    normal_path --&gt; uc[userContext\nCLAUDE.md内容]
+    normal_path --&gt; sc[systemContext\n环境上下文]
+    
+    has_custom --&gt;|是| custom_path[覆盖路径]
+    custom_path --&gt; empty_dp["defaultSystemPrompt = []"]
+    custom_path --&gt; uc2["userContext = CLAUDE.md\n（仍然生效）"]
+    custom_path --&gt; empty_sc["systemContext = {}"]
+</code></pre>
+<p><strong>图 15-2：customSystemPrompt 的双重清空。</strong> 用户上下文（CLAUDE.md）是唯一在覆盖模式下仍然生效的层——体现了对用户配置声明的尊重。</p>
+<hr />
+<h2 id="源码实例-2buildsidequestionfallbackparams会话恢复时的镜像路径"><a class="header" href="#源码实例-2buildsidequestionfallbackparams会话恢复时的镜像路径">源码实例 2：buildSideQuestionFallbackParams（会话恢复时的镜像路径）</a></h2>
+<p>第二个实例展示了同一个模式在不同场景下的变体应用——会话恢复时没有完整快照，系统必须重建提示词前缀。</p>
+<p><code>buildSideQuestionFallbackParams</code>（<code>src/utils/queryContext.ts:88</code>）是 SDK <code>side_question</code> 处理器在会话恢复时使用的 fallback 路径。其 JSDoc 注释写道：</p>
+<blockquote>
+<p>"Used by the SDK side_question handler (print.ts) on resume before a turn completes — there's no stopHooks snapshot yet. Mirrors the system prompt assembly in QueryEngine.ts:ask() so the rebuilt prefix matches what the main loop will send, preserving the cache hit in the common case."</p>
+<p>（翻译：由 SDK side_question 处理器（print.ts）在恢复时使用——此时还没有 stopHooks 快照。镜像 QueryEngine.ts:ask() 中的系统提示组装，使重建的前缀与主循环发送的内容匹配，在常见情况下保留缓存命中。）</p>
+</blockquote>
+<p><strong>源码参考：</strong> <code>src/utils/queryContext.ts:76-86</code></p>
+<p>核心在于它直接复用了 <code>fetchSystemPromptParts</code>：</p>
+<pre><code class="language-typescript">// src/utils/queryContext.ts:116
+const { defaultSystemPrompt, userContext, systemContext } =
+  await fetchSystemPromptParts({
+    tools,
+    mainLoopModel,
+    additionalWorkingDirectories: Array.from(
+      appState.toolPermissionContext.additionalWorkingDirectories.keys(),
+    ),
+    mcpClients,
+    customSystemPrompt,
+  })
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/queryContext.ts:116-125</code></p>
+<p><code>buildSideQuestionFallbackParams</code> 不是重新实现提示词组装，而是<strong>调用</strong> <code>fetchSystemPromptParts</code> 获得三层结构，再在此基础上完成完整的 <code>CacheSafeParams</code> 构建（附加 <code>systemPrompt</code> 合并、消息上下文过滤等）。</p>
+<p>这个设计有一个明确的权衡取舍，注释坦诚地说明了：</p>
+<blockquote>
+<p>"May still miss the cache if the main loop applies extras this path doesn't know about (coordinator mode, memory-mechanics prompt). That's acceptable — the alternative is returning null and failing the side question entirely."</p>
+<p>（翻译：如果主循环应用了这条路径不知道的 extras（协调员模式、记忆机制 prompt），仍可能错过缓存命中。这是可以接受的——替代方案是返回 null，让侧面问题完全失败。）</p>
+</blockquote>
+<p><strong>这是对"可接受的不完美"的刻意选择</strong>：<code>buildSideQuestionFallbackParams</code> 可能无法完全匹配主循环的提示词（因此可能 cache miss），但这比"完全失败"好。<strong>宁可多一次 API 调用，不能因为没有快照就让功能崩溃</strong>——这是恢复场景设计的基本原则。</p>
+<hr />
+<h2 id="模式剖析分层提示词组装"><a class="header" href="#模式剖析分层提示词组装">模式剖析：分层提示词组装</a></h2>
+<p>现在我们可以提炼这个模式的骨架。</p>
+<p>**分层提示词组装（Layered System Prompt Assembly）**的核心是把"系统提示的来源"与"系统提示的组合方式"解耦：</p>
+<p><strong>1. 固定的层定义</strong>：三层（defaultSystemPrompt/userContext/systemContext）有明确的语义边界——它们不是任意的代码组织方式，而是按"内容类型"和"更新频率"划分的。工具声明（高频变化）、用户配置（中频）、环境上下文（低频），各自独立，各自可缓存。</p>
+<p><strong>2. 并行拉取协议</strong>：<code>Promise.all</code> 不只是性能优化——它是一个约束：<strong>要求三层之间无依赖关系</strong>。如果未来某一层需要依赖另一层的结果，这个约束会让开发者意识到需要重新考虑层次划分。</p>
+<p><strong>3. 结构化返回而非合并返回</strong>：函数返回三元结构而非合并后的字符串。这让调用方（QueryEngine、buildSideQuestionFallbackParams，详见第8章）可以在此基础上注入额外内容，而不需要解析一个已经合并的字符串。<strong>"组装不到最后一步"是可组合系统设计的通则</strong>。</p>
+<p><strong>4. 覆盖语义的显式声明</strong>：<code>customSystemPrompt</code> 的双重清空是语义契约，不是实现细节——它清楚地声明了"自定义 = 替换，不是追加"。调用方不需要猜测行为，JSDoc 已经说明。</p>
+<p><strong>图 15-3：分层提示词组装的四个组成要素</strong></p>
+<pre><code class="language-mermaid">mindmap
+  root((分层提示词组装))
+    固定层定义
+      defaultSystemPrompt 工具声明
+      userContext 用户配置
+      systemContext 环境上下文
+    并行拉取协议
+      Promise.all
+      层间无依赖约束
+    结构化返回
+      三元组不合并
+      调用方叠加额外内容
+    覆盖语义声明
+      customSystemPrompt双重清空
+      替换而非追加
+</code></pre>
+<p><strong>图 15-3：模式的四个组成要素。</strong> 每个要素解决一个特定问题：层定义解决顺序语义，并行拉取解决延迟，结构化返回解决可组合性，覆盖语义解决优先级冲突。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>系统提示来自多个独立来源</td><td>✓</td><td>分层允许各来源独立获取和缓存</td><td>单体拼接函数（维护困难）</td></tr>
+<tr><td>各来源有不同的更新频率/缓存需求</td><td>✓</td><td>Promise.all 允许各层独立失效</td><td>全局重新获取（粒度过粗）</td></tr>
+<tr><td>需要"用户覆盖"语义</td><td>✓</td><td>显式的 customSystemPrompt 双重清空契约</td><td>追加模式（优先级不可控）</td></tr>
+<tr><td>调用方需要在基础上注入额外内容</td><td>✓</td><td>结构化返回，不提前合并</td><td>合并后返回字符串（丢失层信息）</td></tr>
+<tr><td>系统提示是静态固定的</td><td>✗</td><td>分层增加复杂度，无收益</td><td>直接传字符串常量</td></tr>
+<tr><td>各层之间存在依赖（A 层需要 B 层结果）</td><td>✗</td><td>打破 Promise.all 并行约束，需要重新划层</td><td>串行获取 + 显式依赖声明</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p>为什么这个设计不是没有代价的？</p>
+<p><strong>并行拉取的隐性假设</strong>：<code>Promise.all</code> 并行意味着所有失败是独立失败——一层失败不影响其他层的完成。但 <code>Promise.all</code> 的语义是"任一 reject 则整体 reject"，如果 <code>getSystemPrompt</code>（工具声明构建）失败，用户上下文也不会被返回，即使它已经成功获取。对于容错要求高的场景，可能需要 <code>Promise.allSettled</code> 替代。</p>
+<p><strong>customSystemPrompt 的覆盖盲区</strong>：当 <code>customSystemPrompt</code> 存在时，<code>systemContext</code> 被清空（<code>Promise.resolve({})</code>），但 <code>userContext</code>（CLAUDE.md）仍然生效。注释说明了理由——用户配置应该始终生效——但这意味着自定义系统提示的用户实际上无法完全控制系统提示的所有部分，CLAUDE.md 的内容仍会被注入（推断：通过 <code>userContext</code> 字段在调用方层面合并）。</p>
+<p><strong>镜像路径的不完整性</strong>：<code>buildSideQuestionFallbackParams</code> 刻意接受可能的 cache miss，因为它无法复现主循环中的所有 extras（coordinator mode、memory-mechanics prompt 等）。JSDoc 注释明确说这是"可接受"的，但这意味着会话恢复时有额外的 API 调用成本——在高频 resume 场景下，这个成本会累积。</p>
+<p><strong>图 15-5：主路径与 fallback 路径对比</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant QE as QueryEngine.ask
+    participant BSFP as buildSideQuestionFallbackParams
+    participant FSP as fetchSystemPromptParts
+
+    Note over QE: 主路径（正常会话）
+    QE-&gt;&gt;FSP: fetchSystemPromptParts
+    FSP--&gt;&gt;QE: {defaultSystemPrompt, userContext, systemContext}
+    QE-&gt;&gt;QE: 注入 coordinator extras
+    QE-&gt;&gt;QE: 注入 memory-mechanics prompt
+
+    Note over BSFP: fallback 路径（resume 无快照）
+    BSFP-&gt;&gt;FSP: fetchSystemPromptParts
+    FSP--&gt;&gt;BSFP: {defaultSystemPrompt, userContext, systemContext}
+    Note over BSFP: 无 extras，可能 cache miss
+    Note over BSFP: 功能可用 &gt; 完全失败
+</code></pre>
+<p><strong>图 15-5：两条路径的差异。</strong> 主路径额外注入 coordinator 和记忆模式 prompt；fallback 路径接受可能的 cache miss，但保证功能可用。</p>
+<p><strong>返回结构固化的风险</strong>：三元结构（<code>defaultSystemPrompt/userContext/systemContext</code>）是调用方和被调用方之间的隐性契约。如果未来需要增加第四层，所有调用方都需要更新——目前只有两个调用方（<code>QueryEngine</code> 和 <code>buildSideQuestionFallbackParams</code>），可以接受；但如果调用方增多，更改成本会变高。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与 GoF 装饰器模式（Decorator Pattern）的关系</strong>：装饰器模式通过逐层包装对象来添加功能，结果是一个包含所有层的组合对象。分层提示词组装有相似的"多层叠加"结构，但<strong>装饰器是动态包装已有对象，这里是静态并行获取多个独立来源然后合并</strong>——没有包装关系，各层平等独立。</p>
+<p><strong>与 HTTP 请求管道（Express/Koa 中间件）的关系</strong>：中间件管道把请求依次传过多个处理器，每层可以修改上下文。分层提示词组装的调用方叠加 extras（extras 是在 <code>fetchSystemPromptParts</code> 返回后由 QueryEngine 注入的）与中间件管道在结构上相似。<strong>核心区别：中间件是串行处理，各层可以依赖前层结果；分层提示词组装的"拉取"阶段是并行的，各层独立</strong>。</p>
+<p><strong>与 Builder 模式的关系</strong>：Builder 模式把复杂对象的构建过程分步封装。<code>fetchSystemPromptParts</code> 只负责获取原材料（三层基础），真正的"构建"（合并 extras、附加 appendSystemPrompt）由调用方完成。<strong>这是 Builder 模式的"材料供应"阶段，而非完整 Builder</strong>——刻意保持输出的结构化，让调用方做最后组装，提高了可组合性。</p>
+<p><strong>图 15-4：与业界模式的对比定位</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    lap[分层提示词组装]
+    
+    lap --&gt;|多层叠加但无包装| dec[装饰器模式\n包装已有对象]
+    lap --&gt;|并行不串行| mid[中间件管道\n串行依赖]
+    lap --&gt;|提供材料不完成构建| build[Builder模式\n完整构建]
+    
+    dec --- d1[差异: 独立平行 vs 层层包裹]
+    mid --- d2[差异: Promise.all vs 串行传递]
+    build --- d3[差异: 返回原材料\n调用方完成最终组装]
+</code></pre>
+<p><strong>图 15-4：三种模式的对比。</strong> 每种模式都解释了设计的某个维度，但都不能完整描述——分层提示词组装是三种思想的交汇点，而非任何一种的直接实例。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<hr />
+<p><strong>分层提示词组装（Layered System Prompt Assembly）</strong></p>
+<p><strong>解决的问题</strong>：系统提示来自多个独立来源（工具声明、用户配置、环境上下文），各来源有不同的更新频率和注入路径，如何高效获取并支持调用方叠加额外内容？</p>
+<p><strong>核心做法</strong>：定义固定的三层结构（defaultSystemPrompt/userContext/systemContext），用 <code>Promise.all</code> 并行拉取，返回结构化三元组而非合并字符串，由调用方按语义路径（systemContext 追加进 API system、userContext 前置为消息）完成最终装配。</p>
+<p><strong>源码证据</strong>：<code>src/utils/queryContext.ts:44</code>（函数定义）、<code>:61</code>（Promise.all）、<code>:62-63</code>（覆盖清空 defaultSystemPrompt）、<code>:71</code>（覆盖清空 systemContext）、<code>:73</code>（三元结构返回）</p>
+<hr />
+<p><strong>可接受的不完整恢复（Acceptable Incomplete Resume）</strong></p>
+<p><strong>解决的问题</strong>：会话恢复时没有完整的系统提示快照，重建路径可能无法完全匹配主路径（导致 cache miss），但返回 null 会让功能完全失败。</p>
+<p><strong>核心做法</strong>：实现 fallback 重建路径，复用核心组装函数，在 JSDoc 中明确声明"可能 cache miss 但功能可用"的权衡取舍——宁可多一次 API 调用，不能让用户操作失败。</p>
+<p><strong>源码证据</strong>：<code>src/utils/queryContext.ts:88</code>（函数定义）、<code>:84-86</code>（JSDoc"可接受"声明）、<code>:116-117</code>（复用 <code>fetchSystemPromptParts</code>）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>将 AI Agent 的系统提示按"更新频率"分层</strong>：核心指令（低频）、工具声明（中频，工具集变化时更新）、用户配置（按项目，读文件）、环境上下文（高频，每次请求重建）。不同频率意味着不同的缓存策略。</p>
+</li>
+<li>
+<p><strong>用 <code>Promise.all</code> 并行获取系统提示各层</strong>：只要各层之间没有依赖，并行拉取可以把等待时间从"各层之和"降为"最慢的一层"。并行约束同时迫使你检查层间是否真的独立。</p>
+</li>
+<li>
+<p><strong>返回三元结构而非合并字符串</strong>：让系统提示组装"不到最后一步不合并"，调用方保留叠加额外内容的能力（如 QueryEngine 注入的 coordinator 指令）。这是"可组合"设计的基础原则。</p>
+</li>
+<li>
+<p><strong>为 <code>customSystemPrompt</code> 实现明确的覆盖语义</strong>：用户自定义提示时，清空所有默认提示（而非追加）；用户配置（CLAUDE.md 等）作为例外保留生效。在 JSDoc 中明确说明覆盖范围，避免调用方猜测。</p>
+</li>
+<li>
+<p><strong>在 resume/fallback 路径中复用主路径的组装函数</strong>：<code>buildSideQuestionFallbackParams</code> 直接调用 <code>fetchSystemPromptParts</code>，而非重新实现。fallback 路径接受"可能的 cache miss"，但保证功能可用，而非完全失败。</p>
+</li>
+</ul>
+<hr />
+<p>系统提示的各层具体内容——特别是 CLAUDE.md 如何按目录层级扫描和合并——将在第16章详细展开。本章聚焦的是组装机制本身：三层是如何并行获取的，覆盖语义是如何实现的，以及 fallback 路径是如何刻意接受不完整性的。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part4/part.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part4/ch16.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part4/part.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part4/ch16.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

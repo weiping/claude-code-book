@@ -1,0 +1,14 @@
+flowchart LR
+    subgraph 单轮请求
+        direction TB
+        A1[发送消息] --> B1[收到回复] --> C1[结束]
+    end
+
+    subgraph 多轮工具调用循环
+        direction TB
+        A2[发送消息] --> B2{tool_use 块?}
+        B2 -->|否| C2[结束]
+        B2 -->|是| D2[执行工具]
+        D2 --> E2[附带结果再次发送]
+        E2 --> B2
+    end

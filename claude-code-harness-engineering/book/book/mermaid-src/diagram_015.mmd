@@ -1,0 +1,7 @@
+flowchart LR
+    A["MCP Server\n第三方工具"] --> B["client.ts\n展开 MCPTool"]
+    B --> C["Tool interface\n7字段基座"]
+    C --> D["partitionToolCalls\n统一调度"]
+    D --> E["并发 or 串行"]
+
+    B -.- Note1["readOnlyHint →\nisConcurrencySafe"]

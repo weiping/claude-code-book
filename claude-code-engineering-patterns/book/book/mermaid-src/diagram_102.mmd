@@ -1,0 +1,7 @@
+stateDiagram-v2
+    [*] --> pending: createPermissionRequest\n（Worker 创建）
+    pending --> approved: Leader UI 批准\n（resolvedBy=leader）
+    pending --> rejected: Leader UI 拒绝\n（resolvedBy=leader）
+    pending --> approved: Worker 自行批准\n（resolvedBy=worker, YOLO/rules）
+    approved --> [*]: 文件移入 resolved/\nWorker 继续执行
+    rejected --> [*]: 文件移入 resolved/\nWorker 终止工具

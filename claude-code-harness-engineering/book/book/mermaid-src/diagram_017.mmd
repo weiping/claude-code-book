@@ -1,0 +1,7 @@
+flowchart LR
+    A["EnterPlanModeTool\n权限→plan"] --> B["模型探索\n只读工具集"]
+    B --> C["getPlanSlug\n生成文件名"]
+    C --> D["getPlanFilePath\n写计划文件"]
+    D --> E["ExitPlanModeTool\n读取计划"]
+    E --> F["用户确认\nsetHasExitedPlanMode"]
+    F --> G["权限恢复\nprePlanMode"]

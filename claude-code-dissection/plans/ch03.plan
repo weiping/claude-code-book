@@ -1,0 +1,113 @@
+# 第3章写作计划
+
+**批次**：批次 1
+**章节**：ch03 — 启动流水线的并发艺术
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/main.tsx | 前25行：三路并发触发顺序 | 1-25行 |
+| 2 | src/utils/startupProfiler.ts | profileCheckpoint(第65行)、profileReport(第123行) | 全文(约180行) |
+| 3 | src/utils/settings/mdm/rawRead.ts | startMdmRawRead 的触发逻辑 | 1-50行 |
+| 4 | src/utils/secureStorage/keychainPrefetch.ts | startKeychainPrefetch 的预取逻辑 | 1-50行 |
+
+```bash
+ls src/main.tsx src/utils/startupProfiler.ts \
+   src/utils/settings/mdm/rawRead.ts \
+   src/utils/secureStorage/keychainPrefetch.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「src/main.tsx 的前三行不是 import，是副作用。这违反了所有 ESLint 最佳实践——注释里写着为什么这样做。」
+- 可选题词：引用 main.tsx 第2-8行的注释作为题词
+- 三个问题：
+  1. 为什么在 import 语句之间执行副作用？
+  2. 三路任务并行节省了多少时间？
+  3. 这种模式有什么风险，Claude Code 如何应对？
+
+### 节 3.1：三路并发的触发时机
+- 核心主张：在模块加载期间触发异步任务，让 ~135ms 的模块加载时间成为"免费"的并行窗口
+- 源码锚点：
+  - `src/main.tsx:12` — `profileCheckpoint('main_tsx_entry')`
+  - `src/main.tsx:16` — `startMdmRawRead()`
+  - `src/main.tsx:20` — `startKeychainPrefetch()`
+- 概念层次：设计意图（节省冷启动时间）+ 实际数字（65ms Keychain，135ms 模块加载窗口）
+- 权衡分析：在 import 中触发副作用的风险（测试隔离困难）vs 收益（最大化并行窗口）
+- 包含元素：**Mermaid sequenceDiagram** — 展示 profileCheckpoint/MDM/Keychain 与模块加载的时间线并行关系
+- 估计字数：700字（含图）
+- 对应 spec 场景：时序图展示并行关系；副作用 import 设计意图
+
+### 节 3.2：profileCheckpoint 埋点系统
+- 核心主张：`profileCheckpoint` 是量化启动时间的基础设施，让"我感觉慢了"变成"第 N 阶段多了 X ms"
+- 源码锚点：
+  - `src/utils/startupProfiler.ts:65` — `export function profileCheckpoint`
+  - `src/utils/startupProfiler.ts:123` — `export function profileReport`
+  - `src/main.tsx:209` — `profileCheckpoint('main_tsx_imports_loaded')`
+- 包含元素：列出 main.tsx 中的主要 checkpoint 名称，展示 profileReport 的输出结构
+- 估计字数：500字
+- 对应 spec 场景：延迟数字有量化
+
+### 节 3.3：MDM 与 Keychain 预取
+- 核心主张：两个预取任务解决了 macOS 启动时序列阻塞问题
+- 源码锚点：`src/main.tsx:3-7`（注释说明 MDM 约减少多少、Keychain 约 65ms）
+- 包含元素：简要说明两路任务的业务目的（不深入具体内容）
+- 估计字数：400字
+- 对应 spec 场景：副作用 import 设计意图；不越界进入 Bootstrap State
+
+### 节 3.4：设计风险与应对
+- 核心主张：副作用模式有已知风险，团队选择接受并用 eslint-disable 显式标记
+- 源码锚点：`src/main.tsx:11,15,18`（eslint-disable 注释）
+- 权衡分析：测试隔离困难、顺序依赖风险；应对：显式文档化、eslint 规则
+- 包含元素：引用 eslint-disable 注释说明"选择性违反规则"的工程哲学
+- 估计字数：300字
+- 对应 spec 场景：设计风险有说明；不越界进入 Bootstrap State
+
+### 章末：模式提炼
+
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 模块加载并行化（Module-Load Parallelism）| 串行 I/O 导致 CLI 冷启动慢 | 在 import 副作用中触发独立 I/O 任务 | 任务相互独立，无初始化顺序依赖 | `src/main.tsx:12-20` |
+| 量化启动剖析（Quantified Startup Profiling）| 无法定位启动瓶颈 | 关键路径插入 checkpoint 埋点，profileReport 输出 | 需要长期优化启动时间 | `src/utils/startupProfiler.ts:65` |
+| 显式副作用标记（Explicit Side-Effect Annotation）| 违反规范的代码难以审查 | eslint-disable + 注释说明原因 | 确实需要违反规范时 | `src/main.tsx:11` |
+
+### 章末：用户能做什么
+
+1. 在自己的 CLI 入口找到可并行的独立 I/O 操作（配置读取、凭证验证、缓存预热）
+2. 用 `profileCheckpoint` 模式测量启动各阶段耗时
+3. 评估 "import 副作用" 模式是否适合自己的项目（权衡测试隔离 vs 并行收益）
+4. 用显式 eslint-disable + 注释的方式文档化"有意为之的规范违反"
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图3-1 | 启动流水线时序图 | Mermaid sequenceDiagram | profileCheckpoint + MDM + Keychain 与模块加载的并行关系 | 3.1 |
+
+## 写作顺序
+
+1. 先写节 3.2（profileCheckpoint 系统，最具体的量化工具）
+2. 写节 3.1（三路并发，画时序图）
+3. 写节 3.3（MDM/Keychain，简短）
+4. 写节 3.4（风险分析）
+5. 写模式提炼
+6. 最后写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '1,25p' src/main.tsx                    # 三路并发触发
+sed -n '65p' src/utils/startupProfiler.ts      # profileCheckpoint
+sed -n '123p' src/utils/startupProfiler.ts     # profileReport
+sed -n '209p' src/main.tsx                     # main_tsx_imports_loaded
+# 确认 eslint-disable 注释存在
+grep -n "eslint-disable" src/main.tsx | head -5
+```
+
+## 估算
+
+- 目标字数：2200-2700字
+- 预计轮次：7轮（含2轮验证）

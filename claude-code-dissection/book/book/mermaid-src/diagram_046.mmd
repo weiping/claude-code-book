@@ -1,0 +1,15 @@
+graph TD
+    A["🔴 0. Override<br/>loop mode激活<br/>■ 完全替换所有"] --> B["🟠 1. Coordinator<br/>多代理协调<br/>■ 可能为stub"]
+    B --> C["🟡 2. Agent<br/>mainThreadAgentDefinition<br/>■ 追加 Proactive<br/>■ 替换 普通模式"]
+    C --> D["🟢 3. Custom<br/>--system-prompt参数<br/>■ 替换Default"]
+    D --> E["🔵 4. Default<br/>标准Claude Code提示<br/>■ 后备方案"]
+    F["🟣 appendSystemPrompt<br/>--append-system-prompt参数<br/>■ 总是末尾追加<br/>■ Override模式下跳过"]
+    E --> G["最终系统提示<br/>发送到Claude API"]
+    F --> G
+    style A fill:#ffcccc
+    style B fill:#ffe6cc
+    style C fill:#ffffcc
+    style D fill:#ccffcc
+    style E fill:#ccccff
+    style F fill:#ffccff
+    style G fill:#f0f0f0

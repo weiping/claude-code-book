@@ -1,0 +1,12 @@
+flowchart LR
+    subgraph 正确做法
+        light["keychainPrefetch.ts\n（轻量：child_process + helpers）\n模块加载 < 1ms"]
+        fire1["触发异步读取\n（~65ms，后台运行）"]
+        light --> fire1
+    end
+
+    subgraph 错误做法
+        heavy["macOsKeychainStorage.ts\n（重型：execa→human-signals→cross-spawn）\n模块加载 ~58ms"]
+        fire2["触发异步读取\n（~65ms，但已浪费 58ms）"]
+        heavy --> fire2
+    end

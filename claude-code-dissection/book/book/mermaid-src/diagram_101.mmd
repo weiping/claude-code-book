@@ -1,0 +1,9 @@
+graph TD
+    A["应用代码"] --> B["CSI 命令"]
+    B --> C["光标移动<br/>CSI H"]
+    B --> D["样式设置<br/>CSI m"]
+    B --> E["屏幕操作<br/>CSI J/K"]
+    C --> F["终端"]
+    D --> F
+    E --> F
+    style F fill:#ccffcc

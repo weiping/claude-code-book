@@ -1,0 +1,81 @@
+# 第12章写作计划
+
+**批次**：批次 3
+**章节**：ch12 — BashTool 解剖——最复杂工具的实现
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/tools/BashTool/BashTool.tsx | 命令集定义(60-78行)、语义分类逻辑(140-150行)、沙箱路由(490-505行)、输出截断 | 60-80, 130-160, 490-510行 |
+| 2 | src/tools/BashTool/shouldUseSandbox.ts | shouldUseSandbox 实现(130行) | 125-165行 |
+| 3 | src/tools/BashTool/commandSemantics.ts | CommandSemantic 类型、interpretCommandResult | 1-45行 |
+| 4 | src/tools/BashTool/sedEditParser.ts | parseSedEditCommand | 1-30行 |
+| 5 | src/utils/toolResultStorage.ts | PREVIEW_SIZE_BYTES、generatePreview | 1-40行 |
+
+```bash
+ls src/tools/BashTool/
+sed -n '60,80p' src/tools/BashTool/BashTool.tsx
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「执行 `cat README.md`，Claude Code 在 UI 里折叠显示"读取了文件"。执行 `rm -rf /tmp/test`，它显示警告。执行 `sed -i 's/foo/bar/g' file.ts`，它展示 diff。同样是 bash 命令，三种完全不同的处理路径——为什么？」
+- 三个问题：1）命令语义分类用什么数据结构？2）沙箱路由的决策逻辑是什么？3）超长输出如何处理不丢失内容？
+
+### 节 12.1：命令语义分类——为什么需要四个命令集合？
+- 核心主张：BashTool 维护四个命令集（SEARCH/READ/LIST/SEMANTIC_NEUTRAL），不同集合触发不同的 UI 展示和权限级别——这是"命令行为"而非"命令字符串"的分类
+- 源码锚点：`src/tools/BashTool/BashTool.tsx:60`（BASH_SEARCH_COMMANDS）、`src/tools/BashTool/BashTool.tsx:63`（BASH_READ_COMMANDS）、`src/tools/BashTool/BashTool.tsx:72`（BASH_LIST_COMMANDS）、`src/tools/BashTool/BashTool.tsx:77`（BASH_SEMANTIC_NEUTRAL_COMMANDS）
+- 包含元素：四个集合的对比表（集合名/代表命令/UI 行为/权限影响）
+- 权衡分析：基于集合的分类 vs 基于规则的分类
+- 估计字数：700字
+
+### 节 12.2：沙箱路由——shouldUseSandbox 的决策链
+- 核心主张：沙箱路由不是简单的黑白名单，而是三个条件的 AND：沙箱功能启用 + 未显式禁用 + 无排除命令
+- 源码锚点：`src/tools/BashTool/shouldUseSandbox.ts:130`（shouldUseSandbox 函数）
+- 包含元素：Mermaid flowchart 展示 shouldUseSandbox 的决策路径
+- 权衡分析：沙箱隔离 vs 性能开销 vs 用户体验
+- 估计字数：500字
+
+### 节 12.3：sed 命令的特殊处理路径
+- 核心主张：`sed -i` 是修改文件的命令，BashTool 将其解析为结构化编辑操作，以便展示 diff 和做针对性权限检查
+- 源码锚点：`src/tools/BashTool/BashTool.tsx:490`（parseSedEditCommand 调用）、`src/tools/BashTool/sedEditParser.ts:1`（解析器）
+- 估计字数：400字
+
+### 节 12.4：超长输出截断与磁盘持久化
+- 核心主张：当命令输出超过 PREVIEW_SIZE_BYTES 时，结果写入磁盘，LLM 收到的是文件路径 + 预览而非完整内容——这是防止 context window 污染的防御性设计
+- 源码锚点：`src/utils/toolResultStorage.ts`（PREVIEW_SIZE_BYTES、buildLargeToolResultMessage）
+- 包含元素：Mermaid flowchart 展示输出大小判断分支
+- 估计字数：500字
+
+### 节 12.5：BashTool 的完整处理流程
+- 将前四节整合为一张完整的 Mermaid 流程图
+- 估计字数：300字（图+说明）
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 行为集合分类（Behavioral Set Classification）| 命令字符串无法直接决定 UI/权限行为，需要语义分类 | 用 Set 数据结构维护已知行为类别的命令名，O(1) 查找 | 有限的、已知的命令集合需要分类 | `src/tools/BashTool/BashTool.tsx:60,72` |
+| 结构化命令解析（Structured Command Parsing）| 通用文本命令（如 sed）包含结构化语义，直接当字符串处理失去精度 | 对特定命令用专门解析器提取结构化信息（修改目标/模式） | 命令语义足够规律，值得专门解析器 | `src/tools/BashTool/sedEditParser.ts:1` |
+| 防御性输出截断（Defensive Output Truncation）| LLM context window 有限，无限输出会导致 context 溢出 | 超过大小阈值时将输出写磁盘，LLM 收到路径+预览，保留完整内容供后续工具读取 | 工具输出大小不可预测 | `src/utils/toolResultStorage.ts` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图12-1 | 命令语义分类四象限 | 表格 | 四个集合 × 代表命令/UI行为/权限影响 | 12.1 |
+| 图12-2 | shouldUseSandbox 决策流 | Mermaid flowchart | 三个条件 AND 的判断路径 | 12.2 |
+| 图12-3 | BashTool 完整处理流程 | Mermaid flowchart | 输入→分类→沙箱判断→执行→输出处理 | 12.5 |
+
+## 写作前 checklist
+```bash
+sed -n '60,80p' src/tools/BashTool/BashTool.tsx
+sed -n '130,165p' src/tools/BashTool/shouldUseSandbox.ts
+sed -n '490,510p' src/tools/BashTool/BashTool.tsx
+head -40 src/utils/toolResultStorage.ts
+```
+
+## 估算
+- 目标字数：2800-3200字（最复杂工具）
+- 预计轮次：11轮（含2轮验证）

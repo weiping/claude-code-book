@@ -1,0 +1,11 @@
+graph TD
+    A[".claude/memory/ 项目记忆目录"] --> B["MEMORY.md 入口索引自动加载"]
+    A --> C["Architecture/"]
+    A --> D["Issues/"]
+    A --> E["Decisions/"]
+    B -->|内容| B1["架构记录 / 问题记录 / 模式记录"]
+    C -->|detail| C1["project-structure.md  tech-stack.md"]
+    D -->|detail| D1["websocket-memory-leak.md"]
+    E -->|detail| E1["2024-01-15-monorepo.md"]
+    B -->|加载到系统提示| F["系统提示"]
+    F -->|生效范围| G["新会话启动时"]

@@ -1,0 +1,116 @@
+# 第1章写作计划
+
+**批次**：批次 1
+**章节**：ch01 — 运行时 Harness 全景——总体架构解析
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/main.tsx | launchRepl(第35行)、getTools(第46行)、getCommands(第88行) | 1-100行 |
+| 2 | src/replLauncher.tsx | App+REPL 组装逻辑 | 全文(约25行) |
+| 3 | src/tools.ts | 工具集合入口 | 1-60行 |
+| 4 | src/commands.ts | 命令集合入口 | 1-50行 |
+| 5 | src/QueryEngine.ts | QueryEngine class 签名 | 184-210行 |
+| 6 | src/Tool.ts | Tool 类型定义签名 | 362-380行 |
+
+```bash
+ls src/main.tsx src/replLauncher.tsx src/tools.ts src/commands.ts src/QueryEngine.ts src/Tool.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「你以为 `claude` 是一个简单的 CLI wrapper。打开 src/ 目录，你看到了 2000 个文件。」
+- 可选题词：N/A
+- 三个问题：
+  1. 这 2000 个文件按什么逻辑组织？
+  2. 哪些是核心，哪些是边缘？
+  3. 读完这本书时，读者需要哪个地图？
+
+### 节 1.1：什么是 Harness？
+- 核心主张：Harness 是让各子系统协同工作的运行时骨架，不是功能的集合
+- 源码锚点：`src/main.tsx:35` — launchRepl import（Harness 的入口）
+- 概念层次：定义为主，用反例（"Harness ≠ 功能清单"）建立区分
+- 权衡分析：N/A（定义性章节）
+- 包含元素：1段定义 + 1个比喻（脚手架/骨架）
+- 估计字数：400字
+- 对应 spec 场景：Harness 概念可提炼
+
+### 节 1.2：模块关系全景图
+- 核心主张：11 个子系统围绕 main.tsx 组织，每层有清晰的入口
+- 源码锚点：`src/main.tsx:35,46,88`（launchRepl/getTools/getCommands 三个核心调用）
+- 包含元素：**Mermaid flowchart 图**（8+节点）
+  ```
+  main.tsx → replLauncher → REPL(screens/)
+  main.tsx → tools.ts → Tool系统(tools/)
+  main.tsx → commands.ts → 命令系统(commands/)
+  REPL → QueryEngine → query.ts
+  QueryEngine → permissions → Tool执行
+  Tool执行 → MCP(services/mcp/)
+  REPL → Ink/TUI(ink/)
+  main.tsx → bootstrap/state.ts → 全局状态
+  ```
+- 估计字数：600字（含图）
+- 对应 spec 场景：模块关系图覆盖完整
+
+### 节 1.3：各子系统一览（逐个2-3句）
+- 核心主张：每个子系统有清晰边界，本书按依赖顺序解析
+- 源码锚点：按 DESIGN.md 11篇顺序，每篇给出 1 个代表性文件路径
+- 包含元素：简洁列表/表格，每子系统：功能（1句）+ 核心文件（1个）+ 对应章节
+- 估计字数：800字
+- 对应 spec 场景：stub 模块已标注排除
+
+### 节 1.4：技术选型预览
+- 核心主张：React/Ink + Bun + TypeScript 不是随意选择（详见第2章）
+- 源码锚点：`src/ink/reconciler.ts:4`（createReconciler 说明 Ink 不是普通 React）
+- 包含元素：2-3 句技术选型预告，指向第2章
+- 估计字数：200字
+- 对应 spec 场景：设计权衡存在
+
+### 章末：模式提炼
+
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 单入口 Harness（Single-Entry Harness）| 复杂子系统难以协调 | 所有子系统通过一个入口文件组装 | 子系统数量 ≥5 | `src/main.tsx:35,46,88` |
+| 分层初始化（Layered Initialization）| 启动依赖链难以管理 | 按 Bootstrap→Engine→UI 分层初始化 | 有状态型 CLI | `src/main.tsx:12,35` |
+| 接口统一（Interface Unification）| 多种扩展点难以统一调用 | 用 Tool 接口抽象所有可调用能力 | 扩展点 >10 | `src/Tool.ts:362` |
+
+### 章末：用户能做什么
+
+1. 用 Mermaid 图可视化自己项目的模块关系
+2. 识别自己 CLI 工具中哪些组件承担了"Harness"职责
+3. 按"入口 → 引擎 → 工具 → UI"分层组织复杂 CLI
+4. 查看 `src/main.tsx` 的 import 结构理解系统依赖
+5. 用"stub 标注"方法排除未实现模块，聚焦核心
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图1-1 | Claude Code 模块关系全景 | Mermaid flowchart | main.tsx 为中心，展示 8+ 子系统 | 1.2 |
+
+## 写作顺序
+
+1. 先写节 1.2（模块关系图，视觉锚点）
+2. 写节 1.1（什么是 Harness，定义建立在图之前）
+3. 写节 1.3（各子系统一览，机械性工作）
+4. 写节 1.4（技术选型预告，简短）
+5. 写模式提炼
+6. 最后写开篇（基于全章内容）
+
+## 写作前 checklist
+
+```bash
+sed -n '35p' src/main.tsx   # launchRepl import
+sed -n '46p' src/main.tsx   # getTools import
+sed -n '88p' src/main.tsx   # getCommands import
+sed -n '362p' src/Tool.ts   # Tool type definition
+sed -n '4p' src/ink/reconciler.ts  # createReconciler
+```
+
+## 估算
+
+- 目标字数：2500-3000字
+- 预计轮次：7轮（含2轮验证）

@@ -1,0 +1,78 @@
+# 第7章写作计划
+
+**批次**：批次 2
+**章节**：ch07 — 斜杠命令系统——内置命令的注册与执行
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/commands.ts | getCommands(476行)、isCommandEnabled(209行)、loadAllCommands、meetsAvailabilityRequirement | 256-260, 476-510行 |
+| 2 | src/commands/clear/ | 典型命令目录结构 | 全部文件 |
+| 3 | src/commands/help/ | 另一个示例命令 | 入口文件 |
+
+```bash
+ls src/commands/clear/
+ls src/commands/help/
+sed -n '476,510p' src/commands.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「`src/commands/` 有 113 个子目录。但 `getCommands()` 不是靠注册表加载它们的——而是靠目录约定。」
+- 三个问题：1）目录约定注册机制如何工作？2）`isCommandEnabled` 的过滤链有多少层？3）斜杠命令执行后结果如何不触发 LLM？
+
+### 节 7.1：目录约定注册机制
+- 核心主张：每个 `src/commands/名称/` 目录导出一个 Command 对象，`loadAllCommands` 动态扫描并加载
+- 源码锚点：`src/commands.ts:476`（getCommands 函数）
+- 包含元素：ASCII 目录树 + 典型命令文件结构
+- 权衡分析：目录约定 vs 显式注册表（注册表更明确，目录约定更易扩展）
+- 估计字数：600字
+
+### 节 7.2：isCommandEnabled 的三层过滤
+- 核心主张：命令是否可用经过 feature flag、USER_TYPE、远程模式三层过滤，确保不同用户只看到适合自己的命令
+- 源码锚点：`src/commands.ts:484`（isCommandEnabled 调用）
+- 包含元素：三层过滤的顺序图
+- 估计字数：500字
+
+### 节 7.3：执行结果如何回到对话流
+- 核心主张：命令执行结果封装为 `SystemLocalCommandMessage`，在 REPL 层处理，不进入 LLM 调用链
+- 源码锚点：`src/utils/processUserInput/processSlashCommand.tsx:515`（isSystemLocalCommandMessage 判断）
+- 包含元素：消息流向的简要图示
+- 估计字数：400字
+
+### 节 7.4：未知命令的处理
+- 源码锚点：processUserInput.ts 中 fallthrough 逻辑
+- 估计字数：200字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 目录约定注册（Convention-Over-Registration）| 显式注册大量命令代码冗长且易遗漏 | 按目录结构约定自动发现命令，无需手动注册 | 命令数量多，结构规律 | `src/commands.ts:476` |
+| 分层过滤器链（Layered Filter Chain）| 多维度条件（flag/类型/模式）难以管理 | 各维度独立的过滤函数，组合形成链 | 条件维度 ≥ 3 | `src/commands.ts:484` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图7-1 | 命令注册与过滤流程 | Mermaid flowchart | 目录扫描→加载→过滤→可用命令集 | 7.1/7.2 |
+| 图7-2 | 命令执行消息流向 | Mermaid sequenceDiagram | 用户→processSlashCommand→SystemLocalCommandMessage→REPL | 7.3 |
+
+## 写作顺序
+1. 写节 7.1（目录约定，最基础）
+2. 写节 7.2（过滤链）
+3. 写节 7.3（执行结果回路）
+4. 写节 7.4（边界情况）
+5. 模式提炼，开篇
+
+## 写作前 checklist
+```bash
+sed -n '476,510p' src/commands.ts
+ls src/commands/clear/
+grep -n "isCommandEnabled\|meetsAvailability" src/commands.ts | head -8
+```
+
+## 估算
+- 目标字数：1800-2200字
+- 预计轮次：6轮（含2轮验证）

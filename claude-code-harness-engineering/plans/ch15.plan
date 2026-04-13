@@ -1,0 +1,318 @@
+# 第 15 章写作计划
+
+**批次**：批次 8（来自 plans/batch.md）
+**章节**：ch15 — 脚手架会消失
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示 Feature Flag 驱动的死代码消除如何让 Harness 随模型能力增强而自我精简。整个代码库有 89 个 feature flag、798 处 feature() 调用，每个都编码了一个假设：模型在某件事上还不够好。多套压缩策略并存是真实生产中探索"什么时候用什么方式减少 Harness 负担"的工程表达。读完本章，读者将理解 Harness 不是越做越大的护城河，而是一座设计好拆除方案的脚手架。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- 89 个 feature flag，798 处调用——每一处都是一个赌注："有一天这个 flag 会关掉，这段代码会消失。"理解 feature flag 不是开关，而是"脚手架拆除计划"，比知道有哪些 flag 更重要。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向前链接第 3-14 章的具体 feature flag
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（89 个 flag、798 处调用、24 处 KAIROS、3 个默认关闭的 feature 等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/bunFeatures.ts | feature() 函数实现（25）、DEFAULT_FEATURES（16-20） | 全文（68行）|
+| 2 | src/main.tsx | feature flag 条件导入（21, 76, 80, 548, 577）、运行时检查（1872） | 行 21, 76-82, 548-577, 1872 |
+| 3 | src/query.ts | 压缩策略 feature flag（15, 115, 422）、DCE 注释 | 行 15, 115, 396-470, 422 |
+| 4 | src/services/compact/autoCompact.ts | DCE 注释（177-178）、external builds | 行 177-191 |
+| 5 | src/services/compact/microCompact.ts | DCE 注释（55）、external builds | 行 54-56, 276-290 |
+
+验证文件存在：
+```bash
+ls src/utils/bunFeatures.ts src/main.tsx src/query.ts src/services/compact/autoCompact.ts src/services/compact/microCompact.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 15.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 15.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 向前链接第 3-14 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图 | 图 15-1、15-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 15-1、15-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「最好的 Harness 是你正在拆的那个。每个 feature flag 都是一张拆除许可证：盖章日期待定。」
+
+### 节 15.1：问题——Harness 会随着模型进步变得多余吗
+- 核心主张：89 个 feature flag 的存在本身就说明 Harness 的大部分功能是在弥补模型能力的不足——当模型变得更好，这些功能应该消失
+- 源码锚点：
+  - `src/utils/bunFeatures.ts:16` — DEFAULT_FEATURES 只有 3 个（KAIROS/COORDINATOR_MODE/CLAUDE_CODE_SIMPLE）——默认全关闭，说明大部分 feature 是实验性的
+  - `src/utils/bunFeatures.ts:25` — `feature()` 函数：`return currentFeatures[featureName] ?? false`——未配置的 flag 默认 false，意味着大部分功能在 external builds 中不存在
+  - `src/main.tsx:21` — `import { feature } from 'bun:bundle'`——feature flag 在 Bun 编译时用于死代码消除（DCE, Dead Code Elimination）
+- 概念层次：定义（feature flag 不是配置开关，是编译时条件）→ 设计意图（为什么需要 89 个而不是 1 个）
+- 权衡分析：N/A
+- 包含元素：表格（89 个 flag 按本书章节分组统计）
+- **⛔ 内容密度规划**：
+  - 引入段要点：如果模型有一天能完美管理上下文、评估输出、协调任务，那么压缩策略、Verification Agent、Coordinator 模式都不再需要——89 个 feature flag 就是 89 个"某天会消失"的候选
+  - 解读段要点：feature() 在 Bun 编译时决定代码是否进入最终产物——flag=false 的代码不进入 external builds。DEFAULT_FEATURES 只有 3 个条目，其余 86 个在 external builds 中完全不存在
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B1、B2
+
+### 节 15.2：黄金法则——每个 feature flag 编码一个"模型能力假设"
+- 核心主张：feature flag 不是功能开关，而是一条工程断言——"在当前模型能力下，这段 Harness 代码是必需的；当模型超越这个阈值，这段代码可以安全移除"
+- 源码锚点：
+  - `src/query.ts:15` — `feature('REACTIVE_COMPACT')`——reactive compact 只在模型返回 413 错误时触发（详见第 11 章），当模型能更好地管理输出长度时不再需要
+  - `src/query.ts:115` — `feature('HISTORY_SNIP')`——历史裁剪是针对长会话的补偿机制
+  - `src/services/compact/autoCompact.ts:177` — 注释 "Inside feature() so the string DCEs from external builds (it's in excluded-strings.txt)"——明确标注了 DCE 目的
+  - `src/services/compact/microCompact.ts:55` — 注释 "The imports and state live inside feature() checks for dead code elimination"——microCompact 的缓存状态也受 DCE 保护
+  - `src/main.tsx:80` — `feature('KAIROS')` 控制整个 assistant 模块的导入——24 处调用，是最大的 feature flag
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：编译时 DCE（Bun feature）vs 运行时配置（GrowthBook/env）——编译时 DCE 更彻底（代码物理不存在），但需要重新构建；运行时配置更灵活，但代码仍然存在于产物中
+- 包含元素：表格（10 个关键 flag × 编码的能力假设 × 关联章节）
+- **⛔ 内容密度规划**：
+  - 引入段要点：每个 flag 的 true/false 不是"开/关"，而是"模型还差一点/模型已经够了"
+  - 解读段要点：REACTIVE_COMPACT（模型会超过 API 限制→需要压缩补偿）、HISTORY_SNIP（模型处理长历史不够好→需要裁剪）、VERIFICATION_AGENT（模型无法可靠自评→需要对抗性验证）、COORDINATOR_MODE（单 Agent 无法并行→需要协调器）、CACHED_MICROCOMPACT（API cache 机制不完美→需要手动管理）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：800-1100 字
+- 对应 spec 场景：C3、C4、C6、E1
+
+### 节 15.3：适用场景——哪些 Harness 功能最可能先消失
+- 核心主张：按"模型进步速度 × Harness 代码量"排列，压缩策略和 Bash 分类器最可能先被移除
+- 源码锚点：
+  - `src/query.ts:422` — "Gated behind feature() so the string is eliminated from external builds"——说明这些功能在外部版本中已经不存在
+  - `src/main.tsx:76` — COORDINATOR_MODE 需要显式启用——高级功能默认关闭
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：表格（功能消亡预测 × 理由）
+- **⛔ 内容密度规划**：
+  - 引入段要点：预测哪些脚手架会先被拆除
+  - 解读段要点：最快消失——Bash 分类器（模型越来越懂 shell）、snipCompact（模型上下文窗口在增长）。中等速度——microCompact（cache 机制在改善）、autoCompact（摘要能力在提升）。最慢消失——Verification Agent（自我评估是根本困难）、Coordinator（并行协调是架构问题）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 15.4：工作原理——feature flag 的编译时和运行时两层机制
+- 核心主张：Claude Code 的 feature flag 有两层——编译时 DCE（Bun feature，代码物理不存在）和运行时控制（GrowthBook/env/配置），两层配合实现了"开发时灵活、生产时精简"
+- 源码锚点：
+  - `src/utils/bunFeatures.ts:25` — `feature()` 函数：开发时用 shim（默认 false），Bun 编译时用 bun:bundle 的真实实现（编译器识别 feature() 调用并消除 false 分支）
+  - `src/main.tsx:21` — `import { feature } from 'bun:bundle'`——编译时 DCE
+  - `src/main.tsx:1872` — `feature('COORDINATOR_MODE') && isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)`——编译时 + 运行时双重控制
+  - `src/services/compact/autoCompact.ts:177-178` — "Inside feature() so the string DCEs from external builds (it's in excluded-strings.txt)"——excluded-strings.txt 是 Bun 的 DCE 配置
+  - `src/services/compact/microCompact.ts:55` — "feature() checks for dead code elimination"——代码中的 DCE 标注
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：两层机制的好处是灵活（开发时测试新功能、生产时按需消除），代价是维护成本——89 个 flag 需要持续评估是否还有必要
+- 包含元素：Mermaid 流程图（编译时 DCE 路径：source→feature()检查→Bun编译→external build 产物）、表格（编译时 vs 运行时控制对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：feature flag 不是简单的布尔值，是一个有两层的精巧系统
+  - 解读段要点：编译时——Bun 的 feature() 在构建时将 false 分支的代码物理消除（不是注释掉，是从产物中消失）。运行时——GrowthBook feature flags、环境变量（DISABLE_AUTO_COMPACT）、用户配置（autoCompactEnabled）在运行时控制行为。双重控制——COORDINATOR_MODE 需要 feature flag 编译时启用 AND 环境变量运行时启用
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、D1、E1
+
+### 节 15.5：权衡——DCE 驱动架构的 3 个设计代价
+- 核心主张：89 个 feature flag 的 DCE 架构带来了代码分割、测试复杂度和认知负担三个代价
+- 源码锚点：
+  - `src/main.tsx:76` — COORDINATOR_MODE 的条件导入——模块依赖在编译时被切断，不同构建的模块图不同
+  - `src/services/compact/microCompact.ts:54` — "Lazy-initialized cached MC module and state to avoid importing in external builds"——延迟导入避免 external builds 中引入不存在的模块
+  - `src/utils/bunFeatures.ts:25` — `currentFeatures[featureName] ?? false`——未配置的 flag 返回 false，开发者需要知道哪些 flag 在哪些环境中有效
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - 代码分割：不同构建有不同的模块依赖——main.tsx 中的条件 require() 意味着某些模块只在特定构建中存在
+  - 测试复杂度：feature flag 的排列组合使测试矩阵爆炸——89 个 flag 的所有组合不可能穷尽
+  - 认知负担：开发者需要理解哪些代码在 external builds 中存在、哪些不存在——microCompact 的延迟导入就是为了处理这个问题
+- 包含元素：对比表格（3 个代价）
+- **⛔ 内容密度规划**：
+  - 引入段要点：89 个 flag 不是免费的——每一个都需要维护、测试和文档
+  - 解读段要点：代码分割（条件 require 导致模块图不同）、测试复杂度（flag 组合爆炸）、认知负担（开发者需要知道"这段代码在 external builds 中存在吗"）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 15.6：踩坑指南——feature flag 的常见错误
+- 核心主张：最常见的错误是在 external build 中引用了只存在于 internal build 的代码——DCE 消除的不是变量，是整个导入链
+- 源码锚点：
+  - `src/services/compact/microCompact.ts:54-56` — 延迟导入的注释——直接 import 会导致 external builds 失败
+  - `src/services/compact/compact.ts:209` — "don't exist on external builds"——某些 API 在 external builds 中不存在
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：DCE 不是"代码不执行"，是"代码不存在"——这改变了一切
+  - 解读段要点：陷阱一——在 feature() 外的顶层代码中引用 feature-gated 模块（编译错误）；陷阱二——假设 feature flag 只控制运行时行为（实际上它控制编译时产物大小）；陷阱三——忘记 lazy import 导致 external build 失败
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 15.7：实证——从 feature flag 到代码消失的完整路径
+- 核心主张：追踪 REACTIVE_COMPACT 从定义到使用到 DCE 的完整路径，展示一个 feature flag 如何控制代码的物理存在
+- 源码锚点：
+  - `src/query.ts:15` — `feature('REACTIVE_COMPACT')` 条件导入 reactiveCompact 模块
+  - `src/query.ts:422` — "Gated behind feature() so the string is eliminated from external builds"——DCE 注释
+  - `src/services/compact/autoCompact.ts:191` — "out of external builds (REACTIVE_COMPACT is ant-only)"——ant-only 功能不进入外部版本
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 流程图（feature flag 生命周期：定义→条件导入→条件使用→DCE 注释→编译时消除）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一个 feature flag 的完整生命周期
+  - 解读段要点：定义（bunFeatures.ts 或 excluded-strings.txt）→ 条件导入（query.ts:15 的 lazy require）→ 条件使用（query.ts:627 运行时检查）→ DCE 注释（query.ts:422 和 autoCompact.ts:191）→ 编译时消除（Bun 构建时 false 分支消失）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：脚手架会消失的本质
+- 本质：89 个 feature flag 是 89 个"模型能力假设"，每个 flag 的 false 状态意味着"这段 Harness 代码在外部版本中不存在"——不是关闭，是消失
+- 关键机制：编译时 DCE（Bun feature + excluded-strings.txt）、运行时控制（GrowthBook/env/配置）、两层配合
+- 适用边界：适用于需要随模型进步逐步精简的 Harness 系统；一次性工具不需要这种架构
+- 与其他模式的关系：本章综合了第 3-14 章的所有 feature flag 用法；第 16 章将把这些观察提炼为通用原则
+
+### 章末：用户能做什么（必填）
+1. 为你的 Harness 系统建立 feature flag 机制——每个补偿模型不足的功能都用 flag 控制
+2. 使用编译时 DCE 而不是运行时 if——产物大小和启动时间都受益
+3. 在 feature flag 代码中标注 DCE 注释（参考 query.ts:422 的模式）——帮助维护者理解哪些代码可能不存在
+4. 定期审查 feature flag——如果模型在某方面已经足够好，就关掉对应的 flag
+5. 对 ant-only 功能使用 excluded-strings.txt（参考 autoCompact.ts:178）——从外部版本中彻底消除
+6. 延迟导入 feature-gated 模块（参考 microCompact.ts:54-56）——避免顶层 import 导致 external builds 失败
+7. 为 flag 的排列组合建立优先级矩阵——不可能测试所有组合，聚焦高风险组合
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图15-1 | feature flag 两层机制 | Mermaid graph TD | 编译时 DCE（source→feature()→Bun→external build）+ 运行时控制（GrowthBook/env/配置）| 15.4 |
+| 图15-2 | flag 生命周期 | Mermaid flowchart LR | 定义→条件导入→条件使用→DCE注释→编译时消除 | 15.7 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 15.4 节（两层机制）——本章核心
+3. 写 15.2 节（黄金法则：能力假设）
+4. 写 15.1 节（问题）
+5. 写 15.3 节（适用场景）
+6. 写 15.5 节（权衡）
+7. 写 15.6 节（踩坑指南）
+8. 写 15.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '16p' src/utils/bunFeatures.ts              # DEFAULT_FEATURES
+sed -n '25p' src/utils/bunFeatures.ts              # feature() 函数
+sed -n '21p' src/main.tsx                          # import feature from bun:bundle
+sed -n '76p' src/main.tsx                          # COORDINATOR_MODE 条件导入
+sed -n '80p' src/main.tsx                          # KAIROS 条件导入
+sed -n '1872p' src/main.tsx                        # COORDINATOR_MODE 运行时检查
+sed -n '15p' src/query.ts                          # REACTIVE_COMPACT
+sed -n '115p' src/query.ts                         # HISTORY_SNIP
+sed -n '422p' src/query.ts                         # DCE 注释
+sed -n '177p' src/services/compact/autoCompact.ts  # DCE 注释
+sed -n '55p' src/services/compact/microCompact.ts  # DCE 注释
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch15.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

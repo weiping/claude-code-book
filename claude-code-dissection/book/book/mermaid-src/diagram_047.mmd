@@ -1,0 +1,13 @@
+flowchart TD
+    A["Agent定义存在?"] -->|否| B["使用 Custom/Default"]
+    A -->|是| C{"isProactiveActive?"}
+    C -->|是 Proactive| D["最终提示 =<br/>Default + Agent提示"]
+    C -->|否 普通| E["最终提示 =<br/>Agent提示"]
+    D --> F["Claude 的角色：<br/>谨慎的 + 专业知识"]
+    E --> G["Claude 的角色：<br/>独立、自主的Agent"]
+    F --> H["保留所有<br/>安全约束"]
+    G --> I["由Agent提示<br/>全面定义行为"]
+    style D fill:#e6f3ff
+    style E fill:#fff0e6
+    style H fill:#ccffcc
+    style I fill:#ffcccc

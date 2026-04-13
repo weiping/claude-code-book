@@ -1,0 +1,16 @@
+flowchart TD
+    A["工具调用列表\nToolUseBlock[]"] --> B["partitionToolCalls\n逐个检查 isConcurrencySafe"]
+
+    B --> C{isConcurrencySafe?}
+    C -->|true 且上一批也是| D["合并到当前批\n并发执行"]
+    C -->|true 但上一批不是| E["开启新的并发批"]
+    C -->|false| F["开启新的串行批"]
+
+    D --> G["runToolsConcurrently\n最多 10 并发"]
+    E --> G
+    F --> H["runToolsSerially\n逐个执行"]
+
+    G --> I["收集结果"]
+    H --> I
+
+    B -.- Note1["容错：异常→false\n保守处理"]

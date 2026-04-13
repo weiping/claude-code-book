@@ -1,0 +1,441 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 12 章：BashTool 解剖——最复杂工具的实现 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第12章bashtool-解剖最复杂工具的实现"><a class="header" href="#第12章bashtool-解剖最复杂工具的实现">第12章：BashTool 解剖——最复杂工具的实现</a></h1>
+<blockquote>
+<p><em>"Every command is a question: read, search, list, or change the world?"</em></p>
+</blockquote>
+<blockquote>
+<p><code>BashTool</code> 是整个 Claude Code 代码库里<strong>最复杂的单个工具</strong>。一条 <code>ls -la</code> 和一条 <code>rm -rf /</code> 都是 bash 命令，但处理方式完全不同。命令的语义分类、沙箱路由决策、<code>sed -i</code> 的独立解析器、超长输出的磁盘存储——每一个细节背后都有具体的工程原因。</p>
+</blockquote>
+<p><code>cat README.md</code> 在 UI 里折叠显示"读取了文件"。<code>ls -la</code> 显示"列出了目录"。<code>grep -r "TODO" src/</code> 显示"搜索了文件"。<code>rm -rf /tmp/test</code> 触发权限确认。<code>sed -i 's/foo/bar/g' file.ts</code> 展示文件 diff。</p>
+<p>同样是 bash 命令，五种完全不同的处理路径。这不是偶然——BashTool 在内部对命令做了<strong>语义分类</strong>，根据分类结果决定 UI 展示方式、权限检查级别、特殊解析逻辑。</p>
+<p>这是 BashTool 成为代码库中最复杂工具的根本原因：它不只是执行命令的壳，而是一个<strong>命令意图的理解层</strong>。本章按处理流程逐层解剖。</p>
+<h2 id="121-命令语义分类四个-set-如何驱动-ui-行为"><a class="header" href="#121-命令语义分类四个-set-如何驱动-ui-行为">12.1 命令语义分类——四个 Set 如何驱动 UI 行为？</a></h2>
+<p>BashTool 维护四个静态命令集合：</p>
+<pre><code class="language-typescript">// src/tools/BashTool/BashTool.tsx:60
+const BASH_SEARCH_COMMANDS = new Set([
+  'find', 'grep', 'rg', 'ag', 'ack', 'locate', 'which', 'whereis'
+]);
+
+// src/tools/BashTool/BashTool.tsx:63
+const BASH_READ_COMMANDS = new Set([
+  'cat', 'head', 'tail', 'less', 'more',
+  'wc', 'stat', 'file', 'strings',
+  'jq', 'awk', 'cut', 'sort', 'uniq', 'tr'
+]);
+
+// src/tools/BashTool/BashTool.tsx:72
+// Split from BASH_READ_COMMANDS so the summary says "Listed N directories"
+// instead of the misleading "Read N files".
+const BASH_LIST_COMMANDS = new Set(['ls', 'tree', 'du']);
+
+// src/tools/BashTool/BashTool.tsx:77
+// Commands that are semantic-neutral in any position — pure output/status
+const BASH_SEMANTIC_NEUTRAL_COMMANDS = new Set(['echo', 'printf', 'true', 'false', ':']);
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/BashTool/BashTool.tsx:60,63,72,77</code></p>
+<p>注意 <code>BASH_LIST_COMMANDS</code> 的注释：它<strong>刻意从 <code>BASH_READ_COMMANDS</code> 里分离出来</strong>，因为 <code>ls</code> 是"列出目录"而非"读取文件"，UI 摘要文字不同。这是"命令语义"而非"命令功能"的分类——<code>ls</code> 和 <code>cat</code> 都不修改状态，但它们的行为对用户的意义不同。</p>
+<p><strong>语义分类的核心逻辑</strong>（<code>src/tools/BashTool/BashTool.tsx:95</code>的 <code>isSearchOrReadBashCommand</code> 函数）：</p>
+<pre><code class="language-typescript">// src/tools/BashTool/BashTool.tsx:130-165（简化）
+for (const part of commandParts) {
+  const baseCommand = part.trim().split(/\s+/)[0]
+
+  if (BASH_SEMANTIC_NEUTRAL_COMMANDS.has(baseCommand)) continue  // 中性命令跳过
+
+  const isPartSearch = BASH_SEARCH_COMMANDS.has(baseCommand)
+  const isPartRead = BASH_READ_COMMANDS.has(baseCommand)
+  const isPartList = BASH_LIST_COMMANDS.has(baseCommand)
+
+  if (!isPartSearch &amp;&amp; !isPartRead &amp;&amp; !isPartList) {
+    return { isSearch: false, isRead: false, isList: false }  // 任何不认识的命令 → 非只读
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/BashTool/BashTool.tsx:130</code></p>
+<p><strong>任何不在四个集合里的命令，整个管道都被视为"可能修改状态"</strong>——这是保守分类原则。<code>ls dir &amp;&amp; echo "---" &amp;&amp; cat file.ts</code> 会被识别为"读取+列表"，但 <code>ls dir &amp;&amp; unknown_cmd</code> 会被视为未知，因为 <code>unknown_cmd</code> 不在任何集合里。</p>
+<p><strong>表 12-1：四种语义分类的 UI 行为</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>集合</th><th>代表命令</th><th>UI 摘要</th><th>权限级别</th><th>默认折叠</th></tr></thead><tbody>
+<tr><td>SEARCH</td><td>grep/find/rg</td><td>"搜索了 N 个文件"</td><td>低（只读）</td><td>✅ 折叠</td></tr>
+<tr><td>READ</td><td>cat/head/tail</td><td>"读取了 N 个文件"</td><td>低（只读）</td><td>✅ 折叠</td></tr>
+<tr><td>LIST</td><td>ls/tree/du</td><td>"列出了 N 个目录"</td><td>低（只读）</td><td>✅ 折叠</td></tr>
+<tr><td>未分类/修改</td><td>rm/git/编译器</td><td>完整显示</td><td>高（写入）</td><td>❌ 展开</td></tr>
+</tbody></table>
+</div>
+<p><strong>图 12-1：命令语义分类决策路径</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    cmd["bash 命令\n（可能是管道）"]
+    split["分割为命令部分\n（处理 &amp;&amp;/||/|/;）"]
+    neutral{是 SEMANTIC_NEUTRAL\n命令?}
+    skip["跳过\n（中性命令不影响分类）"]
+    known{在四个集合里?}
+    classify["标记 isSearch/isRead/isList"]
+    unknown["立即返回全 false\n（整个管道视为修改）"]
+    result["合并结果\n返回 isSearch/isRead/isList"]
+
+    cmd --&gt; split
+    split --&gt; neutral
+    neutral --&gt;|是| skip
+    neutral --&gt;|否| known
+    known --&gt;|否| unknown
+    known --&gt;|是| classify
+    classify --&gt; result
+    skip --&gt; result
+</code></pre>
+<h2 id="122-shouldusesandbox-为什么需要四重条件而不是简单的黑白名单"><a class="header" href="#122-shouldusesandbox-为什么需要四重条件而不是简单的黑白名单">12.2 shouldUseSandbox 为什么需要四重条件，而不是简单的黑白名单？</a></h2>
+<p>并非所有命令都需要沙箱隔离。<code>shouldUseSandbox</code>（<code>src/tools/BashTool/shouldUseSandbox.ts:130</code>）是<strong>四个条件的 AND</strong>，而不是一个命令黑名单。</p>
+<p>为什么不用黑名单？黑名单维护成本高（需要列举所有危险命令），且容易遗漏（<code>curl | sh</code> 这类组合命令很难枚举）。四重 AND 的设计是"沙箱功能可用 + 用户未显式禁用 + 有命令内容 + 不在排除列表"——每个条件解决不同场景下的豁免需求：</p>
+<pre><code class="language-typescript">// src/tools/BashTool/shouldUseSandbox.ts:130
+export function shouldUseSandbox(input: Partial&lt;SandboxInput&gt;): boolean {
+  if (!SandboxManager.isSandboxingEnabled()) {
+    return false    // 条件1：全局沙箱功能未开启
+  }
+  if (input.dangerouslyDisableSandbox &amp;&amp;
+      SandboxManager.areUnsandboxedCommandsAllowed()) {
+    return false    // 条件2：显式禁用且策略允许
+  }
+  if (!input.command) {
+    return false    // 条件3：无命令内容
+  }
+  if (containsExcludedCommand(input.command)) {
+    return false    // 条件4：包含用户配置的排除命令
+  }
+  return true
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/BashTool/shouldUseSandbox.ts:130</code></p>
+<p><strong>图 12-2：shouldUseSandbox 决策流</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    A["shouldUseSandbox()"]
+    B{SandboxManager\nisSandboxingEnabled?}
+    C{dangerouslyDisableSandbox\n且允许不沙箱?}
+    D{有命令内容?}
+    E{包含排除命令?}
+    no["return false\n（不使用沙箱）"]
+    yes["return true\n（使用沙箱）"]
+
+    A --&gt; B
+    B --&gt;|否| no
+    B --&gt;|是| C
+    C --&gt;|是| no
+    C --&gt;|否| D
+    D --&gt;|否| no
+    D --&gt;|是| E
+    E --&gt;|是| no
+    E --&gt;|否| yes
+</code></pre>
+<p>沙箱路由的结果会影响 <code>userFacingName</code>：如果进沙箱则显示 <code>'SandboxedBash'</code>，否则显示 <code>'Bash'</code>（<code>src/tools/BashTool/BashTool.tsx:502</code>）。这让用户在 UI 上能直接看到当前命令是否在沙箱中执行，而无需查看设置。</p>
+<p><strong>源码参考：</strong> <code>src/tools/BashTool/BashTool.tsx:502</code></p>
+<h2 id="123-为什么-sed--i-需要独立解析器而不是当作普通-bash-命令处理"><a class="header" href="#123-为什么-sed--i-需要独立解析器而不是当作普通-bash-命令处理">12.3 为什么 sed -i 需要独立解析器，而不是当作普通 bash 命令处理？</a></h2>
+<p><code>sed -i 's/old/new/g' file.ts</code> 是修改文件的命令，但从 shell 层面看，BashTool 只知道"这是一条 bash 命令"。怎么展示 diff？怎么做针对性的权限检查？</p>
+<p>答案是专门的解析器：</p>
+<pre><code class="language-typescript">// src/tools/BashTool/BashTool.tsx:490
+if (input.command) {
+  const sedInfo = parseSedEditCommand(input.command)
+  if (sedInfo) {
+    return fileEditUserFacingName({    // 展示为文件编辑，而非 Bash 命令
+      file_path: sedInfo.filePath,
+      old_string: 'x'
+    })
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/BashTool/BashTool.tsx:490</code></p>
+<p><code>parseSedEditCommand</code>（<code>src/tools/BashTool/sedEditParser.ts</code>）将 <code>sed -i 's/foo/bar/g' file.ts</code> 解析为结构化的 <code>SedEditInfo</code>：</p>
+<pre><code class="language-typescript">// src/tools/BashTool/sedEditParser.ts:25
+export type SedEditInfo = {
+  filePath: string         // 被编辑的文件路径
+  // 替换模式、匹配内容等...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/BashTool/sedEditParser.ts:25</code></p>
+<p>解析成功后，<code>sed</code> 命令在 UI 里显示的不是"执行了 Bash 命令"，而是"编辑了 file.ts"，并且可以展示修改前后的 diff——这是与 <code>FileEditTool</code> 相同的展示路径。</p>
+<p><strong>为什么不直接把 sed 命令转成 FileEditTool 调用？</strong> 因为 sed 的语法非常丰富（正则、范围、多重替换），完全转换需要解析 sed 的完整语法，而 <code>parseSedEditCommand</code> 只处理常见的 <code>-i 's/old/new/'</code> 形式。对于无法解析的 sed 命令，<code>parseSedEditCommand</code> 返回 <code>null</code>，fallback 到普通 Bash 展示——这是"尽力解析，失败时降级"的模式。</p>
+<h2 id="124-为什么超长输出写磁盘而不是截断丢弃"><a class="header" href="#124-为什么超长输出写磁盘而不是截断丢弃">12.4 为什么超长输出写磁盘而不是截断丢弃？</a></h2>
+<p>命令输出可以是无限的（<code>find / -type f</code> 可能输出数百万行）。如果直接把完整输出塞进 LLM context，会导致 context window 溢出。</p>
+<p><code>toolResultStorage.ts</code> 提供了防御机制。但有一个关键设计选择：为什么是"写磁盘 + 路径"而不是"截断丢弃"？</p>
+<p><strong>截断丢弃的问题</strong>：<code>find / -type f</code> 输出了 10 万行，截断后 Claude 看到前 2KB，可能误以为"找到了所有结果"，产生错误推断。</p>
+<p><strong>写磁盘的设计</strong>：Claude 知道"有更多内容在这个文件里"，可以主动用 <code>FileReadTool</code> 读取——这保留了信息的完整性，只是改变了获取方式。</p>
+<pre><code class="language-typescript">// src/utils/toolResultStorage.ts:109
+export const PREVIEW_SIZE_BYTES = 2000
+
+// 当输出超过 PREVIEW_SIZE_BYTES 时
+// src/utils/toolResultStorage.ts:175
+const { preview, hasMore } = generatePreview(contentStr, PREVIEW_SIZE_BYTES)
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/toolResultStorage.ts:109,175</code></p>
+<p>超过 2000 字节的输出会触发<strong>磁盘持久化 + 预览路径</strong>机制：</p>
+<ol>
+<li>完整输出写入 <code>.claude/tool-results/&lt;toolUseId&gt;.txt</code></li>
+<li>LLM 收到的是：<code>Preview (first 2KB):\n[前2000字节内容]\n[File: .claude/tool-results/xxx.txt]</code></li>
+<li>LLM 如果需要完整内容，可以用 <code>FileReadTool</code> 读取该文件</li>
+</ol>
+<p><strong>图 12-3：BashTool 完整处理流程</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    input["bash 命令输入"]
+    classify["语义分类\nisSearchOrReadBashCommand()"]
+    sed_check{是 sed -i 命令?}
+    sed_parse["parseSedEditCommand()\n→ 展示为文件编辑 diff"]
+    sandbox{shouldUseSandbox?}
+    exec["执行命令\n本地 shell 或沙箱"]
+    size{输出 &gt; 2000字节?}
+    disk["写磁盘\n返回路径 + 预览"]
+    inline["直接返回\n完整输出"]
+    result["ToolResult\n→ 回填到 query.ts"]
+
+    input --&gt; classify
+    classify --&gt; sed_check
+    sed_check --&gt;|是| sed_parse
+    sed_check --&gt;|否| sandbox
+    sed_parse --&gt; exec
+    sandbox --&gt;|是| exec
+    sandbox --&gt;|否| exec
+    exec --&gt; size
+    size --&gt;|是| disk
+    size --&gt;|否| inline
+    disk --&gt; result
+    inline --&gt; result
+</code></pre>
+<p>这张图揭示了 BashTool 的核心设计：<strong>它在工具接口层和 shell 执行层之间插入了三个理解层</strong>——语义分类层、沙箱路由层、特殊命令解析层——让 LLM 对工具结果有更精确的感知，而不是把原始 shell 输出直接暴露给 LLM。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="行为集合分类behavioral-set-classification"><a class="header" href="#行为集合分类behavioral-set-classification">行为集合分类（Behavioral Set Classification）</a></h3>
+<p><strong>解决的问题</strong>：命令字符串本身无法直接决定 UI/权限行为，需要语义分类，但全量规则引擎太复杂。</p>
+<p><strong>核心做法</strong>：用 <code>Set&lt;string&gt;</code> 维护已知行为类别的命令名，O(1) 查找；任何不在集合里的命令 fallback 到"未知/保守"处理；<code>SEMANTIC_NEUTRAL</code> 集合用于跳过不影响分类的命令（<code>echo</code>/<code>printf</code>）。</p>
+<p><strong>前置条件</strong>：有限的已知命令集，且行为分类足够清晰（不需要按参数分类）。</p>
+<p><strong>源码证据</strong>：<code>src/tools/BashTool/BashTool.tsx:60,72</code> — 四个 Set 分类（SEARCH/READ/LIST/NEUTRAL），注释说明 LIST 从 READ 中分离的原因："so the summary says 'Listed N directories' instead of the misleading 'Read N files'"。</p>
+<h3 id="结构化命令解析structured-command-parsing"><a class="header" href="#结构化命令解析structured-command-parsing">结构化命令解析（Structured Command Parsing）</a></h3>
+<p><strong>解决的问题</strong>：<code>sed -i</code> 等通用文本命令包含结构化的文件修改语义，直接当字符串处理会丢失精度（无法展示 diff、无法做文件级权限检查）。</p>
+<p><strong>核心做法</strong>：为特定命令格式（<code>sed -i 's/old/new/g' file</code>）提供专门解析器，提取结构化信息（文件路径、替换模式）；解析失败时降级到通用处理，不抛错。</p>
+<p><strong>前置条件</strong>：命令语法足够规律，值得专门解析器；且降级处理是可接受的（不必100%覆盖）。</p>
+<p><strong>源码证据</strong>：<code>src/tools/BashTool/BashTool.tsx:490</code> — <code>parseSedEditCommand</code> 返回 <code>null</code> 时 fallback 到 <code>'Bash'</code> 显示，而非报错。</p>
+<h3 id="防御性输出截断defensive-output-truncation"><a class="header" href="#防御性输出截断defensive-output-truncation">防御性输出截断（Defensive Output Truncation）</a></h3>
+<p><strong>解决的问题</strong>：命令输出大小不可预测，无限输出会导致 context window 溢出，但完整输出可能后续还需要。</p>
+<p><strong>核心做法</strong>：设置固定阈值（2000 字节），超过时写磁盘并返回"路径 + 预览"；LLM 如需完整内容可自主用 FileReadTool 读取；阈值设计为"预览有意义"的大小（2KB 足以看出输出的结构）。</p>
+<p><strong>前置条件</strong>：工具输出大小不可预测，且需要平衡 context window 使用和信息完整性。</p>
+<p><strong>源码证据</strong>：<code>src/utils/toolResultStorage.ts:109</code> — <code>PREVIEW_SIZE_BYTES = 2000</code>；<code>src/utils/toolResultStorage.ts:194</code> — 消息包含"Preview (first 2KB)"说明截断事实，LLM 知道有更多内容可读。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-假设-bash_search_commands-只是搜索类命令的语义分类"><a class="header" href="#-假设-bash_search_commands-只是搜索类命令的语义分类">❌ 假设 BASH_SEARCH_COMMANDS 只是"搜索类"命令的语义分类</a></h3>
+<p><code>BASH_SEARCH_COMMANDS</code> 影响的不只是语义标签，还影响 UI 层的展示方式——搜索类命令的结果会折叠显示，不占用主要界面空间（<code>src/tools/BashTool/BashTool.tsx</code>）。如果把常用的分析命令（如 <code>cat</code>）归入搜索类，用户会发现重要输出被自动折叠，需要手动展开。</p>
+<h3 id="-依赖-shouldusesandbox-只检查单一条件"><a class="header" href="#-依赖-shouldusesandbox-只检查单一条件">❌ 依赖 shouldUseSandbox 只检查单一条件</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：以为只要有 sandbox 就用 sandbox
+const useSandbox = process.env.SANDBOX_ENABLED === 'true'
+</code></pre>
+<p><code>shouldUseSandbox</code>（<code>src/tools/BashTool/shouldUseSandbox.ts</code>）实际上需要四重条件同时满足：操作系统支持、用户类型、命令类型、目录权限。缺少任何一个检查，要么沙箱在不需要时被使用（性能损耗），要么在需要时被跳过（安全风险）。</p>
+<h3 id="-把-sed-命令当普通-bash-命令处理不用-sededitparser"><a class="header" href="#-把-sed-命令当普通-bash-命令处理不用-sededitparser">❌ 把 sed 命令当普通 bash 命令处理，不用 sedEditParser</a></h3>
+<p><code>sed -i 's/old/new/g' file</code> 在 Linux 和 macOS 上的语法有兼容性差异，而且 sed 的文件编辑对 Claude 的"文件修改追踪"来说有特殊语义。<code>parseSedEditCommand</code>（<code>src/tools/BashTool/sedEditParser.ts</code>）负责把 sed 命令转换为 FileEditTool 可理解的格式，绕过这个解析器会导致跨平台兼容问题和编辑追踪失效。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用 Set 分类已知行为模式</strong>：对命令/API/操作做语义分类时，用 <code>Set&lt;string&gt;</code> 比枚举更灵活（可动态添加），比正则更快（O(1) vs O(n)）</li>
+<li><strong>解析器用"尽力解析，失败降级"</strong>：<code>parseSedEditCommand</code> 返回 <code>null</code> 而非抛错，让调用方选择降级行为——这比强制解析更健壮</li>
+<li><strong>输出截断配合"完整内容可获取"</strong>：不只是截断，而是把完整内容存到可访问的位置——这让截断不丢失信息，只是延迟获取</li>
+<li><strong>保守分类原则</strong>：任何不认识的命令视为"可能修改状态"——宁可多确认，不要误放行</li>
+</ul>
+<hr />
+<p><em>第12章完成了对 BashTool 的完整解剖。第13章将解析 AgentTool——另一个复杂工具，但复杂性来源完全不同：它不是执行 shell 命令，而是启动另一个完整的 Claude 实例。接口层和执行层如何分离？built-in agents 如何注册和选择？</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part3/ch11.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part3/ch13.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part3/ch11.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part3/ch13.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

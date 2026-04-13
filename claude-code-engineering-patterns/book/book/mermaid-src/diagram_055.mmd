@@ -1,0 +1,11 @@
+flowchart LR
+    subgraph plugin_model[传统插件模型]
+        user_code[用户插件代码] -->|直接运行| main_proc[主进程]
+        main_proc --> global_state[全局状态\n安全风险]
+    end
+
+    subgraph skill_model[声明式能力包]
+        skill_md[Skill.md\nfrontmatter] -->|解析元数据| skill_tool[SkillTool]
+        skill_tool -->|fork 子进程| isolated[隔离进程\n独立 token 预算]
+        skill_md2[Skill.md\n正文内容] --> isolated
+    end

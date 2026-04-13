@@ -1,0 +1,13 @@
+[book]
+title = "从 Claude Code 源码提炼的 Harness 工程模式"
+language = "zh"
+multilingual = false
+src = "src"
+authors = ["雨杨先生"]
+
+[output.html]
+mathjax-support = false
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[preprocessor]
+

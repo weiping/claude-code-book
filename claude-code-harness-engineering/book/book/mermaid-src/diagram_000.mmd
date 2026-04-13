@@ -1,0 +1,40 @@
+graph TD
+    subgraph "交互层 / Interaction Layer"
+        CLI["CLI 入口<br/>main.tsx"]
+        TUI["TUI 界面<br/>Ink/React"]
+        CMD["命令系统<br/>103 个斜杠命令"]
+        IDE["IDE 集成<br/>LSP/Bridge"]
+    end
+
+    subgraph "Harness 控制层 / Control Layer"
+        START["启动系统"]
+        CORE["核心循环<br/>状态机"]
+        PROMPT["提示词管理"]
+        TOOL["工具编排"]
+        CTX["上下文管理"]
+        PERM["权限护栏"]
+        TASK["任务编排"]
+        MULTI["多智能体"]
+        AUX["辅助系统"]
+    end
+
+    subgraph "模型层 / Model Layer"
+        API["Anthropic API<br/>流式通信"]
+        MODEL["模型管理<br/>Bedrock/Vertex"]
+    end
+
+    CLI --> START
+    TUI --> CORE
+    CMD --> CORE
+    IDE --> CORE
+    START --> CORE
+    CORE --> PROMPT
+    CORE --> TOOL
+    CORE --> CTX
+    CORE --> PERM
+    CORE --> TASK
+    CORE --> MULTI
+    CORE --> API
+    PROMPT --> API
+    TOOL --> API
+    API --> MODEL

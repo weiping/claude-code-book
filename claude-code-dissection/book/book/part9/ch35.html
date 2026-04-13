@@ -1,0 +1,708 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 35 章：Plugin 系统——DXT 包的生命周期 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-35-章dxt-插件系统---扩展-claude-code-的工具和能力"><a class="header" href="#第-35-章dxt-插件系统---扩展-claude-code-的工具和能力">第 35 章：DXT 插件系统 - 扩展 Claude Code 的工具和能力</a></h1>
+<blockquote>
+<p>用户想要一个自定义的"快捷命令"来自动化他的工作流。或者想要一个特殊的权限规则来适应公司政策。系统怎么让用户编写、打包、分发这些扩展？为什么不直接改源码，而是要设计一个"插件系统"？</p>
+</blockquote>
+<hr />
+<h2 id="351-插件系统的困难"><a class="header" href="#351-插件系统的困难">35.1 插件系统的困难</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p><strong>插件</strong> = 用户编写的代码，无需修改 Claude Code 源码，就能扩展系统功能。</p>
+<pre><code>对标框架：
+  VS Code → Extensions
+  Neovim → Plugins
+  Chrome → Extensions
+Claude Code 中：
+  → DXT Packages（自定义扩展包）
+  → Installed plugins（已安装的插件）
+</code></pre>
+<h3 id="设计意图为什么需要插件系统"><a class="header" href="#设计意图为什么需要插件系统">设计意图：为什么需要插件系统</a></h3>
+<p><strong>困境</strong>：</p>
+<pre><code>选项 A：不允许用户扩展
+  ✓ 系统简单
+  ✗ 功能固化，用户需求无法满足
+选项 B：让用户改源码
+  ✓ 灵活
+  ✗ 升级时冲突
+  ✗ 无法共享（每个人的改动不同）
+  ✗ 安全隐患（用户可能引入恶意代码）
+选项 C：设计规范的插件系统 ✅
+  ✓ 灵活（用户能扩展）
+  ✓ 安全（插件被沙箱隔离）
+  ✓ 可维护（源码升级不冲突）
+  ✓ 可共享（用户能分发插件）
+</code></pre>
+<p>在 <code>src/types/plugin.ts</code> 中：</p>
+<pre><code class="language-typescript">export type Plugin = {
+  id: string              // 唯一标识，如 "my-company/auto-commit"
+  name: string
+  version: string
+  description: string
+  // 核心功能入口
+  commands?: PluginCommand[]       // 自定义 slash 命令
+  hooks?: PluginHook[]            // 生命周期钩子（hook）
+  tools?: PluginTool[]            // 自定义工具
+  permissions?: PermissionRule[]  // 权限规则扩展
+  // 元数据
+  author: string
+  license: string
+  dependencies?: Record&lt;string, string&gt;
+  requiredVersion?: string  // 最低需要的 Claude Code 版本
+}
+</code></pre>
+<hr />
+<h2 id="352-dxt-包格式与生命周期"><a class="header" href="#352-dxt-包格式与生命周期">35.2 DXT 包格式与生命周期</a></h2>
+<h3 id="定义-1"><a class="header" href="#定义-1">定义</a></h3>
+<p><strong>DXT</strong> = Claude Code 的插件包格式（类似 npm package、VS Code VSIX）</p>
+<h3 id="包结构"><a class="header" href="#包结构">包结构</a></h3>
+<pre><code>my-plugin/
+├── package.json          # 插件元数据
+├── index.ts             # 入口文件
+├── commands/            # 自定义命令
+│   ├── auto-commit.ts
+│   └── sync-fork.ts
+├── hooks/               # 生命周期钩子
+│   └── pre-compile.ts
+├── tools/               # 自定义工具
+│   └── CustomTool.ts
+└── README.md
+</code></pre>
+<h3 id="packagejson-示例"><a class="header" href="#packagejson-示例">package.json 示例</a></h3>
+<pre><code class="language-json">{
+  "id": "company/workflow-automation",
+  "name": "Workflow Automation",
+  "version": "1.2.0",
+  "description": "Automate company-specific workflows",
+  "author": "MyCompany",
+  "license": "MIT",
+  "main": "./index.ts",
+  "commands": ["./commands/*.ts"],
+  "hooks": ["./hooks/*.ts"],
+  "tools": ["./tools/*.ts"],
+  "requiredVersion": "2.1.0",
+  "dependencies": {
+    "some-npm-package": "^1.0.0"
+  }
+}
+</code></pre>
+<h3 id="生命周期"><a class="header" href="#生命周期">生命周期</a></h3>
+<p>在 <code>src/utils/plugins/installedPluginsManager.ts</code> 中：</p>
+<pre><code>1️⃣  安装（Installation）
+  用户: npm install @company/workflow-automation
+  ↓
+  Claude Code 发现插件目录
+  ↓
+  验证 package.json
+  ↓
+  加载 hook 和命令
+  ↓
+  ✅ 插件激活
+2️⃣  启用/禁用（Activation）
+  用户: /plugin enable company/workflow
+  ↓
+  插件进入全局钩子系统
+  ↓
+  接收生命周期事件
+3️⃣  升级（Update）
+  新版本发布
+  ↓
+  Claude Code 检测到更新
+  ↓
+  备份旧版本
+  ↓
+  加载新版本
+  ↓
+  如果失败，回滚到旧版本
+4️⃣  卸载（Uninstall）
+  用户: /plugin remove company/workflow
+  ↓
+  插件从钩子系统移除
+  ↓
+  清理资源
+  ↓
+  删除插件目录
+</code></pre>
+<hr />
+<h2 id="353-插件的四种扩展点"><a class="header" href="#353-插件的四种扩展点">35.3 插件的四种扩展点</a></h2>
+<h3 id="扩展点-1自定义命令"><a class="header" href="#扩展点-1自定义命令">扩展点 1：自定义命令</a></h3>
+<pre><code class="language-typescript">// plugin: my-plugin/commands/auto-commit.ts
+import { defineCommand } from 'claude-code-sdk'
+export default defineCommand({
+  name: 'auto-commit',
+  usage: '/auto-commit [message]',
+  description: 'Automatically create commits with AI-generated messages',
+  async execute(args: string[], context: CommandContext) {
+    // 获取当前 git 状态
+    const diff = await context.bash('git diff')
+    // 用 Claude 生成提交信息
+    const message = await context.llm.complete({
+      model: 'sonnet',
+      prompt: `Generate a concise git commit message for:\n${diff}`,
+    })
+    // 创建提交
+    await context.bash(`git commit -m "${message}"`)
+    context.sendMessage(`✅ Committed: ${message}`)
+  }
+})
+</code></pre>
+<p><strong>特点</strong>：</p>
+<ul>
+<li>没有额外的 CLI 参数解析，系统自动处理</li>
+<li>有完整的 context（bash、llm、权限等）</li>
+<li>执行结果自动流式输出</li>
+</ul>
+<h3 id="扩展点-2生命周期钩子"><a class="header" href="#扩展点-2生命周期钩子">扩展点 2：生命周期钩子</a></h3>
+<pre><code class="language-typescript">// plugin: my-plugin/hooks/pre-execute.ts
+import { defineHook } from 'claude-code-sdk'
+export default defineHook({
+  event: 'before_tool_execute',
+  async handler(tool: Tool, input: unknown, context: HookContext) {
+    // 如果是 BashTool，自动检查危险命令
+    if (tool.name === 'bash') {
+      const cmd = input as string
+      if (cmd.includes('rm -rf') &amp;&amp; !cmd.includes('--dry-run')) {
+        context.requireConfirmation(
+          `⚠️  Destructive command detected: ${cmd}. Continue?`
+        )
+      }
+    }
+    // 传递控制权给下一个 hook
+    return { allowed: true }
+  }
+})
+</code></pre>
+<p><strong>生命周期事件列表</strong>：</p>
+<pre><code>初始化：
+  - plugin_loaded
+  - plugin_enabled
+会话阶段：
+  - session_started
+  - session_ended
+执行阶段：
+  - before_tool_execute
+  - after_tool_execute
+  - before_llm_call
+  - after_llm_call
+权限阶段：
+  - permission_requested
+  - permission_decided
+清理：
+  - plugin_disabled
+  - plugin_unloaded
+</code></pre>
+<h3 id="扩展点-3自定义工具"><a class="header" href="#扩展点-3自定义工具">扩展点 3：自定义工具</a></h3>
+<pre><code class="language-typescript">// plugin: my-plugin/tools/CompanyDatabase.ts
+import { buildTool } from 'claude-code-sdk'
+export const CompanyDatabaseTool = buildTool({
+  name: 'company_database',
+  description: 'Query internal company database',
+  inputSchema: {
+    query: z.string().describe('SQL-like query'),
+    table: z.enum(['employees', 'projects', 'resources']),
+  },
+  async *execute(input, context) {
+    // 权限检查：只有内网才能访问
+    if (!context.isInternalNetwork()) {
+      throw new Error('Only accessible from internal network')
+    }
+    const result = await queryDatabase(input.table, input.query)
+    yield { type: 'text', text: JSON.stringify(result, null, 2) }
+  }
+})
+</code></pre>
+<h3 id="扩展点-4权限规则扩展"><a class="header" href="#扩展点-4权限规则扩展">扩展点 4：权限规则扩展</a></h3>
+<pre><code class="language-typescript">// plugin: my-plugin/permissions.ts
+import { definePermissionRules } from 'claude-code-sdk'
+export default definePermissionRules([
+  {
+    pattern: 'bash execute',
+    conditions: [
+      // 条件 1：只允许在特定目录
+      { 
+        type: 'path_prefix',
+        value: '/data/projects',
+        action: 'allow'
+      },
+      // 条件 2：禁止特定命令
+      {
+        type: 'command_pattern',
+        regex: /^ssh|curl.*external/,
+        action: 'deny'
+      },
+      // 条件 3：工作时间检查
+      {
+        type: 'time_range',
+        start: '09:00',
+        end: '18:00',
+        action: 'allow'
+      }
+    ],
+    mode: 'auto'  // 自动批准，不需要用户确认
+  }
+])
+</code></pre>
+<hr />
+<h2 id="354-插件隔离与安全"><a class="header" href="#354-插件隔离与安全">35.4 插件隔离与安全</a></h2>
+<h3 id="问题"><a class="header" href="#问题">问题</a></h3>
+<p>插件代码是用户提供的，可能包含恶意代码。</p>
+<pre><code>威胁：
+  1. 访问系统文件（/etc/passwd）
+  2. 建立网络连接（向外泄露数据）
+  3. 无限循环（DoS）
+  4. 消耗 token（刷爆账单）
+</code></pre>
+<h3 id="沙箱隔离"><a class="header" href="#沙箱隔离">沙箱隔离</a></h3>
+<p>在 <code>src/utils/plugins/sandboxPlugin.ts</code> 中：</p>
+<pre><code class="language-typescript">/**
+ * 将插件代码运行在限制的上下文中
+ */
+async function sandboxPluginExecution(
+  plugin: Plugin,
+  context: ExecutionContext
+): Promise&lt;any&gt; {
+  // 步骤 1：创建受限的全局对象
+  const sandbox = {
+    // 只允许访问特定的 Claude Code API
+    claudeCodeAPI: {
+      bash: context.bash,
+      llm: context.llm,
+      sendMessage: context.sendMessage,
+      // ✗ 不允许 fs（文件系统）
+      // ✗ 不允许 net（网络）
+    },
+    // 其他的 Node API 都是禁止的
+    // fs: undefined,
+    // net: undefined,
+    // child_process: undefined,
+  }
+  // 步骤 2：设置执行超时
+  const timeoutPromise = new Promise((_, reject) =&gt;
+    setTimeout(() =&gt; reject(new Error('Plugin execution timeout')), 5000)
+  )
+  // 步骤 3：执行插件代码
+  const result = await Promise.race([
+    executePluginInVM(plugin, sandbox),
+    timeoutPromise
+  ])
+  return result
+}
+</code></pre>
+<h3 id="权限模型"><a class="header" href="#权限模型">权限模型</a></h3>
+<pre><code>Capability      | 默认允许? | 覆盖权限?
+─────────────────────────────────────
+bash execute    | 否        | 用户确认
+llm call        | 是        | 仅成本限制
+sendMessage     | 是        | 无
+file read       | 是        | 仅工作目录
+file write      | 否        | 用户确认
+network         | 否        | 绝对拒绝
+</code></pre>
+<hr />
+<h2 id="图解"><a class="header" href="#图解">图解</a></h2>
+<p><strong>图 35-1：DXT 包的生命周期</strong></p>
+<pre><code class="language-mermaid">graph LR
+    A["用户创建&lt;br/&gt;DXT 包"] --&gt; B["package.json&lt;br/&gt;+ 代码"]
+    B --&gt; C["上传到&lt;br/&gt;Marketplace"]
+    C --&gt; D["用户安装&lt;br/&gt;/plugin install"]
+    D --&gt; E["验证签名&lt;br/&gt;+ 权限"]
+    E --&gt; F["插件激活&lt;br/&gt;接收事件"]
+    F --&gt; G["运行中&lt;br/&gt;执行命令/钩子"]
+    G --&gt; H["升级/卸载&lt;br/&gt;清理资源"]
+    style F fill:#ccffcc
+    style G fill:#ccffcc
+</code></pre>
+<p><strong>图 35-2：四种扩展点</strong></p>
+<pre><code class="language-mermaid">graph TB
+    A["Claude Code"]
+    B["命令&lt;br/&gt;auto-commit"]
+    C["钩子&lt;br/&gt;before_execute"]
+    D["工具&lt;br/&gt;CustomTool"]
+    E["权限&lt;br/&gt;PermissionRule"]
+    A --&gt; B
+    A --&gt; C
+    A --&gt; D
+    A --&gt; E
+    B -.-&gt;|Slash 命令| F["执行"]
+    C -.-&gt;|生命周期| F
+    D -.-&gt;|工具调用| F
+    E -.-&gt;|权限决策| F
+</code></pre>
+<p><strong>图 35-3：插件沙箱隔离</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["插件代码"]
+    B["虚拟机执行环境"]
+    C["受限 API"]
+    D["claudeCodeAPI"]
+    E["bash"]
+    F["llm"]
+    G["❌ fs"]
+    H["❌ net"]
+    I["❌ exec"]
+    A --&gt; B
+    B --&gt; C
+    C --&gt; D
+    D --&gt; E
+    D --&gt; F
+    B --&gt; G
+    B --&gt; H
+    B --&gt; I
+    style C fill:#ccffcc
+    style G fill:#ffcccc
+    style H fill:#ffcccc
+    style I fill:#ffcccc
+</code></pre>
+<p><strong>图 35-4：插件安装验证流程</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant User
+    participant PM as Plugin Manager
+    participant Market as Marketplace
+    participant Sandbox
+    User-&gt;&gt;PM: /plugin install company/workflow
+    PM-&gt;&gt;Market: 查询插件信息
+    Market--&gt;&gt;PM: 返回 package + 签名
+    PM-&gt;&gt;PM: 验证数字签名
+    PM-&gt;&gt;User: 显示权限请求
+    User-&gt;&gt;PM: 批准
+    PM-&gt;&gt;Sandbox: 加载插件代码
+    Sandbox-&gt;&gt;Sandbox: 注册命令/钩子
+    Sandbox--&gt;&gt;User: ✅ 插件已激活
+</code></pre>
+<p><strong>表格 35-1：插件权限模型</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>能力</th><th>默认允许</th><th>可覆盖</th><th>说明</th></tr></thead><tbody>
+<tr><td><strong>bash execute</strong></td><td>❌</td><td>✅</td><td>需用户确认</td></tr>
+<tr><td><strong>llm call</strong></td><td>✅</td><td>✅</td><td>受成本限制</td></tr>
+<tr><td><strong>sendMessage</strong></td><td>✅</td><td>❌</td><td>始终允许</td></tr>
+<tr><td><strong>file read</strong></td><td>✅</td><td>❌</td><td>仅工作目录</td></tr>
+<tr><td><strong>file write</strong></td><td>❌</td><td>✅</td><td>需用户确认</td></tr>
+<tr><td><strong>network</strong></td><td>❌</td><td>❌</td><td>绝对禁止</td></tr>
+<tr><td><strong>表格 35-2：Bundled vs Marketplace 插件对比</strong></td><td></td><td></td><td></td></tr>
+<tr><td>特征</td><td>Bundled</td><td>Marketplace</td><td></td></tr>
+<tr><td>------</td><td>---------</td><td>------------</td><td></td></tr>
+<tr><td><strong>更新方式</strong></td><td>与 Claude Code 同步</td><td>独立更新</td><td></td></tr>
+<tr><td><strong>默认启用</strong></td><td>✅ 是</td><td>❌ 否</td><td></td></tr>
+<tr><td><strong>可卸载</strong></td><td>❌ 否</td><td>✅ 是</td><td></td></tr>
+<tr><td><strong>签名检查</strong></td><td>内部</td><td>推荐</td><td></td></tr>
+<tr><td><strong>审查流程</strong></td><td>严格（官方）</td><td>中等（社区）</td><td></td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="声明式插件清单declarative-plugin-manifest"><a class="header" href="#声明式插件清单declarative-plugin-manifest">声明式插件清单（Declarative Plugin Manifest）</a></h3>
+<p><strong>解决的问题</strong>：代码级的插件注册（动态 import + 运行时注入）在安装前无法预知插件需要的权限，用户必须先安装才能评估风险。</p>
+<p><strong>核心做法</strong>：插件包含 <code>manifest.json</code>/<code>package.json</code> 声明文件，在代码运行前描述插件需要的权限（commands/tools/hooks/permissions）。安装器在安装前读取并展示声明，用户可以基于声明做决策，而非运行后才发现。</p>
+<p><strong>前置条件</strong>：插件格式标准化（DXT 包结构固定）；声明文件的权限模型足够细粒度；安装流程有明确的权限展示步骤。</p>
+<p><strong>源码证据</strong>：<code>src/types/plugin.ts</code> — <code>Plugin</code> 类型定义 <code>commands</code>/<code>hooks</code>/<code>tools</code>/<code>permissions</code> 字段，对应插件的完整能力声明；<code>src/plugins/bundled/index.ts:20</code> — <code>initBuiltinPlugins()</code> 展示了内置插件（无需用户安装）的注册模式。</p>
+<hr />
+<h3 id="bundled-vs-built-in-分层bundled-vs-built-in-separation"><a class="header" href="#bundled-vs-built-in-分层bundled-vs-built-in-separation">Bundled vs Built-in 分层（Bundled vs Built-in Separation）</a></h3>
+<p><strong>解决的问题</strong>：有些功能需要随 Claude Code 发布（bundled），但不是所有发布的功能都应该让用户自由开关（built-in plugins）；将所有 bundled 功能都变成 built-in 会让设置界面过于复杂。</p>
+<p><strong>核心做法</strong>：明确区分两种内置能力：<code>bundled plugins</code>（用户可在 UI 中开关，用 Plugin 系统注册）和 <code>bundled skills</code>（非用户开关，放在 <code>src/skills/bundled/</code>）。两者都随 Claude Code 发布，但管理方式不同。</p>
+<p><strong>前置条件</strong>：有清晰的"是否需要用户控制"判断标准；两条代码路径互不混用。</p>
+<p><strong>源码证据</strong>：<code>src/plugins/bundled/index.ts:7-10</code> — 注释明确划定边界："Not all bundled features should be built-in plugins — use this for user-toggleable features...for non-toggleable bundled skills, use src/skills/bundled/ instead"。</p>
+<hr />
+<h3 id="skill-到命令的透明转换skill-to-command-transparent-conversion"><a class="header" href="#skill-到命令的透明转换skill-to-command-transparent-conversion">Skill 到命令的透明转换（Skill-to-Command Transparent Conversion）</a></h3>
+<p><strong>解决的问题</strong>：Skill（Markdown 文件）和 Command（TypeScript 函数）在实现上完全不同，但用户不应该感知这种差异——使用 Skill 的体验应该和使用内置命令一样。</p>
+<p><strong>核心做法</strong>：<code>createSkillCommand()</code> 将 Skill 的 Markdown 内容解析并包装成 <code>Command</code> 接口对象，插入到命令系统中。对调用方（REPL 的命令处理器）来说，Skill 和 TypeScript 命令完全无差别。</p>
+<p><strong>前置条件</strong>：<code>Command</code> 接口足够通用，能够容纳 Skill 的各种特性（frontmatter、路径限制等）；Skill 解析失败时有优雅的错误处理。</p>
+<p><strong>源码证据</strong>：<code>src/skills/loadSkillsDir.ts:270</code> — <code>createSkillCommand()</code> 函数定义；<code>src/skills/loadSkillsDir.ts:100</code> — <code>estimateSkillFrontmatterTokens()</code> 说明 Skill 注入有 token 预算估算，与普通命令的差异在这里被处理。</p>
+<h2 id="356-bundled-plugins-与-marketplace"><a class="header" href="#356-bundled-plugins-与-marketplace">35.6 Bundled Plugins 与 Marketplace</a></h2>
+<h3 id="bundled-plugins"><a class="header" href="#bundled-plugins">Bundled Plugins</a></h3>
+<p>某些插件随 Claude Code 一起发布（内置插件）：
+在 <code>src/plugins/builtinPlugins.ts</code> 中：</p>
+<pre><code class="language-typescript">export const BUNDLED_PLUGINS = [
+  // 内置插件 1：权限建议
+  {
+    id: 'claude-code/permission-advisor',
+    description: 'Suggest safe permissions based on workflow',
+    enabled: true,  // 默认启用
+  },
+  // 内置插件 2：快捷命令
+  {
+    id: 'claude-code/quick-commands',
+    description: 'Common shortcuts like /git-sync',
+    enabled: true,
+  },
+]
+</code></pre>
+<p><strong>特点</strong>：</p>
+<ul>
+<li>无需手动安装</li>
+<li>可以禁用但不能删除</li>
+<li>与 Claude Code 版本同步更新</li>
+</ul>
+<h3 id="marketplace-plugins"><a class="header" href="#marketplace-plugins">Marketplace Plugins</a></h3>
+<p>用户贡献的插件，存储在 marketplace：</p>
+<pre><code>安装流程：
+  /plugin install company/workflow-automation
+  ↓
+  Claude Code 查询 marketplace
+  ↓
+  下载 package
+  ↓
+  验证签名（确认是官方发布）
+  ↓
+  展示权限请求
+  ↓
+  用户确认
+  ↓
+  安装完成
+</code></pre>
+<hr />
+<h2 id="延伸plugininstallationmanager-的安装生命周期"><a class="header" href="#延伸plugininstallationmanager-的安装生命周期">延伸：PluginInstallationManager 的安装生命周期</a></h2>
+<p>Plugin 安装管理在 <code>src/plugins/</code> 目录下（<code>PluginInstallationManager.ts</code> 为主要入口，提供 install/uninstall/upgrade 接口）。</p>
+<p>DXT（Desktop Extension）包格式是标准化的 ZIP 文件：</p>
+<pre><code>plugin-name.dxt（实际上是 ZIP 文件）
+├── manifest.json   ← 元数据：名称、版本、权限声明
+├── index.js        ← 主要代码入口
+├── assets/         ← 静态资源
+└── node_modules/   ← 可选：打包的依赖
+</code></pre>
+<p><code>manifest.json</code> 是安装的入口点——<code>PluginInstallationManager.install()</code> 首先读取 manifest，验证格式、版本兼容性和权限声明，然后才解压代码文件。这是安全的关键：用户在安装时就能看到插件声明了哪些权限，而不是运行时才发现（<code>src/plugins/</code>）。</p>
+<p>内置插件（bundled）和市场插件（marketplace）的区别：</p>
+<ul>
+<li><strong>bundled</strong>：随 Claude Code 一起发布，经过完整安全审查，代码不需要沙箱执行</li>
+<li><strong>marketplace</strong>：第三方开发者发布，在 vm 沙箱中执行，权限受限</li>
+</ul>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-插件沙箱里允许-require-任意模块沙箱形同虚设"><a class="header" href="#-插件沙箱里允许-require-任意模块沙箱形同虚设">❌ 插件沙箱里允许 require() 任意模块，沙箱形同虚设</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：沙箱里未限制 require
+vm.runInContext(pluginCode, {
+  require: require,  // 插件可以 require('child_process') 执行任意命令
+})
+</code></pre>
+<p>应该用白名单限制只能 require 预定义的安全模块（<code>JSON</code>、<code>math</code> 等），<code>child_process</code>、<code>fs</code>、<code>net</code> 等危险模块必须在沙箱外显式拒绝（<code>src/tools/SkillTool/</code>）。</p>
+<h3 id="-运行未经签名验证的插件"><a class="header" href="#-运行未经签名验证的插件">❌ 运行未经签名验证的插件</a></h3>
+<pre><code>~/.claude/extensions/my-plugin.dxt  ← 从互联网下载的
+</code></pre>
+<p>没有签名验证，用户无法确认插件来自可信的发布者，还是被篡改过的恶意版本。Claude Code 的 DXT 插件应该有发布者签名和安装时验证。</p>
+<h3 id="-插件-cpu-超时没有强制-kill"><a class="header" href="#-插件-cpu-超时没有强制-kill">❌ 插件 CPU 超时没有强制 kill</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：timeout 不能中断无限循环
+vm.runInContext(code, sandbox, { timeout: 5000 })
+// while(true){} 会让 timeout 生效但主线程也被阻塞
+</code></pre>
+<p>Node.js 的 <code>vm.runInContext</code> timeout 只在有 async yield 的代码中有效，同步的无限循环会阻塞整个进程。CPU 密集的插件应该在 worker thread 里运行，可以用 <code>worker.terminate()</code> 强制停止。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用白名单限制插件的 require 范围</strong>：明确声明插件可以访问哪些 Node.js 模块，其他全部拒绝</li>
+<li><strong>为插件提供签名验证流程</strong>：用户安装插件时验证发布者签名，确保插件未被篡改</li>
+<li><strong>在 worker thread 里运行 CPU 密集的插件</strong>：可以用 <code>worker.terminate()</code> 强制终止无限循环，不会阻塞主线程</li>
+<li><strong>记录插件的每次执行</strong>：工具名、参数、执行时间、结果摘要，便于调试和安全审计</li>
+</ul>
+<h2 id="核心源码锚点"><a class="header" href="#核心源码锚点">核心源码锚点</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>位置</th><th>内容</th><th>工程意义</th></tr></thead><tbody>
+<tr><td><code>src/plugins/bundled/index.ts:20</code></td><td><code>initBuiltinPlugins()</code></td><td>内置插件初始化入口（当前为空骨架，待迁移）</td></tr>
+<tr><td><code>src/plugins/bundled/index.ts:21</code></td><td>注释说明 bundled vs built-in 区别</td><td>关键架构决策：不是所有 bundled 都是 built-in</td></tr>
+<tr><td><code>src/skills/loadSkillsDir.ts:67</code></td><td><code>LoadedFrom</code> 类型定义</td><td>来源追踪：知道 Skill 来自哪个目录</td></tr>
+<tr><td><code>src/skills/loadSkillsDir.ts:78</code></td><td><code>getSkillsPath()</code></td><td>获取当前项目/全局的 Skill 目录路径</td></tr>
+<tr><td><code>src/skills/loadSkillsDir.ts:270</code></td><td><code>createSkillCommand()</code></td><td>将 Skill 文件转换为可调用命令的核心函数</td></tr>
+<tr><td><code>src/types/plugin.ts</code></td><td><code>Plugin</code> 类型定义</td><td>Plugin 的完整数据结构：commands/hooks/tools/permissions</td></tr>
+</tbody></table>
+</div>
+<p><strong>精确引用验证</strong>：<code>src/plugins/bundled/index.ts:21-22</code> 的注释："Not all bundled features should be built-in plugins — use this for user-toggleable features... for non-toggleable bundled skills, use src/skills/bundled/ instead." 这段注释清楚地划定了 Plugin 系统的边界。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part9/ch34.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part9/ch36.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part9/ch34.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part9/ch36.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

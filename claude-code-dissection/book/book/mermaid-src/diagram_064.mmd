@@ -1,0 +1,13 @@
+graph TD
+    A["会话 1：讨论架构"] -->|提炼| B["Architecture.md<br/>FastAPI decision"]
+    A -->|提炼| C["Issues.md<br/>WebSocket leak"]
+    D["会话 2<br/>开始"] -->|加载| E["loadMemoryPrompt()"]
+    E -->|读取| B
+    E -->|读取| C
+    E -->|注入| F["系统提示"]
+    F -->|Claude 立即知道| G["✓ FastAPI 为什么被选中<br/>✓ WebSocket 有问题<br/>✓ 解决办法是什么"]
+    G -->|结果| H["新会话高效、连贯"]
+    style B fill:#ffffcc
+    style C fill:#ffffcc
+    style F fill:#e6ffe6
+    style H fill:#e6ffe6

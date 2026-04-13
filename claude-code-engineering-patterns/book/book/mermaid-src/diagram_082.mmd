@@ -1,0 +1,9 @@
+flowchart TD
+    A["readdir 列出所有 .md 文件"] --> B["filter：排除 MEMORY.md"]
+    B --> C["Promise.allSettled 并发读取"]
+    C --> D["readFileInRange 前 30 行\nfrontmatter + mtimeMs 单次获取"]
+    D --> E["parseFrontmatter\n提取 description/type"]
+    E --> F["过滤 fulfilled，失败项静默跳过"]
+    F --> G["sort DESC by mtimeMs\n最新修改优先"]
+    G --> H["slice 0..200\n上限封顶"]
+    H --> I["MemoryHeader² 索引清单"]

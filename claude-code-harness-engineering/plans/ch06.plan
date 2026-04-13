@@ -1,0 +1,317 @@
+# 第 6 章写作计划
+
+**批次**：批次 3（来自 plans/batch.md）
+**章节**：ch06 — 按需加载的智慧
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+剖析 Claude Code 的 Skills 懒加载机制如何实现一个反直觉的设计目标："让模型自己管理上下文窗口"。通过 `DiscoverSkillsTool` 发现可用技能、`SkillTool` 按需拉取技能全文、YAML frontmatter 预加载仅暴露元数据——这个三层架构让 50+ 技能的元信息只占用极少的 token 预算。读完本章，你将理解"按需加载"不只是一个性能优化技巧，而是 Harness 控制上下文窗口的核心策略。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个加载阶段有至少一处 `相对路径:行号` 格式的源码引用，重点锚定 `src/tools/SkillTool/`、`src/tools/DiscoverSkillsTool/`、`src/skills/bundledSkills.ts`
+- 包含至少一个 Mermaid 流程图展示懒加载三阶段
+- 跨章节引用使用"详见第 X 章"格式（至少引用第 5 章）
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- 50+ 个技能，但进入上下文的只有它们的元数据摘要——全文只在模型决定使用时才加载。这个"让模型自己决定何时拉取"的设计，是 Harness 控制上下文窗口最优雅的一笔。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向前链接第 5 章（提示词分层）
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（1% 上下文窗口、8000 字符默认预算、250 字符截断等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/tools/SkillTool/prompt.ts | SKILL_BUDGET_CONTEXT_PERCENT（21）、DEFAULT_CHAR_BUDGET（23）、MAX_LISTING_DESC_CHARS（29）、getCharBudget | 行 20-50 |
+| 2 | src/tools/DiscoverSkillsTool/prompt.ts | DISCOVER_SKILLS_PROMPT 常量 | 行 1 |
+| 3 | src/skills/loadSkillsDir.ts | estimateSkillFrontmatterTokens（100-108）—仅 frontmatter 计费 | 行 97-115 |
+| 4 | src/skills/bundledSkills.ts | BundledSkillDefinition（14-43）— description/whenToUse/allowedTools | 行 14-60 |
+| 5 | src/utils/frontmatterParser.ts | FRONTMATTER_REGEX（123）、parseFrontmatter（130+） | 行 123-145 |
+| 6 | src/tools/SkillTool/SkillTool.ts | 三层执行逻辑（inline vs fork，380-430） | 行 78-100, 119-165, 380-430 |
+
+验证文件存在：
+```bash
+ls src/tools/SkillTool/prompt.ts src/tools/DiscoverSkillsTool/prompt.ts src/skills/loadSkillsDir.ts src/skills/bundledSkills.ts src/utils/frontmatterParser.ts src/tools/SkillTool/SkillTool.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 6.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 6.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 引用第 5 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图，含懒加载三阶段 | 图 6-1、6-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 6-1、6-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「把所有东西都放进上下文，和让模型自己决定需要什么——这两种策略的 token 成本可以相差 50 倍。」
+
+### 节 6.1：问题——50+ 技能如何在上下文中"不占位"
+- 核心主张：直接把 50+ 技能的全文注入系统提示词会占满上下文窗口，Claude Code 的解法是只注入元数据摘要——发现时用名称和 250 字符描述，调用时才拉取全文
+- 源码锚点：
+  - `src/tools/SkillTool/prompt.ts:21` — `SKILL_BUDGET_CONTEXT_PERCENT = 0.01`——技能列表占整个上下文窗口的 1%
+  - `src/tools/SkillTool/prompt.ts:23` — `DEFAULT_CHAR_BUDGET = 8_000`——200k × 4 字节/token × 1% 的计算结果
+  - `src/tools/SkillTool/prompt.ts:29` — `MAX_LISTING_DESC_CHARS = 250`——每条技能描述截断上限
+- 概念层次：定义（问题）→ 设计意图（1% 预算）
+- 权衡分析：N/A
+- 包含元素：表格（注入全文 vs 注入元数据的 token 对比估算）
+- **⛔ 内容密度规划**：
+  - 引入段要点：50 个技能全文注入大约会占用数万 token，而只注入元数据列表只需约 8000 字符（~2000 token）——相差 10-50 倍
+  - 解读段要点：注释明确写出了计算逻辑 "1% of 200k × 4"，8000 字符是精确计算的结果而非随意设定的数字。MAX_LISTING_DESC_CHARS=250 确保每条技能的描述在发现阶段不超过 250 字符
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B2
+
+### 节 6.2：黄金法则——让模型决定何时拉取全文
+- 核心主张：Skills 懒加载的核心原则是"发现时只给名称和摘要，调用时才给全文"——把上下文管理的决策权交给模型
+- 源码锚点：
+  - `src/tools/DiscoverSkillsTool/prompt.ts:1` — `DISCOVER_SKILLS_PROMPT = 'Discover skills'`——发现工具的唯一作用就是告诉模型"有哪些技能"
+  - `src/skills/loadSkillsDir.ts:100` — `estimateSkillFrontmatterTokens`——注释"since full content is only loaded on invocation"
+  - `src/utils/frontmatterParser.ts:123` — `FRONTMATTER_REGEX`——解析 frontmatter 的核心正则
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：主动预加载 vs 被动懒加载：预加载上下文窗口中有全部技能可以减少"先发现后调用"的两步操作，但代价是 token 成本倍增；懒加载让模型根据任务需求按需决策，代价是可能需要两轮才能使用技能
+- 包含元素：对比表格（预加载 vs 懒加载）
+- **⛔ 内容密度规划**：
+  - 引入段要点：DiscoverSkillsTool 只做一件事——告诉模型当前有哪些技能可用。这个"无操作"的发现阶段是懒加载的核心
+  - 解读段要点：estimateSkillFrontmatterTokens 的注释明确说明为什么只统计 frontmatter 而非全文——全文只在调用时加载。FRONTMATTER_REGEX 是 frontmatter 解析的技术基础
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 6.3：适用场景——哪些功能适合懒加载
+- 核心主张：任何"存在但不常用"的能力都适合懒加载——工具多但每次任务只用少数几个
+- 源码锚点：
+  - `src/skills/bundledSkills.ts:14` — `BundledSkillDefinition` 类型定义了 `userInvocable` 字段——用户可直接调用的技能 vs 仅供内部使用的技能
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：列表（适合/不适合懒加载的功能类型）
+- **⛔ 内容密度规划**：
+  - 引入段要点：不是所有功能都适合懒加载——频繁使用的核心能力应该预加载
+  - 解读段要点：userInvocable 字段区分了两类技能——用户可以直接调用的（需要在发现阶段显示）和系统内部使用的（不需要在列表中暴露）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 6.4：工作原理——三层架构的完整流程
+- 核心主张：Skills 懒加载分三层：发现（元数据）→ 决策（模型选择）→ 执行（按需拉取全文+inline 或 fork 执行）
+- 源码锚点：
+  - `src/tools/SkillTool/prompt.ts:21-29` — 发现阶段：1% 预算、8000 字符默认值、250 字符/条截断
+  - `src/skills/loadSkillsDir.ts:100` — 元数据 token 估算（name + description + whenToUse）
+  - `src/utils/frontmatterParser.ts:123` — FRONTMATTER_REGEX：`/^---\s*\n([\s\S]*?)---\s*\n?/`
+  - `src/skills/bundledSkills.ts:42` — `context?: 'inline' | 'fork'`——执行模式声明
+  - `src/tools/SkillTool/SkillTool.ts:119` — `executeForkedSkill`——fork 执行路径
+  - `src/tools/SkillTool/SkillTool.ts:81` — `getAllCommands`：合并本地技能和 MCP 技能
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：inline vs fork 执行：inline（技能内容展开到当前上下文）适合需要访问当前会话上下文的技能；fork（启动独立子智能体）适合需要隔离上下文的重型任务。详见第 12 章 forkedAgent 上下文隔离设计
+- 包含元素：Mermaid 流程图（三层懒加载流程）、表格（inline vs fork 对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：Skills 懒加载不是一个工具，是三个协作模块构成的完整系统
+  - 解读段要点：第 1 层（发现）——DiscoverSkillsTool 在系统提示词中注入 1% 上下文的技能列表，每条截断到 250 字符；第 2 层（元数据解析）——frontmatterParser 解析每个技能文件的 YAML frontmatter，estimateSkillFrontmatterTokens 只计费元数据；第 3 层（执行）——SkillTool 调用时读取全文，根据 context 字段选择 inline 或 fork 模式
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 6.5：权衡——三层架构的设计代价
+- 核心主张：三层懒加载架构在 token 效率上有显著优势，但引入了"两步调用"和"发现延迟"两个代价
+- 源码锚点：
+  - `src/tools/SkillTool/SkillTool.ts:82-88` — 注释解释了为什么过滤 MCP prompts（防止模型猜测名称绕过发现阶段）
+  - `src/skills/bundledSkills.ts:28` — `files?: Record<string, string>`——bundled skills 的附属文件"按需解压到磁盘"
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - 两步调用（先发现后执行）：模型需要先调用 DiscoverSkillsTool 才能知道有哪些技能，再调用 SkillTool 执行——增加了一轮 API 调用。代价是可接受的，因为技能列表在第一次发现后会缓存在模型的上下文中
+  - 发现阶段精确度：250 字符的描述截断可能导致模型无法从摘要判断技能是否适用，需要调用后才发现不对——这是懒加载固有的精确度/效率权衡
+  - MCP 技能过滤：如果允许模型猜测 MCP prompt 名称直接调用，会绕过发现阶段的安全管控——所以 getAllCommands 明确过滤掉非 MCP skill 的 MCP prompts
+- 包含元素：对比表格（三个权衡）
+- **⛔ 内容密度规划**：
+  - 引入段要点：懒加载不是没有代价的——理解代价才能正确使用这个模式
+  - 解读段要点：三个具体权衡——两步调用增加延迟、描述截断降低发现精度、MCP 过滤增加约束复杂度
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 6.6：踩坑指南——懒加载中的常见错误
+- 核心主张：Skills 懒加载最常见的错误是 frontmatter 格式不规范和技能描述过于泛化
+- 源码锚点：
+  - `src/utils/frontmatterParser.ts:123` — FRONTMATTER_REGEX 要求精确的 `---\n` 格式
+  - `src/tools/SkillTool/prompt.ts:29` — `MAX_LISTING_DESC_CHARS = 250`——超过截断
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：技能文件的两个最常见问题
+  - 解读段要点：陷阱一——frontmatter 格式不规范（FRONTMATTER_REGEX 要求严格的 `---\n` 开头）导致解析失败；陷阱二——whenToUse 描述过泛（"完成任务"）导致模型无法从 250 字符摘要中准确判断技能适用性；陷阱三——在 description 而非 whenToUse 中放使用场景，导致截断后信息不完整
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 6.7：实证——从 Skills 列表到技能执行的完整路径
+- 核心主张：一个技能从注册到执行，经过 4 个阶段的变换
+- 源码锚点：
+  - `src/skills/bundledSkills.ts:47` — `registerBundledSkill` 注册阶段
+  - `src/tools/SkillTool/prompt.ts:21` — 发现阶段：1% 预算约束
+  - `src/tools/SkillTool/SkillTool.ts:81` — `getAllCommands`：合并所有来源
+  - `src/tools/SkillTool/SkillTool.ts:119` — `executeForkedSkill`：fork 执行
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 流程图（技能注册→发现→选择→执行）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一个 bundled skill 从代码注册到模型调用的完整路径
+  - 解读段要点：注册（registerBundledSkill）→ 发现（DiscoverSkillsTool + 1% 预算展示）→ 模型决策 → 执行（SkillTool.call() 读取全文 → inline 或 fork）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：Skills 懒加载的本质
+- 本质：把上下文管理的决策权从 Harness 转交给模型——Harness 只维护 1% 的发现层，模型自己决定何时加载全文
+- 关键机制：1% 上下文预算（8000 字符）、250 字符/条截断、frontmatter 元数据解析、inline vs fork 执行模式
+- 适用边界：适用于"存在但不常用"的能力库；频繁使用的核心能力应该预加载
+- 与其他模式的关系：本章是第 5 章（提示词分层）动态区管理的实例；第 7 章工具注册采用了类似的按需加载策略
+
+### 章末：用户能做什么（必填）
+1. 为你的技能/工具库建立发现层——只暴露名称和简短描述，不暴露全文
+2. 为每个技能写精确的 whenToUse 字段（不超过 200 字符），确保模型能从摘要判断适用性
+3. 检查你的技能 frontmatter 格式是否符合严格的 `---\n` 规范
+4. 计算当前上下文预算的 1%，以此为技能列表的 token 上限
+5. 为需要隔离上下文的重型技能设置 `context: 'fork'`（详见第 12 章）
+6. 对照第 5 章的缓存策略，确保技能元数据列表在静态区（可缓存）
+7. 评估你的技能库大小——超过 50 个时特别需要懒加载策略
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图6-1 | Skills 懒加载三层架构 | Mermaid flowchart TD | 注册→发现（1% 预算）→模型决策→执行（全文加载+inline/fork） | 6.4 |
+| 图6-2 | frontmatter 元数据解析流程 | Mermaid flowchart LR | 技能文件→FRONTMATTER_REGEX→元数据（name/description/whenToUse）→token 估算→发现列表 | 6.7 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 6.4 节（三层架构工作原理）
+3. 写 6.2 节（黄金法则）
+4. 写 6.1 节（问题）
+5. 写 6.3 节（适用场景）
+6. 写 6.5 节（权衡）
+7. 写 6.6 节（踩坑指南）
+8. 写 6.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '21p' src/tools/SkillTool/prompt.ts        # SKILL_BUDGET_CONTEXT_PERCENT
+sed -n '23p' src/tools/SkillTool/prompt.ts        # DEFAULT_CHAR_BUDGET
+sed -n '29p' src/tools/SkillTool/prompt.ts        # MAX_LISTING_DESC_CHARS
+sed -n '1p' src/tools/DiscoverSkillsTool/prompt.ts # DISCOVER_SKILLS_PROMPT
+sed -n '100p' src/skills/loadSkillsDir.ts          # estimateSkillFrontmatterTokens
+sed -n '14p' src/skills/bundledSkills.ts           # BundledSkillDefinition
+sed -n '42p' src/skills/bundledSkills.ts           # context field
+sed -n '123p' src/utils/frontmatterParser.ts       # FRONTMATTER_REGEX
+sed -n '81p' src/tools/SkillTool/SkillTool.ts      # getAllCommands
+sed -n '82p' src/tools/SkillTool/SkillTool.ts      # MCP filter 注释
+sed -n '119p' src/tools/SkillTool/SkillTool.ts     # executeForkedSkill
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch06.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

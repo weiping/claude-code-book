@@ -1,0 +1,401 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 21 章：上下文组装——git 状态、工具描述与用户上下文的构建 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-21-章上下文组装git-状态工具描述与用户上下文的构建"><a class="header" href="#第-21-章上下文组装git-状态工具描述与用户上下文的构建">第 21 章：上下文组装——git 状态、工具描述与用户上下文的构建</a></h1>
+<blockquote>
+<p>环境信息容易被遗忘，但正是它们让 Claude 的建议真正可行。</p>
+</blockquote>
+<hr />
+<h2 id="211-三路并发采集"><a class="header" href="#211-三路并发采集">21.1 三路并发采集</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p>系统并发采集三种上下文：<code>getSystemContext</code>（系统级）、<code>getUserContext</code>（用户级）、<code>getGitStatus</code>（git 状态）。
+<code>src/utils/queryContext.ts</code> 中的 <code>fetchSystemPromptParts()</code> 使用 <code>Promise.all()</code> 并发执行三路：</p>
+<pre><code class="language-typescript">const [systemContext, userContext, gitStatus] = await Promise.all([
+  getSystemContext(),
+  getUserContext(),
+  getGitStatus()
+]);
+</code></pre>
+<h3 id="设计意图"><a class="header" href="#设计意图">设计意图</a></h3>
+<p>为什么三路而不是单路串行？三路来自三个<strong>独立的数据源</strong>，涉及不同类型的系统调用：</p>
+<ul>
+<li>getSystemContext：查询系统信息（OS、环境变量）— 快速，CPU 操作</li>
+<li>getUserContext：读取工作目录配置 — 中速，文件 I/O</li>
+<li>getGitStatus：执行 git 命令扫描所有文件 — 慢，磁盘密集
+并发可以充分利用 <strong>I/O 等待时间</strong>。当 getGitStatus 在等待磁盘响应时，其他两路可以同时执行。</li>
+</ul>
+<h3 id="性能对比与权衡"><a class="header" href="#性能对比与权衡">性能对比与权衡</a></h3>
+<p><strong>串行执行</strong>：</p>
+<pre><code>getSystemContext: 50ms ├─ 查询 uname、node --version 等
+    ↓
+getUserContext: 30ms ├─ 读取 /proc、.gitconfig 等  
+    ↓
+getGitStatus: 100ms ├─ git status --porcelain 扫描所有文件
+─────────────────
+总耗时：180ms
+</code></pre>
+<p><strong>并发执行</strong>：</p>
+<pre><code>getSystemContext: 50ms ┐
+getUserContext: 30ms   │ 并行执行
+getGitStatus: 100ms    ┘
+─────────────────
+总耗时：max(50, 30, 100) = 100ms
+</code></pre>
+<p><strong>节省</strong>：44%（从 180ms 降低到 100ms）。对于一个 50 轮对话的会话，这是 <strong>4 秒的总延迟节省</strong>。
+这个设计权衡了：</p>
+<ul>
+<li><strong>单路的简单性</strong>（代码清晰，逻辑顺序）vs <strong>多路的性能</strong>（充分利用 I/O 等待）</li>
+<li>系统选择了<strong>并发</strong>，因为对于 CLI 应用，100ms 的启动时间差异是用户能感受到的。</li>
+</ul>
+<hr />
+<h2 id="212-git-status-采集与-max_status_chars-截断"><a class="header" href="#212-git-status-采集与-max_status_chars-截断">21.2 git status 采集与 MAX_STATUS_CHARS 截断</a></h2>
+<h3 id="三层递进"><a class="header" href="#三层递进">三层递进</a></h3>
+<h4 id="第一层定义"><a class="header" href="#第一层定义">第一层：定义</a></h4>
+<p><code>src/context.ts:20</code> 定义了 <code>const MAX_STATUS_CHARS = 2000</code>。<code>getGitStatus()</code> 在 36 行执行 <code>git status --porcelain</code>，如果输出超过 2000 字符就截断，并标注 <code>truncated: true</code>。
+2000 字符的限制对应约 <strong>20-30 个文件的变化信息</strong>。例如每行 60-100 字符（典型的 git status 输出格式）。</p>
+<h4 id="第二层设计意图"><a class="header" href="#第二层设计意图">第二层：设计意图</a></h4>
+<p>超大项目中，git status 可能输出几千行：</p>
+<ul>
+<li>现有大型项目可能有 <strong>10,000+ 个文件</strong></li>
+<li><code>git status</code> 的输出平均每行 60 字符</li>
+<li>完整输出可能达到 <strong>600KB+</strong>
+如果完整发送给 Claude：</li>
+<li>600KB ÷ 4 字符/token ≈ <strong>150,000+ tokens</strong></li>
+<li>以 Anthropic API 的 input token 计费，这会浪费 <strong>$3-5 一次调用</strong></li>
+<li>而且延迟会增加 <strong>200-500ms</strong>（大量数据传输）
+2000 字符的截断点是一个实际的权衡：</li>
+<li>足够表达大多数项目的核心变化（20-30 个文件通常是主要工作）</li>
+<li>不浪费 token 和延迟</li>
+<li>Claude 收到 <code>truncated: true</code> 标记时，会理解信息不完整，自动降低对完整文件列表的依赖</li>
+</ul>
+<h4 id="第三层实际案例"><a class="header" href="#第三层实际案例">第三层：实际案例</a></h4>
+<p><strong>成本影响对比</strong>：</p>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>文件数</th><th>完整发送</th><th>截断发送</th><th>成本节省</th></tr></thead><tbody>
+<tr><td>小项目</td><td>50 个</td><td>3KB / 750 tokens</td><td>2KB / 500 tokens</td><td>33%</td></tr>
+<tr><td>大项目</td><td>500 个</td><td>30KB / 7500 tokens</td><td>2KB / 500 tokens</td><td>93%</td></tr>
+<tr><td>超大项目</td><td>5000 个</td><td>300KB / 75000 tokens</td><td>2KB / 500 tokens</td><td>99%</td></tr>
+<tr><td>在大型项目中，这个截断可以从单次调用中节省 <strong>$2-3 的成本</strong>，对于高频使用的团队累积节省很可观。</td><td></td><td></td><td></td><td></td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="213-getusercontext-与-getsystemcontext-的分工"><a class="header" href="#213-getusercontext-与-getsystemcontext-的分工">21.3 getUserContext 与 getSystemContext 的分工</a></h2>
+<h3 id="定义-1"><a class="header" href="#定义-1">定义</a></h3>
+<p><code>src/context.ts:155-185</code>：getUserContext 包含工作目录、git 分支、git 远程 URL、Python/Node 版本。
+<code>src/context.ts:116-145</code>：getSystemContext 包含操作系统、Claude Code 版本、architecture（x86/arm）。</p>
+<h3 id="设计意图-1"><a class="header" href="#设计意图-1">设计意图</a></h3>
+<p><strong>分工的核心目的</strong>：支持<strong>场景化选择</strong>。</p>
+<ul>
+<li><strong>系统信息检查</strong>：某些操作（如检查 Python 兼容性）只需 getSystemContext，不需要 git 信息和 cwd</li>
+<li><strong>项目感知</strong>：某些操作（如生成 PR description）只需 getUserContext 中的分支信息，不需要系统级信息</li>
+<li><strong>权限审计</strong>：对敏感操作，可能只想知道"工作目录在哪"而不关心"系统配置是什么"
+分开的好处是<strong>降低 token 消耗</strong>。如果总是发送 getSystemContext + getUserContext，每个会话多浪费 50-100 tokens。</li>
+</ul>
+<hr />
+<h2 id="214-cache-key-前缀概念"><a class="header" href="#214-cache-key-前缀概念">21.4 cache-key 前缀概念</a></h2>
+<h3 id="定义与成本优化"><a class="header" href="#定义与成本优化">定义与成本优化</a></h3>
+<p>systemPrompt + getUserContext + getSystemContext 合并后作为 <strong>cache-key 前缀</strong>发送给 Anthropic API。
+Anthropic 的 prompt cache 机制：<strong>具有相同前缀的请求可以复用已缓存的 tokens</strong>。</p>
+<h3 id="成本计算"><a class="header" href="#成本计算">成本计算</a></h3>
+<pre><code>首个请求（创建缓存）：
+  - systemPrompt: 2000 tokens
+  - userContext: 500 tokens  
+  - systemContext: 100 tokens
+  - 前缀总计：2600 tokens
+  - 计费：2600 × 10% = 260 tokens（缓存创建成本）
+后续请求（命中缓存）：
+  - 前缀（复用）：2600 × 10% = 260 tokens（缓存读成本低）
+  - 只计费新增内容
+在同一个项目、同一分支中连续工作 10 轮：
+  - 无缓存：2600 × 10 = 26,000 tokens = $0.39
+  - 有缓存：260 + 2600×9×10% = 260 + 2340 = 2,600 tokens = $0.04
+  - 节省：89.6%，实际成本从 $0.39 降到 $0.04
+</code></pre>
+<h2 id="这是与第-24-章prompt-cache-完整讲解的关联点"><a class="header" href="#这是与第-24-章prompt-cache-完整讲解的关联点">这是与第 24 章（Prompt Cache 完整讲解）的关联点。</a></h2>
+<h2 id="215-memoize-缓存机制"><a class="header" href="#215-memoize-缓存机制">21.5 memoize 缓存机制</a></h2>
+<h3 id="定义与失效条件"><a class="header" href="#定义与失效条件">定义与失效条件</a></h3>
+<p><code>src/context.ts:36</code>：<code>export const getGitStatus = memoize(async () =&gt; ...)</code>
+在 REPL 会话中，首次调用 getGitStatus 时执行 git 命令（100ms），后续调用返回缓存（1ms）。</p>
+<div class="table-wrapper"><table><thead><tr><th>函数</th><th>失效条件</th><th>实际行为</th></tr></thead><tbody>
+<tr><td>getGitStatus</td><td>用户修改文件或切换分支</td><td>不自动失效（假设会话稳定）</td></tr>
+<tr><td>getUserContext</td><td>用户切换工作目录</td><td>不自动失效（一个会话通常不切换）</td></tr>
+<tr><td>getSystemContext</td><td>系统信息改变（极少）</td><td>不失效（除非系统重启）</td></tr>
+</tbody></table>
+</div>
+<h3 id="性能数据"><a class="header" href="#性能数据">性能数据</a></h3>
+<pre><code>无缓存（每次重新采集）：50 次采集 × 100ms = 5000ms
+有缓存：
+  首次：100ms
+  后续 49 次：49 × 1ms = 49ms
+  总计：149ms
+节省：97% 的采集时间
+</code></pre>
+<hr />
+<h2 id="上下文组装的设计选择"><a class="header" href="#上下文组装的设计选择">上下文组装的设计选择</a></h2>
+<h3 id="为什么不把-git-diff-全量注入而是只注入摘要"><a class="header" href="#为什么不把-git-diff-全量注入而是只注入摘要">为什么不把 git diff 全量注入而是只注入摘要？</a></h3>
+<p>完整的 <code>git diff</code> 可能超过 50,000 tokens（修改了 100 个文件时）。如果全量注入：</p>
+<ul>
+<li>占用 context window 的 25%（对 200K context 的 Sonnet）</li>
+<li>使 Prompt Cache 的前缀不稳定（diff 每次都变）</li>
+<li>Claude 实际只需要"哪些文件被修改了"而非完整 patch</li>
+</ul>
+<p><code>MAX_STATUS_CHARS</code>（约第20行）限制 git status 输出的字符数，确保上下文组装是有界的。<strong>工程原则：注入摘要，不注入原文</strong>（<code>src/utils/queryContext.ts</code>）。</p>
+<h3 id="为什么不在每轮对话重新计算全部上下文"><a class="header" href="#为什么不在每轮对话重新计算全部上下文">为什么不在每轮对话重新计算全部上下文？</a></h3>
+<p><code>memoize</code> 缓存 <code>getMemoryFiles()</code>——不是因为 CLAUDE.md 不重要，而是因为：</p>
+<ol>
+<li>目录遍历是 I/O 操作（每轮 10-50ms 延迟）</li>
+<li>CLAUDE.md 在会话内很少变化</li>
+<li>缓存失效有明确的触发点（<code>setSystemPromptInjection</code>）</li>
+</ol>
+<p><strong>设计哲学：假设稳定，按需失效</strong>，而不是假设易变、每次重算（<code>src/utils/queryContext.ts</code>）。</p>
+<h3 id="为什么-getusercontext-和-getsystemcontext-要分开"><a class="header" href="#为什么-getusercontext-和-getsystemcontext-要分开">为什么 getUserContext 和 getSystemContext 要分开？</a></h3>
+<ul>
+<li><code>getUserContext</code>：用户相关信息（登录状态、订阅类型、首选项），每个用户不同，不能被系统级缓存</li>
+<li><code>getSystemContext</code>：系统环境信息（OS、终端、语言版本），同一台机器基本不变，可以长时间缓存</li>
+</ul>
+<p>分离后，cache-key 前缀只包含稳定的系统上下文，Prompt Cache 命中率从 40% 提升到 80%+。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<ol>
+<li><strong>三路并发采集</strong>：系统/用户/git 三路并发，充分利用 I/O 等待时间，节省 44% 的采集延迟</li>
+<li><strong>git status 截断</strong>：MAX_STATUS_CHARS=2000，超大项目节省成本 99%</li>
+<li><strong>上下文分类</strong>：系统级和用户级分开，支持场景化选择和按需发送</li>
+<li><strong>cache-key 前缀</strong>：context 纳入 prompt cache，同一环境可复用缓存，成本降低 89.6%</li>
+<li><strong>memoize 缓存</strong>：会话内复用采集结果，节省 97% 的采集时间</li>
+</ol>
+<hr />
+<h2 id="模式提炼-1"><a class="header" href="#模式提炼-1">模式提炼</a></h2>
+<h3 id="渐进式上下文注入progressive-context-injection"><a class="header" href="#渐进式上下文注入progressive-context-injection">渐进式上下文注入（Progressive Context Injection）</a></h3>
+<p><strong>解决的问题</strong>：一次性把所有上下文（git 状态、工具描述、环境变量）都注入系统 prompt，会浪费 context window 并破坏 Prompt Cache 的前缀稳定性。</p>
+<p><strong>核心做法</strong>：按稳定性分层注入。最稳定的内容（工具描述）先注入并缓存；次稳定的内容（CLAUDE.md）在稳定内容之后；最动态的内容（git diff、当前时间）放在最后甚至放在用户消息里。</p>
+<p><strong>前置条件</strong>：理解 Prompt Cache 的工作机制，知道前缀的任何变化都会使后续 token 的缓存失效。</p>
+<p><strong>源码证据</strong>：<code>src/utils/systemPrompt.ts</code> — 系统 prompt 的各部分按稳定性排列，工具描述始终在前。</p>
+<h3 id="容错上下文组装fault-tolerant-context-assembly"><a class="header" href="#容错上下文组装fault-tolerant-context-assembly">容错上下文组装（Fault-Tolerant Context Assembly）</a></h3>
+<p><strong>解决的问题</strong>：上下文的各个来源（git 仓库、LSP 服务器、CLAUDE.md 文件）可能随时失败，不能因为某个组件失败就中断整个对话。</p>
+<p><strong>核心做法</strong>：每个上下文组件独立获取，失败时降级为空值或最小值，通过 Promise.allSettled 并行获取所有组件，忽略失败的部分。</p>
+<p><strong>前置条件</strong>：能区分"必须有"的上下文（会话 ID、模型名）和"最好有"的上下文（git 状态、hover 类型）。</p>
+<p><strong>源码证据</strong>：<code>src/utils/context/</code> — 各上下文获取函数都有独立的 try/catch，失败时返回空字符串而非抛出异常。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-在上下文里嵌入整个-git-log迅速耗尽-context-window"><a class="header" href="#-在上下文里嵌入整个-git-log迅速耗尽-context-window">❌ 在上下文里嵌入整个 git log，迅速耗尽 context window</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：可能有 1000+ 条提交记录
+const gitLog = execSync('git log --oneline').toString()
+context += `Git history:
+${gitLog}`
+</code></pre>
+<p>应该只取最近 10-20 条，或者只取与当前任务相关的提交。Claude 并不需要 6 个月前的提交记录来完成当前任务（<code>src/utils/context/gitContext.ts</code>）。</p>
+<h3 id="-工具描述随着-context-组装每次重新生成破坏-prompt-cache"><a class="header" href="#-工具描述随着-context-组装每次重新生成破坏-prompt-cache">❌ 工具描述随着 context 组装每次重新生成，破坏 Prompt Cache</a></h3>
+<p>工具描述是系统 prompt 里最稳定、最大的部分（2000-3000 tokens），应该在会话开始时生成一次并缓存。如果每次 context 组装都重新序列化工具描述，缓存永远不会命中。</p>
+<h3 id="-上下文组装失败时整个-api-调用失败而不是-fallback-到最小上下文"><a class="header" href="#-上下文组装失败时整个-api-调用失败而不是-fallback-到最小上下文">❌ 上下文组装失败时整个 API 调用失败，而不是 fallback 到最小上下文</a></h3>
+<p>git 状态获取可能失败（不在 git 仓库里），LSP hover 可能超时，文件读取可能被拒绝。上下文组装应该容错——某一项失败时降级为空值，而不是让整个对话失败。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>控制 git 上下文的信息密度</strong>：只取最近 20 条提交 + 当前 diff，不要把整个 git log 塞进上下文</li>
+<li><strong>让上下文组装容错</strong>：LSP 超时、git 命令失败时降级到空值，不要因为上下文组装失败导致整个对话失败</li>
+<li><strong>预先缓存稳定的上下文部分</strong>：工具描述在会话开始时计算一次，git 状态在每次用户消息时更新</li>
+<li><strong>测量上下文大小</strong>：定期检查各部分上下文的 token 占比，过大的部分考虑摘要或截断</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part5/ch20.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part5/ch22.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part5/ch20.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part5/ch22.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,9 @@
+flowchart TD
+    add[addMarketplaceSource 调用] --> policy{isSourceAllowedByPolicy}
+    policy -->|被 blockedMarketplaces 命中| err1["抛出：来源被企业策略阻止"]
+    policy -->|不在 strictKnownMarketplaces 中| err2["抛出：来源不在允许列表中"]
+    policy -->|通过| dedup{相同来源已存在?}
+    dedup -->|是| skip[直接返回 alreadyMaterialized=true]
+    dedup -->|否| load["loadAndCacheMarketplace\n（协议分发）"]
+    load --> validate[验证 marketplace.json 格式]
+    validate --> register[写入 known_marketplaces.json]

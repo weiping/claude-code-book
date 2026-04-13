@@ -1,0 +1,27 @@
+flowchart TD
+    subgraph host ["宿主进程（Claude Code）"]
+        loader["createPluginFromPath\n加载插件"]
+        mcp_resolver["resolvePluginMcpEnvironment"]
+        lsp_resolver["resolvePluginLspEnvironment"]
+    end
+
+    subgraph plugin_env ["插件子进程环境变量"]
+        root["CLAUDE_PLUGIN_ROOT\n= plugin.path\n（版本化安装目录，只读）"]
+        data["CLAUDE_PLUGIN_DATA\n= getPluginDataDir(source)\n（持久化数据目录，可读写）"]
+        other["其他 env\n（插件声明，${VAR} 展开）"]
+    end
+
+    subgraph filesys ["文件系统"]
+        install["~/.claude/plugins/marketplaces/\nplugin@version/\n（CLAUDE_PLUGIN_ROOT 指向这里）"]
+        persist["~/.claude/plugin-data/\nplugin@marketplace/\n（CLAUDE_PLUGIN_DATA 指向这里）"]
+        project["当前项目目录\n（插件子进程无直接路径）"]
+    end
+
+    loader --> mcp_resolver
+    loader --> lsp_resolver
+    mcp_resolver --> root
+    mcp_resolver --> data
+    lsp_resolver --> root
+    lsp_resolver --> data
+    root --> install
+    data --> persist

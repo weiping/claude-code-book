@@ -1,0 +1,24 @@
+flowchart TD
+    task[Agent 需要调用模型] --> q1{任务类型?}
+    q1 -->|工具调用分类
+简单筛选
+低延迟高频| small["getSmallFastModel()
+→ Haiku 层"]
+    q1 -->|代码修改
+日常开发
+主循环推理| main["getMainLoopModel()
+→ Sonnet 或用户覆盖"]
+    q1 -->|深度架构分析
+复杂推理
+plan 模式| best["getBestModel()
+→ Opus 层"]
+
+    main --> override{有会话/启动覆盖?}
+    override -->|是| user_model["使用覆盖模型
+STATE.mainLoopModelOverride"]
+    override -->|否| env_check{ANTHROPIC_MODEL
+环境变量?}
+    env_check -->|是| env_model["使用环境变量模型"]
+    env_check -->|否| subscriber{订阅者类型?}
+    subscriber -->|Max / TeamPremium| opus_d["默认 Opus"]
+    subscriber -->|其他| sonnet_d["默认 Sonnet"]

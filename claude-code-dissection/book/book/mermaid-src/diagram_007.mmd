@@ -1,0 +1,13 @@
+flowchart TD
+    start["代码是否进入外部产物？"]
+    ce_false["编译期 false\n→ DCE 删除\n外部产物无此代码"]
+    ce_true["编译期 true\n→ 代码在产物中"]
+    rt_check["运行期检查\nGrowthBook gate"]
+    enabled["功能启用"]
+    disabled["功能禁用\n（代码存在但不执行）"]
+
+    start -->|"feature() = false（外部构建）"| ce_false
+    start -->|"feature() = true（内部/发布构建）"| ce_true
+    ce_true --> rt_check
+    rt_check -->|"gate = true"| enabled
+    rt_check -->|"gate = false"| disabled

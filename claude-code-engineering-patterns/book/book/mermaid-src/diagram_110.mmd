@@ -1,0 +1,10 @@
+flowchart LR
+    deny1[拒绝1] --> deny2[拒绝2] --> deny3[拒绝3]
+    deny3 -->|consecutive=3| trigger_c[⚡ 连续阈值触发]
+
+    deny_a[拒绝] --> ok1[成功] --> deny_b[拒绝] --> ok2[成功]
+    ok2 --> deny_c[...共20次拒绝]
+    deny_c -->|total=20| trigger_t[⚡ 总量阈值触发]
+
+    trigger_c --> fallback[降级到交互模式]
+    trigger_t --> fallback

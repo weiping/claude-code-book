@@ -1,0 +1,19 @@
+graph TD
+    LSP["LSP 集成"]
+    
+    LSP --> H["hover
+鼠标悬停类型信息"]
+    LSP --> D["definition
+跳转到定义"]
+    LSP --> R["references
+查找所有引用"]
+    LSP --> DI["diagnostics
+错误和警告"]
+    LSP --> C["completion
+代码补全建议"]
+    
+    H --> UH["上下文：Claude 理解光标处的类型"]
+    D --> UD["上下文：找到函数的实际实现"]
+    R --> UR["重构：所有引用需要一起修改"]
+    DI --> UDI["验证：修改后检查是否引入新错误"]
+    C --> UC["建议：基于 LSP 而非自己推断"]

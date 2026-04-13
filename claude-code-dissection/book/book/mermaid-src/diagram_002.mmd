@@ -1,0 +1,15 @@
+flowchart LR
+    React组件["React 组件\n（TSX）"]
+    reconciler["Ink reconciler\n（react-reconciler）"]
+    DOMNode["Ink DOM 节点\n（DOMElement）"]
+    Yoga["Yoga 布局引擎\n（Flexbox 计算）"]
+    renderer["renderer.ts\n（帧渲染）"]
+    screen["screen.ts\n（字符网格）"]
+    terminal["终端输出\n（ANSI 序列）"]
+
+    React组件 -->|"createInstance /\ncommitUpdate"| reconciler
+    reconciler --> DOMNode
+    DOMNode --> Yoga
+    Yoga -->|"计算位置/尺寸"| renderer
+    renderer --> screen
+    screen -->|"diffAnsiCodes"| terminal

@@ -1,0 +1,12 @@
+graph LR
+    Path["/home/user/project/src/main.ts"]
+    URI["file:///home/user/project/src/main.ts"]
+    
+    Path -->|"pathToFileURL()"| URI
+    URI -->|"fileURLToPath()"| Path
+    
+    Wrong["直接传文件路径 ❌"]
+    Right["转换为 URI ✅"]
+    
+    style Wrong fill:#ffe6e6
+    style Right fill:#e6ffe6

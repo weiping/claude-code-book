@@ -1,0 +1,19 @@
+graph TD
+    P1["原则 16.1\n能力硬编码\ndisallowedTools"] --> P3["原则 16.3\n缓存约束\nCacheSafeParams"]
+    P3 --> P5["原则 16.5\n并行分层\nBackendType"]
+    P4["原则 16.4\n对抗验证\nVerification Agent"] --> P5
+
+    P6["原则 16.6\n拆除计划\nfeature flag DCE"] -.-> P1
+    P6 -.-> P2
+    P6 -.-> P4
+    P6 -.-> P5
+
+    P2["原则 16.2\n补偿分层\nsnip to autocompact"]
+    P7["原则 16.7\n只存不可推导\nmemoryTypes"]
+
+    P5 --> Note1["Coordinator 模式\n详见第 14 章"]
+    P4 --> Note2["Verification Agent\n详见第 13 章"]
+    P2 --> Note3["5 种压缩策略\n详见第 11 章"]
+
+    P6 -.- Note4["横切关注点\n贯穿所有原则"]
+    P7 -.- Note5["独立纵向切面\n与压缩和并行正交"]

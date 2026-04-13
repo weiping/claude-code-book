@@ -1,0 +1,638 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 18 章：Hooks 系统——生命周期拦截点 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-18-章hooks-系统生命周期拦截点"><a class="header" href="#第-18-章hooks-系统生命周期拦截点">第 18 章：Hooks 系统——生命周期拦截点</a></h1>
+<blockquote>
+<p>"Claude 执行完一个工具后，返回结果前，有没有机会让你的代码'钩住'这个结果做后处理？能否在 LLM 采样前插入一个 Hook 来审计/修改输出？Hooks 系统的设计让生命周期的每个关键点都可以被拦截。但这种高度的可扩展性也带来了新的安全挑战：一个恶意的 Hook 脚本可以悄悄地向内网发起 SSRF 攻击。系统如何在保持灵活性的同时防止这类攻击？"</p>
+</blockquote>
+<h2 id="181-为什么权限系统需要一个显式的生命周期拦截层"><a class="header" href="#181-为什么权限系统需要一个显式的生命周期拦截层">18.1 为什么权限系统需要一个显式的生命周期拦截层？</a></h2>
+<p>权限检查是被动的：工具要执行时，权限系统说"可以"或"不可以"。但有时我们需要更主动的控制——不只决定能否执行，而是<strong>在执行前后做自定义的逻辑注入</strong>。</p>
+<h3 id="第一层定义-hook-事件的类型体系"><a class="header" href="#第一层定义-hook-事件的类型体系">第一层：定义 Hook 事件的类型体系</a></h3>
+<p><code>src/utils/hooks/hookEvents.ts</code> 中定义了系统的所有拦截点。这个文件列出了每个生命周期关键时刻：</p>
+<pre><code class="language-typescript">/**
+ * Hook event system for broadcasting hook execution events.
+ * 
+ * This module provides a generic event system that is separate from the
+ * main message stream. Handlers can register to receive events and decide
+ * what to do with them (e.g., convert to SDK messages, log, etc.).
+ */
+
+import { HOOK_EVENTS } from 'src/entrypoints/sdk/coreTypes.js'
+
+/**
+ * Hook events that are always emitted regardless of the includeHookEvents
+ * option. These are low-noise lifecycle events that were in the original
+ * allowlist and are backwards-compatible.
+ */
+const ALWAYS_EMITTED_HOOK_EVENTS = ['SessionStart', 'Setup'] as const
+</code></pre>
+<p>这个注释揭示了一个设计决策："<strong>有些 Hook 事件总是被触发</strong>"。为什么？因为这些事件太重要了——用户初始化会话时、系统启动时，必须要有 Hook 的机会。</p>
+<p>标准的 Hook 事件类型包括但不限于：</p>
+<div class="table-wrapper"><table><thead><tr><th>Hook 类型</th><th>触发时机</th><th>用处</th><th>可用信息</th></tr></thead><tbody>
+<tr><td><strong>PreToolUse</strong></td><td>工具执行前</td><td>审计即将执行的工具</td><td>工具名、参数</td></tr>
+<tr><td><strong>PostToolUse</strong></td><td>工具执行后</td><td>审计/修改工具结果</td><td>工具名、参数、结果</td></tr>
+<tr><td><strong>PreSampling</strong></td><td>LLM 推理前</td><td>审计/修改 prompt</td><td>消息历史</td></tr>
+<tr><td><strong>PostSampling</strong></td><td>LLM 推理后</td><td>审计/修改 LLM 输出</td><td>完整响应</td></tr>
+<tr><td><strong>SessionStart</strong></td><td>会话开始</td><td>初始化会话级资源</td><td>会话信息</td></tr>
+<tr><td><strong>Setup</strong></td><td>系统启动</td><td>初始化系统级资源</td><td>环境配置</td></tr>
+</tbody></table>
+</div>
+<h3 id="第二层设计意图为什么-hook-需要异步轮询而不是直接回调"><a class="header" href="#第二层设计意图为什么-hook-需要异步轮询而不是直接回调">第二层：设计意图——为什么 Hook 需要异步轮询而不是直接回调</a></h3>
+<p>一个直观的想法：Hook 就是一个回调函数。当事件发生时，调用 Hook 函数，拿到返回值，继续。</p>
+<p>但 Claude Code 的 Hook 系统（<code>src/utils/hooks/AsyncHookRegistry.ts</code>）使用了<strong>异步轮询</strong>，而不是同步回调。为什么？</p>
+<p>因为 <strong>Hook 可能是外部进程</strong>。<code>CLAUDE.md</code> 中定义的 Hook 可能是：</p>
+<ul>
+<li>一个外部的 Python 脚本</li>
+<li>一个远程的 Web 服务</li>
+<li>一个需要用户交互的对话框</li>
+</ul>
+<p>这些都不能用同步回调表达。你不能"调用一个远程进程，然后阻塞主线程等它返回"。</p>
+<h3 id="第三层实际案例与权衡"><a class="header" href="#第三层实际案例与权衡">第三层：实际案例与权衡</a></h3>
+<p><strong>场景</strong>：用户在 CLAUDE.md 中注册了一个 PostToolUse Hook，指向一个外部脚本。</p>
+<pre><code class="language-bash"># CLAUDE.md 中
+hooks:
+  - event: PostToolUse
+    command: /usr/local/bin/audit-tool-result.sh
+</code></pre>
+<p><strong>同步回调的做法</strong>（❌ 不行）：</p>
+<pre><code>工具执行完毕 → 调用 audit-tool-result.sh → 阻塞等待返回
+    如果脚本卡住？→ 整个 Claude Code 卡住
+    如果脚本网络超时？ → 用户体验糟糕
+    如果脚本提示用户？ → 无法交互
+</code></pre>
+<p><strong>异步轮询的做法</strong>（✓ 正确）：</p>
+<pre><code>工具执行完毕 → 注册 Hook 任务（异步）→ 主线程继续工作
+    Hook 执行在后台
+    主线程定期轮询 Hook 状态
+    Hook 完成后继续
+    即使 Hook 超时，主线程也不被阻塞（可以中止 Hook）
+</code></pre>
+<p><strong>权衡</strong>：异步轮询 vs 同步回调</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>同步回调</th><th>异步轮询</th></tr></thead><tbody>
+<tr><td>实现复杂度</td><td>低</td><td>高（需要状态管理）</td></tr>
+<tr><td>用户体验</td><td>差（容易卡住）</td><td>好（响应快）</td></tr>
+<tr><td>Hook 灵活性</td><td>低（只能同步函数）</td><td>高（可以是任何进程）</td></tr>
+<tr><td>超时处理</td><td>困难（无法中止）</td><td>自然（轮询超时可中止）</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了异步轮询</strong>，理由是<strong>Hook 需要支持外部进程的灵活性，这比简单的实现更重要</strong>。</p>
+<h2 id="182-异步-hook-的注册轮询响应流程如何协调"><a class="header" href="#182-异步-hook-的注册轮询响应流程如何协调">18.2 异步 Hook 的注册、轮询、响应流程如何协调？</a></h2>
+<p>异步轮询看起来简单，但实现上需要精妙的状态管理。</p>
+<h3 id="第一层定义-hook-的生命周期数据结构"><a class="header" href="#第一层定义-hook-的生命周期数据结构">第一层：定义 Hook 的生命周期数据结构</a></h3>
+<p><code>src/utils/hooks/AsyncHookRegistry.ts:12</code> 定义了 <code>PendingAsyncHook</code> 类型：</p>
+<pre><code class="language-typescript">export type PendingAsyncHook = {
+  processId: string           // 进程 ID
+  hookId: string              // Hook 唯一 ID
+  hookName: string            // Hook 名称
+  hookEvent: HookEvent | 'StatusLine' | 'FileSuggestion'  // 事件类型
+  toolName?: string           // 触发 Hook 的工具名（可选）
+  pluginId?: string           // 所属插件 ID（可选）
+  startTime: number           // Hook 启动时间（用于超时检测）
+  timeout: number             // 超时时间
+  command: string             // 要执行的命令
+  responseAttachmentSent: boolean  // 响应是否已发送
+  shellCommand?: ShellCommand // Shell 命令对象
+  stopProgressInterval: () =&gt; void // 停止进度指示器的函数
+}
+</code></pre>
+<p>这个数据结构不只是"记录 Hook 的参数"，而是<strong>Hook 的完整生命周期快照</strong>。注意几个关键字段：</p>
+<ul>
+<li><code>startTime</code> + <code>timeout</code>：用于检测超时和超期的 Hook</li>
+<li><code>responseAttachmentSent</code>：标记响应是否已被主线程消费，防止重复处理</li>
+<li><code>stopProgressInterval</code>：主线程可以通过这个函数停止 Hook 的进度指示</li>
+</ul>
+<h3 id="第二层设计意图为什么需要-responseattachmentsent-这样的状态标记"><a class="header" href="#第二层设计意图为什么需要-responseattachmentsent-这样的状态标记">第二层：设计意图——为什么需要 responseAttachmentSent 这样的状态标记</a></h3>
+<p>假设 Hook 注册了，主线程开始轮询。如果没有 <code>responseAttachmentSent</code> 标记，会发生什么？</p>
+<pre><code class="language-typescript">// 轮询循环（错误做法）
+while (true) {
+  for (const hook of pendingHooks) {
+    if (hook.completed) {
+      // 处理 Hook 结果
+      processHookResponse(hook)
+    }
+  }
+  await sleep(100)  // 100ms 轮询一次
+}
+
+// 问题：processHookResponse 可能被调用多次！
+// 第 1 次轮询：processHookResponse(hook) ✓
+// 第 2 次轮询（100ms 后）：processHookResponse(hook) ✗ 重复了
+// 第 3 次轮询：processHookResponse(hook) ✗ 又重复了
+</code></pre>
+<p>加入 <code>responseAttachmentSent</code> 后：</p>
+<pre><code class="language-typescript">if (hook.completed &amp;&amp; !hook.responseAttachmentSent) {
+  processHookResponse(hook)
+  hook.responseAttachmentSent = true  // ✓ 标记已处理，避免重复
+}
+</code></pre>
+<h3 id="第三层实际案例与权衡-1"><a class="header" href="#第三层实际案例与权衡-1">第三层：实际案例与权衡</a></h3>
+<p>完整的异步 Hook 流程：</p>
+<pre><code class="language-typescript">// 第 1 步：注册 Hook（由 PostToolUse 事件触发）
+registerPendingAsyncHook({
+  processId: 'proc_12345',
+  hookId: generateId(),
+  hookEvent: 'PostToolUse',
+  command: '/usr/local/bin/audit.sh',
+  timeout: 5000,
+  // ...其他字段
+})
+// → Hook 被加入 pendingHooks Map
+
+// 第 2 步：主线程继续工作，定期轮询（checkForAsyncHookResponses，第 113 行）
+for (const [hookId, hook] of pendingHooks) {
+  if (hook.completed &amp;&amp; !hook.responseAttachmentSent) {
+    // 处理结果
+    hook.responseAttachmentSent = true
+    yield { type: 'hook_response', data: hook.result }
+  }
+  
+  if (Date.now() - hook.startTime &gt; hook.timeout) {
+    // 超时处理
+    console.warn(`Hook ${hookId} timeout after ${hook.timeout}ms`)
+    pendingHooks.delete(hookId)
+  }
+}
+
+// 第 3 步：Hook 完成后，更新状态
+hook.completed = true
+hook.result = { ...response }
+</code></pre>
+<p>时序图（概念）：</p>
+<pre><code>主线程      Hook 进程
+  |           |
+  +----------&gt;| 注册 Hook（pushHookTask）
+  |           | 执行中…
+  | 轮询检查  |
+  +----------&gt;| 状态？
+  |&lt;----------+ 还在运行
+  | (继续处理其他工作)
+  |           | 执行完成
+  | 轮询检查  |
+  +----------&gt;| 状态？
+  |&lt;----------+ 完成！返回结果
+  +--处理结果-|
+</code></pre>
+<p><strong>权衡</strong>：异步轮询的性能 vs 实时性</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>轮询间隔 100ms</th><th>轮询间隔 1s</th></tr></thead><tbody>
+<tr><td>平均延迟</td><td>~50ms</td><td>~500ms</td></tr>
+<tr><td>CPU 占用</td><td>较高（频繁轮询）</td><td>较低</td></tr>
+<tr><td>超时检测精度</td><td>高（±100ms）</td><td>低（±1s）</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 使用了 100ms 的轮询间隔</strong>（推断），平衡了响应速度和 CPU 开销。</p>
+<h2 id="183-post-sampling-hook-在完整的推理流程中处于什么位置"><a class="header" href="#183-post-sampling-hook-在完整的推理流程中处于什么位置">18.3 Post-Sampling Hook 在完整的推理流程中处于什么位置？</a></h2>
+<p>"Sampling" 是指 LLM 生成输出的过程。Post-sampling Hook 在 LLM 响应完全接收后、写入对话历史前触发。</p>
+<h3 id="第一层定义-post-sampling-的触发位置"><a class="header" href="#第一层定义-post-sampling-的触发位置">第一层：定义 Post-Sampling 的触发位置</a></h3>
+<p>在 <code>src/utils/hooks/postSamplingHooks.ts</code> 中，Hook 被触发的时机是：</p>
+<pre><code>[LLM 接收 → 流式 token 处理完毕 → Post-Sampling Hook 触发] 
+→ [工具调用解析 → 权限检查 → 工具执行]
+→ [添加到对话历史]
+</code></pre>
+<p>这个位置很关键。它在"已经有了完整的 LLM 响应"之后，但"还没有生效"之前。</p>
+<h3 id="第二层设计意图为什么-post-sampling-hook-是执行流程中最有权力的位置"><a class="header" href="#第二层设计意图为什么-post-sampling-hook-是执行流程中最有权力的位置">第二层：设计意图——为什么 Post-Sampling Hook 是执行流程中最有权力的位置</a></h3>
+<p>Post-Sampling Hook 可以：</p>
+<ol>
+<li><strong>审计</strong>：看到完整的 LLM 输出，决定是否允许</li>
+<li><strong>修改</strong>：改动 LLM 的输出（例如，删除不安全的代码块）</li>
+<li><strong>阻止</strong>：直接中止执行（返回 null）</li>
+<li><strong>记录</strong>：将输出写到审计日志</li>
+</ol>
+<p>相比之下：</p>
+<ul>
+<li><strong>PreSampling Hook</strong>：只能看到 prompt，无法改 LLM 的输出</li>
+<li><strong>PostToolUse Hook</strong>：只能改工具执行结果，无法改 LLM 的"决定"</li>
+</ul>
+<p>因此 Post-Sampling Hook 是<strong>仅次于权限检查的最强控制点</strong>。</p>
+<h3 id="第三层实际案例与权衡-2"><a class="header" href="#第三层实际案例与权衡-2">第三层：实际案例与权衡</a></h3>
+<p><strong>场景</strong>：公司想要审计所有 LLM 输出，确保不包含敏感信息。</p>
+<pre><code class="language-typescript">// Post-Sampling Hook 的实现
+function auditLLMOutput(response) {
+  // 扫描是否包含 PII（个人身份信息）
+  if (containsPII(response.text)) {
+    return {
+      allowed: false,
+      reason: 'Output contains PII (email addresses, phone numbers)'
+    }
+  }
+  
+  // 扫描是否包含未授权的 API 密钥暴露
+  if (containsAPIKeys(response.text)) {
+    return {
+      allowed: false,
+      reason: 'Output contains exposed API keys'
+    }
+  }
+  
+  return { allowed: true }
+}
+</code></pre>
+<p><strong>权衡</strong>：Post-Sampling Hook 的强大能力 vs 性能开销</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>有 Hook</th><th>无 Hook</th></tr></thead><tbody>
+<tr><td>控制粒度</td><td>极细（可以改任何输出）</td><td>粗（只能接受/拒绝）</td></tr>
+<tr><td>性能开销</td><td>有（每次 LLM 调用都要检查）</td><td>无</td></tr>
+<tr><td>审计能力</td><td>强（完整可见）</td><td>弱</td></tr>
+<tr><td>安全边界</td><td>宽松（Hook 代码可能有漏洞）</td><td>严格</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 允许 Post-Sampling Hook</strong>，理由是<strong>审计和定制的需求优先于微小的性能成本</strong>。</p>
+<h2 id="184-为什么-hook-需要-ssrf-防护"><a class="header" href="#184-为什么-hook-需要-ssrf-防护">18.4 为什么 Hook 需要 SSRF 防护？</a></h2>
+<p>Hook 可以执行任意脚本，脚本可以发起网络请求。这就带来了一个安全问题。</p>
+<h3 id="第一层定义-ssrf-攻击场景"><a class="header" href="#第一层定义-ssrf-攻击场景">第一层：定义 SSRF 攻击场景</a></h3>
+<p>SSRF（Server-Side Request Forgery）在这个场景中是指：</p>
+<p>一个恶意的 MCP 服务器在工具执行过程中触发了一个 Hook。Hook 脚本向 Claude 运行所在机器的私有网络发起请求（例如 <code>http://192.168.1.1/admin</code>）。</p>
+<p><code>src/utils/hooks/ssrfGuard.ts:42</code> 定义了检测函数：</p>
+<pre><code class="language-typescript">export function isBlockedAddress(address: string): boolean {
+  const v = isIP(address)
+  if (v === 4) {
+    return isBlockedV4(address)
+  }
+  if (v === 6) {
+    return isBlockedV6(address)
+  }
+  // Not a valid IP literal
+  return false
+}
+
+function isBlockedV4(address: string): boolean {
+  // 检查是否是私有地址范围
+  // 127.0.0.0/8 (localhost)
+  // 10.0.0.0/8 (私有网络)
+  // 172.16.0.0/12 (私有网络)
+  // 192.168.0.0/16 (私有网络)
+  // ...
+}
+</code></pre>
+<h3 id="第二层设计意图为什么需要地址级别的防护而不是-hook-级别的信任"><a class="header" href="#第二层设计意图为什么需要地址级别的防护而不是-hook-级别的信任">第二层：设计意图——为什么需要地址级别的防护而不是 Hook 级别的信任</a></h3>
+<p>一个错误的做法是："只允许我们信任的 Hook"。问题是：</p>
+<ol>
+<li><strong>信任的 Hook 可能有漏洞</strong>。一个看起来安全的脚本可能在某个条件下被利用。</li>
+<li><strong>用户可能无意中写出不安全的 Hook</strong>。</li>
+<li><strong>MCP 服务器可能被中间人攻击</strong>，变成恶意的。</li>
+</ol>
+<p>因此防护不能依赖"Hook 是否可信"，而应该在<strong>执行层</strong>就切断 SSRF 的可能性：禁止所有从 Hook 发起的私有网络请求。</p>
+<h3 id="第三层实际案例与权衡-3"><a class="header" href="#第三层实际案例与权衡-3">第三层：实际案例与权衡</a></h3>
+<p><strong>攻击路径</strong>（不带防护）：</p>
+<pre><code>用户注册了一个 MCP 服务 → MCP 服务有一个恶意 Hook → Hook 脚本：
+    curl http://192.168.1.1/admin/panel
+    # 或 curl http://169.254.169.254/latest/meta-data/
+    # （AWS 元数据服务，可能暴露 IAM 凭证）
+</code></pre>
+<p><strong>带 SSRF 防护的流程</strong>：</p>
+<pre><code class="language-typescript">// Hook 尝试向私有地址请求
+await fetch('http://192.168.1.1/admin')
+
+// 防护层检查
+if (isBlockedAddress('192.168.1.1')) {
+  throw new Error('SSRF protection: Private address blocked')
+}
+</code></pre>
+<p><strong>权衡</strong>：默认允许所有地址 vs 默认阻止私有地址</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>允许所有</th><th>阻止私有地址</th></tr></thead><tbody>
+<tr><td>Hook 灵活性</td><td>高（可以访问任何资源）</td><td>低（受限于公网）</td></tr>
+<tr><td>安全性</td><td>低（容易被 SSRF）</td><td>高</td></tr>
+<tr><td>误操作风险</td><td>低（用户意图是啥就是啥）</td><td>高（用户写的正常脚本可能被阻止）</td></tr>
+<tr><td>恢复成本</td><td>高（SSRF 被利用后很难追踪）</td><td>低（用户可以明确配置白名单）</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了默认阻止私有地址</strong>。理由是<strong>SSRF 的危害（暴露内网资源、凭证泄露）远大于限制 Hook 灵活性的代价</strong>。如果用户确实需要访问私有网络，可以在配置中明确白名单。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式-1异步轮询的生命周期管理async-polling-lifecycle"><a class="header" href="#模式-1异步轮询的生命周期管理async-polling-lifecycle">模式 1：异步轮询的生命周期管理（Async Polling Lifecycle）</a></h3>
+<p><strong>解决的问题</strong>：外部进程 Hook 不能用同步回调表达。主线程也不能无限期地等待 Hook 返回。需要一个机制让异步任务与主线程协调。</p>
+<p><strong>核心做法</strong>：维护一个 <code>PendingAsyncHook</code> 的全局 Map。注册时将 Hook 加入 Map，主线程定期轮询 Hook 状态。Hook 完成后，主线程消费结果并从 Map 移除。用 <code>responseAttachmentSent</code> 标记防止重复处理。</p>
+<p><strong>前置条件</strong>：Hook 可能是外部进程或耗时操作，主线程不能阻塞。</p>
+<p><strong>源码证据</strong>：<code>src/utils/hooks/AsyncHookRegistry.ts:30</code> — <code>registerPendingAsyncHook</code>；第 113 行 — <code>checkForAsyncHookResponses</code>。</p>
+<p><strong>适用范围</strong>：任何需要与外部进程通信且不能阻塞主流程的系统。</p>
+<hr />
+<h3 id="模式-2响应去重response-deduplication"><a class="header" href="#模式-2响应去重response-deduplication">模式 2：响应去重（Response Deduplication）</a></h3>
+<p><strong>解决的问题</strong>：轮询机制可能在同一个 Hook 完成后多次处理结果，导致重复执行。</p>
+<p><strong>核心做法</strong>：给每个 Hook 加一个 <code>responseAttachmentSent</code> 标记。处理结果后立即标记，下次轮询时跳过。</p>
+<p><strong>前置条件</strong>：使用轮询机制处理异步任务。</p>
+<p><strong>源码证据</strong>：<code>src/utils/hooks/AsyncHookRegistry.ts:12</code> — <code>PendingAsyncHook</code> 类型的 <code>responseAttachmentSent</code> 字段。</p>
+<p><strong>适用范围</strong>：任何轮询-处理循环，其中任务可能跨越多个轮询周期。</p>
+<hr />
+<h3 id="模式-3生命周期控制权的递阶hierarchical-lifecycle-control"><a class="header" href="#模式-3生命周期控制权的递阶hierarchical-lifecycle-control">模式 3：生命周期控制权的递阶（Hierarchical Lifecycle Control）</a></h3>
+<p><strong>解决的问题</strong>：不同的 Hook 类型（Pre/Post sampling/tooluse）需要对执行流程有不同级别的控制权。需要清晰地定义各自的权限边界。</p>
+<p><strong>核心做法</strong>：明确定义每个 Hook 类型的触发时机和可改变的范围。Post-Sampling Hook 最强（可以改 LLM 输出），PostToolUse Hook 次之（只能改工具结果），PreToolUse Hook 最弱（只能审计）。</p>
+<p><strong>前置条件</strong>：系统有多个不同类型的扩展点，需要不同的权限级别。</p>
+<p><strong>源码证据</strong>：<code>src/utils/hooks/hookEvents.ts</code> — 完整的 HookEvent 枚举；<code>src/utils/hooks/postSamplingHooks.ts</code> — Post-Sampling 的特殊位置。</p>
+<p><strong>适用范围</strong>：有多层次扩展需求的系统（执行前检查、执行中修改、执行后审计等）。</p>
+<hr />
+<h3 id="模式-4出口防护egress-protection"><a class="header" href="#模式-4出口防护egress-protection">模式 4：出口防护（Egress Protection）</a></h3>
+<p><strong>解决的问题</strong>：Hook 可能发起网络请求。如果不加限制，可能被利用进行 SSRF 攻击，向内网发送恶意请求。</p>
+<p><strong>核心做法</strong>：所有 Hook 发起的网络请求先经过地址检查。阻止所有私有 IP 范围（127.0.0.0/8、10.0.0.0/8、192.168.0.0/16 等）。如果用户需要访问私有网络，明确白名单。</p>
+<p><strong>前置条件</strong>：Hook 可以执行任意代码并发起网络请求，有潜在的恶意输入源。</p>
+<p><strong>源码证据</strong>：<code>src/utils/hooks/ssrfGuard.ts:42</code> — <code>isBlockedAddress</code> 函数；第 216 行 — <code>ssrfGuardedLookup</code>。</p>
+<p><strong>适用范围</strong>：允许用户 Hook/插件的系统，特别是涉及网络访问的场景。</p>
+<hr />
+<h2 id="架构图"><a class="header" href="#架构图">架构图</a></h2>
+<p><strong>图 18-1：Computer Use 的截图-分析-操作循环</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    A["用户指令
+'点击登录按钮'"] --&gt; B["截图
+Screenshot API"]
+    B --&gt; C["Claude Vision
+分析界面元素"]
+    C --&gt; D{"找到目标元素?"}
+    D --&gt;|是| E["计算坐标
+(x, y) × devicePixelRatio"]
+    D --&gt;|否| F["等待加载
+waitForSelector"]
+    F --&gt; B
+    E --&gt; G["执行操作
+鼠标点击/键盘输入"]
+    G --&gt; H["等待界面响应
+networkidle / 元素出现"]
+    H --&gt; I{"任务完成?"}
+    I --&gt;|是| J["✅ 成功"]
+    I --&gt;|否| B
+</code></pre>
+<p><strong>图 18-2：DPI 缩放的坐标转换</strong></p>
+<pre><code class="language-mermaid">graph LR
+    subgraph "截图坐标（像素）"
+        A["x=200, y=300
+（Retina: 2x DPI）"]
+    end
+    subgraph "屏幕坐标（点）"
+        B["x=100, y=150
+（实际点击位置）"]
+    end
+    
+    A --&gt;|"÷ devicePixelRatio (2)"| B
+    
+    Wrong["直接用截图坐标点击
+→ 点到错误位置 ❌"]
+    Right["除以 DPI 比例后点击
+→ 精确命中 ✅"]
+    
+    style Wrong fill:#ffe6e6
+    style Right fill:#e6ffe6
+</code></pre>
+<p><strong>图 18-3：截图时机的选择策略</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    A["触发截图时机"]
+    B["用户操作后
+（点击、输入）"]
+    C["导航完成后
+networkidle"]
+    D["目标元素出现后
+waitForSelector"]
+    E["❌ 避免：定时轮询
+成本爆炸"]
+    
+    A --&gt; B &amp; C &amp; D &amp; E
+    
+    style E fill:#ffe6e6
+</code></pre>
+<p><strong>图 18-4：Computer Use 的工具权限分级</strong></p>
+<pre><code class="language-mermaid">graph TD
+    CU["Computer Use 操作"]
+    CU --&gt; Low["低风险（只读）
+截图、鼠标悬停"]
+    CU --&gt; Med["中风险（可逆）
+鼠标点击、键盘输入"]
+    CU --&gt; High["高风险（不可逆）
+文件删除、表单提交
+需要明确用户确认"]
+    
+    style Low fill:#e6ffe6
+    style Med fill:#fff3e6
+    style High fill:#ffe6e6
+</code></pre>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-在-pre-sampling-hook-里做耗时操作阻塞-claude-的推理"><a class="header" href="#-在-pre-sampling-hook-里做耗时操作阻塞-claude-的推理">❌ 在 pre-sampling hook 里做耗时操作，阻塞 Claude 的推理</a></h3>
+<p>Pre-sampling hook 在 Claude 生成每个回答<strong>之前</strong>同步执行。如果 hook 调用外部服务且有 500ms+ 延迟，每次对话都会增加明显的延迟。Hook 的执行应该是低延迟的（本地检查、日志记录），耗时操作应该放在 post-sampling hook 的异步路径里（<code>src/utils/hooks/</code>）。</p>
+<h3 id="-假设-ssrfguard-只防止外部网络请求"><a class="header" href="#-假设-ssrfguard-只防止外部网络请求">❌ 假设 ssrfGuard 只防止外部网络请求</a></h3>
+<p><code>ssrfGuard</code>（<code>src/utils/hooks/ssrfGuard.ts:216</code>）防止的是<strong>内网地址攻击</strong>（Server-Side Request Forgery）：攻击者通过 Hook 的外部 URL 配置，让 Claude 访问 <code>169.254.169.254</code>（云服务实例元数据）或 <code>localhost:9200</code>（本地 Elasticsearch）等内网服务。即使是"只读的" GET 请求也需要 SSRF 防护，因为读取到的内网数据可能包含 credentials。</p>
+<h3 id="-post-sampling-hook-异常时导致整个工具调用失败"><a class="header" href="#-post-sampling-hook-异常时导致整个工具调用失败">❌ Post-sampling hook 异常时导致整个工具调用失败</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：hook 异常传播到主流程
+async function postSamplingHook(result) {
+  await externalLogging(result)  // 如果这里失败，工具调用也失败了
+}
+</code></pre>
+<p>Post-sampling hook 是"旁路"（side effect），不应该影响主流程的成功/失败。Hook 的异常必须被捕获并记录，但不应该 rethrow 到主流程（<code>src/utils/hooks/AsyncHookRegistry.ts</code>）。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>为扩展系统设计多层次的 Hook</strong>。如果你的系统允许用户扩展，不要只有一个"插件运行点"。设计 pre/post/error 等多个 Hook 点，让用户可以在不同阶段介入。参考本章的 PreSampling/PostSampling 这样的细粒度设计。</p>
+</li>
+<li>
+<p><strong>显式定义每个 Hook 的能力边界</strong>。明确告诉用户：这个 Hook 能改什么、不能改什么、是同步还是异步。不要让用户猜测。</p>
+</li>
+<li>
+<p><strong>如果 Hook 是异步的，设计超时和中止机制</strong>。外部进程可能卡住。系统需要能够检测超期 Hook（超时多久后中止？）并从中恢复（如何清理资源？）。</p>
+</li>
+<li>
+<p><strong>对出口流量加防护</strong>。如果 Hook 可以进行网络操作，默认阻止私有网络访问。除非用户明确配置了白名单。这是"安全优先"的正确做法。</p>
+</li>
+</ul>
+<hr />
+<h2 id="向后链接"><a class="header" href="#向后链接">向后链接</a></h2>
+<p>Hook 系统的权限检查遵循第 15 章介绍的三层决策模型。Hook 脚本可以通过 Plugin 系统（第 35 章）打包和分发。Skill 系统（第 36 章）也使用 Hook 机制来注入 AI 能力。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part4/ch17.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part5/ch19.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part4/ch17.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part5/ch19.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

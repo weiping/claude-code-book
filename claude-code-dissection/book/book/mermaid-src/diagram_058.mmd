@@ -1,0 +1,19 @@
+graph TD
+    A["轮次 76<br/>压缩前的对话历史"] -->|压缩发生| B["轮次 76<br/>压缩后的对话历史"]
+    
+    A -->|内容| A1["轮 1-30<br/>架构讨论 + 技术栈选择<br/>（30KB）"]
+    A -->|内容| A2["轮 31-75<br/>调试过程<br/>（150KB）"]
+    
+    B -->|内容| B1["【Boundary Message】<br/>Earlier rounds discussed architecture...<br/>Attempted solutions failed because..."]
+    B -->|内容| B2["轮 31-75<br/>调试过程<br/>（150KB，不变）"]
+    
+    B -.->|效果| C["Claude 的理解"]
+    C -->|知道| C1["✅ 前面做过架构讨论"]
+    C -->|知道| C2["✅ 已尝试过 XX 方案（失败）"]
+    C -->|知道| C3["✅ 现在应该尝试新的方向"]
+    
+    style A1 fill:#ffe6e6
+    style A2 fill:#ffffcc
+    style B1 fill:#e6ffe6
+    style B2 fill:#ffffcc
+    style C fill:#e6f2ff

@@ -1,0 +1,42 @@
+stateDiagram-v2
+    [*] --> NORMAL
+    
+    NORMAL --> YELLOW: tokens > threshold - 20K
+    
+    YELLOW --> RED: tokens > threshold - 10K
+    RED --> YELLOW: tokens < threshold - 15K (降级)
+    
+    RED --> ORANGE: tokens > threshold
+    ORANGE --> YELLOW: compress() 成功<br/>tokens < threshold - 5K (压缩后)
+    
+    ORANGE --> CRITICAL: tokens > threshold + 5K
+    CRITICAL --> ORANGE: compress() 成功
+    CRITICAL --> [*]: failureCount >= 3<br/>(禁用 AutoCompact)
+    
+    note right of NORMAL
+        监控中，无操作
+        日志频率：低
+    end note
+    
+    note right of YELLOW
+        接近限制
+        日志频率：中
+        预加载压缩模块
+    end note
+    
+    note right of RED
+        非常接近
+        日志频率：高
+        准备立即压缩
+    end note
+    
+    note right of ORANGE
+        超过安全阈值
+        立即触发压缩
+        插入 BoundaryMessage
+    end note
+    
+    note right of CRITICAL
+        进入危险区
+        紧急压缩 + 失败计数
+    end note

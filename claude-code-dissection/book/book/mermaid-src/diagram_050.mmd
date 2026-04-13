@@ -1,0 +1,11 @@
+flowchart TD
+    A["从当前目录开始<br/>pwd = /project/src/components"] -->|向上遍历| B["检查当前目录<br/>CLAUDE.md?<br/>.claude/CLAUDE.md?<br/>.claude/rules/*.md?"]
+    B -->|无| C["向上一级<br/>/project/src"]
+    C -->|检查| D["发现 CLAUDE.md"]
+    D -->|向上| E["/project"]
+    E -->|发现| F["CLAUDE.md + .claude/rules/*.md"]
+    F -->|向上| G["/"]
+    G -->|停止| H["收集所有发现的文件<br/>按优先级排列"]
+    style A fill:#e6f2ff
+    style B fill:#fff4e6
+    style H fill:#e6ffe6

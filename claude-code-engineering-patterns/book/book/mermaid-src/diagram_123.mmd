@@ -1,0 +1,35 @@
+flowchart TD
+    subgraph ext [扩展层]
+        p12["12. 声明式能力包\nDeclarative Capability Package"]
+    end
+
+    subgraph sec [安全层]
+        p11["11. 分层安全防线\nLayered Security Perimeter"]
+    end
+
+    subgraph swarm [协作层]
+        p10["10. 领导者-队友事件驱动协调\nLeader-Teammate Event Coordination"]
+        p09["09. 子进程 Agent 隔离\nSubprocess Agent Isolation"]
+    end
+
+    subgraph task [任务层]
+        p08["08. 异步钩子注册表\nAsync Hook Registry"]
+        p07["07. 多态执行器\nPolymorphic Executor"]
+    end
+
+    subgraph exec [执行层]
+        p06["06. 可观测 Agent 事件总线\nObservable Agent Event Bus"]
+        p05["05. 写入先于执行\nWrite-Before-Execute"]
+    end
+
+    subgraph ctx [上下文层]
+        p04["04. 协议化工具扩展\nProtocol-Adapter Tool Extension"]
+        p03["03. 分层提示词组装\nLayered Prompt Assembly"]
+    end
+
+    subgraph tool [工具层]
+        p02["02. 辨别联合类型状态机\nDiscriminated Union State Machine"]
+        p01["01. 可中断多轮工具调用循环\nInterruptible Multi-Turn Tool Loop"]
+    end
+
+    tool --> ctx --> exec --> task --> swarm --> sec --> ext

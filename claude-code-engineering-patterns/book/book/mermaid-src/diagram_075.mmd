@@ -1,0 +1,11 @@
+graph LR
+    subgraph 上下文窗口空间分配
+        A["已使用空间\n（对话历史 + 系统提示）"] --> B
+        B["autoCompact 触发区\n（effectiveWindow - 13000）"] --> C
+        C["Warning/Error 区\n（剩余 20000 tokens）"] --> D
+        D["Blocking 阻塞区\n（剩余 3000 tokens）"]
+    end
+    
+    B -->|"超过此线 → 自动压缩"| trigger["autoCompactIfNeeded\n触发"]
+    C -->|"进入此区 → UI 警告"| warn["显示 token 用量警告"]
+    D -->|"进入此区 → 新请求被阻塞"| block["拒绝新的请求"]

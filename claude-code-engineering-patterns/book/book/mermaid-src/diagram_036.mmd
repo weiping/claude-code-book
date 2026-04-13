@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant QM as queryModel()<br/>生产者
+
+    participant QMS as queryModelWithStreaming()<br/>流式+VCR包装
+    participant A as ask()<br/>便利封装
+    participant H as execAgentHook()<br/>hooks隔离执行
+
+    QM->>QMS: yield* 透传所有事件
+    Note over QMS: withStreamingVCR 透明包装
+    QMS-->>QMS: 实时处理每个事件
+
+    QM->>A: yield SDKMessage
+    Note over A: for await 逐条转发
+    A-->>A: yield 给 SDK 调用方
+
+    QM->>H: yield message
+    Note over H: for await 独立消费
+    H-->>H: hook 逻辑完全隔离

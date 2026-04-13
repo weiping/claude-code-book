@@ -1,0 +1,22 @@
+stateDiagram-v2
+    [*] --> Normal: 会话开始
+    Normal --> PlanMode: EnterPlanModeTool\nmode → plan\n权限受限
+    PlanMode --> Exited: ExitPlanModeTool\n读取计划文件\n用户确认
+    Exited --> Normal: 恢复完整工具集
+
+    state Normal {
+        [*] --> FullTools
+        FullTools: 完整工具集\n读+写+执行
+    }
+
+    state PlanMode {
+        [*] --> ReadOnlyTools
+        ReadOnlyTools: 只读工具集\n读+搜索+计划写入
+    }
+
+    state Exited {
+        [*] --> ReviewPlan
+        ReviewPlan: 计划文件已写入\n用户审阅中
+    }
+
+    Normal --> Normal: 禁止重新进入\nchannels模式

@@ -1,0 +1,9 @@
+graph LR
+    A["时刻 0min<br/>获得 access_token<br/>过期时间：60min"] -->
+    B["时刻 55min<br/>刷新触发<br/>提前 5 分钟缓冲"] -->
+    C["请求新 token<br/>用 refresh_token"] -->
+    D["时刻 60min<br/>原 token<br/>本应过期<br/>但已被替换"]
+    E["使用新 token<br/>继续工作"] -.-> D
+    style B fill:#ffffcc
+    style C fill:#ffe6e6
+    style D fill:#e6ffe6

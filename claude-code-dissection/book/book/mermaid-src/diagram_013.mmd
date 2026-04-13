@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant User as 用户
+    participant PSC as processSlashCommand
+    participant Cmd as clear 命令
+    participant REPL as REPL 层
+
+    User->>PSC: 输入 "/clear"
+    PSC->>PSC: findCommand("clear", commands)
+    PSC->>Cmd: cmd.load() → import('./clear.js')
+    Cmd->>Cmd: clearConversation(context)
+    Cmd-->>PSC: { type: 'text', value: '' }
+    PSC-->>REPL: SystemLocalCommandMessage
+    Note over REPL: 本地消费，不触发 LLM

@@ -1,0 +1,23 @@
+flowchart TD
+    A["queryLoop 新一轮"] --> B{HISTORY_SNIP\nFeature Flag?}
+    B -->|是| C["snipCompact\n删除历史轮次边界\nsnipTokensFreed 传递"]
+    B -->|否| D["跳过"]
+    C --> E["microCompact\n清除 8 类旧工具结果"]
+    D --> E
+
+    E --> F{CONTEXT_COLLAPSE\nFeature Flag?}
+    F -->|是| G["contextCollapse\n只读投影折叠\n不修改原始消息"]
+    F -->|否| H["跳过"]
+    G --> I{shouldAutoCompact?\ntoken 超限 +\n递归守卫通过}
+    H --> I
+
+    I -->|是| J["autoCompact\n全量对话摘要\n13000 token 缓冲"]
+    I -->|否| K["跳过"]
+    J --> L{consecutiveFailures\n< 3?}
+    L -->|是| M["执行压缩\npost-compact 恢复\n5文件/50000 token"]
+    L -->|否| N["熔断\n不再尝试"]
+    K --> O["继续查询"]
+    M --> O
+
+    C -.- Note1["与 micro 不互斥\n可同时触发"]
+    G -.- Note2["collapse 优先于 autocompact\n如果 collapse 释放足够 token\nautocompact 是 no-op"]

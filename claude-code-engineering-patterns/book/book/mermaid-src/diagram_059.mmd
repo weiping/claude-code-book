@@ -1,0 +1,10 @@
+flowchart LR
+    dcp[声明式能力包]
+    
+    dcp -->|策略接口\n运行时发现| strategy[GoF 策略模式]
+    dcp -->|结构/内容/行为分离| html[HTML/CSS/JS 模型]
+    dcp -->|注册/发现/执行| registry[服务注册发现]
+    
+    strategy --- diff1["差异：策略在运行时\n从文件系统发现"]
+    html --- diff2["差异：面向AI扩展\n而非Web页面"]
+    registry --- diff3["差异：注册中心\n在本地文件系统"]

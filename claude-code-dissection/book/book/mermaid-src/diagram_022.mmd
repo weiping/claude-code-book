@@ -1,0 +1,19 @@
+flowchart LR
+    API["Claude API
+流式响应"]
+    Stream["for await...of
+事件流"]
+    Handler{"事件类型?"}
+    Text["text_delta
+→ 追加到输出"]
+    Tool["tool_use
+→ 准备工具调用"]
+    Usage["message_stop
+→ 记录 token 用量"]
+    UI["Ink 增量更新
+用户实时看到输出"]
+
+    API --> Stream --> Handler
+    Handler --> Text --> UI
+    Handler --> Tool
+    Handler --> Usage

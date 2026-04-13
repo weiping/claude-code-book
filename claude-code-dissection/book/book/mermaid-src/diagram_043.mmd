@@ -1,0 +1,19 @@
+graph LR
+    subgraph "截图坐标（像素）"
+        A["x=200, y=300
+（Retina: 2x DPI）"]
+    end
+    subgraph "屏幕坐标（点）"
+        B["x=100, y=150
+（实际点击位置）"]
+    end
+    
+    A -->|"÷ devicePixelRatio (2)"| B
+    
+    Wrong["直接用截图坐标点击
+→ 点到错误位置 ❌"]
+    Right["除以 DPI 比例后点击
+→ 精确命中 ✅"]
+    
+    style Wrong fill:#ffe6e6
+    style Right fill:#e6ffe6

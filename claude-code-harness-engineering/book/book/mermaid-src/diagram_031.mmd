@@ -1,0 +1,10 @@
+flowchart LR
+    A["定义\nexcluded-strings.txt\n或 DEFAULT_FEATURES"] --> B["条件导入\nfeature() 检查"]
+    B --> C["条件使用\n运行时行为"]
+    C --> D["DCE 注释\n标注消除意图"]
+    D --> E["编译时消除\nBun DCE\n代码物理消失"]
+
+    E -->|"flag=false"| F["External Build\n代码不存在"]
+    E -->|"flag=true"| G["Internal Build\n代码保留"]
+
+    F -.- Note1["产物更小\n启动更快\n攻击面更小"]

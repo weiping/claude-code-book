@@ -1,0 +1,413 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 30 章：leaderPermissionBridge——跨进程权限协商模式 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-30-章leaderpermissionbridge跨进程权限协商模式"><a class="header" href="#第-30-章leaderpermissionbridge跨进程权限协商模式">第 30 章：leaderPermissionBridge——跨进程权限协商模式</a></h1>
+<blockquote>
+<p>"两个层次之间的依赖，只需要一个注册点和两个 null 变量。"</p>
+</blockquote>
+<hr />
+<p>当进程内 Teammate（与 Leader 共享同一进程的子 Agent）需要向用户请求权限时，它面临一个架构难题：权限确认对话框是 React 组件，需要操作 React 的状态（<code>setToolUseConfirmQueue</code>）；但 Teammate 的权限检查代码运行在 <code>inProcessRunner.ts</code>——一个工具函数，不该直接引用 React 组件，否则会产生层次违反和循环依赖。</p>
+<p><code>leaderPermissionBridge.ts</code> 用 54 行代码解决了这个问题：两个模块级 <code>null</code> 变量充当"注册点"，REPL 组件挂载时主动调用 <code>register*</code> 注入 React 的状态 setter 函数，非 React 代码通过 <code>get*</code> 获取并调用。这是<strong>模块级服务定位器</strong>（Module-Level Service Locator）模式的最小实现。</p>
+<p>两个注册点职责分离：一个负责弹出权限确认对话框（<code>ToolUseConfirmQueue</code>），另一个负责把用户授予的权限写回 Leader 的上下文（<code>ToolPermissionContext</code>）。六个函数，两个 null 变量，解决了 React 与非 React 代码之间的跨层依赖问题。</p>
+<hr />
+<h2 id="问题非-react-代码如何操作-react-状态"><a class="header" href="#问题非-react-代码如何操作-react-状态">问题：非 React 代码如何操作 React 状态</a></h2>
+<p>进程内 Teammate（in-process teammate）是与 Leader 运行在同一 Node.js 进程中的子 Agent。它的优势是通信零延迟（不需要 IPC 或 mailbox），劣势是它的工具权限检查发生在 <code>inProcessRunner.ts</code>——一个与 React 无关的工具函数。</p>
+<p>当 Teammate 要执行一个需要用户确认的操作（如写入特定目录），系统需要：</p>
+<ol>
+<li>向 Leader 的 UI 推送一个权限确认对话框</li>
+<li>暂停 Teammate 的执行，等待用户决定</li>
+<li>用户点击"允许"后，把这个权限更新写回 Leader 的权限上下文</li>
+</ol>
+<p>步骤 1 和步骤 3 都需要操作 React 状态——<code>setToolUseConfirmQueue</code> 和 <code>setToolPermissionContext</code>。但直接让 <code>inProcessRunner.ts</code> <code>import</code> 这些 React state，会破坏代码分层（工具函数不该知道 React 细节），也会引入循环依赖（React 组件依赖工具函数，工具函数又依赖 React 组件）。</p>
+<p>文件头注释直接说明了解决方案：</p>
+<blockquote>
+<p>"Module-level bridge that allows the REPL to register its setToolUseConfirmQueue and setToolPermissionContext functions for in-process teammates to use."
+（模块级桥接，允许 REPL 注册其 setToolUseConfirmQueue 和 setToolPermissionContext 函数，供进程内 Teammate 使用。）</p>
+</blockquote>
+<p><strong>图 30-1：leaderPermissionBridge 注册时序</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant REPL as REPL 组件\n（React）
+    participant Bridge as leaderPermissionBridge\n（模块级注册表）
+    participant Runner as inProcessRunner\n（非 React）
+
+    REPL-&gt;&gt;Bridge: registerLeaderToolUseConfirmQueue(setter)
+    REPL-&gt;&gt;Bridge: registerLeaderSetToolPermissionContext(setter)
+    Note over Bridge: registeredSetter = setter\nregisteredPermissionContextSetter = setter
+    Runner-&gt;&gt;Bridge: getLeaderToolUseConfirmQueue()
+    Bridge--&gt;&gt;Runner: SetToolUseConfirmQueueFn
+    Runner-&gt;&gt;REPL: 调用 setter → 推入权限对话框
+    REPL--&gt;&gt;Runner: 用户决定（Promise resolve）
+    Runner-&gt;&gt;Bridge: getLeaderSetToolPermissionContext()
+    Bridge--&gt;&gt;Runner: SetToolPermissionContextFn
+    Runner-&gt;&gt;REPL: 调用 setter → 写回权限上下文
+    Note over REPL: 组件卸载时 useEffect cleanup
+    REPL-&gt;&gt;Bridge: unregisterLeaderToolUseConfirmQueue()
+    REPL-&gt;&gt;Bridge: unregisterLeaderSetToolPermissionContext()
+    Note over Bridge: 两个变量重置为 null
+</code></pre>
+<hr />
+<h2 id="源码实例-1模块级变量--registergetunregister"><a class="header" href="#源码实例-1模块级变量--registergetunregister">源码实例 1：模块级变量 + register/get/unregister</a></h2>
+<p><code>leaderPermissionBridge.ts</code> 的全部内容是两个模块级变量和六个函数（<code>src/utils/swarm/leaderPermissionBridge.ts:25</code>）：</p>
+<pre><code class="language-typescript">// src/utils/swarm/leaderPermissionBridge.ts:15-40
+export type SetToolUseConfirmQueueFn = (
+  updater: (prev: ToolUseConfirm[]) =&gt; ToolUseConfirm[],
+) =&gt; void
+
+export type SetToolPermissionContextFn = (
+  context: ToolPermissionContext,
+  options?: { preserveMode?: boolean },
+) =&gt; void
+
+let registeredSetter: SetToolUseConfirmQueueFn | null = null
+let registeredPermissionContextSetter: SetToolPermissionContextFn | null = null
+
+export function registerLeaderToolUseConfirmQueue(
+  setter: SetToolUseConfirmQueueFn,
+): void {
+  registeredSetter = setter
+}
+
+export function getLeaderToolUseConfirmQueue(): SetToolUseConfirmQueueFn | null {
+  return registeredSetter  // 未注册时返回 null，不抛出
+}
+
+export function unregisterLeaderToolUseConfirmQueue(): void {
+  registeredSetter = null
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/swarm/leaderPermissionBridge.ts:25</code></p>
+<p>两个 <code>let</code> 变量初始值为 <code>null</code>——不是 <code>undefined</code>，而是显式的 <code>null</code>。这个选择有类型语义意义：<code>null</code> 表示"曾经有、现在没有"（或"明确未设置"），与 <code>undefined</code>（"从未被赋值"）在 TypeScript 中语义不同。调用方通过检查 <code>!== null</code> 判断是否已注册，而不需要处理 <code>undefined</code> 的特殊情况。</p>
+<p><code>get*</code> 函数返回 <code>null</code> 而非抛出异常。这是<strong>优雅降级</strong>设计：如果 Teammate 在 REPL 初始化之前调用 <code>getLeaderToolUseConfirmQueue()</code>（理论上不应该发生，但这是防御性编程），返回 <code>null</code> 而不是让进程崩溃。调用方（<code>inProcessRunner.ts</code>）检查返回值决定后续行为：</p>
+<pre><code class="language-typescript">// src/utils/swarm/inProcessRunner.ts:195-200（简化）
+const setToolUseConfirmQueue = getLeaderToolUseConfirmQueue()
+if (setToolUseConfirmQueue) {
+  // 正常路径：弹出权限对话框，等待用户决定
+  return new Promise&lt;PermissionDecision&gt;(resolve =&gt; {
+    setToolUseConfirmQueue(queue =&gt; [...queue, { ...permissionItem }])
+    // ...等待 onAllow/onAbort 回调
+  })
+}
+// null 降级路径：无 bridge，默认行为（ask/reject）
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/swarm/inProcessRunner.ts:195</code></p>
+<p>在正常路径（<code>setToolUseConfirmQueue</code> 非 null）中，Teammate 调用 <code>setToolUseConfirmQueue</code> 把一个 <code>ToolUseConfirm</code> 对象推入 Leader 的权限确认队列。这个队列是 React <code>useState</code> 的一部分——<code>setToolUseConfirmQueue</code> 就是 React 的 state setter。调用它触发 React 重渲染，Leader 的 UI 弹出权限确认对话框。Teammate 的执行在 <code>new Promise()</code> 中暂停，直到用户点击"允许"（触发 <code>onAllow</code> 回调）或"拒绝"（触发 <code>onAbort</code>）。</p>
+<p>REPL 组件使用 <code>useEffect</code> 在挂载时注册、卸载时清理（<code>src/screens/REPL.tsx:1178</code>）：</p>
+<pre><code class="language-typescript">// src/screens/REPL.tsx:1178-1181
+useEffect(() =&gt; {
+  registerLeaderToolUseConfirmQueue(setToolUseConfirmQueue)
+  return () =&gt; unregisterLeaderToolUseConfirmQueue()  // 卸载时清理
+}, [setToolUseConfirmQueue])
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/screens/REPL.tsx:1178</code></p>
+<p><code>useEffect</code> 的返回函数（cleanup function）在 REPL 组件卸载时自动调用，把模块变量重置为 <code>null</code>。这是 React 生命周期与模块级变量的完美配合——React 负责"何时注册/注销"（挂载/卸载），模块负责"存储什么"（null 变量），非 React 代码负责"何时读取"（运行时 <code>get*</code>）。</p>
+<hr />
+<h2 id="源码实例-2settoolpermissioncontextfn-与-preservemode"><a class="header" href="#源码实例-2settoolpermissioncontextfn-与-preservemode">源码实例 2：SetToolPermissionContextFn 与 preserveMode</a></h2>
+<p>第二个注册点（<code>src/utils/swarm/leaderPermissionBridge.ts:43</code>）处理权限状态的反向同步：</p>
+<pre><code class="language-typescript">// src/utils/swarm/leaderPermissionBridge.ts:43-54
+export function registerLeaderSetToolPermissionContext(
+  setter: SetToolPermissionContextFn,
+): void {
+  registeredPermissionContextSetter = setter
+}
+
+export function getLeaderSetToolPermissionContext(): SetToolPermissionContextFn | null {
+  return registeredPermissionContextSetter
+}
+
+export function unregisterLeaderSetToolPermissionContext(): void {
+  registeredPermissionContextSetter = null
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/swarm/leaderPermissionBridge.ts:43</code></p>
+<p><code>SetToolPermissionContextFn</code> 类型（第 16 行）带有一个可选的 <code>options?: { preserveMode?: boolean }</code> 参数。这个 <code>preserveMode</code> 选项的设计意图在 <code>inProcessRunner.ts</code> 的调用处有详细注释：</p>
+<pre><code class="language-typescript">// src/utils/swarm/inProcessRunner.ts:267-275（简化）
+const setToolPermissionContext = getLeaderSetToolPermissionContext()
+if (setToolPermissionContext) {
+  const updatedContext = applyPermissionUpdates(
+    currentAppState.toolPermissionContext,
+    permissionUpdates,
+  )
+  // preserveMode: true — 防止 Worker 的 'acceptEdits' 上下文
+  // 泄漏回 Leader，Leader 的权限模式不应被 Worker 覆盖
+  setToolPermissionContext(updatedContext, { preserveMode: true })
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/swarm/inProcessRunner.ts:267</code></p>
+<p><code>preserveMode: true</code> 解决了一个微妙的状态污染问题：当 Teammate（Worker）在执行任务时，它的权限上下文可能进入 <code>acceptEdits</code> 模式（自动接受编辑操作）。如果把这个经过 Worker 转换的上下文直接写回 Leader，Leader 的权限模式就会被 Worker 的状态覆盖——用户在 Leader 界面看到的权限状态变成了 Worker 的操作状态，而不是 Leader 自己的状态。</p>
+<p><code>preserveMode: true</code> 告诉 <code>setToolPermissionContext</code> 实现：更新权限规则（<code>permissionUpdates</code>），但保留当前的 Leader 权限模式，不让 Worker 的模式泄漏。这是"只更新我需要更新的部分"的精确写入语义，与粗粒度的全量覆盖相比，避免了状态污染。</p>
+<p>两个注册点的职责分离（Confirm Queue vs Permission Context）体现了<strong>单一职责原则</strong>在模块级变量上的应用：如果把两个 setter 塞进单一的全局对象（如 <code>window.leaderBridge = { queueSetter, contextSetter }</code>），任何一个 setter 的更新都会触发整个对象替换，增加误用风险。两个独立的模块级变量让每个注册点完全独立，互不影响。</p>
+<hr />
+<h2 id="模式剖析模块级服务定位器的三个特征"><a class="header" href="#模式剖析模块级服务定位器的三个特征">模式剖析：模块级服务定位器的三个特征</a></h2>
+<p><strong>模块级服务定位器</strong>模式有三个与类级别服务定位器（GoF Service Locator）不同的特征：</p>
+<p><strong>1. 无类、无实例</strong>：服务定位器的"存储"是模块级 <code>let</code> 变量，不是类的实例变量。每个模块只有一个作用域，模块变量天然是单例，无需额外实现单例模式。这比"用 <code>class</code> 实现 + <code>getInstance()</code> + 双重检查锁定"简洁得多。</p>
+<p><strong>2. 生命周期与 React 挂钩</strong>：<code>register/unregister</code> 通过 <code>useEffect</code> 绑定到 React 组件的挂载/卸载生命周期。React 的 cleanup function 保证了"REPL 卸载时 bridge 一定被清理"，不依赖调用方手动管理。</p>
+<p><strong>3. 类型安全的函数引用</strong>：注册的不是对象实例，而是类型精确的函数引用（<code>SetToolUseConfirmQueueFn</code>、<code>SetToolPermissionContextFn</code>）。TypeScript 类型系统在编译时验证：注入的函数签名与期望的签名一致——这比 <code>any</code> 类型的全局对象安全得多。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>非 React 代码需要操作 React 状态</td><td>✓</td><td>bridge 解耦 React 和非 React，消除循环依赖</td><td>直接 import React state（但层次违反）</td></tr>
+<tr><td>依赖需要在运行时注入（非构建时）</td><td>✓</td><td>register/get/unregister 支持动态生命周期</td><td>构造函数注入（但不适合 React hook 场景）</td></tr>
+<tr><td>需要强类型的函数引用传递</td><td>✓</td><td>TypeScript 类型别名保证接口契约</td><td><code>any</code> 类型全局变量（不安全）</td></tr>
+<tr><td>多实例并发使用（同时多个 REPL）</td><td>✗</td><td>模块变量全局单例，并发访问会互相覆盖（推断）</td><td>实例级依赖注入容器</td></tr>
+<tr><td>需要版本化或可重放的依赖历史</td><td>✗</td><td>null 变量不记录历史，无法回放</td><td>事件日志 + 重放机制</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p><strong>权衡 1：全局单例的测试隔离</strong></p>
+<p>模块级变量是全局状态。测试代码如果调用了 <code>register*</code> 但测试结束时没有调用 <code>unregister*</code>，会把测试中注入的 mock setter 留给后续测试——导致测试间互相污染。正确的测试用法是在 <code>afterEach</code> 中调用 <code>unregister*</code>，或使用 mock 框架自动恢复模块状态（如 Jest 的 <code>jest.resetModules()</code>）。</p>
+<p><strong>权衡 2：null 返回的调用方负担</strong></p>
+<p><code>get*</code> 返回 <code>null</code> 而非抛出异常，这把处理"未注册"情况的责任转移给了每一个调用方。<code>inProcessRunner.ts</code> 里有 <code>if (setToolUseConfirmQueue)</code> 检查——这是正确的防御性代码，但如果某个调用方忘记检查，直接调用 <code>getLeaderToolUseConfirmQueue()!(...)</code> 会在 REPL 未初始化时运行时崩溃。显式 <code>null</code> 类型迫使 TypeScript 编译器警告"必须处理 null"，但 <code>!</code> 操作符可以绕过这个保护。</p>
+<p><strong>权衡 3：注册时机的隐性约定</strong></p>
+<p><code>register</code> 必须在 <code>get</code> 之前调用。这个顺序约定没有代码强制——如果某个路径在 REPL <code>useEffect</code> 运行之前就调用了 <code>getLeaderToolUseConfirmQueue()</code>，会得到 <code>null</code> 并走降级路径。当前的 React 渲染模型保证了 <code>useEffect</code> 在组件挂载后立即运行，在 <code>inProcessRunner</code> 需要权限之前（需要用户操作触发），注册一定已完成。但这是运行时的时序保证，不是编译期的静态保证。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与 GoF 服务定位器（Service Locator）</strong>：GoF 服务定位器是一个中央注册表，调用方通过名称查找依赖（如 <code>ServiceLocator.getInstance("database")</code>）。<code>leaderPermissionBridge</code> 是模块级服务定位器的最小实现：没有名称查找（只有两个固定的 slot），没有类，只有两对 <code>register/get</code> 函数。本质一致，实现更轻量。差异在于：GoF 服务定位器通常是单例类，用静态方法操作；本模式用模块作用域替代类作用域，更符合函数式风格。</p>
+<p><strong>与 IoC 容器（Inversion of Control Container）</strong>：IoC 容器在启动时注入所有依赖，之后不变。<code>leaderPermissionBridge</code> 是运行时注入——REPL 组件每次挂载都重新注册，卸载时清理。这种动态注入适合 React 组件这类有生命周期的依赖提供方，但 IoC 容器不适合（IoC 通常是"一次注入，永久使用"）。</p>
+<p><strong>与 Event Emitter（Node.js EventEmitter）</strong>：EventEmitter 也能解耦发送方和接收方——注册事件监听器，触发时调用。差异在于：EventEmitter 是多对多（多个监听器），<code>leaderPermissionBridge</code> 是一对一（只有最后一次 register 的 setter 有效）；EventEmitter 是异步通知，<code>leaderPermissionBridge</code> 是同步调用函数引用。对于"我只需要当前活跃的 REPL 的 setter"这个需求，单 slot 变量比 EventEmitter 更精确。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模块级服务定位器module-level-service-locator"><a class="header" href="#模块级服务定位器module-level-service-locator">模块级服务定位器（Module-Level Service Locator）</a></h3>
+<p><strong>解决的问题</strong>：非 React 代码需要操作 React 状态 setter，但直接引用会导致循环依赖或层次违反；需要一个解耦机制在两层之间传递函数引用。</p>
+<p><strong>核心做法</strong>：模块级 <code>null</code> 变量作为 slot，React 侧通过 <code>useEffect</code> 调用 <code>register*</code> 注入 state setter，非 React 侧调用 <code>get*</code> 运行时获取；<code>unregister*</code> 在 React cleanup 中恢复 null。</p>
+<p><strong>前置条件</strong>：双方有明确的生命周期（register 早于 get 调用）；只需要单实例（模块级单例足够）；调用方能处理 <code>get*</code> 返回 null 的情况。</p>
+<p><strong>源码证据</strong>：<code>src/utils/swarm/leaderPermissionBridge.ts:25</code>（<code>let registeredSetter: ... | null = null</code> 模块级 null slot）；<code>src/screens/REPL.tsx:1178</code>（<code>useEffect</code> 生命周期绑定注册/清理）</p>
+<hr />
+<h3 id="精确写入precise-write"><a class="header" href="#精确写入precise-write">精确写入（Precise Write）</a></h3>
+<p><strong>解决的问题</strong>：跨层状态同步时，调用方只想更新状态的特定部分（权限规则），不想覆盖其他部分（权限模式），避免状态污染。</p>
+<p><strong>核心做法</strong>：函数类型定义中包含 <code>options?: { preserveMode?: boolean }</code> 等控制参数，让调用方精确声明"我想更新什么，我想保留什么"；实现方根据选项只修改声明的部分。</p>
+<p><strong>前置条件</strong>：状态对象有多个正交的子状态（权限规则 vs 权限模式）；不同调用方对不同子状态有不同的更新意图。</p>
+<p><strong>源码证据</strong>：<code>src/utils/swarm/leaderPermissionBridge.ts:16</code>（<code>SetToolPermissionContextFn</code> 类型含 <code>preserveMode</code> 选项）；<code>src/utils/swarm/inProcessRunner.ts:267</code>（调用时传 <code>{ preserveMode: true }</code> 防止 Worker 模式污染 Leader）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>用模块级 null 变量实现轻量级服务定位器</strong>，避免类单例的样板代码（<code>getInstance()</code>、构造函数、锁）。对于需要跨层传递函数引用的场景，两行 <code>let</code> 变量 + 三对 <code>register/get/unregister</code> 就够了。</p>
+</li>
+<li>
+<p><strong>让 <code>get*</code> 返回 null 而非抛出异常</strong>，把处理"未注册"的责任交给调用方。TypeScript 的 nullable 类型（<code>T | null</code>）迫使调用方在编译期处理 null 情况，比运行时异常更安全。</p>
+</li>
+<li>
+<p><strong>用 <code>useEffect</code> cleanup 绑定 unregister 逻辑</strong>，而不是手动管理。React 的 cleanup function 在组件卸载时自动调用，保证模块变量在 React 组件销毁后总是被重置。</p>
+</li>
+<li>
+<p><strong>为跨层函数传递定义 TypeScript 类型别名</strong>（如 <code>SetToolUseConfirmQueueFn</code>）。类型别名让调用方和注册方都知道期望的函数签名，类型错配在编译期暴露而非运行时。</p>
+</li>
+<li>
+<p><strong>分离不同职责的注册点</strong>（ConfirmQueue vs PermissionContext），而非共用一个 <code>options</code> 对象。每个注册点独立，更新一个不影响另一个，测试时可以单独 mock 某一个。</p>
+</li>
+<li>
+<p><strong>在函数类型中设计精确写入选项</strong>（如 <code>preserveMode</code>），让调用方声明"我不想覆盖的部分"，避免跨层状态同步时的意外污染。</p>
+</li>
+</ul>
+<hr />
+<p><code>leaderPermissionBridge</code> 解决的是进程内 Teammate 与 Leader 之间的权限协商。当多个 Teammate 同时对同一个权限做决策时——不同 Teammate 的权限决策如何合并？这是 <code>permissionSync</code> 的职责，也是第 32 章的主题（详见第 32 章）。第 31 章将先介绍三种 Teammate 后端的选型逻辑（详见第 31 章）。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part7/ch29.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part7/ch31.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part7/ch29.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part7/ch31.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

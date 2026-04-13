@@ -1,0 +1,376 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 15 章：脚手架会消失 - 从 Claude Code 源码提炼的 Harness 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">从 Claude Code 源码提炼的 Harness 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-15-章脚手架会消失"><a class="header" href="#第-15-章脚手架会消失">第 15 章：脚手架会消失</a></h1>
+<blockquote>
+<p>"最好的 Harness 是你正在拆的那个。每个 feature flag 都是一张拆除许可证：盖章日期待定。"</p>
+</blockquote>
+<p>89 个 feature flag，828 处调用——每一处都是一个赌注："有一天这个 flag 会关掉，这段代码会消失。"理解 feature flag 不是开关，而是"脚手架拆除计划"，比知道有哪些 flag 更重要。读完本章，你将理解 <code>feature()</code> 如何在编译时物理消除代码，以及为什么 Harness 的大部分功能是在等待模型变得足够好以至于自己变得多余。</p>
+<h2 id="问题harness-会随着模型进步变得多余吗"><a class="header" href="#问题harness-会随着模型进步变得多余吗">问题——Harness 会随着模型进步变得多余吗</a></h2>
+<p>如果模型有一天能完美管理上下文、评估输出、协调任务，那么压缩策略、Verification Agent、Coordinator 模式都不再需要。89 个 feature flag 的存在本身就说明 Harness 的大部分功能是在弥补模型能力的不足——当模型变得更好，这些功能应该消失。</p>
+<p><code>DEFAULT_FEATURES</code> 只有 3 个条目：<code>KAIROS</code>、<code>COORDINATOR_MODE</code>、<code>CLAUDE_CODE_SIMPLE</code>——全部默认 <code>false</code>。这意味着大部分 feature 在默认配置中是关闭的，只有在特定构建中才启用。<code>feature()</code> 函数的实现更直接：<code>currentFeatures[featureName] ?? false</code>——未配置的 flag 返回 <code>false</code>，代码不执行。</p>
+<p>更关键的是 <code>import { feature } from 'bun:bundle'</code>——这不是普通的配置读取，而是 Bun 编译器的 DCE（Dead Code Elimination，死代码消除）钩子。当 <code>feature('X')</code> 返回 <code>false</code> 时，Bun 编译器在构建产物中<strong>物理消除</strong> <code>false</code> 分支的代码——不是注释掉，不是跳过，是从产物中彻底消失。</p>
+<div class="table-wrapper"><table><thead><tr><th>统计维度</th><th>数字</th><th>含义</th></tr></thead><tbody>
+<tr><td>Feature flag 总数</td><td>89 个</td><td>89 个"模型能力假设"</td></tr>
+<tr><td><code>feature()</code> 调用总数</td><td>828 处</td><td>828 处条件代码路径</td></tr>
+<tr><td><code>DEFAULT_FEATURES</code></td><td>3 个</td><td>默认全关闭</td></tr>
+<tr><td>main.tsx 中的调用</td><td>60 处</td><td>入口文件最密集</td></tr>
+</tbody></table>
+</div>
+<p><strong>原则 15.1：每个补偿模型不足的功能都必须可消除</strong> — Harness 中每个弥补模型能力缺陷的功能<strong>必须</strong>受 feature flag 控制。<strong>禁止</strong>将补偿性代码硬编码为无条件行为——当模型进步时，这些代码<strong>必须</strong>能被安全移除。</p>
+<h2 id="黄金法则每个-feature-flag-编码一个模型能力假设"><a class="header" href="#黄金法则每个-feature-flag-编码一个模型能力假设">黄金法则——每个 feature flag 编码一个"模型能力假设"</a></h2>
+<p>feature flag 不是功能开关，而是一条工程断言——"在当前模型能力下，这段 Harness 代码是必需的；当模型超越这个阈值，这段代码可以安全移除"。源码中的注释反复强调 DCE 目的，而非"开关"语义。</p>
+<div class="table-wrapper"><table><thead><tr><th>Feature flag</th><th>编码的能力假设</th><th>关联章节</th></tr></thead><tbody>
+<tr><td><code>REACTIVE_COMPACT</code></td><td>模型可能产生超长输出导致 API 413 错误</td><td>第 11 章</td></tr>
+<tr><td><code>HISTORY_SNIP</code></td><td>模型处理完整长历史的能力不足</td><td>第 11 章</td></tr>
+<tr><td><code>CACHED_MICROCOMPACT</code></td><td>API cache 机制不完美，需要手动管理</td><td>第 11 章</td></tr>
+<tr><td><code>VERIFICATION_AGENT</code></td><td>模型无法可靠评估自己的输出</td><td>第 13 章</td></tr>
+<tr><td><code>COORDINATOR_MODE</code></td><td>单 Agent 无法高效处理并行任务</td><td>第 14 章</td></tr>
+<tr><td><code>CONTEXT_COLLAPSE</code></td><td>简单压缩策略释放空间不够</td><td>第 11 章</td></tr>
+<tr><td><code>KAIROS</code>（24 处调用）</td><td>需要独立的 assistant 模块</td><td>main.tsx</td></tr>
+</tbody></table>
+</div>
+<p>每个 flag 的 <code>true</code> 状态意味着"模型在这方面还不够好，需要 Harness 补偿"；<code>false</code> 状态意味着"这段补偿代码不需要"。autoCompact 源码中的注释直接标注了这种语义："Inside feature() so the string DCEs from external builds (it's in excluded-strings.txt)."（译：放在 feature() 内部以使字符串从外部构建中通过 DCE 消除（它在 excluded-strings.txt 中））。</p>
+<p>microCompact 的延迟导入也遵循同样的原则："The imports and state live inside feature() checks for dead code elimination."（译：导入和状态放在 feature() 检查内部以实现死代码消除）。不只是运行时行为，连模块的物理存在都受 flag 控制。</p>
+<p><strong>原则 15.2：Flag 消除的是代码，不是行为</strong> — Feature flag <strong>必须</strong>通过编译时 DCE 物理消除代码，而非仅通过运行时 <code>if</code> 跳过。代码物理消失意味着产物更小、启动更快、攻击面更小——这些是运行时 <code>if</code> 无法提供的优势。</p>
+<h2 id="适用场景哪些-harness-功能最可能先消失"><a class="header" href="#适用场景哪些-harness-功能最可能先消失">适用场景——哪些 Harness 功能最可能先消失</a></h2>
+<p>按"模型进步速度 × Harness 代码量"排列，压缩策略最可能先被移除。</p>
+<div class="table-wrapper"><table><thead><tr><th>消失速度</th><th>功能</th><th>理由</th></tr></thead><tbody>
+<tr><td>最快</td><td><code>REACTIVE_COMPACT</code></td><td>模型的输出长度控制正在改善</td></tr>
+<tr><td>最快</td><td><code>HISTORY_SNIP</code></td><td>上下文窗口在增长，长历史不再是致命问题</td></tr>
+<tr><td>中等</td><td><code>CACHED_MICROCOMPACT</code></td><td>API cache 机制在改善</td></tr>
+<tr><td>中等</td><td><code>microCompact</code>（整体）</td><td>cache TTL 优化后，手动清除的价值降低</td></tr>
+<tr><td>最慢</td><td><code>VERIFICATION_AGENT</code></td><td>自我评估是模型的根本困难</td></tr>
+<tr><td>最慢</td><td><code>COORDINATOR_MODE</code></td><td>并行协调是架构问题，不只是能力问题</td></tr>
+</tbody></table>
+</div>
+<p><code>REACTIVE_COMPACT</code> 标记为 "ant-only"——源码注释明确说："REACTIVE_COMPACT is ant-only"。ant-only 功能只在内部构建中存在，外部版本通过 DCE 完全消除。这意味着这个功能可能已经在评估是否可以永久关闭。</p>
+<h2 id="工作原理feature-flag-的编译时和运行时两层机制"><a class="header" href="#工作原理feature-flag-的编译时和运行时两层机制">工作原理——feature flag 的编译时和运行时两层机制</a></h2>
+<p>Claude Code 的 feature flag 有两层——编译时 DCE（Bun feature）和运行时控制（GrowthBook/环境变量/配置），两层配合实现"开发时灵活、生产时精简"。</p>
+<p><strong>图 15-1：feature flag 两层机制</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["feature flag 定义\nDEFAULT_FEATURES\nexcluded-strings.txt"] --&gt; B{"编译时\nBun feature()"}
+
+    B --&gt;|"flag=false"| C["DCE 消除\n代码从产物中消失"]
+    B --&gt;|"flag=true"| D["代码保留在产物中"]
+
+    D --&gt; E{"运行时控制\nGrowthBook / env / 配置"}
+    E --&gt;|"enabled"| F["功能执行"]
+    E --&gt;|"disabled"| G["功能跳过\n但代码仍在产物中"]
+
+    C -.- Note1["excluded-strings.txt\nant-only 功能\n外部版本不存在"]
+    E -.- Note2["双重控制示例\nCOORDINATOR_MODE 需要\n编译时 AND 运行时"]
+</code></pre>
+<h3 id="编译时-dce"><a class="header" href="#编译时-dce">编译时 DCE</a></h3>
+<p><code>feature()</code> 函数在 Bun 编译时被编译器识别。当 <code>feature('X')</code> 返回 <code>false</code> 时，Bun 编译器将 <code>if (feature('X')) { ... }</code> 中的整个代码块从产物中消除。这比运行时 <code>if</code> 更彻底：</p>
+<ul>
+<li><strong>产物更小</strong>——828 处 <code>feature()</code> 调用中，大部分在外部版本中返回 <code>false</code>，对应代码不进入产物</li>
+<li><strong>启动更快</strong>——不需要初始化不存在的模块</li>
+<li><strong>攻击面更小</strong>——代码物理不存在，无法被利用</li>
+</ul>
+<p><code>excluded-strings.txt</code> 是 Bun 的 DCE 配置文件——列出所有只存在于内部构建的 flag 名称。autoCompact 源码中的注释解释了它的工作方式："Inside feature() so the string DCEs from external builds (it's in excluded-strings.txt)"。flag 名称字符串本身也从外部版本中消除——连字符串常量都不留。</p>
+<h3 id="运行时控制"><a class="header" href="#运行时控制">运行时控制</a></h3>
+<p>即使代码通过了编译时 DCE，运行时仍有多层控制。<code>COORDINATOR_MODE</code> 是最典型的双重控制：编译时需要 <code>feature('COORDINATOR_MODE')</code> 为 <code>true</code>，运行时还需要 <code>isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)</code> 为 <code>true</code>。两者缺一不可。</p>
+<p>运行时控制来源包括：</p>
+<ul>
+<li><strong>GrowthBook Feature Flags</strong>——远程配置，可动态切换</li>
+<li><strong>环境变量</strong>——如 <code>DISABLE_AUTO_COMPACT</code>、<code>CLAUDE_CODE_COORDINATOR_MODE</code></li>
+<li><strong>用户配置</strong>——如 <code>autoCompactEnabled</code>（详见第 11 章）</li>
+</ul>
+<h3 id="两层配合的价值"><a class="header" href="#两层配合的价值">两层配合的价值</a></h3>
+<p>两层机制不是冗余，而是互补。编译时 DCE 解决"外部版本不应该有这段代码"的安全和性能问题；运行时控制解决"即使代码存在，也应该可以动态开关"的灵活性问题。Coordinator 模式需要两层都启用——编译时确保外部版本不包含 Coordinator 代码（功能尚未成熟），运行时允许内部用户按需启用。</p>
+<div class="table-wrapper"><table><thead><tr><th>控制层</th><th>时机</th><th>机制</th><th>效果</th></tr></thead><tbody>
+<tr><td>编译时 DCE</td><td>构建时</td><td><code>bun:bundle</code> feature() + excluded-strings.txt</td><td>代码物理消除</td></tr>
+<tr><td>运行时</td><td>执行时</td><td>GrowthBook / env / 配置</td><td>行为开关</td></tr>
+</tbody></table>
+</div>
+<h2 id="权衡dce-驱动架构的-3-个设计代价"><a class="header" href="#权衡dce-驱动架构的-3-个设计代价">权衡——DCE 驱动架构的 3 个设计代价</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>决策维度</th><th>选择 A（本系统）</th><th>选择 B</th><th>核心权衡</th></tr></thead><tbody>
+<tr><td>代码分割</td><td>条件 require 切断模块图</td><td>统一构建</td><td>产物精简 vs 构建复杂</td></tr>
+<tr><td>测试矩阵</td><td>89 个 flag 的排列组合</td><td>固定配置</td><td>覆盖面 vs 测试成本</td></tr>
+<tr><td>延迟导入</td><td>feature-gated 模块按需加载</td><td>全量导入</td><td>安全性 vs 开发便利</td></tr>
+</tbody></table>
+</div>
+<p><strong>代价一：代码分割</strong></p>
+<p>main.tsx 中的条件 <code>require()</code> 切断了模块依赖——<code>coordinatorModeModule</code> 只在 <code>feature('COORDINATOR_MODE')</code> 为 <code>true</code> 时存在。不同构建的模块图不同。这意味着开发者需要理解"这段代码在哪个构建中存在"——microCompact 的注释直接说明了这个问题："Lazy-initialized cached MC module and state to avoid importing in external builds."（译：延迟初始化缓存 MC 模块和状态，以避免在外部构建中导入）。</p>
+<p><strong>代价二：测试矩阵</strong></p>
+<p>89 个 flag 的所有组合不可能穷尽——2^89 是天文数字。团队只能聚焦高风险组合测试（推断）。每个新增 flag 都增加测试负担，但移除 flag 需要评估模型能力是否已经足够好——这个评估本身就有成本。</p>
+<p><strong>代价三：延迟导入的开发便利性</strong></p>
+<p>顶层 <code>import</code> 更直观，但 external builds 中某些模块不存在，直接 import 会导致编译错误。开发者必须使用延迟导入（条件 <code>require</code> 或动态 <code>import()</code>），增加了代码的间接性。</p>
+<h2 id="踩坑指南feature-flag-的常见错误"><a class="header" href="#踩坑指南feature-flag-的常见错误">踩坑指南——feature flag 的常见错误</a></h2>
+<p><strong>陷阱一：在 feature() 外的顶层代码中引用 feature-gated 模块</strong></p>
+<p>DCE 消除的不是变量，是整个导入链。如果顶层 <code>import</code> 引用了只存在于内部构建的模块，external builds 会编译失败。</p>
+<p>❌ 错误做法：在文件顶部直接 <code>import { someInternalAPI } from './internalModule.ts'</code>——即使只在 <code>feature()</code> 内部使用，顶层 import 也会在 external builds 中失败。<br />
+✓ 正确做法：使用条件 <code>require()</code> 或动态 <code>import()</code> 在 <code>feature()</code> 检查内部延迟导入。microCompact 的延迟导入模式是标准参考。</p>
+<p><strong>陷阱二：假设 feature flag 只控制运行时行为</strong></p>
+<p><code>feature('X')</code> 返回 <code>false</code> 时，代码不仅不执行——它在产物中不存在。这意味着你不能通过运行时日志或错误追踪来调试不存在的代码。</p>
+<p>❌ 错误做法：在 external builds 中调试 feature-gated 功能，期望看到"flag is false"的日志。<br />
+✓ 正确做法：理解 DCE 消除的代码在产物中完全不存在。调试时需要确认构建配置中目标 flag 是否为 <code>true</code>。</p>
+<p><strong>陷阱三：忘记 lazy import 导致 external build 失败</strong></p>
+<p>microCompact 的注释是教训："The imports and state live inside feature() checks for dead code elimination."——如果你忘记了这一点，把 import 放在 <code>feature()</code> 外面，external builds 会在编译时失败。</p>
+<p>❌ 错误做法：在 <code>feature()</code> 检查外面声明依赖 feature-gated 模块的变量或函数。<br />
+✓ 正确做法：所有依赖 feature-gated 模块的代码都放在 <code>feature()</code> 检查内部。使用 lazy import 模式确保 external builds 不引入不存在的模块。</p>
+<h2 id="实证从-feature-flag-到代码消失的完整路径"><a class="header" href="#实证从-feature-flag-到代码消失的完整路径">实证——从 feature flag 到代码消失的完整路径</a></h2>
+<p>追踪 <code>REACTIVE_COMPACT</code> 从定义到使用到 DCE 的完整路径，展示一个 feature flag 如何控制代码的物理存在。</p>
+<p><strong>定义</strong>：<code>REACTIVE_COMPACT</code> 不在 <code>DEFAULT_FEATURES</code> 中（默认不存在），通过 <code>excluded-strings.txt</code> 注册为 ant-only 功能。</p>
+<p><strong>条件导入</strong>：<code>src/query.ts</code> 中通过 <code>const reactiveCompact = feature('REACTIVE_COMPACT')</code> 条件加载。如果 flag 为 <code>false</code>，<code>reactiveCompact</code> 为 <code>false</code>（falsy），相关代码路径不执行。</p>
+<p><strong>条件使用</strong>：autoCompact 的 <code>shouldAutoCompact</code> 中，<code>REACTIVE_COMPACT</code> 为 <code>true</code> 时关闭主动压缩，让 reactive compact 在 API 返回 413 错误时触发。注释标注了 DCE 目的："feature() wrapper keeps the flag string out of external builds (REACTIVE_COMPACT is ant-only)."（译：feature() 包装保持 flag 字符串不出现在外部构建中（REACTIVE_COMPACT 是仅限内部的））。</p>
+<p><strong>DCE 注释</strong>：query.ts 中的注释进一步说明："Gated behind feature() so the string is eliminated from external builds."（译：用 feature() 门控以使字符串从外部构建中消除）。</p>
+<p><strong>编译时消除</strong>：Bun 构建时，<code>feature('REACTIVE_COMPACT')</code> 返回 <code>false</code>，整个条件分支从产物中消除——不是注释掉，不是空函数，是彻底消失。</p>
+<p><strong>图 15-2：Feature flag 生命周期</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    A["定义\nexcluded-strings.txt\n或 DEFAULT_FEATURES"] --&gt; B["条件导入\nfeature() 检查"]
+    B --&gt; C["条件使用\n运行时行为"]
+    C --&gt; D["DCE 注释\n标注消除意图"]
+    D --&gt; E["编译时消除\nBun DCE\n代码物理消失"]
+
+    E --&gt;|"flag=false"| F["External Build\n代码不存在"]
+    E --&gt;|"flag=true"| G["Internal Build\n代码保留"]
+
+    F -.- Note1["产物更小\n启动更快\n攻击面更小"]
+</code></pre>
+<p>这条路径验证了脚手架设计的核心价值：每个 feature flag 是一条从"补偿模型不足"到"代码物理消失"的完整生命周期。flag 关闭不是"功能关闭"——是代码不存在。这种设计让 Harness 随模型进步而自我精简，而非越做越臃肿。</p>
+<h2 id="本章主成分脚手架会消失的本质"><a class="header" href="#本章主成分脚手架会消失的本质">本章主成分：脚手架会消失的本质</a></h2>
+<p><strong>本质</strong>：89 个 feature flag 是 89 个"模型能力假设"，每个 flag 的 <code>false</code> 状态意味着"这段 Harness 代码在外部版本中不存在"——不是关闭，是消失。Harness 不是越做越大的护城河，而是一座设计好拆除方案的脚手架。</p>
+<p><strong>关键机制</strong>：</p>
+<ul>
+<li>编译时 DCE：Bun <code>feature()</code> + <code>excluded-strings.txt</code>，代码物理消除</li>
+<li>运行时控制：GrowthBook / 环境变量 / 用户配置，行为动态开关</li>
+<li>双重控制：<code>COORDINATOR_MODE</code> 等需要两层同时启用</li>
+<li>828 处 <code>feature()</code> 调用，覆盖从压缩到验证到协调的全部 Harness 功能</li>
+</ul>
+<p><strong>适用边界</strong>：</p>
+<ul>
+<li>✓ 适合：需要随模型进步逐步精简的 Harness 系统</li>
+<li>✓ 适合：有 internal/external 构建差异的多版本系统</li>
+<li>✗ 不适合：一次性工具（不需要渐进式架构）</li>
+<li>✗ 不适合：所有功能都是永久性的系统</li>
+</ul>
+<p><strong>与其他模式的关系</strong>：</p>
+<ul>
+<li>本章综合了第 3-14 章所有 feature flag 的用法</li>
+<li>第 11 章（压缩策略）的 5 种策略各有对应的 feature flag</li>
+<li>第 13 章（Verification Agent）需要 <code>VERIFICATION_AGENT</code> flag 双重启用</li>
+<li>第 14 章（Coordinator 模式）需要 <code>COORDINATOR_MODE</code> 编译时 + 运行时控制</li>
+<li>第 16 章将把这些观察提炼为通用的设计原则</li>
+</ul>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>为你的 Harness 系统建立 feature flag 机制</strong>。每个补偿模型不足的功能都用 flag 控制——flag 关闭时，补偿代码应该可以安全移除。</li>
+<li><strong>使用编译时 DCE 而不是运行时 if</strong>。产物大小和启动时间都受益——代码物理消失比运行时跳过更彻底。</li>
+<li><strong>在 feature flag 代码中标注 DCE 注释</strong>。参考 query.ts 的 "Gated behind feature() so the string is eliminated from external builds" 模式——帮助维护者理解哪些代码可能不存在。</li>
+<li><strong>定期审查 feature flag</strong>。如果模型在某方面已经足够好，就关掉对应的 flag——flag 的目标是消失，不是永久存在。</li>
+<li><strong>对 ant-only 功能使用 excluded-strings.txt</strong>。从外部版本中彻底消除——连 flag 名称字符串都不留。</li>
+<li><strong>延迟导入 feature-gated 模块</strong>。参考 microCompact 的 lazy import 模式——避免顶层 import 导致 external builds 失败。</li>
+<li><strong>为 flag 的排列组合建立优先级矩阵</strong>。不可能测试所有 2^89 种组合——聚焦高风险的 flag 组合测试。</li>
+</ul>
+<hr />
+<p><strong>下一章导读</strong>：本章看到了 89 个 feature flag 如何编码"模型能力假设"，以及 DCE 如何让 Harness 随模型进步而自我精简。第 16 章是全书的最后一章——将前 15 章的所有观察提炼为 7 条通用设计原则，一套可迁移到任何 AI Agent 系统的 Harness 架构蓝图。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part8/part8.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part8/ch16.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part8/part8.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part8/ch16.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant User
+    participant PM as Plugin Manager
+    participant Market as Marketplace
+    participant Sandbox
+    User->>PM: /plugin install company/workflow
+    PM->>Market: 查询插件信息
+    Market-->>PM: 返回 package + 签名
+    PM->>PM: 验证数字签名
+    PM->>User: 显示权限请求
+    User->>PM: 批准
+    PM->>Sandbox: 加载插件代码
+    Sandbox->>Sandbox: 注册命令/钩子
+    Sandbox-->>User: ✅ 插件已激活

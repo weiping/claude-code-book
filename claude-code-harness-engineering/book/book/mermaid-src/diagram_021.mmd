@@ -1,0 +1,15 @@
+flowchart LR
+    A["queryLoop 结束"] --> B["触发 Stop 事件"]
+    B --> C{"Hook 类型?"}
+    C -->|agent| D["execAgentHook"]
+    D --> E["启动独立 Agent\n读取 transcript"]
+    E --> F["Agent 分析\n使用受限工具集"]
+    F --> G{"ok?"}
+    G -->|true| H["允许终止\n循环结束"]
+    G -->|false| I["阻止终止\nreason 返回用户"]
+    C -->|command| J["执行 shell\n~毫秒"]
+    J --> K{exit code?}
+    K -->|0| H
+    K -->|非0| I
+
+    D -.- Note1["不可生成子Agent\n工具受限"]

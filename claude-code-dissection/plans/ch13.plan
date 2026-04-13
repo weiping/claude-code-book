@@ -1,0 +1,73 @@
+# 第13章写作计划
+
+**批次**：批次 3
+**章节**：ch13 — AgentTool——递归智能体的工具接口
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/tools/AgentTool/AgentTool.tsx | inputSchema(85行)、AgentTool定义(196行)、call函数(240行) | 85-105, 196-300行 |
+| 2 | src/tools/AgentTool/builtInAgents.ts | getBuiltInAgents(22行)、GENERAL_PURPOSE_AGENT | 1-50行 |
+| 3 | src/tools/AgentTool/built-in/generalPurposeAgent.ts | AgentDefinition 结构 | 全文 |
+| 4 | src/tools/AgentTool/agentColorManager.ts | 颜色分配 | 1-30行 |
+
+```bash
+ls src/tools/AgentTool/built-in/
+head -40 src/tools/AgentTool/built-in/generalPurposeAgent.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「AgentTool 是一个工具——但它启动的是另一个完整的 Claude 实例，那个实例又可以调用 AgentTool，再启动一个……这不是无限递归吗？为什么工具接口层和执行层要分开？」
+- 三个问题：1）AgentTool 的输入 schema 里有哪些控制参数？2）built-in agents 如何注册和选择？3）接口层和执行层（runAgent.ts）分工是什么？
+
+### 节 13.1：AgentTool 的输入 schema——启动一个 Agent 需要告诉它什么？
+- 核心主张：`subagent_type`（可选）、`model`（可选）、`isolation`（worktree/remote）是关键参数，`subagent_type` 可省略意味着可以用"隐式 fork"模式继承父 Agent 上下文
+- 源码锚点：`src/tools/AgentTool/AgentTool.tsx:85`（baseInputSchema 中的 subagent_type）、`src/tools/AgentTool/AgentTool.tsx:88-90`（model/run_in_background）
+- 包含元素：inputSchema 关键字段表
+- 估计字数：500字
+
+### 节 13.2：built-in agents——AgentDefinition 的注册机制
+- 核心主张：内置 Agent（通用、Plan、Explore 等）通过 `AgentDefinition` 结构注册，包含 system prompt、工具白名单、权限模式等——这是 Agent 行为的配置文件
+- 源码锚点：`src/tools/AgentTool/builtInAgents.ts:22`（getBuiltInAgents）、`src/tools/AgentTool/built-in/generalPurposeAgent.ts`（GENERAL_PURPOSE_AGENT 定义）
+- 包含元素：AgentDefinition 的关键字段说明
+- 估计字数：600字
+
+### 节 13.3：AgentTool 接口层 vs runAgent 执行层
+- 核心主张：AgentTool.call() 负责权限检查、颜色分配、Task 类型选择；实际的 LLM 对话循环在 runAgent.ts（第31章）——清晰的职责分离
+- 源码锚点：`src/tools/AgentTool/AgentTool.tsx:196`（AgentTool 定义）、`src/tools/AgentTool/AgentTool.tsx:240`（call 函数入口）
+- 包含元素：对比表（AgentTool 接口层职责 vs runAgent 执行层职责）
+- 权衡分析：接口/执行分离 vs 单体实现
+- 估计字数：500字
+
+### 节 13.4：颜色标识系统——多个并行 Agent 如何区分？
+- 核心主张：每个子 Agent 分配一种颜色，UI 中不同颜色对应不同 Agent 的输出——这是多 Agent 并行时的 UX 解决方案
+- 源码锚点：`src/tools/AgentTool/agentColorManager.ts`
+- 估计字数：300字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 接口执行分离（Interface-Execution Separation）| 工具接口的权限/调度逻辑与 AI 对话循环耦合，难以独立测试和扩展 | 工具接口层（AgentTool）负责 schema/权限/调度，执行层（runAgent）负责对话循环 | 有复杂的前置处理和后续执行两个独立阶段 | `src/tools/AgentTool/AgentTool.tsx:196` |
+| 配置驱动 Agent 行为（Configuration-Driven Agent Behavior）| 不同类型 Agent 的行为（system prompt/工具集/权限）需要灵活配置 | AgentDefinition 结构携带所有行为配置，注册时而非运行时决定 | Agent 类型可枚举，行为可配置 | `src/tools/AgentTool/builtInAgents.ts:22` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图13-1 | AgentTool 接口层职责划分 | 对比表 | 接口层(AgentTool) vs 执行层(runAgent) | 13.3 |
+| 图13-2 | built-in Agent 注册与选择流程 | Mermaid flowchart | 注册→getBuiltInAgents→根据 subagent_type 选择 | 13.2 |
+
+## 写作前 checklist
+```bash
+sed -n '85,105p' src/tools/AgentTool/AgentTool.tsx
+sed -n '196,250p' src/tools/AgentTool/AgentTool.tsx
+cat src/tools/AgentTool/builtInAgents.ts
+ls src/tools/AgentTool/built-in/
+```
+
+## 估算
+- 目标字数：2000-2400字
+- 预计轮次：6轮（含2轮验证）

@@ -1,0 +1,11 @@
+graph TD
+    A["Context Window: 200K (Sonnet)"] --> B["正常区<br/>0-187K<br/>✓ 安全"]
+    A --> C["警告区<br/>187K-200K<br/>⚠️ 触发压缩"]
+    C -->|检查剩余| D{"剩余 < 13K<br/>tokens?"}
+    D -->|是| E["🔴 触发 AutoCompact<br/>通过 autoCompactIfNeeded<br/>压缩到 ~90K"]
+    D -->|否| F["继续监控"]
+    E --> B
+    F --> C
+    style B fill:#ccffcc
+    style C fill:#ffffcc
+    style E fill:#ffe6e6

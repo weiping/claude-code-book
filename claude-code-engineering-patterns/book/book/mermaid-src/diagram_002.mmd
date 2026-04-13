@@ -1,0 +1,46 @@
+graph LR
+    subgraph 接入层
+        CLI["Commander.js\n参数解析"]
+        REPL["REPL.tsx\nTUI 状态机"]
+    end
+
+    subgraph 编排层
+        PUI["processUserInput\n路由决策"]
+        QE["QueryEngine\n主循环"]
+        QL["query.ts\n流式生成器"]
+    end
+
+    subgraph 记忆层
+        MEM["memdir\nCLAUDE.md"]
+        HST["history.ts\n对话历史"]
+        CMP["compact\n上下文压缩"]
+    end
+
+    subgraph 工具层
+        TOOL["tools/\n55+工具"]
+        TASK["tasks/\n7种任务"]
+        MCP["services/mcp\nMCP协议"]
+        SWM["swarm/\nAgent集群"]
+    end
+
+    subgraph 模型层
+        API["services/api/claude\nAnthropic API"]
+        MDL["utils/model\n模型路由"]
+        PERM["permissions\n权限决策"]
+        BST["bootstrap/state\n全局状态"]
+    end
+
+    CLI --> REPL --> PUI --> QE
+    QE --> QL --> API
+    MDL --> API
+    MEM --> QE
+    HST --> QE
+    QE --> CMP
+    QE --> TOOL --> API
+    QE --> TASK
+    QE --> MCP
+    SWM --> QE
+    PERM --> QE
+    PERM --> TOOL
+    BST -. 状态注入 .-> QE
+    BST -. 状态注入 .-> API

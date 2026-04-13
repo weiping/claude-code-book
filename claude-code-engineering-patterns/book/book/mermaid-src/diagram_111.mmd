@@ -1,0 +1,12 @@
+stateDiagram-v2
+    [*] --> discovered: getDeclaredMarketplaces
+    discovered --> pending: 计算 diff（缺失或源地址变更）
+    discovered --> up_to_date: diff 结果为 upToDate
+    pending --> installing: reconcileMarketplaces 开始
+    installing --> installed: 安装成功
+    installing --> failed: 安装失败
+    installed --> update_check: 下次启动/reload-plugins
+    update_check --> up_to_date: 源地址未变
+    update_check --> pending: 源地址变更（sourceChanged）
+    up_to_date --> [*]
+    failed --> [*]

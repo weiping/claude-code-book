@@ -1,0 +1,11 @@
+graph TD
+    A["认证需求"] --> B{"场景?"}
+    B -->|互联网应用<br/>GitHub等| C["OAuth PKCE"]
+    B -->|企业内部 API<br/>自签发令牌| D["JWT 刷新"]
+    B -->|大型企业<br/>企业 SSO| E["xaa"]
+    C -->|特点| C1["需要临时服务器<br/>用户体验好<br/>复杂度中等"]
+    D -->|特点| D1["无用户交互<br/>简单可靠<br/>需要手动配置"]
+    E -->|特点| E1["企业已认证<br/>最佳体验<br/>复杂度高<br/>需要 VPN"]
+    style C fill:#ffffcc
+    style D fill:#fff4e6
+    style E fill:#ffe6e6

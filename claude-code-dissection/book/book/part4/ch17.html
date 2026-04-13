@@ -1,0 +1,597 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 17 章：PermissionRule 与规则引擎 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-17-章permissionrule-与规则引擎"><a class="header" href="#第-17-章permissionrule-与规则引擎">第 17 章：PermissionRule 与规则引擎</a></h1>
+<blockquote>
+<p>"用户在 CLAUDE.md 里写一条规则：<code>'allowedTools': ['Bash(git *)']</code>。这条字符串什么时候被解析成权限检查能理解的形式？如果公司的企业管控策略也有关于 Bash 的规则，谁说了算？这不只是优先级问题——这涉及到规则加载、解析、冲突检测、乃至'用户以为自己的规则生效，其实被企业管控无声地覆盖了'这种隐藏的用户体验陷阱。"</p>
+</blockquote>
+<h2 id="171-权限规则为什么需要显式的来源字段"><a class="header" href="#171-权限规则为什么需要显式的来源字段">17.1 权限规则为什么需要显式的来源字段？</a></h2>
+<p>一个规则不仅仅是"允许 Bash 的 git 命令"，它还需要记住自己从何而来。为什么？因为这决定了它的优先级。</p>
+<h3 id="第一层定义规则的数据模型"><a class="header" href="#第一层定义规则的数据模型">第一层：定义规则的数据模型</a></h3>
+<p>规则的完整数据结构在 <code>src/types/permissions.ts</code> 中定义，并在 <code>src/utils/permissions/PermissionRule.ts</code> 中重新导出。源码中的注释（第 20-28 行）清晰表达了结构：</p>
+<pre><code class="language-typescript">/**
+ * ToolPermissionBehavior is the behavior associated with a permission rule.
+ * 'allow' means the rule allows the tool to run.
+ * 'deny' means the rule denies the tool from running.
+ * 'ask' means the rule forces a prompt to be shown to the user.
+ */
+export const permissionBehaviorSchema = lazySchema(() =&gt;
+  z.enum(['allow', 'deny', 'ask']),
+)
+</code></pre>
+<p>一条完整的 <code>PermissionRule</code> 包含：</p>
+<div class="table-wrapper"><table><thead><tr><th>字段</th><th>类型</th><th>意义</th><th>示例</th></tr></thead><tbody>
+<tr><td><strong>ruleContent</strong></td><td>string</td><td>规则的具体内容</td><td><code>"Bash(git *)"</code></td></tr>
+<tr><td><strong>behavior</strong></td><td>'allow' | 'deny' | 'ask'</td><td>规则的行为</td><td><code>'allow'</code></td></tr>
+<tr><td><strong>source</strong></td><td>'local' | 'global' | 'managed'</td><td>规则的来源</td><td><code>'local'</code></td></tr>
+</tbody></table>
+</div>
+<p>关键是 <code>source</code> 字段。它不是"解析时的临时信息"，而是<strong>规则的永久身份标签</strong>。</p>
+<h3 id="第二层设计意图为什么规则需要记住自己的来源"><a class="header" href="#第二层设计意图为什么规则需要记住自己的来源">第二层：设计意图——为什么规则需要记住自己的来源</a></h3>
+<p>规则来源的三个等级各有不同的权力级别：</p>
+<ul>
+<li><strong><code>local</code>（项目本地）</strong>：开发者在当前项目的 CLAUDE.md 中定义的规则。权力最小。</li>
+<li><strong><code>global</code>（用户全局）</strong>：开发者在全局的 <code>~/.claude/settings.json</code> 中定义的规则。权力中等。</li>
+<li><strong><code>managed</code>（企业管控）</strong>：公司通过 MDM（移动设备管理）或 IT 策略下发的规则。权力最大。</li>
+</ul>
+<p>这个三层结构反映的是<strong>信任链的不同层次</strong>。企业有权限覆盖个人开发者的选择，因为企业要承担安全责任。</p>
+<p>如果规则不记录来源，系统就无法区分"开发者想要的规则"和"企业强制的规则"，无法实现这种<strong>信任的阶层性</strong>。</p>
+<h3 id="第三层实际案例与权衡"><a class="header" href="#第三层实际案例与权衡">第三层：实际案例与权衡</a></h3>
+<p><strong>场景</strong>：开发者在项目 CLAUDE.md 中写了 <code>"allowedTools": ["Bash(rm *)"]</code>（允许所有 rm 命令）。</p>
+<p>如果没有 <code>source</code> 字段记录，系统只知道"允许 rm"。但实际发生的是：</p>
+<ol>
+<li>项目本地规则加载：<code>Bash(rm *)</code> → <code>{ behavior: 'allow', ruleContent: 'Bash(rm *)' }</code></li>
+<li>企业管控规则加载：<code>Bash(rm *)</code> → <code>{ behavior: 'deny', ruleContent: 'Bash(rm *)' }</code></li>
+<li>系统合并：<strong>哪一个胜出？</strong></li>
+</ol>
+<p>有了 <code>source</code> 字段：</p>
+<pre><code class="language-typescript">// 项目本地
+{ ruleContent: 'Bash(rm *)', behavior: 'allow', source: 'local' }
+
+// 企业管控
+{ ruleContent: 'Bash(rm *)', behavior: 'deny', source: 'managed' }
+
+// 规则引擎的决策
+if (managedRule &amp;&amp; managedRule.behavior === 'deny') {
+  return deny  // ✓ 企业管控优先
+}
+</code></pre>
+<p><strong>权衡</strong>：<code>source</code> 字段的代价与收益</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>无 source 字段</th><th>有 source 字段</th></tr></thead><tbody>
+<tr><td>规则冲突处理</td><td>后加载覆盖（不可控）</td><td>按优先级确定（可控）</td></tr>
+<tr><td>用户体验</td><td>用户不知道自己的规则被覆盖了</td><td>可以检测并告知用户</td></tr>
+<tr><td>企业管控能力</td><td>无法强制覆盖用户规则</td><td>可以明确覆盖（满足合规需求）</td></tr>
+<tr><td>实现复杂度</td><td>低</td><td>中等</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了有 source 字段</strong>，理由是<strong>管理复杂度适中，但解锁了企业级的可管理性</strong>。</p>
+<h2 id="172-规则字符串的解析为什么需要嵌套括号处理"><a class="header" href="#172-规则字符串的解析为什么需要嵌套括号处理">17.2 规则字符串的解析为什么需要嵌套括号处理？</a></h2>
+<p>用户写的规则是字符串格式：<code>"Bash(git *)"</code> 或 <code>"Bash(python -c \"print(1)\")"</code> 或 <code>"PowerShell(pip install -e .)"</code> 。系统需要解析这些字符串，提取工具名和规则内容。</p>
+<h3 id="第一层定义解析函数"><a class="header" href="#第一层定义解析函数">第一层：定义解析函数</a></h3>
+<p><code>permissionRuleValueFromString</code>（<code>src/utils/permissions/permissionRuleParser.ts:93</code>）是解析的核心。源码的注释直接给出了三个解析示例（第 89-91 行）：</p>
+<pre><code class="language-typescript">/**
+ * 解析示例：
+ * permissionRuleValueFromString('Bash') // =&gt; { toolName: 'Bash' }
+ * permissionRuleValueFromString('Bash(npm install)') // =&gt; { toolName: 'Bash', ruleContent: 'npm install' }
+ * permissionRuleValueFromString('Bash(python -c "print\\(1\\)")') // =&gt; { toolName: 'Bash', ruleContent: 'python -c "print(1)"' }
+ */
+export function permissionRuleValueFromString(
+  ruleString: string,
+): PermissionRuleValue {
+  // 实现：在第一个 '(' 处分割，提取工具名和内容
+}
+</code></pre>
+<p>解析的格式非常精简：<strong>工具名 + 可选的括号内容</strong>。但这个"可选内容"可能包含转义括号、引号、空格等，增加了复杂性。</p>
+<h3 id="第二层设计意图为什么不用-json-而用括号格式"><a class="header" href="#第二层设计意图为什么不用-json-而用括号格式">第二层：设计意图——为什么不用 JSON 而用括号格式</a></h3>
+<p>如果用 JSON 格式：<code>{ "tool": "Bash", "rule": "git *" }</code> 会怎样？</p>
+<ul>
+<li>✓ 优点：解析简单、无歧义</li>
+<li>✗ 缺点：用户写起来麻烦、CLAUDE.md 中难以阅读</li>
+</ul>
+<p>Claude Code 的做法：</p>
+<ul>
+<li>✓ 用户写 <code>Bash(git *)</code>，简洁且直观</li>
+<li>✗ 但解析器需要处理括号嵌套和转义</li>
+</ul>
+<p>这是<strong>人类可读性 vs 机器解析复杂度</strong>的权衡。Claude Code 选择了<strong>优化用户体验</strong>。</p>
+<p>解析的三种典型情况对比（根据注释示例）：</p>
+<div class="table-wrapper"><table><thead><tr><th>规则字符串</th><th>解析结果</th><th>复杂性</th></tr></thead><tbody>
+<tr><td><code>Bash</code></td><td><code>{ toolName: 'Bash' }</code></td><td>无</td></tr>
+<tr><td><code>Bash(npm install)</code></td><td><code>{ toolName: 'Bash', ruleContent: 'npm install' }</code></td><td>中（需要找第一个括号）</td></tr>
+<tr><td><code>Bash(python -c "print\\(1\\)")</code></td><td><code>{ toolName: 'Bash', ruleContent: 'python -c "print(1)"' }</code></td><td>高（需要处理转义）</td></tr>
+</tbody></table>
+</div>
+<h3 id="第三层实际案例与权衡-1"><a class="header" href="#第三层实际案例与权衡-1">第三层：实际案例与权衡</a></h3>
+<p>用户输入了一条复杂规则：</p>
+<pre><code>"Bash(curl https://api.example.com -d \"data=\$(whoami)\")"
+</code></pre>
+<p>解析流程：</p>
+<ol>
+<li>找第一个 <code>(</code> 的位置 → 前面是 <code>Bash</code></li>
+<li>匹配对应的 <code>)</code> → 中间的内容是 rule content</li>
+<li>处理转义 → <code>\"</code> 变成 <code>"</code></li>
+</ol>
+<p>结果：</p>
+<pre><code class="language-typescript">{
+  toolName: 'Bash',
+  ruleContent: 'curl https://api.example.com -d "data=$(whoami)"'
+}
+</code></pre>
+<p><strong>权衡</strong>：简洁格式 vs 解析复杂度</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>JSON 格式</th><th>括号格式</th></tr></thead><tbody>
+<tr><td>用户输入负担</td><td>高（需要引号和逗号）</td><td>低（自然语言风格）</td></tr>
+<tr><td>解析实现</td><td>简单（用 JSON.parse）</td><td>复杂（自定义括号匹配）</td></tr>
+<tr><td>CLAUDE.md 可读性</td><td>差（JSON 格式笨重）</td><td>好（接近伪代码）</td></tr>
+<tr><td>错误提示</td><td>明确（JSON 语法错误）</td><td>需要自定义错误处理</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了括号格式</strong>，理由是<strong>CLAUDE.md 是开发者频繁编辑的配置，可读性优先于解析便利</strong>。</p>
+<h2 id="173-三层规则来源的优先级为什么是这样的顺序"><a class="header" href="#173-三层规则来源的优先级为什么是这样的顺序">17.3 三层规则来源的优先级为什么是这样的顺序？</a></h2>
+<p>系统加载规则时会从三个来源读取。当同一条规则（比如都关于 <code>Bash</code> 的）在多个来源中出现时，谁说了算？</p>
+<h3 id="第一层定义优先级链"><a class="header" href="#第一层定义优先级链">第一层：定义优先级链</a></h3>
+<p>标准的优先级顺序硬编码在系统中：</p>
+<pre><code>managed（企业管控）&gt; global（用户全局）&gt; local（项目本地）
+</code></pre>
+<p>即 <strong>managed 最高优先级，local 最低</strong>。更强的来源可以完全覆盖更弱的来源。</p>
+<p>这个顺序不是对称的。它体现了<strong>组织信任的单向性</strong>：企业有权覆盖开发者，但开发者无权覆盖企业。</p>
+<p>在 <code>src/utils/permissions/permissionsLoader.ts</code> 中有一个关键函数 <code>shouldAllowManagedPermissionRulesOnly</code>，这个名字本身就暗示了企业管控的强制能力。</p>
+<h3 id="第二层设计意图为什么企业管控要高于个人规则"><a class="header" href="#第二层设计意图为什么企业管控要高于个人规则">第二层：设计意图——为什么企业管控要高于个人规则</a></h3>
+<p>这不只是技术设计，而是<strong>安全责任的划分</strong>。</p>
+<ul>
+<li><strong>Local（项目本地）</strong>：开发者对单个项目的权限配置。影响最小。</li>
+<li><strong>Global（用户全局）</strong>：开发者对自己所有项目的权限配置。影响中等。</li>
+<li><strong>Managed（企业管控）</strong>：公司对所有员工工作机器的统一权限策略。影响最大，安全责任最大。</li>
+</ul>
+<p>如果企业无法强制自己的策略，就无法对员工的操作承担安全责任。法规合规性（如 SOC 2）也要求企业 IT 有能力强制执行安全策略。</p>
+<p>因此这个优先级顺序是<strong>安全治理的必然结果</strong>。</p>
+<h3 id="第三层实际案例与权衡-2"><a class="header" href="#第三层实际案例与权衡-2">第三层：实际案例与权衡</a></h3>
+<p><strong>场景</strong>：</p>
+<ol>
+<li>项目本地规则（local）：允许 Bash(curl *)</li>
+<li>用户全局规则（global）：拒绝 Bash(curl *)</li>
+<li>企业管控规则（managed）：允许 Bash(curl https://trusted-api.*)</li>
+</ol>
+<p>系统如何处理？</p>
+<pre><code class="language-typescript">const localRule = { behavior: 'allow', ruleContent: 'Bash(curl *)' }
+const globalRule = { behavior: 'deny', ruleContent: 'Bash(curl *)' }
+const managedRule = { behavior: 'allow', ruleContent: 'Bash(curl https://trusted-api.*)' }
+
+// 决策流程
+if (managedRule) {
+  return managedRule.behavior  // ✓ managed 优先（allow）
+} else if (globalRule) {
+  return globalRule.behavior   // global 其次（deny）
+} else if (localRule) {
+  return localRule.behavior    // local 最后（allow）
+}
+</code></pre>
+<p>最终结果：<strong>managed 的规则胜出，允许 curl 到可信 API</strong>。</p>
+<p><strong>权衡</strong>：严格的单向优先级 vs 灵活的规则冲突处理</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>单向优先级（managed &gt; global &gt; local）</th><th>灵活合并策略</th></tr></thead><tbody>
+<tr><td>企业管控能力</td><td>强（无法被绕过）</td><td>弱（可能被个人规则干扰）</td></tr>
+<tr><td>开发者自主性</td><td>低（受企业限制）</td><td>高（可自由配置）</td></tr>
+<tr><td>冲突时的预可测性</td><td>高（规则清晰）</td><td>低（需要复杂的合并逻辑）</td></tr>
+<tr><td>用户体验</td><td>可能困惑（不知道自己的规则为什么无效）</td><td>可能混乱（多个规则冲突很复杂）</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了严格的单向优先级</strong>，理由是<strong>安全可管理性优先于灵活性。企业需要能够确保自己的策略被执行</strong>。</p>
+<h2 id="174-被遮蔽的规则如何被检测并报告给用户"><a class="header" href="#174-被遮蔽的规则如何被检测并报告给用户">17.4 被遮蔽的规则如何被检测并报告给用户？</a></h2>
+<p>有时开发者写的规则看起来合理，但其实被更高优先级的规则完全覆盖了，无效化了。系统应该如何处理这种"无声的失效"？</p>
+<h3 id="第一层定义遮蔽检测的机制"><a class="header" href="#第一层定义遮蔽检测的机制">第一层：定义遮蔽检测的机制</a></h3>
+<p><code>detectUnreachableRules</code>（<code>src/utils/permissions/shadowedRuleDetection.ts:193</code>）的职责是找出那些被覆盖的规则。源码附近定义了一个关键类型（约第 80-85 行）：</p>
+<pre><code class="language-typescript">export type UnreachableRule = {
+  rule: PermissionRule
+  unreachableReason: 'shadowed_by_higher_priority' | 'contradicted_by_tool_block'
+  shadowingRule?: PermissionRule
+}
+</code></pre>
+<p>一条规则可能因为两个原因无法到达：</p>
+<ol>
+<li><strong>被高优先级规则遮蔽</strong>：同一个操作被 managed 规则拒绝，而你的 local 规则允许它</li>
+<li><strong>被工具级的黑名单阻止</strong>：你允许 <code>Bash(eval)</code> 但系统黑名单禁止它</li>
+</ol>
+<h3 id="第二层设计意图为什么需要明确地检测而不是默默忽略"><a class="header" href="#第二层设计意图为什么需要明确地检测而不是默默忽略">第二层：设计意图——为什么需要明确地检测而不是默默忽略</a></h3>
+<p>如果系统默默地覆盖用户的规则（"我加载了你的规则，但没用"），用户会陷入困境：</p>
+<ul>
+<li>"为什么我允许的操作还是被拒绝了？"</li>
+<li>"我改配置好几次，还是不工作"</li>
+<li>"系统真的读了我的配置吗？"</li>
+</ul>
+<p>显式的遮蔽检测解决了这个<strong>用户体验陷阱</strong>。系统可以在规则加载时就告诉用户："你的规则 X 被企业管控覆盖了，这是为什么"。</p>
+<h3 id="第三层实际案例与权衡-3"><a class="header" href="#第三层实际案例与权衡-3">第三层：实际案例与权衡</a></h3>
+<p><strong>场景</strong>：</p>
+<pre><code class="language-json">// 项目本地 CLAUDE.md
+{
+  "allowedTools": [
+    "Bash(rm -rf /)",
+    "PowerShell(Remove-Item -Recurse)"
+  ]
+}
+
+// 企业管控（通过 MDM 下发）
+{
+  "deniedTools": ["Bash(*)", "PowerShell(*)"]
+}
+</code></pre>
+<p>检测流程：</p>
+<pre><code class="language-typescript">const localRules = [
+  { source: 'local', behavior: 'allow', ruleContent: 'Bash(rm -rf /)' },
+  { source: 'local', behavior: 'allow', ruleContent: 'PowerShell(Remove-Item ...)' }
+]
+
+const managedRules = [
+  { source: 'managed', behavior: 'deny', ruleContent: 'Bash(*)' },
+  { source: 'managed', behavior: 'deny', ruleContent: 'PowerShell(*)' }
+]
+
+const unreachable = detectUnreachableRules(context)
+// 结果：
+// [
+//   { rule: localRules[0], unreachableReason: 'shadowed_by_higher_priority', 
+//     shadowingRule: managedRules[0] },
+//   { rule: localRules[1], unreachableReason: 'shadowed_by_higher_priority',
+//     shadowingRule: managedRules[1] }
+// ]
+
+// 系统向用户报告：
+// "⚠️ 你的规则 'Bash(rm -rf /)' 被企业管控策略覆盖了（deniedTools: Bash(*))。
+//   如需修改此规则，请联系 IT 部门。"
+</code></pre>
+<p><strong>权衡</strong>：显式检测 vs 性能开销</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>显式检测</th><th>默默忽略</th></tr></thead><tbody>
+<tr><td>用户体验</td><td>好（理解发生了什么）</td><td>差（困惑、挫折）</td></tr>
+<tr><td>性能开销</td><td>有（需要扫描所有规则组合）</td><td>无</td></tr>
+<tr><td>调试难度</td><td>低（问题明确）</td><td>高（"为什么配置不生效？"）</td></tr>
+<tr><td>企业可见性</td><td>高（可审计）</td><td>低</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了显式检测</strong>，理由是<strong>用户体验和可审计性优先于微小的性能成本</strong>。规则加载只在系统启动时发生一次，性能成本可接受。</p>
+<hr />
+<h2 id="规则系统的设计决策"><a class="header" href="#规则系统的设计决策">规则系统的设计决策</a></h2>
+<h3 id="为什么规则用字符串格式而不是结构化数据"><a class="header" href="#为什么规则用字符串格式而不是结构化数据">为什么规则用字符串格式而不是结构化数据？</a></h3>
+<pre><code class="language-yaml"># 结构化方案（看似更清晰）
+rules:
+  - type: allow
+    path: /project/src/**
+    operations: [read, write]
+  - type: deny
+    path: /project/.env
+</code></pre>
+<pre><code># Claude Code 的字符串方案
+allow: /project/src/**
+deny: /project/.env
+</code></pre>
+<p>字符串格式的优势：</p>
+<ol>
+<li><strong>人类可读性</strong>：用户在 CLAUDE.md 里手写，字符串比 YAML 嵌套更直观</li>
+<li><strong>版本控制友好</strong>：每条规则一行，diff 清晰</li>
+<li><strong>兼容性</strong>：字符串可以在不同语言/工具间直接传递</li>
+</ol>
+<p>代价：需要专门的解析器处理嵌套括号等特殊语法（<code>src/utils/permissions/permissionRules.ts</code>）。</p>
+<h3 id="为什么规则来源优先级是-managed--global--local而不是反过来"><a class="header" href="#为什么规则来源优先级是-managed--global--local而不是反过来">为什么规则来源优先级是 managed &gt; global &gt; local，而不是反过来？</a></h3>
+<p>这和 CLAUDE.md 的优先级正好相反（CLAUDE.md 是 local &gt; global &gt; managed）。</p>
+<p><strong>原因</strong>：权限规则是安全约束，越高权限的实体（系统管理员）的约束应该越不可覆盖。如果 local 规则能覆盖 managed 规则，管理员配置的安全策略就失去了意义。</p>
+<p>相比之下，CLAUDE.md 是提示词增强，项目级定制优先于全局默认是合理的——你希望项目特定的规范覆盖通用规范（<code>src/utils/permissions/permissionRules.ts</code>）。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式-1来源层级化source-based-hierarchy"><a class="header" href="#模式-1来源层级化source-based-hierarchy">模式 1：来源层级化（Source-Based Hierarchy）</a></h3>
+<p><strong>解决的问题</strong>：多个权限来源存在冲突时，需要一个不可反驳的优先级决策机制。简单的"后加载优先"无法满足企业管控的需求。</p>
+<p><strong>核心做法</strong>：给每条规则标记来源（local/global/managed），系统按单向的优先级链处理冲突（managed &gt; global &gt; local）。</p>
+<p><strong>前置条件</strong>：存在多个权限配置来源（用户、企业等），且不同来源有不同的权力等级。</p>
+<p><strong>源码证据</strong>：<code>src/types/permissions.ts</code> — <code>PermissionRuleSource</code> 枚举；<code>src/utils/permissions/permissionsLoader.ts</code> — 三层来源的加载和优先级处理。</p>
+<p><strong>适用范围</strong>：任何多租户或多层次权限系统（云平台、企业工具等）。</p>
+<hr />
+<h3 id="模式-2用户友好的格式解析user-friendly-format-parsing"><a class="header" href="#模式-2用户友好的格式解析user-friendly-format-parsing">模式 2：用户友好的格式解析（User-Friendly Format Parsing）</a></h3>
+<p><strong>解决的问题</strong>：权限规则需要用户可以编辑，但完全自由的格式（JSON、YAML）对非程序员不友好。</p>
+<p><strong>核心做法</strong>：设计一个简洁的语法（<code>ToolName(pattern)</code>），解析器处理复杂性，用户享受简洁性。</p>
+<p><strong>前置条件</strong>：配置主要由最终用户编辑，且需要被频繁修改。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/permissionRuleParser.ts:93</code> — <code>permissionRuleValueFromString</code> 及其注释中的三个解析示例。</p>
+<p><strong>适用范围</strong>：任何需要用户频繁编辑的配置系统（特别是 CLAUDE.md 这样的开发文档）。</p>
+<hr />
+<h3 id="模式-3可达性验证reachability-validation"><a class="header" href="#模式-3可达性验证reachability-validation">模式 3：可达性验证（Reachability Validation）</a></h3>
+<p><strong>解决的问题</strong>：用户写的规则看起来合理，但其实被高优先级规则无声地覆盖了。用户陷入"配置为什么不生效"的困境。</p>
+<p><strong>核心做法</strong>：在规则加载时检测所有被覆盖的规则，向用户明确报告为什么它们无效。</p>
+<p><strong>前置条件</strong>：规则系统有多个来源且存在优先级，用户可能创建被覆盖的规则。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/shadowedRuleDetection.ts:193</code> — <code>detectUnreachableRules</code> 函数，返回 <code>UnreachableRule[]</code> 数组。</p>
+<p><strong>适用范围</strong>：复杂的权限或配置系统，其中规则可能被更高优先级的规则覆盖。</p>
+<hr />
+<h3 id="模式-4安全责任的参数化parameterized-trust-hierarchy"><a class="header" href="#模式-4安全责任的参数化parameterized-trust-hierarchy">模式 4：安全责任的参数化（Parameterized Trust Hierarchy）</a></h3>
+<p><strong>解决的问题</strong>：权限系统需要支持多个管理主体（用户、企业），但不能让低权限主体覆盖高权限主体的决策。</p>
+<p><strong>核心做法</strong>：将信任等级参数化为优先级链。企业的规则总是优先，无需特殊处理。</p>
+<p><strong>前置条件</strong>：权限系统需要满足法规合规性（如 SOC 2），要求企业能强制执行安全策略。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/permissionsLoader.ts</code> — <code>shouldAllowManagedPermissionRulesOnly</code> 等函数，显示企业管控的强制能力。</p>
+<p><strong>适用范围</strong>：需要支持企业合规性的系统（Cloud IDE、企业工具等）。</p>
+<hr />
+<h2 id="架构图"><a class="header" href="#架构图">架构图</a></h2>
+<p><strong>图 17-1：LSP 协议的请求-响应模型</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Editor as Claude Code
+    participant LSP as LSP服务器(TypeScript LS)
+    
+    Editor-&gt;&gt;LSP: initialize (capabilities)
+    LSP--&gt;&gt;Editor: initialized + serverCapabilities
+    
+    Editor-&gt;&gt;LSP: textDocument/didOpen (uri, content)
+    LSP-&gt;&gt;LSP: 索引文件（异步，1-3s）
+    
+    Editor-&gt;&gt;LSP: textDocument/hover (uri, position)
+    LSP--&gt;&gt;Editor: Hover (类型信息, docs)
+    
+    Editor-&gt;&gt;LSP: textDocument/definition (uri, position)
+    LSP--&gt;&gt;Editor: Location[] (定义位置)
+    
+    Editor-&gt;&gt;LSP: textDocument/publishDiagnostics
+    LSP--&gt;&gt;Editor: Diagnostic[] (错误 &amp; 警告)
+</code></pre>
+<p><strong>图 17-2：文件路径 vs LSP URI 格式</strong></p>
+<pre><code class="language-mermaid">graph LR
+    Path["/home/user/project/src/main.ts"]
+    URI["file:///home/user/project/src/main.ts"]
+    
+    Path --&gt;|"pathToFileURL()"| URI
+    URI --&gt;|"fileURLToPath()"| Path
+    
+    Wrong["直接传文件路径 ❌"]
+    Right["转换为 URI ✅"]
+    
+    style Wrong fill:#ffe6e6
+    style Right fill:#e6ffe6
+</code></pre>
+<p><strong>图 17-3：LSP 特性在 Claude Code 中的用途</strong></p>
+<pre><code class="language-mermaid">graph TD
+    LSP["LSP 集成"]
+    
+    LSP --&gt; H["hover
+鼠标悬停类型信息"]
+    LSP --&gt; D["definition
+跳转到定义"]
+    LSP --&gt; R["references
+查找所有引用"]
+    LSP --&gt; DI["diagnostics
+错误和警告"]
+    LSP --&gt; C["completion
+代码补全建议"]
+    
+    H --&gt; UH["上下文：Claude 理解光标处的类型"]
+    D --&gt; UD["上下文：找到函数的实际实现"]
+    R --&gt; UR["重构：所有引用需要一起修改"]
+    DI --&gt; UDI["验证：修改后检查是否引入新错误"]
+    C --&gt; UC["建议：基于 LSP 而非自己推断"]
+</code></pre>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-把规则来源managedgloballocal理解为强制程度而非来源位置"><a class="header" href="#-把规则来源managedgloballocal理解为强制程度而非来源位置">❌ 把规则来源（managed/global/local）理解为"强制程度"，而非"来源位置"</a></h3>
+<p>来源字段决定<strong>哪一方写的规则</strong>：</p>
+<ul>
+<li><code>managed</code>：系统管理员配置（最高信任，不可被用户覆盖）</li>
+<li><code>global</code>：用户全局配置（<code>~/.claude/config.json</code>）</li>
+<li><code>local</code>：项目级配置（<code>.claude/config.json</code>）</li>
+</ul>
+<p>这不是强制程度的排序——local 规则<strong>优先级更高</strong>（因为最具体），但 managed 规则<strong>不可被覆盖</strong>（因为来自系统级）。混淆来源和优先级会导致"本地规则覆盖了应该不可更改的管理员策略"的安全漏洞（<code>src/utils/permissions/permissionRules.ts</code>）。</p>
+<h3 id="-在通配符规则里混用--和-"><a class="header" href="#-在通配符规则里混用--和-">❌ 在通配符规则里混用 <code>*</code> 和 <code>**</code></a></h3>
+<p><code>/project/*</code> 只匹配一层（<code>/project/src</code> 是路径，不含子目录下的文件）；<code>/project/**</code> 匹配所有层级。Claude Code 的通配符遵循 glob 语义，不是正则表达式语义。错误使用会导致规则比预期更宽松或更严格，用户报告"我设置了允许读取 /project，但 Claude 无法读取 /project/src/main.ts"。</p>
+<h3 id="-忽略-shadowedruledetection-的警告以为规则叠加而非遮蔽"><a class="header" href="#-忽略-shadowedruledetection-的警告以为规则叠加而非遮蔽">❌ 忽略 shadowedRuleDetection 的警告，以为规则"叠加"而非"遮蔽"</a></h3>
+<p>如果全局规则 <code>allow: /project/src</code> 和本地规则 <code>allow: /project</code> 同时存在，本地规则更宽，全局规则被"遮蔽"（shadowed）——即全局规则永远不会被单独命中。<code>shadowedRuleDetection</code>（<code>src/utils/permissions/shadowedRuleDetection.ts</code>）会报告这种情况，忽略警告会积累越来越宽松的规则，最终让用户不知道实际生效的是哪条规则。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>设计多来源配置时明确优先级</strong>。如果你的系统支持来自不同管理主体的配置（用户、企业、全局默认），不要让它们模糊地"自动合并"。定义一个清晰的单向优先级链，文档化这个决策。</p>
+</li>
+<li>
+<p><strong>为用户提供配置有效性反馈</strong>。当用户的配置被更高优先级的配置覆盖时，显式地告诉他们。不要让他们改配置了半天还不知道为什么不生效。</p>
+</li>
+<li>
+<p><strong>用简洁的格式而不是 JSON</strong>。如果配置需要频繁被非程序员用户编辑，投入时间设计一个用户友好的格式（即使解析器更复杂）。<code>Bash(git *)</code> 比 <code>{"tool": "Bash", "pattern": "git *"}</code> 更容易记住。</p>
+</li>
+<li>
+<p><strong>验证规则的可达性</strong>。在规则加载时扫描一遍，找出所有被遮蔽的规则。这个一次性的成本（加载时）换来的是大幅降低用户的配置调试成本。</p>
+</li>
+</ul>
+<hr />
+<h2 id="向后链接"><a class="header" href="#向后链接">向后链接</a></h2>
+<p>规则的执行和权限检查发生在工具调用的关键路径上（第 11-14 章详细讨论）。Hooks 系统（第 18 章）可以在规则加载时注入自定义检查。第 15 章的三层权限决策架构中，规则引擎是第一层（最快的路径）。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part4/ch16.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part4/ch18.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part4/ch16.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part4/ch18.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

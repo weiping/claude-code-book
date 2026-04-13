@@ -1,0 +1,111 @@
+# 第 36 章写作计划
+
+**批次**：批次 9b（来自 plans/batch.md）
+**章节**：ch36 — 第36章：信任对话与拒绝追踪——用户决策的持久化与安全审计
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 `src/utils/permissions/denialTracking.ts`（45行）如何追踪连续拒绝次数、触发降级到提示，以及信任对话（TrustDialog）如何将用户决策持久化到配置文件，防止 AI 分类器被"过度学习"欺骗。
+
+## 通用约束
+**排除范围**：第33章三层防线全景（不重复）、PermissionRule 规则引擎（第34章）、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「拒绝追踪电路断路器」（Denial-Tracking Circuit Breaker）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（denialTracking + TrustDialog 持久化），适用范围表，与已知模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/utils/permissions/denialTracking.ts | 全文——DenialTrackingState(7行)、DENIAL_LIMITS(12行)、recordDenial/recordSuccess/shouldFallbackToPrompting | 全文(45行) |
+
+```bash
+cat src/utils/permissions/denialTracking.ts
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：如果 AI 分类器连续 3 次拒绝某个操作，Claude Code 会自动切换到"提示用户"模式——这是防止分类器进入"拒绝循环"的电路断路器。这个机制只有 45 行代码，却解决了一个深层的可靠性问题。
+
+### 节 36.1：问题
+- 核心主张：**AI 分类器可能进入"拒绝循环"——连续拒绝合理操作，导致 Agent 完全无法工作；需要电路断路器在达到阈值时自动切换到人工确认**
+- 源码锚点：`src/utils/permissions/denialTracking.ts:12`（`DENIAL_LIMITS = { maxConsecutive: 3, maxTotal: 20 }`）
+- 包含元素：**图36-1** — 拒绝追踪状态机（recordDenial/recordSuccess/shouldFallback）
+- 估计字数：600-800字
+
+### 节 36.2：源码实例1 — denialTracking.ts 完整解析
+- 核心主张：**DenialTrackingState 只有两个字段（consecutiveDenials/totalDenials），是一个最小化的状态机——不可变更新（返回新对象）保证纯函数特性**
+- 源码锚点：
+  - `src/utils/permissions/denialTracking.ts:7`（DenialTrackingState 类型定义）
+  - `src/utils/permissions/denialTracking.ts:12`（DENIAL_LIMITS：maxConsecutive=3, maxTotal=20）
+  - `src/utils/permissions/denialTracking.ts:24`（recordDenial：不可变更新）
+  - `src/utils/permissions/denialTracking.ts:32`（recordSuccess：只有 consecutiveDenials 重置，totalDenials 不重置）
+  - `src/utils/permissions/denialTracking.ts:40`（shouldFallbackToPrompting：OR 条件，两个阈值任一触发）
+- 概念层次：consecutiveDenials 重置 vs totalDenials 累积、两个阈值的不同语义（短期集中拒绝 vs 长期累计）
+- 估计字数：900-1100字
+
+### 节 36.3：源码实例2 — 调用方如何使用 denialTracking（第二个实例）
+- 核心主张：**denialTracking 是纯状态机，调用方决定在哪里持久化状态（内存、AppState 或配置文件）**
+- 源码锚点：查找 `recordDenial` 的调用方
+- 概念层次：状态机与状态持久化分离的设计意图、totalDenials 不随 recordSuccess 重置的安全考量
+- 估计字数：700-900字
+
+### 节 36.4：模式剖析
+- 核心主张：**拒绝追踪电路断路器的本质是"累积失败触发降级"——不是在第一次失败就降级，而是在连续或总量失败达到阈值后保守降级**
+- 估计字数：500-700字
+
+### 节 36.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| AI 自动化决策可能进入错误循环 | ✓ | 追踪拒绝次数，达到阈值触发人工介入 | 无限重试（可能死循环）|
+| 需要区分"偶发失败"和"持续失败" | ✓ | consecutiveDenials 检测持续，totalDenials 检测累积 | 单一计数器（无法区分）|
+| 需要在失败后自动恢复 | ✓ | recordSuccess 重置 consecutiveDenials | 手动重置（需要用户操作）|
+| 需要完全审计所有决策 | ✗（谨慎）| denialTracking 不记录具体拒绝内容，只记录次数 | 完整日志系统 |
+
+### 节 36.6：权衡与局限
+- DENIAL_LIMITS 硬编码（3次/20次）、totalDenials 不重置可能导致长时间运行的 Agent 过早降级、状态不持久化（进程重启后归零）
+- 估计字数：500-700字
+
+### 节 36.7：与已知模式的对话
+- 与 Circuit Breaker（熔断器）模式：几乎完全一致——连续失败达到阈值后切换到"开路"状态（fallback）；差异是 Circuit Breaker 有半开状态，本模式降级后不自动恢复（推断）
+- 与 GoF 状态模式：相同——对象根据状态改变行为；不同——本模式用纯函数而非对象
+
+### 章末：模式提炼
+```
+模式名称：拒绝追踪电路断路器（Denial-Tracking Circuit Breaker）
+问题：AI 自动化决策可能进入"拒绝循环"，连续拒绝合理请求导致 Agent 无法工作
+解决方案：追踪 consecutiveDenials 和 totalDenials，任一达到阈值（3/20）时切换到人工确认
+前置条件：有明确的"拒绝"和"成功"事件，可以在每次决策后调用 recordDenial/recordSuccess
+源码锚点：src/utils/permissions/denialTracking.ts:12 (DENIAL_LIMITS), :40 (shouldFallbackToPrompting)
+```
+
+### 章末：你能做什么
+1. 为 AI 自动决策实现双阈值断路器（连续失败 + 总失败次数），区分短期集中失败和长期慢性失败
+2. 用不可变更新实现状态机（返回新对象而非修改原对象），让函数保持可测试性
+3. 让 recordSuccess 只重置连续计数（consecutiveDenials），不重置总计数（totalDenials）——总失败是累积记录，不能被单次成功抹除
+4. 将状态机（denialTracking）与状态持久化分离，调用方决定持久化策略
+5. 在阈值配置中使用 `as const`，让 TypeScript 推断出精确的字面量类型
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图36-1 | 拒绝追踪状态机 | Mermaid stateDiagram | 初始→记录拒绝/成功→检查阈值→降级 | 36.1 |
+
+## 写作前 checklist
+```bash
+sed -n '7p' src/utils/permissions/denialTracking.ts   # DenialTrackingState
+sed -n '12p' src/utils/permissions/denialTracking.ts  # DENIAL_LIMITS
+sed -n '24p' src/utils/permissions/denialTracking.ts  # recordDenial
+sed -n '32p' src/utils/permissions/denialTracking.ts  # recordSuccess
+sed -n '40p' src/utils/permissions/denialTracking.ts  # shouldFallbackToPrompting
+```
+
+## ⛔ Spec 一致性声明
+所有 16 项均 ✓，plan 审查通过。

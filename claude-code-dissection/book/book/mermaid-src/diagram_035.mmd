@@ -1,0 +1,16 @@
+flowchart LR
+    src["src/types/permissions.ts:33
+feature('TRANSCRIPT_CLASSIFIER')
+? ['auto']
+: []"]
+    
+    subgraph 外部构建
+        ext["PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions'"]
+    end
+    
+    subgraph 内部构建
+        int["PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'auto'"]
+    end
+    
+    src -->|"feature() = false"| ext
+    src -->|"feature() = true"| int

@@ -1,0 +1,8 @@
+flowchart LR
+    A["磁盘文件\n4层记忆发现"] --> B["截断\n40000字符上限"]
+    B --> C["动态 section\nmemory"]
+    C --> D["BOUNDARY 之后\n不缓存"]
+    D --> E["API 请求\nTextBlockParam"]
+
+    A -.- Note1["claudemd.ts\n向上遍历目录"]
+    B -.- Note2["MAX_MEMORY_\nCHARACTER_COUNT"]

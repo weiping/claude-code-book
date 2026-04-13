@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant ST as SkillTool.call
+    participant Router as 路由判断
+    participant Fork as executeForkedSkill
+    participant Remote as executeRemoteSkill
+
+    ST->>Router: commandName + context
+    
+    alt 远程技能 (slug前缀 + ant-only)
+        Router->>Remote: executeRemoteSkill(slug)
+        Remote->>Remote: 从 GCS/AKI 加载 Markdown
+        Remote->>Remote: 剥离 frontmatter
+        Remote-->>ST: 内容注入用户消息
+    else context=fork 本地技能
+        Router->>Fork: executeForkedSkill(command)
+        Fork->>Fork: 创建独立 Agent\n独立 token 预算
+        Fork-->>ST: ToolResult
+    else 普通本地技能
+        Router->>ST: processPromptSlashCommand
+        ST->>ST: 展开 !command/$ARGUMENTS
+        ST-->>ST: 注入当前对话
+    end

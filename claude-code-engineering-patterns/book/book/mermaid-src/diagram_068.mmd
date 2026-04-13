@@ -1,0 +1,12 @@
+flowchart TD
+    enter["processMemoryFile(filePath, type, ...)"] --> dup_check{"processedPaths\n已包含此路径?"}
+    dup_check -->|是| skip1["return []（去重）"]
+    dup_check -->|否| depth_check{"depth >= MAX_INCLUDE_DEPTH\n(5)?"}
+    depth_check -->|是| skip2["return []（深度限制）"]
+    depth_check -->|否| excl_check{"isClaudeMdExcluded?"}
+    excl_check -->|是| skip3["return []（安全排除）"]
+    excl_check -->|否| read["读取文件内容"]
+    read --> empty_check{"文件为空?"}
+    empty_check -->|是| skip4["return []（空文件）"]
+    empty_check -->|否| parse["解析 @include 指令\n递归处理包含文件"]
+    parse --> result["返回 MemoryFileInfo[]"]

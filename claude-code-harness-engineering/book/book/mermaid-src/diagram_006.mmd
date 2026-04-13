@@ -1,0 +1,21 @@
+stateDiagram-v2
+    [*] --> 初始化: submitMessage
+    初始化 --> 检查守卫: processUserInput + recordTranscript
+
+    检查守卫 --> blocking_limit终止: token超限
+    检查守卫 --> 调用模型: 守卫通过
+
+    调用模型 --> 处理响应: API返回流
+    处理响应 --> 工具执行: 工具调用请求
+    处理响应 --> 循环终止: 正常结束
+    处理响应 --> 压缩触发: 上下文接近上限
+
+    工具执行 --> 检查maxTurns: 工具结果收集完成
+    检查maxTurns --> 循环终止: 轮次超限
+    检查maxTurns --> 构建next状态: 守卫通过
+
+    压缩触发 --> 检查守卫: 压缩完成继续
+
+    构建next状态 --> 检查守卫: 递增轮次重新开始
+
+    循环终止 --> [*]: 返回终止原因

@@ -1,0 +1,27 @@
+graph TB
+    subgraph single ["单 Agent 情况"]
+        A1["Main Agent"] -->|执行| B1["query.ts"]
+        B1 -->|返回结果| A1
+    end
+    subgraph multi ["多 Agent 情况（Swarm）"]
+        A2["Main Agent"] -->|spawnMultiAgent| B2["Mailbox"]
+        B2 -->|Task 1| C2["Teammate A"]
+        B2 -->|Task 2| D2["Teammate B"]
+        B2 -->|Task 3| E2["Teammate C"]
+        C2 -->|权限请求| B2
+        D2 -->|权限请求| B2
+        E2 -->|权限请求| B2
+        B2 -->|同步决策| C2
+        B2 -->|同步决策| D2
+        B2 -->|同步决策| E2
+        C2 -->|结果| A2
+        D2 -->|结果| A2
+        E2 -->|结果| A2
+    end
+    style A1 fill:#e6f2ff
+    style B1 fill:#fff4e6
+    style A2 fill:#e6f2ff
+    style B2 fill:#ffffcc
+    style C2 fill:#fff4e6
+    style D2 fill:#fff4e6
+    style E2 fill:#fff4e6

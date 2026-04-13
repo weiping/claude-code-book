@@ -1,0 +1,12 @@
+stateDiagram-v2
+    [*] --> running: registerAgentForeground\n（创建任务 + 注册到 AppState）
+    running --> backgrounded: backgroundAgentTask\n（isBackgrounded=true，Background Signal 触发）
+    running --> completed: 正常完成
+    running --> failed: 执行错误
+    running --> killed: killAsyncAgent\n（AbortController.abort）
+    backgrounded --> completed: 后台正常完成
+    backgrounded --> failed: 后台执行错误
+    backgrounded --> killed: killAllRunningAgentTasks
+    completed --> [*]: evictAfter 到期 + retain=false
+    failed --> [*]: evictAfter 到期 + retain=false
+    killed --> [*]: evictAfter 到期 + retain=false

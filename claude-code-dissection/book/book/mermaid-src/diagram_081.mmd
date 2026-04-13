@@ -1,0 +1,16 @@
+graph TD
+    A["用户需求"]
+    B{"重要性?"}
+    C{"预算?"}
+    D{"时间?"}
+    A --> B
+    B -->|不重要| C
+    B -->|重要| E["Effort 4<br/>完全不省钱"]
+    C -->|无预算| F["/effort 1<br/>/fastmode on<br/>极便宜"]
+    C -->|有预算| D
+    D -->|紧急| G["/effort 1<br/>快速"]
+    D -->|不紧| H["默认<br/>Effort 2<br/>平衡"]
+    style F fill:#ccffcc
+    style G fill:#ccffcc
+    style H fill:#fff4e6
+    style E fill:#ffcccc

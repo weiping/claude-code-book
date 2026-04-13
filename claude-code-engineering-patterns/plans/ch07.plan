@@ -1,0 +1,267 @@
+# 第 7 章写作计划
+
+**批次**：批次 3b（来自 plans/batch.md）
+**章节**：ch07 — Effort、Fast Mode 与 Thinking——推理深度控制的三轴
+**风格**：hunter
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示 Claude Code 如何通过三个正交维度控制 AI 推理深度：effort 级别（`src/utils/effort.ts`，329行）、fast mode（低延迟优先，`fastMode` 字段）、thinking 模式（`src/utils/thinking.ts`，162行）。读者读完后能理解三轴如何与模型选择交叉作用，并能在自己的 Agent 系统中设计类似的推理深度控制机制。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个可渲染的 Mermaid 流程图或 ASCII 架构图
+- 跨章节引用使用"详见第 X 章"格式，不重复解释
+- 使用"我们"而非"用户"/"读者"建立对话感
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现"介绍了…"、"描述了…"、"讲解了…"等空洞表述
+- 不得对源码中没有依据的设计意图做无标注的猜测（必须标注「（推断）」）
+- 不得重复已在其他章节详细讲解的内容（用交叉引用代替）
+
+**排除范围**（从 spec `## 排除范围` 提取）：
+- 第 6 章的模型路由逻辑（引用但不重复）
+- QueryEngine 主循环（第 8 章）
+- src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：hunter — 模式预告（150-200字，问题场景+模式预告+价值承诺），⛔ 开篇禁止直接引用源码
+
+**分节组织**：hunter — `## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
+
+**章末结构**：hunter — 模式提炼（3-5 个命名模式，五层结构）
+
+**风格专属必须**：
+- ⛔ 展示至少 2 处源码实例，证明模式的普遍性
+- 包含适用范围表（✓/✗ 格式）
+- 包含权衡与局限分析
+- 包含与 GoF/POSA/EIP 模式的对话
+
+**风格专属禁止**：
+- ⛔ 开篇不得直接引用源码路径或行号
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言必须附 `路径:行号` 证据
+- ⛔ 代码无裸露：每个代码块有引入段+解读段
+- ⛔ 数据驱动：用具体数字（effort.ts 329行，thinking.ts 162行）
+- ⛔ 开篇铁律：开篇在全章完成后最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/effort.ts | EFFORT_LEVELS、resolveAppliedEffort、getEffortEnvOverride | 行 13-20, 107-180 |
+| 2 | src/utils/thinking.ts | ThinkingConfig 类型、isUltrathinkEnabled、shouldEnableThinkingByDefault | 行 10-35, 146-165 |
+| 3 | src/utils/thinking.ts | modelSupportsThinking、modelSupportsAdaptiveThinking | 行 90-145 |
+| 4 | src/commands/effort/ | effort 命令实现 | 行 1-50 |
+
+验证文件存在：
+```bash
+ls src/utils/effort.ts src/utils/thinking.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B=C > D
+
+### A. 源码锚点组
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| A1 | 源码引用有效性 | 每处引用实际存在 | 章节骨架各节 | ☐ |
+| A2 | 推断有标注 | 推断标"（推断）" | 全章 | ☐ |
+| A3 | 不引用排除范围 | 无 stub/第6/8章内容 | 排除范围 | ☐ |
+| A4 | 不重复其他章 | 用"详见第 6/8 章" | 交叉引用处 | ☐ |
+
+### B. 语言精确性组
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| B1 | 禁止空洞表述 | 无"介绍了"等 | 全章 | ☐ |
+| B2 | 数据驱动 | 用具体参数（budgetTokens）和行数 | 全章 | ☐ |
+| B3 | 术语标准化 | 首次标注原文 | 全章 | ☐ |
+
+### C. 结构完整性组
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| C1 | 概念递进层次 | hunter: 问题→实例→模式 | 节 7.1→7.2→7.3 | ☐ |
+| C2 | hunter 专属结构 | 模式命名框存在 | 节 7.4 | ☐ |
+| C3 | 核心主张可提炼 | 可提炼"正交推理深度控制"模式 | 章末 | ☐ |
+| C4 | 设计权衡有说明 | 三轴正交的代价分析 | 节 7.6 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 链接第 6/8 章 | 各节 | ☐ |
+
+### D. 图表与代码组
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| D1 | 图表可渲染 | ≥2 个图表 | 图表清单 | ☐ |
+| D2 | 图表标注格式 | 上方有 `**图 N-X：标题**` | 图表清单 | ☐ |
+| D3 | 代码片段长度 | ≤25 行，前后有说明 | 源码实例节 | ☐ |
+| D4 | 源码注释引用 | 先引注释+行号，再展开 | 节 7.2 | ☐ |
+| D5 | hunter 专属图表 | 适用范围表（✓/✗） | 节 7.5 | ☐ |
+
+### E. 风格符合性组（最高优先级）
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| E1 | hunter 开篇格式 | 150-200字，三要素，不引源码 | 开篇节 | ☐ |
+| E2 | 读者对话感 | "我们"，设问句 | 全章 | ☐ |
+| E3 | 关键信息突出 | 三轴对比表格 | 节 7.1 | ☐ |
+
+## 章节骨架
+
+### 开篇（hunter，最后补写）
+- 问题场景：AI Agent 的"思考深度"不只一个维度——有时要快（fast mode），有时要精（effort level），有时要深度推理（thinking）。如果这三个维度互相耦合，改一个就会破坏其他两个。
+- 模式预告：我们在代码库中发现了**正交推理深度控制**（Orthogonal Reasoning Depth Control）——三轴独立可调，互不干扰
+- 价值承诺：读完本章，你能为自己的 Agent 系统设计独立的速度/成本/深度控制轴
+
+### 节 7.1：问题——推理深度的多维困境
+- 核心主张：Agent 推理深度有三个独立维度：速度（fast mode）、成本（effort level）、深度（thinking budget）——混为一谈会导致无法精细控制
+- 源码锚点：`src/utils/effort.ts:13` — `EFFORT_LEVELS = ['low', 'medium', 'high', 'max']`
+- 概念层次：
+  - **层次1 定义**：三轴的含义和控制范围
+  - **层次2 设计意图**：三轴正交意味着可以独立组合（低 effort + thinking，高 effort + fast 等）
+- 包含元素：三轴对比表格（**图 7-1**）
+
+| 控制轴 | 文件 | 主要参数 | 影响范围 | 源码锚点 |
+|-------|------|---------|---------|---------|
+| Effort 级别 | effort.ts | EFFORT_LEVELS: low/medium/high/max | API 请求 effort 参数 | effort.ts:13 |
+| Fast Mode | 各处 fastMode 字段 | boolean | 模型选择/超时 | （运行时注入）|
+| Thinking | thinking.ts | budgetTokens | 思考 token 预算 | thinking.ts:10 |
+
+- 估计字数：800-1000 字
+
+### 节 7.2：源码实例 1——resolveAppliedEffort 的优先级链
+- 核心主张：`resolveAppliedEffort` 实现了 effort 的三层优先级：env 覆盖 > appState 值 > 模型默认
+- 源码锚点：
+  - `src/utils/effort.ts:136` — getEffortEnvOverride（注释："env CLAUDE_CODE_EFFORT_LEVEL → appState → model default"）
+  - `src/utils/effort.ts:152` — resolveAppliedEffort 函数
+- 概念层次：
+  - **层次1 实例**：resolveAppliedEffort 的 cascade 逻辑
+  - **层次2 模式特征**：与 model.ts 的优先级链同构（同一 hunter 模式的另一实例）
+- 权衡分析：env 作为最高优先级——允许 CI/CD 环境无需修改代码就强制低 effort
+- 包含元素：resolveAppliedEffort 代码片段（≤20行）
+- 估计字数：900-1100 字
+
+### 节 7.3：源码实例 2（变体）——thinking 的类型化配置
+- 核心主张：`ThinkingConfig` 用 union type 表达三种状态（disabled/enabled/adaptive），比布尔值更精确
+- 源码锚点：
+  - `src/utils/thinking.ts:10` — ThinkingConfig type（union of disabled | {type: enabled, budgetTokens} | ...）
+  - `src/utils/thinking.ts:146` — shouldEnableThinkingByDefault
+  - `src/utils/thinking.ts:90` — modelSupportsThinking（模型能力检查）
+- 概念层次：
+  - **层次1 实例**：ThinkingConfig union type 定义
+  - **层次2 对比**：boolean vs union type——union 类型可以携带参数（budgetTokens），boolean 不能
+- 权衡分析：adaptive thinking 需要额外的模型支持检查（modelSupportsAdaptiveThinking），增加了路由复杂度
+- 估计字数：800-1000 字
+
+### 节 7.4：模式剖析——正交推理深度控制
+- 模式命名框：
+  ```
+  模式名称：正交推理深度控制（Orthogonal Reasoning Depth Control）
+  问题：Agent 推理的速度、成本、深度需要独立控制，混为一谈会限制灵活性
+  解决方案：三轴独立定义（effort/fast/thinking），各有优先级链，组合时互不干扰
+  前置条件：底层模型 API 支持分别控制这三个维度
+  源码锚点：src/utils/effort.ts:152 + src/utils/thinking.ts:10
+  ```
+- 估计字数：600-800 字
+
+### 节 7.5：适用范围
+
+| 场景 | 适用 | 理由 |
+|------|------|------|
+| Agent 有多种任务复杂度 | ✓ | 轻任务低 effort，复杂任务高 thinking budget |
+| 需要 CI/CD 环境强制低成本 | ✓ | env override 机制 |
+| 只有单一模型且无参数控制 | ✗ | 三轴无意义，直接硬编码参数 |
+| 实时交互场景 | ✓ | fast mode 降低延迟，effort 设为 low |
+| 批处理/离线场景 | ✓ | effort 设为 max，关闭 fast mode |
+
+- 估计字数：400-600 字
+
+### 节 7.6：权衡与局限
+- 三轴正交的代价：需要维护 3 套优先级链，测试用例数量是单轴的 N^3 倍
+- fast mode 与 thinking 的隐式约束：fast mode 通常隐含禁用 thinking（推断，需标注）
+- 潜在风险：三轴组合产生 NaN 个参数组合，需要边界检查
+- 估计字数：500-700 字
+
+### 节 7.7：与已知模式的对话
+- 对比：EIP Routing Slip（路由单）——预定义一组处理步骤，运行时按顺序执行
+- Claude Code 的选择：三轴不是顺序步骤而是独立参数——更接近"多维度配置对象"而非"路由单"
+- 另一对比：GoF Strategy——每轴可以看作一个 Strategy，但三轴是同级组合而非替换
+- 估计字数：400-600 字
+
+### 章末结构：模式提炼
+
+**模式 1：正交推理深度控制（Orthogonal Reasoning Depth Control）**
+- 解决问题：Agent 推理的多维度需要独立控制
+- 核心做法：三轴各自有独立的类型定义（EFFORT_LEVELS、ThinkingConfig）和优先级链
+- 源码证据：`src/utils/effort.ts:13` + `src/utils/thinking.ts:10`
+
+**模式 2：环境变量作为最高优先级覆盖（Env-as-Top-Override）**
+- 解决问题：CI/CD 环境需要在不修改代码的情况下强制特定参数
+- 核心做法：每个配置函数的第一步检查对应的 env 变量，找到即返回
+- 源码证据：`src/utils/effort.ts:136`（CLAUDE_CODE_EFFORT_LEVEL env 检查）
+
+**模式 3：类型化联合状态（Typed Union State）**
+- 解决问题：布尔标志无法携带额外参数（如 thinking 的 budgetTokens）
+- 核心做法：用 union type 表达状态集合，每个状态可携带不同字段
+- 源码证据：`src/utils/thinking.ts:10`（ThinkingConfig union type）
+
+### 章末：你能做什么
+
+1. 将 Agent 推理控制拆分为 3 个正交维度：速度/成本/深度，各自独立定义枚举和优先级链
+2. 为每个控制维度添加 env 变量覆盖（最高优先级），方便 CI 环境无侵入调优
+3. 用 union type 而非 boolean 表达多态状态（如 thinking 的三种模式），让参数在类型层面自描述
+4. 设计优先级链时，在函数注释中明确写出优先级顺序（参考 effort.ts:136 的注释格式）
+5. 在添加新控制维度之前，先验证底层 API 是否支持对应参数
+6. 为三轴组合写边界测试：确认 fast mode + max effort 等极端组合不会产生冲突行为
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图 7-1 | 三轴推理控制对比表 | Markdown 表格 | 三轴（effort/fast/thinking）的文件/参数/影响范围对比 | 7.1 |
+| 图 7-2 | resolveAppliedEffort 三层优先级 | Mermaid flowchart | env → appState → model default 的 cascade 决策树 | 7.2 |
+
+## 写作顺序
+
+1. 确认 STYLE_ID=hunter + 读取完整 spec（specs/ch07.spec）
+2. 先写节 7.2（resolveAppliedEffort 优先级链实例）
+3. 再写节 7.3（ThinkingConfig union type 变体）
+4. 写节 7.1（问题节 + 三轴对比表）
+5. 写节 7.4-7.7
+6. 画图表
+7. 章末模式提炼
+8. "你能做什么"
+9. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '13p' src/utils/effort.ts      # EFFORT_LEVELS
+sed -n '136p' src/utils/effort.ts     # getEffortEnvOverride
+sed -n '152p' src/utils/effort.ts     # resolveAppliedEffort
+sed -n '10p' src/utils/thinking.ts    # ThinkingConfig
+sed -n '146p' src/utils/thinking.ts   # shouldEnableThinkingByDefault
+sed -n '90p' src/utils/thinking.ts    # modelSupportsThinking
+```
+
+## ⛔ Spec 一致性声明
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用约束 |
+| 3 | 通用约束·禁止 | ✓ | 通用约束 |
+| 4 | 风格专属必须 | ✓ | 风格专属写作要求 |
+| 5 | 风格专属禁止 | ✓ | 风格专属写作要求 |
+| 6 | 章节结构 | ✓ | 章节骨架 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | Spec 验收场景清单头部 |
+| 11-15 | 验收场景 A/B/C/D/E | ✓ | 各组表格 |
+| 16 | 排除范围 | ✓ | 通用约束→排除范围 |
+
+**验收场景覆盖统计**：A 组 4/4 + B 组 3/3 + C 组 6/6 + D 组 5/5 + E 组 3/3 = **21/21**

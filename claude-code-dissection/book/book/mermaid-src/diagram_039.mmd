@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant Editor as Claude Code
+    participant LSP as LSP服务器(TypeScript LS)
+    
+    Editor->>LSP: initialize (capabilities)
+    LSP-->>Editor: initialized + serverCapabilities
+    
+    Editor->>LSP: textDocument/didOpen (uri, content)
+    LSP->>LSP: 索引文件（异步，1-3s）
+    
+    Editor->>LSP: textDocument/hover (uri, position)
+    LSP-->>Editor: Hover (类型信息, docs)
+    
+    Editor->>LSP: textDocument/definition (uri, position)
+    LSP-->>Editor: Location[] (定义位置)
+    
+    Editor->>LSP: textDocument/publishDiagnostics
+    LSP-->>Editor: Diagnostic[] (错误 & 警告)

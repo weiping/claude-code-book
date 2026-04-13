@@ -1,0 +1,324 @@
+# 第 11 章写作计划
+
+**批次**：批次 6（来自 plans/batch.md）
+**章节**：ch11 — 上下文的五把剪刀
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+解释为什么 Claude Code 并存 5 种压缩策略（autoCompact/microCompact/snipCompact/reactiveCompact/cachedMicrocompact），每种策略编码了什么"模型能力假设"，以及什么条件下该用哪种。读完本章，读者将理解上下文压缩不是单一问题而是 5 个不同的问题，每种策略针对不同的"模型在什么时候会遗忘什么"的场景。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+- snipCompact.ts、reactiveCompact.ts、cachedMicrocompact.ts 在本项目均为 stub 实现，分析仅基于其在 query.ts 中的调用位置和注释，不分析 stub 内部实现
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- 同一个问题——"上下文太长了怎么办"——Claude Code 有 5 种不同的答案，每种答案针对不同的失败场景。理解为什么需要 5 种而非 1 种，比知道每种怎么用更重要。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向后链接第 12 章（forkedAgent 上下文隔离）
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（13000/20000 buffer、3次失败熔断、60分钟 TTL、POST_COMPACT_TOKEN_BUDGET=50000 等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/services/compact/autoCompact.ts | 常量（62-70）、calculateTokenWarningState（93-145）、isAutoCompactEnabled（147）、shouldAutoCompact（160）、autoCompactIfNeeded（241） | 行 33-80, 62-75, 147-295 |
+| 2 | src/services/compact/microCompact.ts | COMPACTABLE_TOOLS（41-50）、TIME_BASED_MC_CLEARED_MESSAGE（36）、microcompactMessages（253+） | 行 36-55, 253-300 |
+| 3 | src/services/compact/timeBasedMCConfig.ts | 完整文件—1h TTL 注释和配置 | 全文（43行） |
+| 4 | src/query.ts | 5种压缩执行顺序（394-470）—snip→micro→collapse→autocompact | 行 394-470 |
+| 5 | src/services/compact/compact.ts | POST_COMPACT 常量（122-130）、postCompact 资源恢复逻辑 | 行 122-135 |
+| 6 | src/services/compact/sessionMemoryCompact.ts | shouldUseSessionMemoryCompaction（403+）—条件说明 | 行 400-435 |
+
+验证文件存在：
+```bash
+ls src/services/compact/autoCompact.ts src/services/compact/microCompact.ts src/services/compact/timeBasedMCConfig.ts src/query.ts src/services/compact/compact.ts src/services/compact/sessionMemoryCompact.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无 stub 路径引用 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 11.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 11.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 向后链接第 12 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图 | 图 11-1、11-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 11-1、11-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「一个上下文窗口的死亡方式不只有一种。5 种剪刀，5 种死法，5 种救法。」
+
+### 节 11.1：问题——为什么需要 5 种压缩策略而非 1 种
+- 核心主张：5 种压缩策略对应 5 种不同的"上下文失控"场景，每种场景的成因、时机和代价各不相同
+- 源码锚点：
+  - `src/query.ts:396` — 注释 "Apply snip before microcompact (both may run — they are not mutually exclusive)"——说明策略并非互斥，可以组合触发
+  - `src/query.ts:412` — 注释 "Apply microcompact before autocompact"——触发顺序是有设计的
+- 概念层次：定义（5 种场景是什么）→ 设计意图（为什么不能统一成 1 种）
+- 权衡分析：N/A
+- 包含元素：表格（5 种策略 × 触发场景/编码的假设）
+- **⛔ 内容密度规划**：
+  - 引入段要点：如果上下文管理只有一个问题，就不需要 5 种策略——5 种的存在本身说明这是 5 个独立问题
+  - 解读段要点：从 query.ts 的执行顺序（snip→micro→collapse→autocompact）可以看出策略间的逻辑关系——轻量级先行，重量级托底
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B1
+
+### 节 11.2：黄金法则——每种策略编码一个"模型能力假设"
+- 核心主张：每种压缩策略不是算法选择，而是一条工程断言——"在这种条件下，模型的记忆能力边界在这里"
+- 源码锚点：
+  - `src/services/compact/autoCompact.ts:62` — `AUTOCOMPACT_BUFFER_TOKENS = 13_000`——13000 token 缓冲区是"给模型留足够空间生成摘要"的断言
+  - `src/services/compact/timeBasedMCConfig.ts:22` — 注释 "60 is the safe choice: the server's 1h cache TTL is guaranteed expired"——时间阈值直接映射到 cache TTL 的工程假设
+  - `src/services/compact/compact.ts:122` — `POST_COMPACT_MAX_FILES_TO_RESTORE = 5`——压缩后最多恢复 5 个文件，编码了"模型在压缩边界后需要哪些上下文才能继续工作"的假设
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：保守假设 vs 激进假设——13000 token 缓冲区是保守选择（宁可多留空间），激进做法可能让摘要生成失败
+- 包含元素：表格（5 种策略各自的"能力假设"）
+- **⛔ 内容密度规划**：
+  - 引入段要点：每个常量背后都是一个关于模型行为的工程断言
+  - 解读段要点：autoCompact（13000 token 缓冲区→模型生成摘要需要空间）、microCompact（COMPACTABLE_TOOLS 白名单→只有特定工具的结果值得被压缩）、timeBasedMC（60分钟→cache TTL 过期后继续发旧工具结果是浪费）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：800-1100 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 11.3：适用场景——什么条件下哪种压缩触发
+- 核心主张：5 种策略按照"触发频率 × 压缩深度"形成从轻到重的梯度
+- 源码锚点：
+  - `src/services/compact/autoCompact.ts:147` — `isAutoCompactEnabled()`：可通过 `DISABLE_AUTO_COMPACT` 环境变量禁用，与其他策略独立控制
+  - `src/services/compact/sessionMemoryCompact.ts:403` — `shouldUseSessionMemoryCompaction()`：Feature Flag 控制
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：表格（5 种策略的触发频率/压缩深度/代价）
+- **⛔ 内容密度规划**：
+  - 引入段要点：频率和深度是选择压缩策略的两个维度
+  - 解读段要点：microCompact（高频、浅层——每轮检查工具结果是否过期）、autoCompact（低频、深层——接近上下文上限时全量摘要）、timeBasedMC（基于时间而非 token 数——cache 过期是独立触发条件）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 11.4：工作原理——5 种策略的执行机制
+- 核心主张：5 种策略在 queryLoop 中以固定顺序执行，每种策略有独立的触发条件和压缩范围
+- 源码锚点：
+  - `src/query.ts:396-470` — 执行顺序：HISTORY_SNIP（可选） → microcompact → CONTEXT_COLLAPSE（可选） → autocompact
+  - `src/services/compact/microCompact.ts:41` — `COMPACTABLE_TOOLS`：FileRead/Shell/Grep/Glob/WebSearch/WebFetch/FileEdit/FileWrite——microCompact 只处理这 8 类工具的结果
+  - `src/services/compact/autoCompact.ts:241` — `autoCompactIfNeeded`：完整对话摘要，触发条件是 token 数超过 `getAutoCompactThreshold(model)`
+  - `src/services/compact/autoCompact.ts:62-63` — buffer 常量：`AUTOCOMPACT_BUFFER_TOKENS=13000`，`WARNING_THRESHOLD_BUFFER_TOKENS=20000`
+  - `src/services/compact/autoCompact.ts:70` — `MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES=3`——连续失败 3 次触发熔断
+  - `src/services/compact/timeBasedMCConfig.ts:22` — 时间阈值：`gapThresholdMinutes=60`（默认关闭）
+  - `src/services/compact/compact.ts:122-124` — post-compact 资源恢复：最多 5 个文件、50000 token 预算
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：microCompact 轻量但范围受限（只清除 8 类工具结果）vs autoCompact 彻底但代价高（需要一次完整 API 调用生成摘要）——两者互补，轻的先跑，重的托底
+- 包含元素：Mermaid 流程图（queryLoop 中的压缩决策树）、表格（5 种策略的触发条件/压缩范围/代价）
+- **⛔ 内容密度规划**：
+  - 引入段要点：5 种策略不是随机堆叠，是有设计顺序的防线链
+  - 解读段要点：执行顺序的逻辑——snip（轻量删除历史消息边界前的内容）→ microCompact（清除旧工具结果，8 类工具白名单）→ autoCompact（阈值触发，生成完整摘要，最多失败 3 次熔断）→ post-compact 恢复（最多 5 个文件/50000 token）。timeBasedMC 是独立的时间维度触发器（cache TTL 过期）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 11.5：权衡——多策略并存的 3 个设计代价
+- 核心主张：5 种策略并存带来了更细粒度的控制，但也引入了复杂度、可预测性和调试难度三个代价
+- 源码锚点：
+  - `src/services/compact/autoCompact.ts:70` — `MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3` 注释："BQ 2026-03-10: 1,279 sessions had 50+ consecutive failures... wasting ~250K API calls/day globally"——熔断机制是真实生产问题的应对
+  - `src/query.ts:396` — 注释 "both may run — they are not mutually exclusive"——snip 和 micro 可以同一轮都触发，增加了行为的不可预测性
+  - `src/services/compact/timeBasedMCConfig.ts:32` — `enabled: false`——时间阈值压缩默认关闭，说明它是实验性的，代价是用户需要手动配置才能获益
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - 熔断机制（3 次失败）：autoCompact 连续失败时停止重试——真实数据显示曾有 3272 次连续失败，每次消耗 API，熔断是生产安全网
+  - 多策略并存的可预测性：snip 和 micro 可以同一轮触发，用户可能看到意料之外的上下文压缩——代价是行为不透明
+  - 时间阈值默认关闭：timeBasedMC 是优化（cache TTL 过期后清旧内容），但默认关闭（实验性）——说明在多策略环境中引入新策略需要谨慎
+- 包含元素：对比表格（3 个代价）
+- **⛔ 内容密度规划**：
+  - 引入段要点：5 种策略并存的精确控制不是免费的
+  - 解读段要点：熔断数据（生产真实教训）、并发触发的行为复杂度、时间阈值的实验性
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 11.6：踩坑指南——压缩策略中的常见错误
+- 核心主张：压缩策略最常见的错误是误解 autoCompact 的触发时机和忽视 microCompact 的工具白名单
+- 源码锚点：
+  - `src/services/compact/autoCompact.ts:160-225` — `shouldAutoCompact` 中的递归守卫：session_memory 和 compact 类型的查询不触发 autoCompact（防止死锁）
+  - `src/services/compact/microCompact.ts:41` — COMPACTABLE_TOOLS 白名单外的工具结果不会被清除
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：一个常见误解：autoCompact 是"万能"压缩，实际上它有多个递归守卫
+  - 解读段要点：陷阱一——在 compact 查询源中再次触发 autoCompact（死锁，守卫防止）；陷阱二——期望 microCompact 清除自定义工具的结果（它只清理白名单中的 8 类工具）；陷阱三——忽视 MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES=3（熔断后不再压缩，上下文继续增长直到 blocking_limit）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 11.7：实证——从 token 计数到压缩触发的决策链
+- 核心主张：一次 autoCompact 触发的完整路径可以从 `calculateTokenWarningState` 追踪到 `compactConversation`
+- 源码锚点：
+  - `src/services/compact/autoCompact.ts:93` — `calculateTokenWarningState`：计算 percentLeft/isAboveWarningThreshold/isAboveAutoCompactThreshold
+  - `src/services/compact/autoCompact.ts:241` — `autoCompactIfNeeded`：检查 consecutiveFailures 后决定是否执行
+  - `src/services/compact/compact.ts:122` — 压缩后资源恢复：POST_COMPACT_TOKEN_BUDGET=50000
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 时序图（token 计算→阈值判断→压缩执行→资源恢复）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一次 autoCompact 从 token 超限到生成摘要的完整路径
+  - 解读段要点：calculateTokenWarningState 返回 isAboveAutoCompactThreshold=true → autoCompactIfNeeded 检查 consecutiveFailures<3 → 调用 compactConversation → 生成摘要（20000 token 输出预算）→ post-compact 恢复最多 5 个文件
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：五种压缩策略的本质
+- 本质：5 种策略分别针对"token 超限（autoCompact）"、"旧工具结果占位（microCompact）"、"cache TTL 过期（timeBasedMC）"、"历史轮次边界（snipCompact）"、"API 413 响应（reactiveCompact）"5 种独立的上下文失控场景
+- 关键机制：执行顺序（轻到重）、熔断机制（3次失败）、COMPACTABLE_TOOLS 白名单、13000 token 缓冲区
+- 适用边界：适用于长会话 Agent；短会话单轮任务不需要任何压缩策略
+- 与其他模式的关系：本章的压缩边界是第 12 章（forkedAgent 上下文隔离）的前置概念；第 3 章（QueryEngine 循环）是压缩策略的触发宿主
+
+### 章末：用户能做什么（必填）
+1. 监控 isAboveAutoCompactThreshold 状态，在用户界面中显示上下文使用百分比
+2. 为自定义工具实现结果截断，防止单次工具结果消耗过多 token
+3. 设置合理的 AUTOCOMPACT_BUFFER_TOKENS——保守的缓冲区确保摘要生成不失败
+4. 在实现 autoCompact 类似机制时加入熔断（参考 MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES=3）
+5. 如果会话生命周期超过 1 小时，考虑启用 timeBasedMC（清除 cache TTL 过期的工具结果）
+6. 检查你的 COMPACTABLE_TOOLS 等价配置——不是所有工具结果都值得被 microCompact 处理
+7. 设计压缩后的资源恢复策略（参考 POST_COMPACT_MAX_FILES_TO_RESTORE=5 的上限设计）
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图11-1 | queryLoop 压缩决策树 | Mermaid flowchart TD | snip→microCompact→contextCollapse→autoCompact 的执行顺序和触发条件 | 11.4 |
+| 图11-2 | 5 种策略能力/频率矩阵 | Mermaid graph LR | 5 种策略按触发频率（高→低）× 压缩深度（浅→深）分布，标注各自的"能力假设" | 11.2 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 11.4 节（5 种策略执行机制）——本章核心
+3. 写 11.2 节（黄金法则：能力假设）
+4. 写 11.1 节（问题）
+5. 写 11.3 节（适用场景）
+6. 写 11.5 节（权衡）
+7. 写 11.6 节（踩坑指南）
+8. 写 11.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '62p' src/services/compact/autoCompact.ts              # AUTOCOMPACT_BUFFER_TOKENS
+sed -n '63p' src/services/compact/autoCompact.ts              # WARNING_THRESHOLD_BUFFER_TOKENS
+sed -n '70p' src/services/compact/autoCompact.ts              # MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES
+sed -n '147p' src/services/compact/autoCompact.ts             # isAutoCompactEnabled
+sed -n '160p' src/services/compact/autoCompact.ts             # shouldAutoCompact
+sed -n '241p' src/services/compact/autoCompact.ts             # autoCompactIfNeeded
+sed -n '93p' src/services/compact/autoCompact.ts              # calculateTokenWarningState
+sed -n '36p' src/services/compact/microCompact.ts             # TIME_BASED_MC_CLEARED_MESSAGE
+sed -n '41p' src/services/compact/microCompact.ts             # COMPACTABLE_TOOLS
+sed -n '253p' src/services/compact/microCompact.ts            # microcompactMessages
+sed -n '22p' src/services/compact/timeBasedMCConfig.ts        # 60 minutes comment
+sed -n '32p' src/services/compact/timeBasedMCConfig.ts        # defaults
+sed -n '122p' src/services/compact/compact.ts                 # POST_COMPACT_MAX_FILES_TO_RESTORE
+sed -n '123p' src/services/compact/compact.ts                 # POST_COMPACT_TOKEN_BUDGET
+sed -n '403p' src/services/compact/sessionMemoryCompact.ts    # shouldUseSessionMemoryCompaction
+sed -n '396p' src/query.ts                                    # 压缩顺序注释
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch11.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围（含 stub 说明） |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

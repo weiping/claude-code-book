@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant User as 用户输入
+    participant REPL as REPL
+    participant QE as QueryEngine
+    participant Q as query.ts
+    participant API as Claude API
+    participant T as Tool（任意工具）
+
+    User->>REPL: 输入文本
+    REPL->>QE: submitMessage()
+    QE->>Q: query()
+    Q->>API: 流式请求
+    API-->>Q: tool_use block
+    Q->>T: tool.call()
+    T-->>Q: ToolResult
+    Q->>API: tool_result 回填
+    API-->>Q: 继续流式输出
+    Q-->>QE: yield 事件流
+    QE-->>REPL: 更新 UI

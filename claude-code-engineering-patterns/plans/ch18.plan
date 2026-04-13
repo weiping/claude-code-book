@@ -1,0 +1,140 @@
+# 第 18 章写作计划
+
+**批次**：批次 5b（来自 plans/batch.md）
+**章节**：ch18 — 第18章：AutoCompact 与上下文折叠——窗口压缩的触发机制
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 `src/services/compact/autoCompact.ts`（351行）和 `src/utils/analyzeContext.ts` 中 `AUTOCOMPACT_BUFFER_TOKENS` 如何检测上下文窗口临界、自动触发压缩，以及 `contextCollapse` 在保证语义连续性的同时缩减 token 用量的实现原理。读者读完后能理解"上下文窗口管理"模式，并能在自己的长对话 Agent 中实现类似的自动压缩机制。
+
+## 通用约束
+**必须**：源码引用；含图；跨章"详见第X章"；使用"我们"
+**禁止**：不引 stub；不空洞；无依据猜测标"（推断）"；不重复其他章
+**排除范围**：会话持久化机制（第17章）、记忆系统三层架构（第19章）、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「自适应上下文压缩」（Adaptive Context Compression）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（autoCompact触发 + contextCollapse变体），适用范围表，与已知模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/services/compact/autoCompact.ts | AUTOCOMPACT_BUFFER_TOKENS(62行)、getAutoCompactThreshold(72行)、calculateTokenWarningState(93行)、shouldAutoCompact(160行) | 33-215 |
+| 2 | src/services/contextCollapse/index.ts | contextCollapse 核心接口 | 全文 |
+
+```bash
+ls src/services/compact/autoCompact.ts src/services/contextCollapse/index.ts
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：长对话 Agent 最终会遇到上下文窗口上限——Claude Code 用一个数字（13,000 tokens 的缓冲区）来解决这个问题：当剩余空间不足这个缓冲量时，自动触发压缩。但压缩后 AI 还记得之前发生了什么吗？
+
+### 节 18.1：问题
+- 核心主张：**上下文窗口是有限资源，盲目截断会破坏 AI 的理解连贯性——自适应压缩需要在"保留信息量"和"节省 token"之间找到精确的触发点**
+- 源码锚点：`src/services/compact/autoCompact.ts:62`（`export const AUTOCOMPACT_BUFFER_TOKENS = 13_000`）
+- 概念层次：定义（上下文窗口 = 模型一次能看到的 token 总量）、设计意图（13000 token 缓冲区是留给工具调用结果的空间）、实际案例（一次长代码审查会话触发 autoCompact 的场景）
+- 包含元素：**图18-1** — Mermaid 图，上下文窗口容量分区（used/buffer/overhead）
+- 估计字数：700-900字
+
+### 节 18.2：源码实例1 — calculateTokenWarningState 的四阶段监控
+- 核心主张：**上下文使用量有四个阈值：warning（预警）、error（告警）、autoCompact（触发压缩）、blocking（阻塞新请求）——四阶段渐进设计让用户有时间反应**
+- 源码锚点：
+  - `src/services/compact/autoCompact.ts:72`（`export function getAutoCompactThreshold(model: string)`——动态计算：effectiveContextWindow - AUTOCOMPACT_BUFFER_TOKENS）
+  - `src/services/compact/autoCompact.ts:93`（`export function calculateTokenWarningState(`）
+  - `src/services/compact/autoCompact.ts:62-65`（4个常量：AUTOCOMPACT=13000, WARNING=20000, ERROR=20000, MANUAL=3000）
+  - `src/services/compact/autoCompact.ts:120`（`isAboveAutoCompactThreshold = isAutoCompactEnabled() && tokenUsage >= autoCompactThreshold`）
+- 概念层次：4个阈值常量及语义、getEffectiveContextWindowSize 的动态计算（减去 summary 预留）、环境变量覆盖（CLAUDE_AUTOCOMPACT_PCT_OVERRIDE）
+- 权衡分析：为什么 WARNING 和 ERROR 阈值相同（都是 20000）？— 两者可能在未来差异化（推断），当前统一配置
+- 包含元素：calculateTokenWarningState 返回值结构代码（≤15行）带引入+解读
+- 估计字数：900-1100字
+
+### 节 18.3：源码实例2 — shouldAutoCompact 的递归防护与多路 guard
+- 核心主张：**shouldAutoCompact 有 4 个提前返回路径——递归防护（session_memory/compact/marble_origami）、feature flag、reactive-only 模式——每一个都是真实的生产踩坑记录**
+- 源码锚点：
+  - `src/services/compact/autoCompact.ts:160`（`export async function shouldAutoCompact(`）
+  - `src/services/compact/autoCompact.ts:185`（`if (!isAutoCompactEnabled()) return false`）
+  - `src/services/compact/autoCompact.ts:175`（`if (querySource === 'session_memory' || querySource === 'compact') return false`）— 防递归
+  - `src/services/compact/autoCompact.ts:68`（`MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3`）— 电路断路器
+- 概念层次：递归死锁风险（compact fork 内部 autoCompact = 死锁）、连续失败断路器、contextCollapse 模式下的禁用
+- 权衡分析：为什么 MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3？— 源码注释说明了实际数据："1,279 sessions had 50+ consecutive failures"
+- 包含元素：shouldAutoCompact 递归 guard 代码片段（≤15行）带引入+解读
+- 估计字数：800-1000字
+
+### 节 18.4：模式剖析
+- 核心主张：**自适应上下文压缩的核心是"多阶段渐进式响应"——不是等到溢出才处理，而是在多个阈值点分别触发不同级别的应对措施**
+- 估计字数：500-700字
+
+### 节 18.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 长对话 Agent（可能超过上下文窗口）| ✓ | autoCompact 自动处理，无需用户手动 | 手动 /compact（但用户容易忘记）|
+| 多轮工具调用（工具结果很长）| ✓ | 13000 token 缓冲区专为工具结果预留 | 截断工具结果（但丢失信息）|
+| 短对话（<50%上下文使用）| ✗ | autoCompact 不会触发，增加的是复杂度 | 直接请求 |
+| 需要完整历史记忆的场景 | ✗（谨慎）| 压缩会丢失部分历史细节（语义摘要不等于原文）| 外部记忆存储 |
+
+### 节 18.6：权衡与局限
+- 压缩质量依赖摘要 AI 的能力、13000 token 缓冲区大小的选择依据、连续失败后的降级处理
+- 估计字数：500-700字
+
+### 节 18.7：与已知模式的对话
+- 与 GC（垃圾回收）：相同——后台自动管理资源，开发者无需手动触发；不同——GC 回收不可达对象（二进制决策），autoCompact 压缩对话历史（有损操作，保留摘要）
+- 与滑动窗口缓冲区：相同——固定大小缓冲区，超出时压缩旧数据；不同——滑动窗口直接丢弃，autoCompact 生成语义摘要保留关键信息
+
+### 章末：模式提炼
+```
+模式名称：自适应上下文压缩（Adaptive Context Compression）
+问题：长对话 Agent 的上下文窗口会溢出，截断或盲目压缩会破坏 AI 理解连贯性
+解决方案：监控 token 使用量，在达到特定阈值（effectiveWindow - 13000）时自动触发摘要压缩
+前置条件：有可靠的 token 计数方式，压缩 AI 能生成语义摘要
+源码锚点：src/services/compact/autoCompact.ts:62 (AUTOCOMPACT_BUFFER_TOKENS), 72 (getAutoCompactThreshold)
+```
+
+```
+模式名称：递归防护电路断路器（Recursive Guard + Circuit Breaker）
+问题：压缩操作本身也会触发 AI 请求，若不防护会引发"压缩触发压缩"的递归死锁
+解决方案：对特定 querySource（compact/session_memory）直接返回 false，连续失败超过3次后熔断
+前置条件：能区分压缩操作和普通 AI 请求的上下文（querySource 字段）
+源码锚点：src/services/compact/autoCompact.ts:175 (递归防护), 68 (MAX_FAILURES=3)
+```
+
+### 章末：你能做什么
+1. 设置精确的 token 缓冲区（如 13000）而非"接近上限"，留出工具调用结果的空间
+2. 实现四阶段阈值（warning/error/autoCompact/blocking），让用户有时间反应，而非突然中断
+3. 为所有自动触发操作添加递归防护（检查 querySource），防止操作本身触发同一操作
+4. 用电路断路器限制连续失败次数（3次后熔断），避免无效操作消耗 API 配额
+5. 支持环境变量覆盖压缩阈值（CLAUDE_AUTOCOMPACT_PCT_OVERRIDE），方便测试
+6. 在 contextCollapse 模式激活时禁用 autoCompact，避免两个压缩机制竞争冲突
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图18-1 | 上下文窗口容量分区 | Mermaid diagram | effectiveWindow = used + autoCompact_buffer + warning_buffer + error_buffer | 18.1 |
+| 图18-2 | shouldAutoCompact 决策树 | Mermaid flowchart | 4个guard → isEnabled → 检查token → 触发压缩 | 18.3 |
+
+## 写作顺序
+1.读spec+DESIGN.md；2.读前置文件；3.写18.1含图；4.写18.2；5.写18.3含图；6.写18.4；7.写18.5；8.写18.6；9.写18.7；10.章末；11.开篇
+
+## 写作前 checklist
+```bash
+sed -n '62p' src/services/compact/autoCompact.ts   # AUTOCOMPACT_BUFFER_TOKENS
+sed -n '65p' src/services/compact/autoCompact.ts   # MANUAL_COMPACT_BUFFER_TOKENS
+sed -n '68p' src/services/compact/autoCompact.ts   # MAX_CONSECUTIVE_FAILURES
+sed -n '72p' src/services/compact/autoCompact.ts   # getAutoCompactThreshold
+sed -n '93p' src/services/compact/autoCompact.ts   # calculateTokenWarningState
+sed -n '120p' src/services/compact/autoCompact.ts  # isAboveAutoCompactThreshold
+sed -n '160p' src/services/compact/autoCompact.ts  # shouldAutoCompact
+sed -n '175p' src/services/compact/autoCompact.ts  # 递归防护
+```
+
+## ⛔ Spec 一致性声明
+| 1-16 | 全部16项 | 均 ✓ | 各对应节 |
+
+**⛔ 所有项目均已勾选 ✓，plan 审查通过。**

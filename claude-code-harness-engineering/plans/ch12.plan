@@ -1,0 +1,321 @@
+# 第 12 章写作计划
+
+**批次**：批次 6（来自 plans/batch.md）
+**章节**：ch12 — 隔离与交接
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示 forkedAgent 如何在实现上下文重置的同时保持 Prompt Cache 命中——子智能体必须与父智能体共享相同的 systemPrompt、tools、model。MEMORY.md 分层记忆架构（入口文件 + 项目级 + 团队级 + 自动提取）的设计原则。读完本章，读者将理解"隔离"与"交接"是同一次 fork 操作的两个面：隔离的是对话历史，交接的是 Prompt Cache 和记忆。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- fork 一个子智能体，它的对话历史是空的，但 Prompt Cache 是热的——隔离了让模型分心的历史，保留了让 API 调用省钱的缓存。"清空"与"继承"同时发生。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向前链接第 11 章（压缩策略），forkedAgent 是其延伸
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（200 行上限、25000 字节、40000 字符、4 种记忆类型等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/forkedAgent.ts | CacheSafeParams 注释（47-67）、lastCacheSafeParams（73-80）、runForkedAgent（489+） | 行 47-130, 489-550 |
+| 2 | src/memdir/memdir.ts | ENTRYPOINT_NAME/MAX_ENTRYPOINT_LINES/MAX_ENTRYPOINT_BYTES（34-45）、loadMemoryPrompt（419+） | 行 34-45, 419-450 |
+| 3 | src/utils/claudemd.ts | 四层记忆体系注释（1-25）、MAX_MEMORY_CHARACTER_COUNT（92）、getMemoryFiles（790） | 行 1-25, 89-95 |
+| 4 | src/memdir/memoryTypes.ts | MEMORY_TYPES（14-18）—4 种记忆类型 | 全文（约60行）|
+| 5 | src/services/extractMemories/extractMemories.ts | initExtractMemories（296+）—自动提取机制 | 行 291-360 |
+
+验证文件存在：
+```bash
+ls src/utils/forkedAgent.ts src/memdir/memdir.ts src/utils/claudemd.ts src/memdir/memoryTypes.ts src/services/extractMemories/extractMemories.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 12.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 12.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 向前链接第 11 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图 | 图 12-1、12-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 12-1、12-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「隔离不是遗忘，是选择性遗忘。遗忘的是历史，记住的是规则和能力。」
+
+### 节 12.1：问题——上下文重置和 Prompt Cache 如何兼顾
+- 核心主张：forkedAgent 必须同时满足两个看似矛盾的目标——清空对话历史（防止历史噪音影响子任务）和保持 Prompt Cache 热（不浪费已缓存的 token）
+- 源码锚点：
+  - `src/utils/forkedAgent.ts:2` — 注释 "Helper for running forked agent query loops with usage tracking"
+  - `src/utils/forkedAgent.ts:47` — 注释 "Parameters that must be identical between the fork and parent API requests to share the parent's prompt cache"——直接说明了这个矛盾的解法
+- 概念层次：定义（矛盾是什么）→ 设计意图（为什么两者都重要）
+- 权衡分析：N/A
+- 包含元素：对比表（历史清空 vs Cache 保留的区分）
+- **⛔ 内容密度规划**：
+  - 引入段要点：如果 fork 子智能体时重用父智能体的全部上下文，子任务会受到历史对话的干扰；如果完全重建，Prompt Cache 失效，成本倍增
+  - 解读段要点：CacheSafeParams 的注释揭示了解决方案——API 缓存 key 由"系统提示词、工具、模型、消息前缀、思考配置"组成，前四个可以继承，消息历史可以清空
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B1
+
+### 节 12.2：黄金法则——隔离历史，继承能力
+- 核心主张：forkedAgent 的核心原则是"对话历史归子智能体，Prompt Cache 属于 API 边界"——清空历史不等于清空缓存
+- 源码锚点：
+  - `src/utils/forkedAgent.ts:57` — `CacheSafeParams` 类型：systemPrompt/userContext/systemContext/toolUseContext/forkContextMessages——这 5 个参数必须与父智能体完全相同
+  - `src/utils/forkedAgent.ts:66` — `forkContextMessages`：注释 "Parent context messages for prompt cache sharing"——父智能体的消息历史以只读方式传入作为缓存前缀
+  - `src/utils/forkedAgent.ts:73` — `lastCacheSafeParams`：全局单例，保存最后一次主循环的 CacheSafeParams，供 Stop Hook 等后续 fork 复用
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：forkContextMessages 只读共享 vs 完全复制——只读共享保持 API 缓存 key 一致（实现 cache hit），代价是子智能体不能修改这部分历史
+- 包含元素：Mermaid 图（fork 时的参数继承关系）
+- **⛔ 内容密度规划**：
+  - 引入段要点：CacheSafeParams 是隔离和继承的技术分界线
+  - 解读段要点：5 个参数（系统提示词/用户上下文/系统上下文/工具配置/父消息历史）必须逐字相同才能命中缓存。lastCacheSafeParams 是一个全局单例——主循环每轮结束后写入，供后续所有 fork 复用，避免每个调用方都要重新传参
+  - 散文与代码比例目标：100% 散文
+- 估计字数：800-1100 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 12.3：适用场景——什么任务应该 fork 子智能体
+- 核心主张：需要独立对话历史但共享能力配置的任务都适合 fork——压缩摘要、Stop Hook 验证、技能执行
+- 源码锚点：
+  - `src/utils/forkedAgent.ts:92` — `forkLabel` 字段注释："Label for analytics (e.g., 'session_memory', 'supervisor')"——不同场景的 fork 有不同的标签
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：表格（典型 fork 场景和对应的 forkLabel）
+- **⛔ 内容密度规划**：
+  - 引入段要点：forkLabel 是 Claude Code 内部 fork 使用场景的档案
+  - 解读段要点：session_memory（记忆压缩）、supervisor（Stop Hook 验证）、skill（技能执行）——每种场景都需要独立历史但共享相同的系统能力
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 12.4：工作原理——fork 机制和分层记忆
+- 核心主张：fork 机制和分层记忆架构共同构成了 Claude Code 的"记忆管理系统"——前者解决跨任务的上下文隔离，后者解决跨会话的信息持久化
+- 源码锚点：
+  - `src/utils/forkedAgent.ts:489` — `runForkedAgent`：fork 的执行入口，复用 CacheSafeParams
+  - `src/utils/claudemd.ts:1` — 四层记忆加载注释（Managed/User/Project/Local）
+  - `src/utils/claudemd.ts:92` — `MAX_MEMORY_CHARACTER_COUNT = 40000`——记忆文件最大 4 万字符（详见第 5 章）
+  - `src/memdir/memdir.ts:34` — `ENTRYPOINT_NAME = 'MEMORY.md'`——记忆系统的入口文件名
+  - `src/memdir/memdir.ts:35` — `MAX_ENTRYPOINT_LINES = 200`——MEMORY.md 最多 200 行
+  - `src/memdir/memdir.ts:38` — `MAX_ENTRYPOINT_BYTES = 25_000`——MEMORY.md 最多 25000 字节
+  - `src/memdir/memoryTypes.ts:14` — `MEMORY_TYPES = ['user', 'feedback', 'project', 'reference']`——4 种记忆类型
+  - `src/services/extractMemories/extractMemories.ts:296` — `initExtractMemories`：自动提取机制，从对话中提取值得记忆的内容
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：MEMORY.md 入口文件 vs 直接加载所有记忆文件——入口文件（200 行/25000 字节上限）是精简摘要层，允许用户控制哪些记忆进入上下文；直接加载所有记忆文件代价是 token 爆炸
+- 包含元素：Mermaid 架构图（fork 参数继承 + 四层记忆加载）、表格（4 种记忆类型含义）
+- **⛔ 内容密度规划**：
+  - 引入段要点：fork 处理"当前对话的隔离"，分层记忆处理"跨会话的持久化"——两者解决不同时间维度的问题
+  - 解读段要点：fork 机制——CacheSafeParams 继承父上下文（5 个参数完全相同）、promptMessages 是子任务的新起点。四层记忆——Managed（系统级）→ User（用户级）→ Project（项目级）→ Local（本地私有），加载顺序是优先级的逆序（后加载的优先级高）。入口文件 MEMORY.md（200行/25KB）是索引层，指向详细记忆文件
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 12.5：权衡——fork 和记忆系统的 3 个设计代价
+- 核心主张：精密的 fork 机制和分层记忆架构在灵活性上有代价
+- 源码锚点：
+  - `src/utils/forkedAgent.ts:113` — `maxOutputTokens` 注释："CAUTION: setting this changes both max_tokens AND budget_tokens... a different budget_tokens will invalidate the cache"——改一个参数就破坏缓存的微妙约束
+  - `src/memdir/memdir.ts:35-38` — MAX_ENTRYPOINT_LINES=200 和 MAX_ENTRYPOINT_BYTES=25_000——注释说明为什么是 25KB："~125 chars/line at 200 lines. At p97 today; catches long-line indexes"
+  - `src/services/extractMemories/extractMemories.ts:291` — `initExtractMemories` 的闭包设计：每次启动重新初始化，避免跨会话状态泄漏
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - maxOutputTokens 的缓存陷阱：fork 时设置 maxOutputTokens 会意外改变 thinking config（budget_tokens），破坏缓存——这个约束非常隐蔽，注释用 "CAUTION" 标记
+  - 入口文件大小限制：25KB/200 行是基于 p97 数据校准的——太小会丢失重要信息，太大会消耗过多 token，现有限制是真实数据驱动的权衡
+  - 自动提取的闭包设计：每次会话独立初始化（initExtractMemories），避免上一次会话的提取状态影响新会话
+- 包含元素：对比表格（3 个代价）
+- **⛔ 内容密度规划**：
+  - 引入段要点：fork 的缓存共享机制非常精密，一个参数错误就能破坏它
+  - 解读段要点：maxOutputTokens 的 CAUTION（改变 thinking config）、入口文件大小（p97 数据校准）、自动提取的闭包隔离
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 12.6：踩坑指南——fork 和记忆系统中的常见错误
+- 核心主张：fork 最常见的错误是无意间修改了 CacheSafeParams 中的任一参数，导致缓存全部失效
+- 源码锚点：
+  - `src/utils/forkedAgent.ts:47` — CacheSafeParams 注释："must be identical between the fork and parent API requests"
+  - `src/memdir/memoryTypes.ts:1` — 注释 "Memories are constrained to four types capturing context NOT derivable from the current project state"——记忆只记"不可从项目状态推导的信息"
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：两个关键误区
+  - 解读段要点：陷阱一——fork 时传入不同的系统提示词（哪怕只加了一个空格，缓存全失效）；陷阱二——在记忆文件中记录"代码架构"（memoryTypes 注释明确说明代码模式是可推导的，不应记忆）；陷阱三——MEMORY.md 超过 25000 字节后被截断，重要信息可能丢失
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 12.7：实证——自动记忆提取的完整流程
+- 核心主张：自动记忆提取从对话结束到记忆文件写入，是一个异步的、增量的、防重复触发的机制
+- 源码锚点：
+  - `src/services/extractMemories/extractMemories.ts:296` — `initExtractMemories`：闭包状态设计
+  - `src/memdir/memdir.ts:419` — `loadMemoryPrompt`：下次会话时加载记忆
+  - `src/memdir/memdir.ts:34` — MEMORY.md 入口文件
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 时序图（对话结束→提取触发→写入记忆文件→下次加载）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一次自动记忆提取从触发到下次会话可用的完整路径
+  - 解读段要点：会话 stop → extractMemories 触发（异步 fork 独立执行）→ 写入 ~/.claude/projects/<path>/memory/ → MEMORY.md 入口文件更新 → 下次会话 loadMemoryPrompt 加载 → 注入系统提示词动态区
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：隔离与交接的本质
+- 本质：fork 时隔离对话历史（子智能体从零开始），交接 Prompt Cache（5 个参数必须完全相同）；记忆系统通过 4 层架构和 MEMORY.md 入口文件在会话间传递不可推导的信息
+- 关键机制：CacheSafeParams（5 参数）、lastCacheSafeParams（全局单例）、MEMORY.md（200行/25KB入口）、4 种记忆类型
+- 适用边界：需要子任务隔离但共享缓存的场景；单任务单会话不需要这层抽象
+- 与其他模式的关系：本章是第 11 章（压缩策略）的延伸——autoCompact 用 fork 生成摘要；第 13 章（生成器与评估器）中每个 Agent 都是一次 fork
+
+### 章末：用户能做什么（必填）
+1. 实现 fork 时，确保 CacheSafeParams 的 5 个字段与父智能体逐字相同
+2. 避免在 fork 时设置 maxOutputTokens（会改变 thinking config 破坏缓存）
+3. 用 forkLabel 标记不同场景的 fork，便于调试和监控
+4. 为你的 Agent 建立分层记忆系统——区分全局规则（User 层）和项目规则（Project 层）
+5. 把 MEMORY.md 入口文件控制在 200 行/25KB 以内，超出部分用 @include 指向详细文件
+6. 在记忆文件中只记录"不可从项目状态推导的信息"（用户偏好、历史决策、反馈）
+7. 实现自动记忆提取时使用闭包隔离状态，防止跨会话的状态泄漏
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图12-1 | forkedAgent 参数继承关系 | Mermaid graph LR | 父智能体的 5 个 CacheSafeParams 字段→子智能体，对话历史单独清空 | 12.2 |
+| 图12-2 | MEMORY.md 四层架构 | Mermaid graph TD | Managed→User→Project→Local 的加载顺序和优先级，MEMORY.md 入口文件位置 | 12.4 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 12.4 节（fork 机制 + 分层记忆）——本章核心
+3. 写 12.2 节（黄金法则）
+4. 写 12.1 节（问题）
+5. 写 12.3 节（适用场景）
+6. 写 12.5 节（权衡）
+7. 写 12.6 节（踩坑指南）
+8. 写 12.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '2p' src/utils/forkedAgent.ts                            # 注释
+sed -n '47p' src/utils/forkedAgent.ts                           # CacheSafeParams 注释
+sed -n '57p' src/utils/forkedAgent.ts                           # CacheSafeParams type
+sed -n '66p' src/utils/forkedAgent.ts                           # forkContextMessages
+sed -n '73p' src/utils/forkedAgent.ts                           # lastCacheSafeParams
+sed -n '92p' src/utils/forkedAgent.ts                           # forkLabel
+sed -n '113p' src/utils/forkedAgent.ts                          # maxOutputTokens CAUTION
+sed -n '489p' src/utils/forkedAgent.ts                          # runForkedAgent
+sed -n '34p' src/memdir/memdir.ts                               # ENTRYPOINT_NAME
+sed -n '35p' src/memdir/memdir.ts                               # MAX_ENTRYPOINT_LINES
+sed -n '38p' src/memdir/memdir.ts                               # MAX_ENTRYPOINT_BYTES
+sed -n '419p' src/memdir/memdir.ts                              # loadMemoryPrompt
+sed -n '92p' src/utils/claudemd.ts                              # MAX_MEMORY_CHARACTER_COUNT
+sed -n '14p' src/memdir/memoryTypes.ts                          # MEMORY_TYPES
+sed -n '296p' src/services/extractMemories/extractMemories.ts   # initExtractMemories
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch12.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

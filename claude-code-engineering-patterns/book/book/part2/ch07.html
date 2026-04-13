@@ -1,0 +1,522 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 7 章：Effort、Fast Mode 与 Thinking——推理深度控制的三轴 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-7-章effortfast-mode-与-thinking推理深度控制的三轴"><a class="header" href="#第-7-章effortfast-mode-与-thinking推理深度控制的三轴">第 7 章：Effort、Fast Mode 与 Thinking——推理深度控制的三轴</a></h1>
+<blockquote>
+<p>"能力可以是参数，而不必是常量。"</p>
+</blockquote>
+<p>一个 AI Agent 系统的推理深度并不是单一旋钮。想象你需要三种不同的控制：在批处理夜间作业中强制低成本（关小 effort 旋钮）；在用户等待的交互场景中追求最低延迟（打开 fast mode）；在处理复杂架构分析时开启深度推理（给 thinking 分配预算）。如果这三个控制互相耦合——比如"低延迟"就意味着"浅推理"——你将永远无法同时满足所有场景的需求。</p>
+<p>Claude Code 的代码库里有一个重复出现的解决方案：<strong>正交推理深度控制（Orthogonal Reasoning Depth Control）</strong>——三轴各自独立定义，拥有独立的能力检测和优先级覆盖链，互不干扰地组合。</p>
+<p>读完本章，你能理解三轴控制背后的类型设计和优先级逻辑，并在自己的 Agent 系统中设计同样正交的推理深度控制机制。</p>
+<hr />
+<h2 id="71-问题推理深度的多维困境"><a class="header" href="#71-问题推理深度的多维困境">7.1 问题：推理深度的多维困境</a></h2>
+<p>多模型 Agent 的推理深度调控面临一个不直观的挑战：<strong>"思考多深"和"响应多快"并不是同一个维度的反义词</strong>。</p>
+<p>以下三个控制需求在概念上完全正交：</p>
+<p><strong>表 7-1：三轴推理深度控制对比</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>控制轴</th><th>主文件</th><th>核心类型</th><th>控制的是什么</th><th>能力检测函数</th></tr></thead><tbody>
+<tr><td>Effort 级别</td><td><code>effort.ts</code>（329 行）</td><td><code>EffortLevel = 'low'|'medium'|'high'|'max'</code></td><td>API 推理计算量（token budget 风格参数）</td><td><code>modelSupportsEffort()</code></td></tr>
+<tr><td>Fast Mode</td><td><code>fastMode.ts</code></td><td><code>'off'|'cooldown'|'on'</code></td><td>网络/计费优化，降低端到端延迟</td><td><code>isFastModeSupportedByModel()</code></td></tr>
+<tr><td>Thinking 预算</td><td><code>thinking.ts</code>（162 行）</td><td><code>ThinkingConfig</code>（union type）</td><td>扩展推理（extended thinking）的 token 分配</td><td><code>modelSupportsThinking()</code></td></tr>
+</tbody></table>
+</div>
+<p>三轴正交意味着可以独立组合：高 effort + thinking 启用（深度慢思考）、低 effort + fast mode（快速浅响应）、高 effort + fast mode（快速深响应）都是合法的配置。<strong>三轴控制的每个轴有自己的文件、自己的类型定义、自己的优先级覆盖链</strong>——这是正交性的代码体现。</p>
+<p>正交设计的代价是每个轴都需要独立维护。我们先看最典型的一轴——Effort——来理解优先级链的设计。</p>
+<hr />
+<h2 id="72-源码实例-1resolveappliedeffort-的三层优先级链"><a class="header" href="#72-源码实例-1resolveappliedeffort-的三层优先级链">7.2 源码实例 1：resolveAppliedEffort 的三层优先级链</a></h2>
+<p>Effort 轴的核心是 <code>EFFORT_LEVELS</code> 和 <code>resolveAppliedEffort</code>。先看类型定义：</p>
+<pre><code class="language-typescript">// src/utils/effort.ts:13-19
+export const EFFORT_LEVELS = [
+  'low',
+  'medium',
+  'high',
+  'max',
+] as const satisfies readonly EffortLevel[]
+
+export type EffortValue = EffortLevel | number
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/effort.ts:13-19</code></p>
+<p>四个级别加上一个数值类型构成了 effort 的值空间。<code>as const satisfies</code> 是 TypeScript 4.9 的新写法：<code>as const</code> 确保推导出精确的字面量联合类型而非 <code>string[]</code>，<code>satisfies</code> 在不改变推导类型的前提下检查类型兼容性。这个写法使得 <code>isEffortLevel('medium')</code> 这样的类型守卫可以正确工作。</p>
+<p>值得注意的是：<strong><code>EffortValue = EffortLevel | number</code></strong> 而非仅仅是 <code>EffortLevel</code>。数值型 effort 允许传入比枚举更细粒度的数字（可能是 API 内部实现的数值化 effort）。但对于普通调用，枚举字符串是标准接口。</p>
+<p>现在看决策核心——<code>resolveAppliedEffort</code>（line 152）的优先级链注释：</p>
+<pre><code class="language-typescript">// src/utils/effort.ts:144-165（含注释）
+// 发送给 API 的 effort 值的完整优先级链：
+//   CLAUDE_CODE_EFFORT_LEVEL 环境变量 → appState.effortValue → 模型默认值
+//
+// 当环境变量设为 'unset' 或 'auto' 时，返回 undefined（不发送 effort 参数）。
+//（原文："Resolve the effort value that will actually be sent to the API for a given
+//   model, following the full precedence chain:
+//     env CLAUDE_CODE_EFFORT_LEVEL → appState.effortValue → model default
+//   Returns undefined when no effort parameter should be sent (env set to
+//   'unset', or no default exists for the model)."）
+export function resolveAppliedEffort(
+  model: string,
+  appStateEffortValue: EffortValue | undefined,
+): EffortValue | undefined {
+  const envOverride = getEffortEnvOverride()
+  if (envOverride === null) {
+    return undefined  // 'unset'/'auto' → 不发送 effort 参数
+  }
+  const resolved =
+    envOverride ?? appStateEffortValue ?? getDefaultEffortForModel(model)
+  // API 拒绝非 Opus 4.6 模型的 'max' effort —— 降级为 'high'
+  // （原文："API rejects 'max' on non-Opus-4.6 models — downgrade to 'high'."）
+  if (resolved === 'max' &amp;&amp; !modelSupportsMaxEffort(model)) {
+    return 'high'
+  }
+  return resolved
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/effort.ts:152-167</code></p>
+<p>这段代码里有两个值得深挖的设计细节。</p>
+<p><strong>第一：NULL case 的语义区分</strong>。<code>getEffortEnvOverride()</code> 可能返回三种值：<code>undefined</code>（没有设置 env var）、<code>null</code>（设置为 'unset' 或 'auto'）、具体值。当返回 <code>null</code> 时，<code>resolveAppliedEffort</code> 直接返回 <code>undefined</code>，表示"不要发送 effort 参数"。这与返回 'high'（发送 effort=high）语义完全不同——前者是"不干预，让 API 用自己的默认值"，后者是"显式告诉 API 用 high"。这是一个精确的三态设计：<strong>明确设定值 / 明确取消 / 未设定（继续向下查找）</strong>。</p>
+<p><strong>第二：max effort 的隐式降级</strong>。<code>max</code> 只有 Opus 4.6 支持（<code>modelSupportsMaxEffort</code> 检查），如果用户对非 Opus 4.6 模型设置了 <code>max</code> effort，系统不报错，而是静默降级到 <code>high</code>。注释直接说"API rejects 'max' on non-Opus-4.6 models"——这是防御性降级，保护调用方不因模型升级/降级而产生 API 错误。</p>
+<p><strong>图 7-1：resolveAppliedEffort 三层优先级决策树</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    start([调用 resolveAppliedEffort]) --&gt; env{getEffortEnvOverride\n读取 CLAUDE_CODE_EFFORT_LEVEL}
+    env --&gt;|"null（env='unset'/'auto'）"| none["返回 undefined\n不发送 effort 参数"]
+    env --&gt;|"有具体值（如 'low'）"| max1{resolved === 'max'\n且模型不支持 max?}
+    env --&gt;|"undefined（未设置）"| app{appStateEffortValue\n不为 undefined?}
+    app --&gt;|"是（用户显式设置）"| max2{resolved === 'max'\n且模型不支持 max?}
+    app --&gt;|"否"| model_def["getDefaultEffortForModel(model)\n按订阅者/模型类型"]
+    model_def --&gt; max3{resolved === 'max'\n且模型不支持 max?}
+    max1 --&gt;|"是"| downgrade["降级为 'high'\n（静默处理）"]
+    max1 --&gt;|"否"| r1["返回 env 指定值"]
+    max2 --&gt;|"是"| downgrade
+    max2 --&gt;|"否"| r2["返回 appState 值"]
+    max3 --&gt;|"是"| downgrade
+    max3 --&gt;|"否"| r3["返回模型默认值"]
+</code></pre>
+<p>注意图中每个分支都有相同的 max 降级检查——这不是冗余，而是确保无论从哪一层取值都经过安全过滤。</p>
+<hr />
+<h2 id="73-源码实例-2变体thinkingconfig-的类型化联合状态"><a class="header" href="#73-源码实例-2变体thinkingconfig-的类型化联合状态">7.3 源码实例 2（变体）：ThinkingConfig 的类型化联合状态</a></h2>
+<p>Effort 用了枚举字符串，Thinking 选择了完全不同的类型表达方式。原因在于 thinking 有三种语义不同的状态，且其中一种需要携带额外参数：</p>
+<pre><code class="language-typescript">// src/utils/thinking.ts:10-13
+export type ThinkingConfig =
+  | { type: 'adaptive' }
+  | { type: 'enabled'; budgetTokens: number }
+  | { type: 'disabled' }
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/thinking.ts:10-13</code></p>
+<p>这个 union type 的设计揭示了 thinking 的三种模式：<code>adaptive</code> 让模型自主决定思考深度（不预设 <code>budgetTokens</code>）；<code>enabled</code> 显式分配 <code>budgetTokens</code> 个 token 给推理过程；<code>disabled</code> 完全关闭扩展推理。</p>
+<p><strong>为什么不用 boolean？</strong> <code>enabled: boolean</code> 表达不了 <code>adaptive</code> 状态（既不是固定 budget 的 enabled，也不是 disabled），也携带不了 <code>budgetTokens</code> 数值。如果用 <code>{ enabled: boolean, budgetTokens?: number }</code> 表达，会出现 <code>enabled: true, budgetTokens: undefined</code>（adaptive）和 <code>enabled: true, budgetTokens: 1000</code>（enabled）两种形态，但类型系统无法强制区分这两种情况。<strong>Union type 使每种状态的类型约束精确——<code>enabled</code> 状态必须有 <code>budgetTokens</code>，<code>adaptive</code> 状态不能有 <code>budgetTokens</code></strong>。</p>
+<p>这与 Effort 的枚举设计形成了有意思的对比：</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>Effort 设计</th><th>Thinking 设计</th></tr></thead><tbody>
+<tr><td>类型表达</td><td>枚举字符串 + 数值（<code>EffortLevel | number</code>）</td><td>Union type（每态可携带不同字段）</td></tr>
+<tr><td>为什么选这种</td><td>4 个状态权重相同，无附加参数</td><td>状态间的字段结构不同</td></tr>
+<tr><td>TypeScript 优势</td><td>字面量类型，可运行时检查</td><td>穷举判断，编译器辅助</td></tr>
+</tbody></table>
+</div>
+<p>Thinking 的默认行为由 <code>shouldEnableThinkingByDefault()</code> 决定（line 146）：</p>
+<pre><code class="language-typescript">// src/utils/thinking.ts:146-162
+export function shouldEnableThinkingByDefault(): boolean {
+  if (process.env.MAX_THINKING_TOKENS) {
+    return parseInt(process.env.MAX_THINKING_TOKENS, 10) &gt; 0
+  }
+
+  const { settings } = getSettingsWithErrors()
+  if (settings.alwaysThinkingEnabled === false) {
+    return false
+  }
+
+  // 除非显式禁用，否则默认启用 thinking
+  // （原文："Enable thinking by default unless explicitly disabled."）
+  return true
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/thinking.ts:146-162</code></p>
+<p><strong>Thinking 默认是开启的</strong>——除非 <code>MAX_THINKING_TOKENS=0</code> 或 <code>settings.alwaysThinkingEnabled === false</code> 显式关闭。这与 Effort 不同（Effort 默认不发送参数，除非模型有特定默认值）。设计逻辑是：thinking 对模型质量有显著提升，应该默认开启，用户主动关闭才不用。</p>
+<p>除了全局默认开关，thinking 还有另一条触发路径——用户在 prompt 中输入 "ultrathink" 关键词可显式请求深度推理：</p>
+<pre><code class="language-typescript">// src/utils/thinking.ts:27-30
+/**
+ * 检查文本中是否包含 "ultrathink" 关键词。
+ *（原文："Check if text contains the 'ultrathink' keyword."）
+ */
+export function hasUltrathinkKeyword(text: string): boolean {
+  return /\bultrathink\b/i.test(text)
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/thinking.ts:29</code></p>
+<p><code>hasUltrathinkKeyword</code> 是一个单行函数——词边界正则 <code>\b</code> 确保 "ultrathink" 是独立单词（而非 "ultrathinking" 的子串），大小写不敏感。这个"魔法词"入口让用户无需修改配置，只需在 prompt 里加上 "ultrathink" 即可告诉 Claude Code："这次任务请深入推理"。两种触发路径形成了 thinking 的完整入口：<strong>系统级</strong>（<code>shouldEnableThinkingByDefault</code> 默认全开）和<strong>用户级</strong>（<code>hasUltrathinkKeyword</code> 按需激活）。</p>
+<p>但能否实际启用 thinking，还需要通过 <code>modelSupportsThinking()</code> 的能力检测（line 90）：</p>
+<pre><code class="language-typescript">// src/utils/thinking.ts:90-110（精简版）
+// 1P 和 Foundry：所有 Claude 4+ 模型支持 thinking（含 Haiku 4.5）
+// 3P（Bedrock/Vertex）：只有 Opus 4+ 和 Sonnet 4+ 支持
+export function modelSupportsThinking(model: string): boolean {
+  // ...3P 覆盖检查...
+  const canonical = getCanonicalName(model)
+  const provider = getAPIProvider()
+  if (provider === 'foundry' || provider === 'firstParty') {
+    return !canonical.includes('claude-3-')  // Claude 4+ 全部支持
+  }
+  return canonical.includes('sonnet-4') || canonical.includes('opus-4')  // 3P 限制
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/thinking.ts:90-110</code></p>
+<p>1P 和 Foundry 的检测逻辑是<strong>排除式</strong>（排除 claude-3-* 即可），而 3P 是<strong>包含式</strong>（明确列出支持的模型）。这个差异体现了 1P 的快速迭代策略：新 Claude 4+ 模型默认支持 thinking，不需要每次发布都手动加入白名单；而 3P 平台（Bedrock、Vertex）的模型可用性有独立的发布节奏，必须保守地维护允许列表。</p>
+<p><strong>图 7-2：ThinkingConfig 类型结构与路由</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    call["调用方 - 需要 thinking 配置"] --&gt; check{modelSupportsThinking?}
+    check --&gt;|否| disabled["ThinkingConfig\n{ type: 'disabled' }"]
+    check --&gt;|是| adaptive_check{modelSupportsAdaptiveThinking?}
+    adaptive_check --&gt;|是| adaptive["ThinkingConfig\n{ type: 'adaptive' }\n模型自主决定 budget"]
+    adaptive_check --&gt;|否| default_check{shouldEnableThinkingByDefault?}
+    default_check --&gt;|否| disabled
+    default_check --&gt;|是| budget{"有 budgetTokens\nMAX_THINKING_TOKENS?"}
+    budget --&gt;|"有（env/config 设定）"| enabled["ThinkingConfig\n{ type: 'enabled', budgetTokens: N }"]
+    budget --&gt;|"无"| adaptive2["ThinkingConfig\n{ type: 'adaptive' }"]
+</code></pre>
+<hr />
+<h2 id="74-模式剖析正交推理深度控制orthogonal-reasoning-depth-control"><a class="header" href="#74-模式剖析正交推理深度控制orthogonal-reasoning-depth-control">7.4 模式剖析：正交推理深度控制（Orthogonal Reasoning Depth Control）</a></h2>
+<p>现在提炼三轴正交设计背后的核心模式。</p>
+<h3 id="模式命名框"><a class="header" href="#模式命名框">模式命名框</a></h3>
+<p><strong>正交推理深度控制（Orthogonal Reasoning Depth Control）</strong></p>
+<p><strong>解决的问题</strong>：Agent 系统需要独立控制推理的计算量（effort）、响应延迟（fast mode）和扩展推理深度（thinking），三者若耦合则无法精细调优。</p>
+<p><strong>核心做法</strong>：三轴各自独立定义类型（<code>EffortLevel</code> 枚举 / <code>'off'|'cooldown'|'on'</code> 状态 / <code>ThinkingConfig</code> union）、能力检测函数（<code>modelSupportsEffort</code> / <code>isFastModeSupportedByModel</code> / <code>modelSupportsThinking</code>）和优先级覆盖链。调用方按需组合三轴，系统确保每轴的能力门控和降级逻辑独立运行。</p>
+<p><strong>前置条件</strong>：底层 API 分别支持对这三个维度的控制；模型有明确的能力边界（不同模型支持不同的三轴配置）；需要支持 CI/CD 环境通过环境变量覆盖任意轴。</p>
+<p><strong>源码证据</strong>：<code>src/utils/effort.ts:152</code>（三层优先级覆盖链）；<code>src/utils/thinking.ts:10</code>（union type 状态机）；<code>src/utils/fastMode.ts:319</code>（多条件 AND 门控）</p>
+<hr />
+<h2 id="75-适用范围"><a class="header" href="#75-适用范围">7.5 适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用</th><th>理由 / 替代方案</th></tr></thead><tbody>
+<tr><td>Agent 有多种任务复杂度（分类/修改/分析）</td><td>✓</td><td>轻任务低 effort + 无 thinking，复杂任务高 effort + adaptive thinking</td></tr>
+<tr><td>需要 CI/CD 环境强制低成本</td><td>✓</td><td><code>CLAUDE_CODE_EFFORT_LEVEL=low</code> 或 <code>MAX_THINKING_TOKENS=0</code> 无侵入覆盖</td></tr>
+<tr><td>实时交互场景（用户等待）</td><td>✓</td><td>fast mode 降低延迟，effort 设为 low 减少计算量</td></tr>
+<tr><td>批处理/离线场景（质量优先）</td><td>✓</td><td>effort=max（仅 Opus 4.6），thinking=enabled 分配充足预算</td></tr>
+<tr><td>单一模型且 API 无参数控制</td><td>✗</td><td>三轴无意义，直接硬编码或用常量</td></tr>
+<tr><td>需要 A/B 测试不同 effort 级别的输出质量</td><td>✗</td><td>改用实验框架 + GrowthBook 分流，而非优先级链</td></tr>
+<tr><td>模型层数 &gt; 5 个 effort 级别</td><td>✗</td><td>改用数值化 effort（<code>EffortValue = number</code>），枚举不够表达</td></tr>
+<tr><td>需要动态 thinking budget（根据任务大小）</td><td>✓</td><td><code>adaptive</code> 状态让模型自己决定 budget，无需调用方计算</td></tr>
+</tbody></table>
+</div>
+<p>Claude Code 自身展示了一个经典组合：主循环使用 <code>getMainLoopModel()</code>（详见第 6 章）选模型，用 <code>resolveAppliedEffort</code> 决定 effort，用 <code>shouldEnableThinkingByDefault</code> 决定 thinking 状态——三轴在 API 请求构建时独立被查询和组合，互不影响。</p>
+<hr />
+<h2 id="76-权衡与局限"><a class="header" href="#76-权衡与局限">7.6 权衡与局限</a></h2>
+<p><strong>三轴正交的测试负担</strong>。三个独立的优先级链意味着测试用例数量是单轴的指数级——effort × fast mode × thinking 的组合空间有 <code>4 × 3 × 3 = 36</code> 种基本组合（加上 env 覆盖的情况更多）。实践中不可能测试全部组合，需要靠类型系统和单轴边界测试来覆盖。</p>
+<p><strong>图 7-4：Fast Mode 的多条件门控</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    call["调用 getFastModeState(model, userEnabled)"] --&gt; env{isFastModeEnabled
+CLAUDE_CODE_DISABLE_FAST_MODE=false?}
+    env --&gt;|"否（env禁用）"| off1["返回 'off'"]
+    env --&gt;|"是"| statsig{Statsig/GrowthBook
+是否封禁?}
+    statsig --&gt;|是| off2["返回 'off'"]
+    statsig --&gt;|否| sdk{非交互式 SDK 会话
+且非 KAIROS?}
+    sdk --&gt;|是（且无 flagSettings）| off3["返回 'off'
+(SDK 不支持)"]
+    sdk --&gt;|否| billing{extra_usage
+计费是否启用?}
+    billing --&gt;|否| off4["返回 'off'"]
+    billing --&gt;|是| user_pref{fastModeUserEnabled
+= true 且模型支持?}
+    user_pref --&gt;|否| off5["返回 'off'"]
+    user_pref --&gt;|是| cooldown{isFastModeCooldown?}
+    cooldown --&gt;|是| cool["返回 'cooldown'"]
+    cooldown --&gt;|否| on["返回 'on'"]
+</code></pre>
+<p>Fast mode 是 Claude Code 系统中门控条件最复杂的功能之一——需要 env 允许 + Statsig 未封禁 + 计费开启 + 用户偏好开启 + 模型支持，全部满足才能返回 <code>'on'</code>。任何一个条件失败就降级到 <code>'off'</code>。这解释了为什么 fast mode 在 CI 环境或非交互式 SDK 中默认不可用（见 <code>fastMode.ts:99-111</code>）。</p>
+<p><strong>Fast mode 的隐性约束</strong>。Fast mode 不是一个单纯的"速度开关"——它涉及计费（extra usage billing）和 OAuth 授权，在非交互式 SDK 会话中默认不可用（<code>getIsNonInteractiveSession() &amp;&amp; !getKairosActive()</code> → unavailable）。<strong>如果你的 Agent 在 CI 环境运行，fast mode 默认不起作用，即使 <code>isFastModeEnabled()</code> 返回 true</strong>。这是一个文档不充分就容易踩的隐性约束（见 <code>fastMode.ts:99-111</code>）。</p>
+<p><strong>Max effort 的模型锁定</strong>。<code>max</code> effort 目前只有 Opus 4.6 支持，且注释直接说"API rejects 'max' on non-Opus-4.6 models"（<code>effort.ts:163</code>）。系统通过静默降级（<code>max → high</code>）避免 API 错误，但调用方可能误认为发送了 <code>max</code> effort。如果你的系统依赖 <code>max</code> effort 提供最高质量的输出，需要验证使用的模型确实支持它。</p>
+<p><strong>Thinking 默认开启的代价</strong>。<code>shouldEnableThinkingByDefault()</code> 默认返回 <code>true</code>——这意味着所有支持 thinking 的 Claude 4+ 模型，在没有显式禁用的情况下会开启扩展推理。对于高频轻量任务，这会额外消耗 token 和增加延迟。如果你的系统有大量轻量调用，应该通过 <code>alwaysThinkingEnabled: false</code> 或 <code>MAX_THINKING_TOKENS=0</code> 明确关闭。</p>
+<p><strong>Adaptive vs enabled 的选择困境</strong>。<code>{ type: 'adaptive' }</code> 让模型自主决定 thinking 深度，不消耗调用方的精力，但成本不可预测（模型可能分配大量 thinking token）。<code>{ type: 'enabled', budgetTokens: N }</code> 给调用方明确的成本控制，但 N 的选择需要经验值。生产系统中，建议先用 adaptive 观察实际消耗，再根据数据设定 explicit budget 上限。</p>
+<hr />
+<h2 id="77-与已知模式的对话"><a class="header" href="#77-与已知模式的对话">7.7 与已知模式的对话</a></h2>
+<p><strong>与 GoF 装饰器（Decorator）模式的比较</strong>。装饰器模式为对象动态添加职责，三轴控制看起来像是在"装饰" API 调用——加上 effort 参数、加上 fast mode 标志、加上 thinking 配置。<strong>相同点</strong>：都是在核心调用基础上叠加额外能力。<strong>不同点</strong>：装饰器是层层包裹（有执行顺序），三轴控制是平行组合（无顺序依赖）。更准确的说法是"参数化配置对象"而非装饰器。</p>
+<p><strong>与 EIP Routing Slip（路由单）的比较</strong>。Routing Slip 为消息附加一个"处理步骤清单"，每一站执行后把自己从清单上划掉。三轴控制与之相似——在 API 请求上附加多个控制参数。<strong>相同点</strong>：消息携带控制元数据，处理器按元数据行动。<strong>不同点</strong>：Routing Slip 是有序的（顺序处理），三轴是无序的（同时生效）；Routing Slip 是动态的（每站消费一步），三轴是静态的（一次性设定，整个请求生效）。</p>
+<p><strong>Claude Code 的设计选择</strong>。三轴选择了"独立枚举 + union type + 优先级函数"而非"一个统一的 ReasoningConfig 对象"。这个选择的代价是三套独立的优先级链和能力检测；好处是每轴可以独立演化——新增一个 effort 级别不影响 thinking 的类型定义，新增一种 thinking 模式不影响 fast mode 的状态机。<strong>正交性以维护成本换来了演化灵活性</strong>。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<p><strong>图 7-3：三轴设计的协作关系</strong></p>
+<pre><code class="language-mermaid">mindmap
+    root(正交推理深度控制)
+        Effort 轴
+            EFFORT_LEVELS 枚举
+            resolveAppliedEffort 优先级链
+            env CLAUDE_CODE_EFFORT_LEVEL
+            max effort 仅 Opus 4.6
+        Fast Mode 轴
+            isFastModeEnabled env 控制
+            isFastModeAvailable 多条件
+            getFastModeState 三态
+            与计费系统联动
+        Thinking 轴
+            ThinkingConfig union type
+            adaptive 无 budget 参数
+            enabled 显式 budgetTokens
+            shouldEnableThinkingByDefault 默认开
+</code></pre>
+<p><strong>图 7-5：三轴能力矩阵（模型 × 控制轴）</strong></p>
+<pre><code class="language-mermaid">graph LR
+    subgraph models["主要模型（1P 示例）"]
+        opus46["Opus 4.6"]
+        sonnet46["Sonnet 4.6"]
+        haiku45["Haiku 4.5"]
+    end
+    subgraph effort_axis["Effort 轴"]
+        e_max["max effort"]
+        e_high["high effort"]
+        e_low["low/medium effort"]
+    end
+    subgraph think_axis["Thinking 轴"]
+        t_adaptive["adaptive thinking"]
+        t_enabled["enabled thinking"]
+        t_disabled["disabled"]
+    end
+
+    opus46 --&gt; e_max
+    opus46 --&gt; t_adaptive
+    sonnet46 --&gt; e_high
+    sonnet46 --&gt; t_adaptive
+    haiku45 --&gt; e_low
+    haiku45 --&gt; t_disabled
+</code></pre>
+<p>注意图中每个模型支持的能力集合不同：Opus 4.6 独享 <code>max</code> effort 和 adaptive thinking；Haiku 4.5 不支持 thinking（1P 上 Claude 3 系列，thinking 从 Claude 4 起支持）。这个矩阵决定了三轴的能力检测函数在不同模型上的返回值。</p>
+<h3 id="模式-1正交推理深度控制orthogonal-reasoning-depth-control"><a class="header" href="#模式-1正交推理深度控制orthogonal-reasoning-depth-control">模式 1：正交推理深度控制（Orthogonal Reasoning Depth Control）</a></h3>
+<p><strong>解决的问题</strong>：Agent 系统的推理深度需要从多个独立维度（速度/成本/深度）控制，耦合设计无法精细调优。</p>
+<p><strong>核心做法</strong>：三轴独立定义类型、能力检测函数和优先级覆盖链，调用方按需独立设置各轴，API 请求构建时三轴独立查询并组合。</p>
+<p><strong>前置条件</strong>：底层 API 支持分别控制这三个维度；模型有明确的能力边界；三轴的优先级来源互不重叠。</p>
+<p><strong>源码证据</strong>：<code>src/utils/effort.ts:13</code>（EFFORT_LEVELS 枚举）；<code>src/utils/thinking.ts:10</code>（ThinkingConfig union）；<code>src/utils/fastMode.ts:319</code>（getFastModeState）</p>
+<hr />
+<h3 id="模式-2null-作为取消覆盖语义null-as-cancel-override"><a class="header" href="#模式-2null-作为取消覆盖语义null-as-cancel-override">模式 2：NULL 作为"取消覆盖"语义（Null-as-Cancel Override）</a></h3>
+<p><strong>解决的问题</strong>：优先级覆盖链中需要区分三种状态——"有值"/"未设置（继续向下）"/"明确取消（不发送参数）"，布尔类型或 <code>undefined</code> 无法表达三态。</p>
+<p><strong>核心做法</strong>：<code>getEffortEnvOverride()</code> 返回 <code>EffortValue | null | undefined</code>：具体值表示"覆盖"，<code>undefined</code> 表示"未设置"，<code>null</code> 表示"明确取消，不发送参数"。调用 <code>resolveAppliedEffort</code> 时对 <code>null</code> 特殊处理。</p>
+<p><strong>前置条件</strong>：存在"不发送参数"和"发送 undefined 值"语义上不同的 API；需要让用户显式取消某个控制参数。</p>
+<p><strong>源码证据</strong>：<code>src/utils/effort.ts:136-141</code>（<code>getEffortEnvOverride</code> 的三态返回）；<code>src/utils/effort.ts:156-159</code>（null → return undefined 的特殊分支）</p>
+<hr />
+<h3 id="模式-3类型化联合状态typed-union-state"><a class="header" href="#模式-3类型化联合状态typed-union-state">模式 3：类型化联合状态（Typed Union State）</a></h3>
+<p><strong>解决的问题</strong>：一个控制参数有多种状态，且不同状态需要携带不同的字段——布尔标志无法携带额外参数，但共用可选字段会损失类型安全。</p>
+<p><strong>核心做法</strong>：用 union type 表达状态集合，每个状态用独立的对象字面量类型，各自声明必要字段。TypeScript 的穷举判断（switch 的 <code>never</code> 检查）确保所有状态都被处理。</p>
+<p><strong>前置条件</strong>：不同状态之间的字段结构有本质差异；需要编译时类型检查辅助；状态数量固定且可枚举。</p>
+<p><strong>源码证据</strong>：<code>src/utils/thinking.ts:10-13</code>（ThinkingConfig union：<code>adaptive</code>无字段 / <code>enabled</code>有 budgetTokens / <code>disabled</code>无字段）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>将 Agent 推理控制拆成正交的轴</strong>：速度（延迟优化）、成本（计算量）、深度（推理预算）三个维度独立定义枚举/类型，不要用单一的"quality"参数混合表达。</p>
+</li>
+<li>
+<p><strong>为每个控制轴添加 env 变量覆盖</strong>：参考 <code>CLAUDE_CODE_EFFORT_LEVEL</code> 和 <code>MAX_THINKING_TOKENS</code>，让 CI/CD 环境可以无侵入地强制特定配置。别忘了同时支持"取消覆盖"语义（<code>env=unset</code>）。</p>
+</li>
+<li>
+<p><strong>用 union type 表达多态状态</strong>：当某种状态需要携带其他状态没有的字段时（如 thinking 的 <code>budgetTokens</code>），用 union type 而非可选字段——让编译器帮你检查每种状态的必要字段。</p>
+</li>
+<li>
+<p><strong>为每个轴实现能力检测函数</strong>：<code>modelSupportsEffort</code>、<code>modelSupportsThinking</code> 是同类函数。在实际组合三轴前，先调用能力检测，不支持的轴静默跳过（而非报错），这与模型版本迭代解耦。</p>
+</li>
+<li>
+<p><strong>理解 NULL 与 undefined 的语义差异</strong>：当需要表达"我知道这个参数，并且我明确不想发送它"时，用 <code>null</code>；当需要表达"我不知道这个参数应该是什么"时，用 <code>undefined</code>。这两种语义在优先级链中有截然不同的行为。</p>
+</li>
+<li>
+<p><strong>在生产系统中为 thinking 设定明确的 token 预算</strong>：先用 <code>adaptive</code> 模式观察实际消耗（通常在几百到几千 token），再根据业务 SLA 设定 <code>enabled + budgetTokens</code> 的上限，避免 thinking 在复杂输入上无限扩展。</p>
+</li>
+</ul>
+<hr />
+<p>三轴控制是"选定模型后如何使用它"的机制，而 QueryEngine 主循环负责把这些参数组装进实际的 API 请求，并协调工具调用与多轮对话的流程——这将在第 8 章展开。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part2/ch06.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part2/ch08.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part2/ch06.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part2/ch08.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

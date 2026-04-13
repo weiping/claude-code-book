@@ -1,0 +1,8 @@
+graph LR
+    A["轮次 1-50<br/>系统提示: 3500 tokens<br/>前缀固定"] -->|缓存命中<br/>100%| B["低成本<br/>1.35K tokens/轮"]
+    A --> C["轮次 51<br/>AutoCompact 触发<br/>压缩发生"]
+    C -->|前缀保持<br/>3500 tokens| D["轮次 52-100<br/>缓存恢复"]
+    D -->|缓存命中<br/>98%| E["持续低成本<br/>1.35K tokens/轮"]
+    style B fill:#e6ffe6
+    style D fill:#e6ffe6
+    style E fill:#e6ffe6

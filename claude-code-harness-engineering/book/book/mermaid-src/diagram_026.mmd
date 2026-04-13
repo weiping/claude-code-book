@@ -1,0 +1,20 @@
+flowchart TD
+    A["主智能体调用 Agent 工具"] --> B["AgentTool 入口"]
+    B --> C["selectedAgent\n根据 agentType\n查找智能体定义"]
+    C --> D{"智能体来源?"}
+
+    D -->|"Built-In"| E["BuiltInAgentDefinition\ngetSystemPrompt\n动态生成提示词"]
+    D -->|"Custom"| F["Markdown frontmatter\n用户自定义配置"]
+    D -->|"Plugin"| G["插件 API\n第三方注册"]
+
+    E --> H["过滤 disallowedTools\n从工具集中移除禁用工具"]
+    F --> H
+    G --> H
+
+    H --> I["fork 子智能体\n复用 CacheSafeParams\n详见第 12 章"]
+    I --> J["runAgent\n独立 queryLoop"]
+    J --> K["子智能体执行任务"]
+    K --> L["结果返回主智能体"]
+
+    H -.- Note1["硬约束：\n工具不存在\n不可违反"]
+    I -.- Note2["递归守卫：\nFork 不可嵌套"]

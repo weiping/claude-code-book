@@ -1,0 +1,294 @@
+# 第 14 章写作计划
+
+**批次**：批次 4b（来自 plans/batch.md）
+**章节**：ch14 — 第14章：Skill 系统——声明式能力包的加载与执行
+**风格**：hunter（模式猎人）
+
+---
+
+## 章节意图（从 spec `## 意图` 提取）
+
+揭示 `src/tools/SkillTool/SkillTool.ts`（1108行）和 `src/skills/loadSkillsDir.ts` 如何把 Markdown frontmatter 变成可执行的能力扩展，以及"声明式能力包"与传统插件系统在架构上的本质差异（声明 vs 代码注入）。读者读完后能理解声明式扩展的工程价值，并能在自己的系统中设计类似的 Markdown-driven 扩展机制。
+
+---
+
+## 通用约束
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个可渲染的 Mermaid 流程图或 ASCII 架构图
+- 跨章节引用使用"详见第 X 章"格式，不重复解释
+- 使用"我们"而非"用户"/"读者"建立对话感
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现"介绍了…"等空洞表述
+- 不得对源码中没有依据的设计意图做无标注的猜测（必须标注「（推断）」）
+- 不得重复已在其他章节详细讲解的内容（用交叉引用代替）
+
+**排除范围**：
+- Frontmatter Hooks 注册（第24章）
+- 插件包结构与沙箱边界（第37-39章）
+- src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
+
+---
+
+## ⛔ 风格专属写作要求
+
+> STYLE_ID = hunter
+
+**开篇格式**：模式预告（150-200字，⛔不引源码）
+- 触发句：在 Claude Code 中，一个只有几百行 Markdown 文件的目录，可以注册出新的 AI 能力——不需要修改代码，不需要重启进程
+- 模式名预告：「声明式能力包」（Declarative Capability Package）
+- 价值承诺：识别这个模式，你能设计一个让用户只用写 Markdown 就能扩展 AI 能力的系统
+
+**章末结构**：模式提炼（3个命名模式）+ 你能做什么
+
+**风格专属必须**：≥2处实例（frontmatter解析链路 + executeForkedSkill vs executeRemoteSkill），适用范围表，与已知模式对话
+
+**通用写作铁律**：⛔源码第一、⛔代码无裸露、⛔数据驱动、⛔术语标准化、⛔开篇最后写
+
+---
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/tools/SkillTool/SkillTool.ts | parseFrontmatter(55行)、executeForkedSkill(122行)、buildTool(331行)、executeRemoteSkill(969行) | 1-70, 120-160, 325-360, 965-1000 |
+| 2 | src/skills/loadSkillsDir.ts | parseSkillFrontmatterFields(185行)、frontmatter字段枚举(67行) | 40-120, 180-260 |
+| 3 | src/utils/frontmatterParser.ts | parseFrontmatter 实现 | 全文（估计50行内）|
+
+验证文件存在：
+```bash
+ls src/tools/SkillTool/SkillTool.ts src/skills/loadSkillsDir.ts
+```
+
+---
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用实际存在 | 所有节 | ☑ |
+| A2 | 推断有标注 | "（推断）" | 模式剖析、权衡节 | ☑ |
+| A3 | 不引用排除范围 | 不引Hook注册(第24章)、插件系统(37-39章) | 排除范围列出 | ☑ |
+| A4 | 不重复其他章 | buildTool→第10章，Hook注册→第24章 | 交叉引用 | ☑ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无"介绍了"等 | 全章 | ☑ |
+| B2 | 数据驱动 | 具体数字 | 所有数量表达 | ☑ |
+| B3 | 术语标准化 | 首次标注 | 所有术语 | ☑ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | hunter递进 | 全章骨架 | ☑ |
+| C2 | hunter专属结构 | 按spec结构 | 全章骨架 | ☑ |
+| C3 | 核心主张可提炼 | "声明式能力包" | 模式剖析 | ☑ |
+| C4 | 设计权衡 | 声明式vs代码注入 | 节14.4/权衡节 | ☑ |
+| C5 | 章末行动建议 | 5-8条 | 你能做什么 | ☑ |
+| C6 | 章节间链接 | 前→第10章，后→第24章 | 开篇、章末 | ☑ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染达标 | ≥2图 | 节14.2流程图+节14.5对比表 | ☑ |
+| D2 | 图表标注格式 | 上标题下说明 | 所有图 | ☑ |
+| D3 | 代码≤25行 | 前后有说明 | 所有代码 | ☑ |
+| D4 | 源码注释引用 | 先引注释 | 节14.2 | ☑ |
+| D5 | hunter专属图表 | 适用范围表+模式框 | 节14.5+章末 | ☑ |
+
+### E. 风格符合性组（⛔最高优先级）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | hunter开篇格式 | 模式预告150-200字，不引源码 | 开篇 | ☑ |
+| E2 | 读者对话感 | "我们"，有设问 | 全章 | ☑ |
+| E3 | 关键信息突出 | 加粗，表格对比 | 关键结论 | ☑ |
+
+---
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+模式预告：在 Claude Code 中，新的 AI 能力来自一个写着 YAML frontmatter 的 Markdown 文件——不是代码，是声明。SkillTool 读取 frontmatter，解析能力描述，创建工具对象，AI 就能调用了。
+
+### 节 14.1：问题
+- 核心主张：**传统插件系统要求"代码在主进程中运行"，而声明式能力包只需要"数据描述 + 外部执行"——安全边界完全不同**
+- 源码锚点：`src/tools/SkillTool/SkillTool.ts:19`（buildTool 导入，说明 SkillTool 实现同一接口）
+- 概念层次：
+  - 定义：Skill = Markdown 文件 + frontmatter 元数据（name/description/tools/hooks等）
+  - 设计意图：AI 读取 frontmatter 理解"这个技能是做什么的"，执行时 fork 子进程运行（不注入主进程）
+  - 实际案例：用户把一个 .md 文件放到 skills 目录，下一次 Claude Code 就能调用它
+- 权衡分析：为什么用 Markdown 而非 JSON/YAML 单独文件？— Markdown 既是机器读的 frontmatter，也是人可阅读的文档（推断）
+- 包含元素：**图14-1** — 声明式vs代码注入的对比示意图
+- 估计字数：600-800字（散文≥60%）
+- 对应spec场景：C1、声明式vs插件式（ch14_declarative_vs_plugin）
+
+### 节 14.2：源码实例1 — frontmatter 到工具的转化链路
+- 核心主张：**parseFrontmatter + parseSkillFrontmatterFields 把 YAML 元数据转化为 Command 对象，SkillTool.buildTool 再把它包装成可调用的 Tool**
+- 源码锚点：
+  - `src/tools/SkillTool/SkillTool.ts:55`（`import { parseFrontmatter }` — frontmatter 解析导入）
+  - `src/skills/loadSkillsDir.ts:185`（`export function parseSkillFrontmatterFields(` — 字段提取）
+  - `src/skills/loadSkillsDir.ts:43`（parseFrontmatter 调用）
+  - `src/tools/SkillTool/SkillTool.ts:331`（`export const SkillTool: Tool<...> = buildTool({` — 最终工具创建）
+- 概念层次：
+  - 定义：转化链路 = 读取.md文件 → parseFrontmatter提取YAML → parseSkillFrontmatterFields验证字段 → Command对象 → SkillTool调用时执行
+  - 设计意图：为什么提取到 Command 对象而非直接运行？— 统一的命令接口，支持 Shift+/ 斜杠命令和工具调用两种入口
+  - 实际案例：一个有 name/description/tools 字段的 frontmatter 转化为 SkillTool 工具的完整路径
+- 权衡分析：为什么 parseFrontmatter 不直接在 SkillTool.ts 中实现？— 复用性，CLAUDE.md 文件的 hooks 字段也用同一个 parseFrontmatter
+- 包含元素：**图14-2** — Mermaid 流程图，.md文件 → parseFrontmatter → Command → SkillTool
+- 估计字数：900-1100字（散文≥60%）
+- 对应spec场景：A1、E1、frontmatter到工具（ch14_frontmatter_to_tool）
+
+### 节 14.3：源码实例2 — executeForkedSkill vs executeRemoteSkill
+- 核心主张：**同一个 Skill 有两种执行路径——本地 fork（executeForkedSkill）在子进程执行，远程（executeRemoteSkill）通过网络调用——这是进程隔离模式的典型变体**
+- 源码锚点：
+  - `src/tools/SkillTool/SkillTool.ts:122`（`async function executeForkedSkill(` — 本地 fork）
+  - `src/tools/SkillTool/SkillTool.ts:969`（`async function executeRemoteSkill(` — 远程执行）
+  - `src/tools/SkillTool/SkillTool.ts:611`（`return executeRemoteSkill(...)` — 路由选择）
+  - `src/tools/SkillTool/SkillTool.ts:623`（`return executeForkedSkill(...)` — 本地路径）
+  - `src/tools/SkillTool/SkillTool.ts:1065`（frontmatter 剥离说明注释）
+- 概念层次：
+  - 定义：executeForkedSkill = fork 子进程运行 Markdown 内容；executeRemoteSkill = 向远程 slug 发请求
+  - 设计意图：为什么有两种路径？— 本地技能用 fork，远程技能用网络（推断：云端托管场景）
+  - 实际案例：执行前自动剥离 frontmatter（SkillTool.ts:1065注释说明），确保 AI 只收到内容而非 YAML 元数据
+- 权衡分析：fork 子进程 vs 直接 eval 的安全性对比
+- 包含元素：两种执行路径对比表
+- 估计字数：700-900字（散文≥60%）
+- 对应spec场景：A1、E1（多实例）
+
+### 节 14.4：模式剖析
+- 核心主张：**声明式能力包的核心是"元数据驱动执行"——capability description（frontmatter）和 capability execution（fork）严格分离，任何一方都不需要了解对方的实现细节**
+- 估计字数：500-700字（散文≥70%）
+- 对应spec场景：C2
+
+### 节 14.5：适用范围
+
+**适用范围表**：
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 用户自定义 AI 能力（无需改主代码）| ✓ | 只需一个.md文件 | 插件系统（但需要代码权限）|
+| 能力本身是 Markdown 文档（LLM直接阅读）| ✓ | frontmatter + 正文文档 双用途 | JSON/YAML（但不可读）|
+| 需要进程隔离执行 | ✓ | executeForkedSkill 天然隔离 | N/A |
+| 需要高频调用、低延迟（<10ms）| ✗ | fork 进程有启动开销 | 内置工具 |
+| 能力逻辑复杂（需要状态管理）| ✗（谨慎）| frontmatter 是静态声明，无法描述复杂状态 | 代码插件 |
+
+- 估计字数：400-600字
+- 对应spec场景：D5
+
+### 节 14.6：权衡与局限
+- 核心主张：**声明式能力包的最大局限是"表达力有限"——frontmatter 只能描述静态属性，无法表达条件逻辑或动态行为**
+- 源码锚点：`src/skills/loadSkillsDir.ts:100`（estimateSkillFrontmatterTokens，说明 frontmatter 有 token 成本）
+- 估计字数：500-700字
+- 对应spec场景：C4
+
+### 节 14.7：与已知模式的对话
+- 核心主张：**声明式能力包与"数据驱动设计"（Data-Driven Design）思想一脉相承，但更接近 HTML 的"声明 vs 脚本"分离模型**
+- 概念层次：
+  - 与 GoF 策略模式：相同——封装可替换的行为；不同——策略模式在编译时确定，声明式能力包在运行时从文件系统发现
+  - 与 HTML/CSS/JS 分离：相同——数据（frontmatter）、样式（文档）、行为（执行）分离；本模式是这一思想在 AI 能力扩展上的应用
+- 估计字数：500-700字
+- 对应spec场景：与已知模式对话
+
+### 章末：模式提炼
+
+**模式命名框 1**：
+```
+模式名称：声明式能力包（Declarative Capability Package）
+问题：用户想扩展 AI 能力，但不应该要求他们写代码或接触主进程
+解决方案：用 Markdown frontmatter 声明能力元数据，运行时解析后创建工具对象，执行时 fork 子进程
+前置条件：有统一的能力描述格式（frontmatter fields）和隔离的执行环境
+源码锚点：src/tools/SkillTool/SkillTool.ts:331 (buildTool), src/skills/loadSkillsDir.ts:185
+```
+
+**模式命名框 2**：
+```
+模式名称：元数据剥离执行（Metadata-Stripped Execution）
+问题：Markdown 文件同时包含元数据（frontmatter）和执行内容，AI 执行时不应看到 YAML 元数据
+解决方案：执行前自动剥离 frontmatter，让 AI 只收到纯内容部分
+前置条件：文档格式有明确的元数据与内容分隔符（--- 分隔符）
+源码锚点：src/tools/SkillTool/SkillTool.ts:1065 (注释说明剥离逻辑)
+```
+
+### 章末：你能做什么
+1. 用 Markdown frontmatter 设计"只写声明就能扩展"的 AI 能力系统，降低用户扩展门槛
+2. 实现 parseSkillFrontmatterFields 式的字段验证，让格式错误的能力包在加载时就失败（而非运行时）
+3. 将能力执行隔离到 fork 子进程，防止用户技能代码崩溃影响主进程
+4. 为执行前的元数据剥离建立明确的分隔约定（如 YAML frontmatter 的 `---` 分隔符）
+5. 复用 parseFrontmatter 工具解析所有 Markdown 配置文件（CLAUDE.md、Skill 文件等），统一格式
+6. 提供两种执行路径（本地 fork + 远程调用），让同一声明在不同部署场景下都能工作
+
+---
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图14-1 | 声明式 vs 代码注入对比 | Markdown 表格 | 安全边界/维护成本/扩展方式对比 | 14.1 |
+| 图14-2 | frontmatter 到 Tool 的转化链路 | Mermaid flowchart | .md → parseFrontmatter → Command → SkillTool | 14.2 |
+
+---
+
+## 写作顺序
+
+1. ⛔ 重新读取完整 spec + DESIGN.md
+2. 读取前置文件
+3. 写节14.1（问题节，含图14-1）
+4. 写节14.2（实例1：转化链路，含图14-2）
+5. 写节14.3（实例2：两种执行路径）
+6. 写节14.4（模式剖析）
+7. 写节14.5（适用范围表）
+8. 写节14.6（权衡与局限）
+9. 写节14.7（与已知模式对话）
+10. 写章末模式命名框+你能做什么
+11. 最后补写开篇
+
+---
+
+## 写作前 checklist
+
+```bash
+sed -n '19p' src/tools/SkillTool/SkillTool.ts    # buildTool 导入
+sed -n '55p' src/tools/SkillTool/SkillTool.ts    # parseFrontmatter 导入
+sed -n '122p' src/tools/SkillTool/SkillTool.ts   # executeForkedSkill
+sed -n '331p' src/tools/SkillTool/SkillTool.ts   # buildTool 调用
+sed -n '611p' src/tools/SkillTool/SkillTool.ts   # executeRemoteSkill 路由
+sed -n '969p' src/tools/SkillTool/SkillTool.ts   # executeRemoteSkill 定义
+sed -n '1065p' src/tools/SkillTool/SkillTool.ts  # frontmatter 剥离注释
+sed -n '185p' src/skills/loadSkillsDir.ts        # parseSkillFrontmatterFields
+```
+
+---
+
+## ⛔ Spec 一致性声明
+
+| # | 提取项 | 写入 plan | 对应节 |
+|---|--------|----------|--------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用约束→必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用约束→禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属→必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属→禁止 |
+| 6 | 章节结构 | ✓ | 章节骨架 |
+| 7 | 源码引用格式 | ✓ | 所有节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | Spec验收A组 |
+| 12 | 验收场景·B | ✓ | Spec验收B组 |
+| 13 | 验收场景·C | ✓ | Spec验收C组 |
+| 14 | 验收场景·D | ✓ | Spec验收D组 |
+| 15 | 验收场景·E | ✓ | Spec验收E组 |
+| 16 | 排除范围 | ✓ | 通用约束→排除范围 |
+
+**⛔ 所有项目均已勾选 ✓，plan 审查通过。**

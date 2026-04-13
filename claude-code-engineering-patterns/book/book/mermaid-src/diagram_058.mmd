@@ -1,0 +1,16 @@
+graph TB
+    subgraph 声明层
+        fm["frontmatter\nname/description\nallowedTools\nexecutionContext"]
+    end
+    subgraph 内容层
+        body["Markdown 正文\n延迟加载\n执行前剥离 frontmatter"]
+    end
+    subgraph 执行层
+        st["SkillTool\n路由 fork/inline/remote\n统一 Tool 接口"]
+    end
+
+    fm -->|注册时| st
+    body -->|调用时| st
+    st -->|独立 token 预算| isolated_agent["Fork Agent"]
+    st -->|内联| current_ctx["当前对话上下文"]
+    st -->|网络| remote_src["远程 Markdown 内容"]

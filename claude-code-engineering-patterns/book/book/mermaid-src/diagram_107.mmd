@@ -1,0 +1,13 @@
+stateDiagram-v2
+    [*] --> initial: createDenialTrackingState()
+    initial --> tracking: 首次记录
+
+    tracking --> tracking: recordDenial(+1/+1)
+    tracking --> tracking: recordSuccess(重置consecutive)
+
+    tracking --> fallback_consecutive: consecutive >= 3
+    tracking --> fallback_total: total >= 20
+
+    fallback_consecutive --> tracking: 用户审核后继续
+    fallback_total --> reset: 用户审核后重置
+    reset --> tracking: totalDenials归零

@@ -1,0 +1,71 @@
+# 第15章写作计划
+
+**批次**：批次 4
+**章节**：ch15 — 权限系统的三层决策架构
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/permissions/permissions.ts | getAllowRules(122行)、getDenyRules(213行)、getAskRules(223行)、classifierDecisionModule(59行) | 59-65, 122-240行 |
+| 2 | src/utils/permissions/PermissionResult.ts | PermissionResult 类型、四种结果 | 全文 |
+| 3 | src/types/permissions.ts | PermissionDecision 联合类型 | 关键类型定义 |
+
+```bash
+sed -n '59,65p' src/utils/permissions/permissions.ts
+sed -n '122,135p' src/utils/permissions/permissions.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「`rm -rf /tmp/test` 被执行前，Claude Code 要经过几次判断？不是一次，而是三次——每次都在不同的延迟/精度权衡点上。」
+- 三个问题：1）三层的触发顺序和进入条件是什么？2）四种权限结果（allow/deny/ask/passthrough）各代表什么？3）如果中间某层挂了，整个系统如何降级？
+
+### 节 15.1：为什么三层而不是单一的决策函数？
+- 核心主张：三层对应三种不同的性能/精度权衡：规则匹配（同步<1ms/完全可预测）、AI分类（异步~500ms/通用）、用户交互（秒级/最准确）；单一函数无法同时满足这三种需求
+- 源码锚点：`src/utils/permissions/permissions.ts:59`（classifierDecisionModule feature gate）
+- 包含元素：三层对比表（触发时机/延迟/精度/适用场景）+ Mermaid flowchart
+- 权衡分析：为什么不只用 AI 分类器一层
+- 估计字数：700字
+
+### 节 15.2：四种权限结果——allow/deny/ask/passthrough 的语义差异
+- 核心主张：四种结果不是"通过/拒绝"两态，而是对决策路径的精确描述：allow（规则明确允许）、deny（规则明确拒绝）、ask（需要用户决策）、passthrough（交给下一层）
+- 源码锚点：`src/utils/permissions/PermissionResult.ts`（PermissionResult 类型）
+- 包含元素：四种结果的语义表 + 在三层架构中的流转图
+- 估计字数：500字
+
+### 节 15.3：规则引擎快速路径——allAllow/allDeny/allAsk 的组织方式
+- 核心主张：规则按行为（allow/deny/ask）分三组存储，检查时先查最可能命中的（deny 先于 allow），O(n) 规则匹配
+- 源码锚点：`src/utils/permissions/permissions.ts:122`（getAllowRules）、`src/utils/permissions/permissions.ts:213`（getDenyRules）
+- 估计字数：500字
+
+### 节 15.4：分类器层的进入条件与降级
+- 核心主张：当规则引擎返回 ask/passthrough 时，如果 TRANSCRIPT_CLASSIFIER feature 启用，进入 AI 分类器；分类器调用失败时回退到用户交互层
+- 源码锚点：`src/utils/permissions/permissions.ts:59`（classifierDecisionModule 的条件加载）
+- 估计字数：400字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 性能梯级决策（Performance-Tiered Decision Making）| 安全决策需要在速度和准确性之间权衡，单一策略无法满足所有场景 | 按延迟从低到高排列决策层，快速路径先处理确定性情况，慢速路径处理模糊情况 | 决策场景有明确的性能/精度分层 | `src/utils/permissions/permissions.ts:59` |
+| 四态结果传递（Four-State Result Propagation）| 二态 allow/deny 无法表达"需要下层继续决策"的语义 | 增加 ask（需要用户）和 passthrough（交给下层）两种中间态 | 有多层决策，且层间需要传递"继续决策"的信号 | `src/utils/permissions/PermissionResult.ts` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图15-1 | 三层决策完整流程 | Mermaid flowchart | 规则引擎→分类器→用户交互的条件进入和降级路径 | 15.1 |
+| 图15-2 | 四种权限结果流转 | Mermaid flowchart | allow/deny/ask/passthrough 在三层中的流动 | 15.2 |
+
+## 写作前 checklist
+```bash
+sed -n '59,65p' src/utils/permissions/permissions.ts
+sed -n '122,135p' src/utils/permissions/permissions.ts
+sed -n '213,230p' src/utils/permissions/permissions.ts
+cat src/utils/permissions/PermissionResult.ts | head -30
+```
+
+## 估算
+- 目标字数：2400-2800字
+- 预计轮次：9轮（含2轮验证）

@@ -1,0 +1,13 @@
+graph TD
+    CU["Computer Use 操作"]
+    CU --> Low["低风险（只读）
+截图、鼠标悬停"]
+    CU --> Med["中风险（可逆）
+鼠标点击、键盘输入"]
+    CU --> High["高风险（不可逆）
+文件删除、表单提交
+需要明确用户确认"]
+    
+    style Low fill:#e6ffe6
+    style Med fill:#fff3e6
+    style High fill:#ffe6e6

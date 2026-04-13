@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant W as Worker Agent
+    participant LMB as Leader Mailbox\n（文件系统）
+    participant L as Leader Agent
+    participant WMB as Worker Mailbox\n（文件系统）
+
+    W->>LMB: writePermissionRequest\n（pending/{id}.json）
+    W->>LMB: sendPermissionViaMailbox\n（permission_request 消息）
+    L->>LMB: 轮询 mailbox，发现 permission_request
+    Note over L: 用户通过 Leader UI\n批准或拒绝
+    L->>WMB: sendPermissionResponseViaMailbox\n（permission_response 消息）
+    L->>L: 移动 pending → resolved
+    W->>WMB: 轮询 mailbox，发现 permission_response
+    Note over W: 继续执行\n（携带决策和 updatedInput）

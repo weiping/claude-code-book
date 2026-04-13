@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant GF as getMemoryFiles
+    participant PM as processMemoryFile
+    participant R as result 数组
+
+    GF->>PM: Managed（/etc/claude-code/CLAUDE.md）
+    PM-->>R: 追加到 result 前部
+    GF->>PM: User（~/.claude/CLAUDE.md）
+    PM-->>R: 追加到 result
+    Note over GF: dirs.reverse() 从根目录向 CWD 处理
+    GF->>PM: Project（根目录 CLAUDE.md）
+    PM-->>R: 追加
+    GF->>PM: Project（子目录 CLAUDE.md）
+    PM-->>R: 追加
+    GF->>PM: Local（CWD 的 CLAUDE.local.md）
+    PM-->>R: 追加到 result 最末尾
+    Note over R: 最末尾 = 最高注意力 = 最高优先级

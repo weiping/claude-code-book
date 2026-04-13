@@ -1,0 +1,10 @@
+sequenceDiagram
+    participant User
+    participant Terminal
+    participant App
+    User->>Terminal: 调整窗口大小
+    Terminal->>App: SIGWINCH
+    App->>App: 获取新尺寸
+    App->>App: 重新布局
+    App->>Terminal: 完整重新渲染
+    Terminal->>User: 适配新尺寸

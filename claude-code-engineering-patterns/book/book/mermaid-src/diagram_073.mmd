@@ -1,0 +1,9 @@
+flowchart LR
+    subgraph interactive["交互式模式（默认）"]
+        A1[用户消息] --> B1["await recordTranscript\n(阻塞 4-30ms)"] --> C1[API 请求]
+    end
+    subgraph bare["Bare 模式（--bare / SIMPLE）"]
+        A2[用户消息] --> B2["void recordTranscript\n(fire-and-forget)"] --> C2[API 请求]
+        B2 -.->|异步写入| D2[JSONL 文件]
+    end
+    B1 -->|同步写入| D1[JSONL 文件]

@@ -1,0 +1,717 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 36 章：Skill 系统——Markdown 封装的 AI 能力 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-36-章skill-系统---用-markdown-定义-ai-能力"><a class="header" href="#第-36-章skill-系统---用-markdown-定义-ai-能力">第 36 章：Skill 系统 - 用 Markdown 定义 AI 能力</a></h1>
+<blockquote>
+<p>一个用户想分享一个"重复的工作流程"（比如"从 JIRA ticket 生成代码框架"）。与其写成插件发布，为什么不用简单的 Markdown 文件来定义？系统怎样自动发现、解析、执行这些 Skill？</p>
+</blockquote>
+<hr />
+<h2 id="361-skill-的设计意图"><a class="header" href="#361-skill-的设计意图">36.1 Skill 的设计意图</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p><strong>Skill</strong> = 一个 Markdown 文档，包含：</p>
+<ul>
+<li>问题描述（什么情况下用这个 Skill）</li>
+<li>解决方案（具体的代码/步骤）</li>
+<li>可选的执行参数</li>
+</ul>
+<pre><code>对标参考：
+  GitHub Copilot Chat → Slash Commands
+  ChatGPT → Custom Instructions
+  Vercel v0 → Prompt Templates
+Claude Code 中：
+  → Skill（可发现、可复用、可分享）
+</code></pre>
+<h3 id="为什么用-markdown"><a class="header" href="#为什么用-markdown">为什么用 Markdown</a></h3>
+<p><strong>对比</strong>：</p>
+<pre><code>选项 A：JSON 配置
+  {
+    "name": "Generate from JIRA",
+    "description": "...",
+    "template": "..."
+  }
+  ✗ 不易读
+  ✗ 难以嵌入代码
+选项 B：插件代码（ch35）
+  export const MySkill = buildSkill({...})
+  ✓ 灵活
+  ✗ 需要编程知识
+  ✗ 发布复杂
+选项 C：Markdown ✅
+  # Skill: Generate from JIRA
+  ## 问题
+  ...
+  ## 解决方案
+  ...
+  ## 示例
+  \`\`\`bash
+  ...
+  \`\`\`
+  ✓ 易读易写
+  ✓ 非编程用户也能用
+  ✓ 自动发现
+</code></pre>
+<hr />
+<h2 id="362-skill-的文件格式"><a class="header" href="#362-skill-的文件格式">36.2 Skill 的文件格式</a></h2>
+<h3 id="结构"><a class="header" href="#结构">结构</a></h3>
+<p>在 <code>src/utils/skills/skillParser.ts</code> 中定义的格式：</p>
+<pre><code class="language-markdown"># Skill: &lt;Skill 名称&gt;
+## 问题（Problem）
+&lt;描述这个 Skill 解决什么问题&gt;
+通常用在什么场景：
+- 场景 1
+- 场景 2
+## 解决方案（Solution）
+&lt;高层描述方案&gt;
+### 步骤
+1. &lt;步骤 1&gt;
+2. &lt;步骤 2&gt;
+...
+## 代码模板（Code Template）
+\`\`\`typescript
+// @input: parameter-name (type) - description
+// @output: result-description
+// 实现代码
+\`\`\`
+## 示例（Example）
+### 输入
+\`\`\`json
+{
+  "jiraId": "PROJ-123"
+}
+\`\`\`
+### 输出
+\`\`\`
+Generated code structure...
+\`\`\`
+## 备注（Notes）
+- 限制 1
+- 适用场景 1
+</code></pre>
+<h3 id="具体示例"><a class="header" href="#具体示例">具体示例</a></h3>
+<pre><code class="language-markdown"># Skill: Generate TypeScript Interface from JSON
+## 问题
+给定一个 JSON 数据样本，需要快速生成对应的 TypeScript 类型定义。
+常见场景：
+- API 返回格式逆向工程
+- 数据库记录型态定义
+- 配置文件结构化
+## 解决方案
+用 TypeScript `type` 关键字自动生成接口。
+### 步骤
+1. 解析 JSON 结构
+2. 识别各字段的类型（string, number, object）
+3. 生成递归类型定义
+## 代码模板
+\`\`\`typescript
+// @input: jsonData (string) - JSON 对象的字符串
+// @output: TypeScript 类型定义
+import Ajv from 'ajv'
+function generateTypeScript(jsonData: string): string {
+  const obj = JSON.parse(jsonData)
+  const schema = inferSchema(obj)
+  return generateFromSchema(schema)
+}
+\`\`\`
+## 示例
+### 输入
+\`\`\`json
+{
+  "id": 123,
+  "name": "Alice",
+  "email": "alice@example.com",
+  "profile": {
+    "age": 30,
+    "city": "NYC"
+  }
+}
+\`\`\`
+### 输出
+\`\`\`typescript
+interface Root {
+  id: number
+  name: string
+  email: string
+  profile: Profile
+}
+interface Profile {
+  age: number
+  city: string
+}
+\`\`\`
+## 备注
+- 不支持递归引用（但可以手动修改）
+- 可选字段需要手动添加 `?`
+</code></pre>
+<hr />
+<h2 id="363-skill-的发现与加载"><a class="header" href="#363-skill-的发现与加载">36.3 Skill 的发现与加载</a></h2>
+<h3 id="发现机制"><a class="header" href="#发现机制">发现机制</a></h3>
+<p>在 <code>src/utils/skills/skillDiscovery.ts</code> 中：</p>
+<pre><code class="language-typescript">async function discoverSkills(options: {
+  searchPaths?: string[]    // 从这些目录查找
+  recursive?: boolean       // 是否递归搜索
+  filter?: string          // 正则表达式过滤
+}): Promise&lt;Skill[]&gt; {
+  const searchDirs = options.searchPaths || [
+    '.claude/skills',        // 用户自定义
+    process.cwd(),          // 当前工作目录
+    NODE_MODULES,           // npm 包中的 skills
+  ]
+  const skills = []
+  for (const dir of searchDirs) {
+    // 查找所有 .md 文件
+    const mdFiles = await glob(
+      path.join(dir, '**/*.md'),
+      { ignore: 'node_modules/**' }
+    )
+    for (const file of mdFiles) {
+      try {
+        const skill = parseSkillFile(file)
+        // 过滤
+        if (options.filter &amp;&amp; !skill.name.match(options.filter)) {
+          continue
+        }
+        skills.push(skill)
+      } catch (err) {
+        // 解析失败的 .md 文件会被忽略
+        logDebug(`Failed to parse skill from ${file}: ${err.message}`)
+      }
+    }
+  }
+  return skills
+}
+</code></pre>
+<h3 id="解析机制"><a class="header" href="#解析机制">解析机制</a></h3>
+<pre><code class="language-typescript">function parseSkillFile(filePath: string): Skill {
+  const content = fs.readFileSync(filePath, 'utf-8')
+  // 步骤 1：分割 Markdown 章节
+  const sections = content.split(/^## /m)
+  // 步骤 2：提取各部分
+  const problem = sections[1]?.split('\n').slice(1).join('\n') || ''
+  const solution = sections[2]?.split('\n').slice(1).join('\n') || ''
+  const codeMatch = sections[3]?.match(/\`\`\`([\s\S]*?)\`\`\`/)
+  const codeTemplate = codeMatch?.[1] || ''
+  const example = sections[4] || ''
+  // 步骤 3：提取元数据（从代码模板的注释）
+  const inputMatch = codeTemplate.match(/@input:\s*(\w+)\s*\(([^)]+)\)/)
+  const outputMatch = codeTemplate.match(/@output:\s*(.+)/)
+  return {
+    name: extractTitle(content),
+    path: filePath,
+    problem,
+    solution,
+    codeTemplate,
+    example,
+    input: {
+      name: inputMatch?.[1] || 'input',
+      type: inputMatch?.[2] || 'string'
+    },
+    output: {
+      description: outputMatch?.[1] || 'result'
+    }
+  }
+}
+</code></pre>
+<hr />
+<h2 id="364-skill-的调用与执行"><a class="header" href="#364-skill-的调用与执行">36.4 Skill 的调用与执行</a></h2>
+<h3 id="调用方式"><a class="header" href="#调用方式">调用方式</a></h3>
+<p>用户可以通过多种方式调用 Skill：
+<strong>方式 1：Slash 命令</strong></p>
+<pre><code>/skill search "typescript interface"
+  ↓ 显示匹配的 Skill
+  ↓ 用户选择
+  ↓ 显示参数表单
+  ↓ 用户填入 JSON
+  ↓ 执行
+/skill run "Generate TypeScript Interface from JSON" '{"jsonData": "..."}'
+</code></pre>
+<p><strong>方式 2：Agent 自动触发</strong>（EXPERIMENTAL_SKILL_SEARCH）
+如果启用了实验标志，Agent 可以在需要时自动发现和调用 Skill：</p>
+<pre><code class="language-typescript">// Agent 思考过程
+if (needsCommonTask() &amp;&amp; !builtinToolSupports()) {
+  // 搜索 Skill
+  const relevantSkills = await semanticSearchSkills(task)
+  if (relevantSkills.length &gt; 0) {
+    const skill = relevantSkills[0]
+    sendMessage(
+      `💡 I found a skill that might help: "${skill.name}". ` +
+      `Should I use it?`
+    )
+  }
+}
+</code></pre>
+<h3 id="执行流程"><a class="header" href="#执行流程">执行流程</a></h3>
+<p>在 <code>src/tools/SkillTool/SkillTool.ts</code> 中：</p>
+<pre><code class="language-typescript">async function executeSkill(
+  skill: Skill,
+  parameters: Record&lt;string, unknown&gt;
+): Promise&lt;SkillResult&gt; {
+  // 步骤 1：参数验证
+  if (!parameters[skill.input.name]) {
+    throw new Error(
+      `Missing required input: ${skill.input.name}`
+    )
+  }
+  // 步骤 2：提取代码模板
+  const code = skill.codeTemplate
+  // 步骤 3：注入参数
+  const injectedCode = code.replace(
+    new RegExp(`\\b${skill.input.name}\\b`, 'g'),
+    JSON.stringify(parameters[skill.input.name])
+  )
+  // 步骤 4：在沙箱中执行（类似插件的沙箱）
+  const result = await evaluateInSandbox(injectedCode, {
+    require: filterRequires,  // 只允许特定模块
+    console,
+    Buffer,
+    // ...其他安全的全局对象
+  })
+  return {
+    skillName: skill.name,
+    success: true,
+    output: result,
+  }
+}
+</code></pre>
+<hr />
+<h2 id="365-skill-的语义搜索"><a class="header" href="#365-skill-的语义搜索">36.5 Skill 的语义搜索</a></h2>
+<h3 id="问题"><a class="header" href="#问题">问题</a></h3>
+<p>有 100+ 个 Skill，用户怎么快速找到需要的那个？</p>
+<h3 id="解决方案embedding--相似度搜索"><a class="header" href="#解决方案embedding--相似度搜索">解决方案：Embedding + 相似度搜索</a></h3>
+<p>在 <code>src/utils/skills/semanticSearch.ts</code> 中（EXPERIMENTAL）：</p>
+<pre><code class="language-typescript">async function semanticSearchSkills(
+  query: string,
+  topK: number = 5
+): Promise&lt;Skill[]&gt; {
+  // 步骤 1：对查询进行 embedding
+  const queryEmbedding = await getEmbedding(query)
+  // 步骤 2：加载所有 Skill 的 embedding（缓存）
+  const skillEmbeddings = await loadSkillEmbeddings()
+  // 步骤 3：计算相似度
+  const scored = skillEmbeddings.map(s =&gt; ({
+    skill: s,
+    score: cosineSimilarity(queryEmbedding, s.embedding)
+  }))
+  // 步骤 4：按分数排序
+  return scored
+    .sort((a, b) =&gt; b.score - a.score)
+    .slice(0, topK)
+    .map(s =&gt; s.skill)
+}
+</code></pre>
+<p><strong>示例</strong>：</p>
+<pre><code>用户查询："怎样从 JSON 生成类型"
+排名结果：
+1. "Generate TypeScript Interface from JSON" (sim: 0.92)
+2. "Convert JSON Schema to Go Structs" (sim: 0.78)
+3. "Extract Schema from CSV" (sim: 0.62)
+</code></pre>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式一渐进式能力扩展progressive-capability-extension"><a class="header" href="#模式一渐进式能力扩展progressive-capability-extension">模式一：渐进式能力扩展（Progressive Capability Extension）</a></h3>
+<p><strong>解决的问题</strong>：如何让非编程用户也能扩展系统？
+<strong>核心做法</strong>：</p>
+<ul>
+<li>核心功能：编程用户写插件（ch35）</li>
+<li>中级能力：用户写 Skill（Markdown）</li>
+<li>高级能力：Agent 自动发现和组合 Skill
+<strong>阶梯</strong>：</li>
+</ul>
+<pre><code>Level 1: 使用内置功能（所有人）
+Level 2: 写 Markdown Skill（文档编写者）
+Level 3: 写 DXT 插件（开发者）
+Level 4: 贡献 Claude Code 源码（贡献者）
+</code></pre>
+<hr />
+<h3 id="模式二声明式代码执行declarative-code-execution"><a class="header" href="#模式二声明式代码执行declarative-code-execution">模式二：声明式代码执行（Declarative Code Execution）</a></h3>
+<p><strong>解决的问题</strong>：如何在保持安全的前提下，让 Skill 执行任意代码？
+<strong>核心做法</strong>：</p>
+<ul>
+<li>Skill 代码是"模板"，参数是数据</li>
+<li>用参数注入替代动态代码生成</li>
+<li>沙箱执行（限制能访问的全局对象）</li>
+</ul>
+<hr />
+<h2 id="延伸为什么-skill-用-markdown-而不是-typescript"><a class="header" href="#延伸为什么-skill-用-markdown-而不是-typescript">延伸：为什么 Skill 用 Markdown 而不是 TypeScript</a></h2>
+<h3 id="markdown-vs-typescript-skill-定义的权衡"><a class="header" href="#markdown-vs-typescript-skill-定义的权衡">Markdown vs TypeScript Skill 定义的权衡</a></h3>
+<p>Claude Code 提供了两种扩展方式：Plugin（TypeScript 代码）和 Skill（Markdown 文件）。对于可复用的提示模板，为什么选择 Markdown？</p>
+<pre><code class="language-typescript">// 如果用 TypeScript 定义 Skill（假设）
+export const generateInterfaceSkill = {
+  name: "Generate TypeScript Interface",
+  description: "从 JSON 生成 TypeScript 类型定义",
+  execute: async (input: {jsonData: string}) =&gt; {
+    // TypeScript 代码
+    return await claude.generate(`Given JSON: ${input.jsonData}, generate TypeScript interface`)
+  }
+}
+</code></pre>
+<p>问题：</p>
+<ol>
+<li><strong>门槛高</strong>：需要 TypeScript 环境、npm 发布、版本管理</li>
+<li><strong>可读性差</strong>：Skill 的"描述什么时候用"比"如何实现"更重要，TypeScript 不适合描述</li>
+<li><strong>无法被 Claude 直接理解</strong>：Markdown 格式的 Skill 描述可以直接被 Claude 读懂</li>
+</ol>
+<pre><code class="language-markdown"># Skill: Generate TypeScript Interface
+---
+name: generate-ts-interface
+description: 从 JSON 数据生成 TypeScript 类型定义
+whenToUse: 当用户提供了 JSON 数据，需要对应的 TypeScript 类型时
+---
+</code></pre>
+<p>Markdown Skill 的关键设计：<code>whenToUse</code> 字段直接被用于语义搜索——Claude 理解它，用户也理解它（<code>src/skills/loadSkillsDir.ts:185</code>）。</p>
+<h3 id="frontmatter-字段的设计意图"><a class="header" href="#frontmatter-字段的设计意图">frontmatter 字段的设计意图</a></h3>
+<p><code>parseSkillFrontmatterFields</code>（<code>src/skills/loadSkillsDir.ts:185</code>）解析的核心字段：</p>
+<pre><code class="language-yaml">name: "Generate TypeScript Interface"     # 命令名（/skill run "name"）
+description: "从 JSON 生成 TS 类型"        # 搜索时的短描述
+whenToUse: "用户有 JSON 需要类型定义"       # 触发条件（语义搜索的主要字段）
+paths:                                    # 工具执行的路径范围
+  - "src/**/*.ts"
+</code></pre>
+<p><code>estimateSkillFrontmatterTokens</code>（<code>src/skills/loadSkillsDir.ts:100</code>）对 frontmatter 的 token 进行估算——注意这不是对整个 Skill 文档估算，而只是 frontmatter。原因：Skill 的正文（如何执行）是在用户选择后才注入 prompt 的，只有 frontmatter 作为"索引"常驻 context。</p>
+<h3 id="为什么用-createskillcommand-而非直接调用-skill"><a class="header" href="#为什么用-createskillcommand-而非直接调用-skill">为什么用 createSkillCommand 而非直接调用 Skill</a></h3>
+<pre><code class="language-typescript">// 假设直接调用：
+const skill = loadSkill('generate-ts-interface')
+const result = await skill.execute(args)
+
+// 实际做法：通过 createSkillCommand 转换为 Command：
+const cmd = createSkillCommand({content, name, filePath, loadedFrom})
+// cmd 现在和其他 slash 命令完全一样
+</code></pre>
+<p><code>createSkillCommand</code>（<code>src/skills/loadSkillsDir.ts:270</code>）的核心价值：统一接口。REPL 的命令分发器不需要知道一个命令是 TypeScript 实现还是 Markdown Skill——两者都通过 <code>Command</code> 接口被调用。这是适配器模式的直接应用。</p>
+<h2 id="图解"><a class="header" href="#图解">图解</a></h2>
+<p><strong>图 36-1：Skill 的发现与执行</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["用户执行&lt;br/&gt;/skill search"] --&gt; B["扫描 Skill 目录"]
+    B --&gt; C["Markdown 解析&lt;br/&gt;提取元数据"]
+    C --&gt; D["相似度搜索&lt;br/&gt;返回排序结果"]
+    D --&gt; E["用户选择 Skill"]
+    E --&gt; F["显示参数表单"]
+    F --&gt; G["用户填入参数"]
+    G --&gt; H["验证参数类型"]
+    H --&gt; I["参数注入代码"]
+    I --&gt; J["沙箱执行"]
+    J --&gt; K["返回结果"]
+    style K fill:#ccffcc
+</code></pre>
+<p><strong>图 36-2：Skill 的文件结构</strong></p>
+<pre><code class="language-mermaid">graph TB
+    A["Skill.md"]
+    B["标题&lt;br/&gt;Skill: ..."]
+    C["问题章节&lt;br/&gt;## 问题"]
+    D["场景列表"]
+    E["解决方案&lt;br/&gt;## 解决方案"]
+    F["步骤说明"]
+    G["代码模板&lt;br/&gt;@input/@output"]
+    H["示例&lt;br/&gt;## 示例"]
+    I["输入/输出"]
+    A --&gt; B
+    A --&gt; C --&gt; D
+    A --&gt; E --&gt; F
+    A --&gt; G
+    A --&gt; H --&gt; I
+</code></pre>
+<p><strong>图 36-3：Skill 的执行管道</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant User
+    participant Parser
+    participant Validator
+    participant Sandbox
+    participant Result
+    User-&gt;&gt;Parser: 选择 Skill + 参数
+    Parser-&gt;&gt;Parser: 解析 Markdown
+    Parser-&gt;&gt;Validator: 验证参数类型
+    Validator-&gt;&gt;Sandbox: 注入参数
+    Sandbox-&gt;&gt;Sandbox: 执行代码
+    Sandbox--&gt;&gt;Result: 返回结果
+    Result--&gt;&gt;User: 显示输出
+</code></pre>
+<p><strong>图 36-4：语义搜索的工作流</strong></p>
+<pre><code class="language-mermaid">graph LR
+    A["用户查询&lt;br/&gt;❓"] --&gt; B["Embedding"]
+    B --&gt; C["相似度计算"]
+    C --&gt; D["Skill A&lt;br/&gt;0.92"]
+    C --&gt; E["Skill B&lt;br/&gt;0.78"]
+    C --&gt; F["Skill C&lt;br/&gt;0.62"]
+    D --&gt; G["排序与展示"]
+    E --&gt; G
+    F --&gt; G
+    style D fill:#ccffcc
+</code></pre>
+<p><strong>表格 36-1：Skill 的参数类型</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>类型</th><th>示例</th><th>验证</th></tr></thead><tbody>
+<tr><td><strong>string</strong></td><td>"hello"</td><td>长度、正则</td></tr>
+<tr><td><strong>number</strong></td><td>42</td><td>范围、整数</td></tr>
+<tr><td><strong>object</strong></td><td>{"x": 1}</td><td>JSON Schema</td></tr>
+<tr><td><strong>array</strong></td><td>[1, 2, 3]</td><td>元素类型</td></tr>
+<tr><td><strong>enum</strong></td><td>"option1"</td><td>从预定义列表选</td></tr>
+<tr><td><strong>表格 36-2：Skill 的调用方式</strong></td><td></td><td></td></tr>
+<tr><td>方式</td><td>命令</td><td>何时用</td></tr>
+<tr><td>------</td><td>------</td><td>--------</td></tr>
+<tr><td><strong>Slash 命令</strong></td><td><code>/skill search "keyword"</code></td><td>用户主动搜索</td></tr>
+<tr><td><strong>直接执行</strong></td><td><code>/skill run "Name" {...}</code></td><td>已知 Skill 名称</td></tr>
+<tr><td><strong>Agent 推荐</strong></td><td>Agent 自动发现</td><td>EXPERIMENTAL 标志</td></tr>
+<tr><td><strong>列表浏览</strong></td><td><code>/skill list</code></td><td>浏览所有 Skill</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="模式提炼-1"><a class="header" href="#模式提炼-1">模式提炼</a></h2>
+<h3 id="声明式能力封装declarative-capability-packaging"><a class="header" href="#声明式能力封装declarative-capability-packaging">声明式能力封装（Declarative Capability Packaging）</a></h3>
+<p><strong>解决的问题</strong>：可复用的工作流散落在各个对话记录里，无法被其他用户发现和使用，也无法版本管理。</p>
+<p><strong>核心做法</strong>：把工作流用 Markdown 文档化——"问题是什么"、"解决步骤"、"代码模板"、"使用示例"。Markdown 格式让非开发者也能贡献 Skill，Git 提供版本管理。</p>
+<p><strong>前置条件</strong>：工作流有明确的输入/输出格式，可以参数化，且会被多次复用。</p>
+<p><strong>源码证据</strong>：<code>src/utils/skills/skillParser.ts</code> — <code>parseSkillFile()</code> 把 Markdown 文档解析为可执行的 Skill 对象。</p>
+<h3 id="基于-embedding-的语义发现semantic-discovery"><a class="header" href="#基于-embedding-的语义发现semantic-discovery">基于 Embedding 的语义发现（Semantic Discovery）</a></h3>
+<p><strong>解决的问题</strong>：Skill 库增长到 100+ 个后，用户很难用关键词找到需要的 Skill——"从 JSON 生成类型" 和 "将 JSON 转换为 TypeScript interface" 应该找到同一个 Skill。</p>
+<p><strong>核心做法</strong>：对 Skill 的名称 + 问题描述做向量 Embedding，用 cosine 相似度排序检索结果。</p>
+<p><strong>前置条件</strong>：有 Embedding 模型，愿意为每个 Skill 预计算和缓存向量。</p>
+<p><strong>源码证据</strong>：<code>src/utils/skills/semanticSearch.ts</code>（EXPERIMENTAL）— <code>semanticSearchSkills()</code> 实现 Embedding 相似度检索。</p>
+<h2 id="延伸createskillcommand-的转换机制与-skill-frontmatter-字段"><a class="header" href="#延伸createskillcommand-的转换机制与-skill-frontmatter-字段">延伸：createSkillCommand 的转换机制与 Skill frontmatter 字段</a></h2>
+<p><code>createSkillCommand</code>（<code>src/skills/loadSkillsDir.ts:270</code>）把 Markdown Skill 文件转换为可调用的命令对象：</p>
+<pre><code class="language-typescript">// src/skills/loadSkillsDir.ts:270
+export function createSkillCommand({
+  content,      // Markdown 文件内容
+  name,         // Skill 名称
+  filePath,     // 来源文件路径
+  loadedFrom,   // 加载来源（.claude/skills/ 或 ~/.claude/skills/）
+}: CreateSkillCommandParams): Command {
+  const frontmatter = parseSkillFrontmatterFields(content)
+  return {
+    name,
+    type: 'skill',
+    execute: async (args) =&gt; { /* 调用 Skill 逻辑 */ }
+  }
+}
+</code></pre>
+<p>Skill frontmatter 的关键字段（<code>src/skills/loadSkillsDir.ts:185</code>）：</p>
+<pre><code class="language-markdown">---
+name: "TypeScript Interface Generator"
+description: "从 JSON 数据生成 TypeScript 类型定义"
+trigger: "generate types from"   # 触发词（用于语义搜索）
+paths:                            # 允许操作的路径
+  - "src/**/*.ts"
+---
+</code></pre>
+<p><code>trigger</code> 字段是 <code>EXPERIMENTAL_SKILL_SEARCH</code> 的基础——当用户描述任务时，系统计算用户输入与各 Skill <code>trigger</code> 的语义相似度，推荐最相关的 Skill（<code>src/skills/loadSkillsDir.ts:270</code>）。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-skill-的代码模板里用字符串拼接注入参数产生代码注入风险"><a class="header" href="#-skill-的代码模板里用字符串拼接注入参数产生代码注入风险">❌ Skill 的代码模板里用字符串拼接注入参数，产生代码注入风险</a></h3>
+<pre><code class="language-typescript">// ❌ 危险：用户输入被直接拼接进代码字符串
+const code = `const result = process("${userInput}")` // userInput 可以包含 "); maliciousCode(); ("
+</code></pre>
+<p>应该只允许预定义的参数名替换，且参数值必须经过 JSON 序列化，不允许任意字符串插入代码逻辑（<code>src/utils/skills/</code>）。</p>
+<h3 id="-假设-skill-执行的结果总是有效的可用数据"><a class="header" href="#-假设-skill-执行的结果总是有效的可用数据">❌ 假设 Skill 执行的结果总是有效的可用数据</a></h3>
+<p>Skill 执行返回的是字符串或任意类型，没有类型保证。直接用 <code>result.data.items[0]</code> 访问不存在的属性会导致 TypeError。调用者必须验证 Skill 的输出格式。</p>
+<h3 id="-skill-文件放在-gitignore-里团队成员无法共享"><a class="header" href="#-skill-文件放在-gitignore-里团队成员无法共享">❌ Skill 文件放在 .gitignore 里，团队成员无法共享</a></h3>
+<p>个人的 Skill 文件如果在 <code>.gitignore</code> 里，无法纳入团队的知识库。应该把通用的 Skill 提交到 <code>.claude/skills/</code> 目录，个人独有的放 <code>~/.claude/skills/</code>。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用模块化的 Markdown 描述可复用的工作流</strong>：把"从 JIRA ticket 生成代码框架"这类重复工作写成 Skill，分享给团队</li>
+<li><strong>对 Skill 的代码模板参数进行类型验证</strong>：用 JSON Schema 验证输入参数格式，在执行前拦截无效输入</li>
+<li><strong>把团队 Skill 提交到 <code>.claude/skills/</code> 目录</strong>：纳入版本控制，让团队成员共享，个人 Skill 放 <code>~/.claude/skills/</code></li>
+<li><strong>用语义搜索而非精确搜索发现 Skill</strong>：相似意图的描述应该能找到相关 Skill，不限于关键词完全匹配</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part9/ch35.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part9/ch37.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part9/ch35.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part9/ch37.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

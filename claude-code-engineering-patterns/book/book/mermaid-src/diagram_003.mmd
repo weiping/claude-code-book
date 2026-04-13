@@ -1,0 +1,24 @@
+graph LR
+    subgraph Tool["Tool 系统"]
+        T1["buildTool() 工厂\n+ 目录约定"]
+        T2["56 个工具目录\n自动注册"]
+        T1 --> T2
+    end
+
+    subgraph Hook["Hook 引擎"]
+        H1["HOOK_EVENTS 常量数组\n27 个事件"]
+        H2["AsyncHookRegistry\n运行时注册"]
+        H1 --> H2
+    end
+
+    subgraph Task["Task 系统"]
+        K1["TaskType 联合类型\n7 种类型"]
+        K2["tasks/ 目录\n每类型一目录"]
+        K1 --> K2
+    end
+
+    subgraph Cmd["命令系统"]
+        C1["目录约定\n+ feature flag 门控"]
+        C2["94 个命令目录\n动态加载"]
+        C1 --> C2
+    end

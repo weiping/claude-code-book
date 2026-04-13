@@ -1,0 +1,18 @@
+graph TD
+    A["会话启动"] --> B["loadMemoryPrompt()"]
+    B --> B1["读取 MEMORY.md"]
+    B1 --> B2["注入系统提示"]
+    B2 --> C["对话进行中<br/>50-100 轮"]
+    C --> C1["shouldExtractMemory()"]
+    C1 -->|不满足| C2["继续对话"]
+    C1 -->|满足| D["分析对话"]
+    C2 --> E["会话结束"]
+    D --> D1["提炼关键信息<br/>- 架构决策<br/>- 已知 bug<br/>- 失败的方案"]
+    D1 --> D2["生成 markdown"]
+    D2 --> D3["追加到 memdir"]
+    D3 --> E
+    E --> F["下次会话"]
+    F --> B
+    style B fill:#e6f2ff
+    style D fill:#ffe6e6
+    style F fill:#e6ffe6

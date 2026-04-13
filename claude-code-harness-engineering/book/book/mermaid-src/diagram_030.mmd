@@ -1,0 +1,12 @@
+graph TD
+    A["feature flag 定义\nDEFAULT_FEATURES\nexcluded-strings.txt"] --> B{"编译时\nBun feature()"}
+
+    B -->|"flag=false"| C["DCE 消除\n代码从产物中消失"]
+    B -->|"flag=true"| D["代码保留在产物中"]
+
+    D --> E{"运行时控制\nGrowthBook / env / 配置"}
+    E -->|"enabled"| F["功能执行"]
+    E -->|"disabled"| G["功能跳过\n但代码仍在产物中"]
+
+    C -.- Note1["excluded-strings.txt\nant-only 功能\n外部版本不存在"]
+    E -.- Note2["双重控制示例\nCOORDINATOR_MODE 需要\n编译时 AND 运行时"]

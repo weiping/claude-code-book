@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant UI as 用户界面
+    participant Task as LocalAgentTask
+    participant Loop as Agent 执行循环
+
+    UI->>Task: registerAgentForeground()
+    Task->>Task: new Promise(resolve => resolvers.set(agentId, resolve))
+    Task-->>Loop: backgroundSignal (Promise)
+    Loop->>Loop: await Promise.race([completion, backgroundSignal])
+    Note over Loop: 运行中...
+    UI->>Task: backgroundAgentTask(taskId)
+    Task->>Task: setAppState(isBackgrounded=true)
+    Task->>Task: resolvers.get(taskId)()  // resolve
+    Task-->>Loop: backgroundSignal resolved
+    Loop->>Loop: 切换为后台模式
+    Loop->>Task: 完成时 updateTaskState(status=completed)

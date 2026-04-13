@@ -1,0 +1,10 @@
+[book]
+title = "深度解剖 Claude Code 的源码"
+language = "zh"
+multilingual = false
+src = "src"
+authors = ["雨杨先生"]
+
+[output.html]
+mathjax-support = false
+additional-js = ["theme/mermaid-init.js"]

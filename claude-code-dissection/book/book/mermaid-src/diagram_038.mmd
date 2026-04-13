@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant App
+    participant Analyzer
+    participant File as 大文件 (1MB)
+    participant Cache
+
+    App->>File: 读取文件 mtime
+    File-->>App: mtime = T1
+    App->>Cache: 查询缓存 (path + mtime)
+    Cache-->>App: 未命中
+
+    App->>File: 流式读取（分块）
+    loop 每个 64KB 块
+        File-->>Analyzer: chunk
+        Analyzer->>Analyzer: 解析当前块
+    end
+    Analyzer-->>App: 分析结果
+    App->>Cache: 存入缓存 (path + mtime → result)

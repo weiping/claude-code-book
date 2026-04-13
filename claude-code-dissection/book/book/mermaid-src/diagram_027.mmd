@@ -1,0 +1,16 @@
+flowchart TD
+    callNode["AgentTool.call()\nsubagent_type = X"]
+    agentLoader["getBuiltInAgents()\n+ loadAgentsDir()自定义目录"]
+    agentFilter["filterAgentsByMcpRequirements()\n+ filterDeniedAgents()"]
+    findNode{找到 agentType = X?}
+    generalNode["fallback to\nGENERAL_PURPOSE_AGENT"]
+    foundNode["使用找到的 AgentDefinition"]
+    runNode["runAgent() or\nspawnTeammate()"]
+
+    callNode --> agentLoader
+    agentLoader --> agentFilter
+    agentFilter --> findNode
+    findNode -->|否| generalNode
+    findNode -->|是| foundNode
+    generalNode --> runNode
+    foundNode --> runNode

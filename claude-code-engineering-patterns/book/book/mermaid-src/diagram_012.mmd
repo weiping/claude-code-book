@@ -1,0 +1,12 @@
+flowchart TD
+    subgraph 前置路由
+        R1[路由层判断类型] --> R2{条件匹配?}
+        R2 -->|是| R3[懒加载处理器]
+        R3 --> R4[立即处理并返回]
+        R2 -->|否| R5[下一条件]
+    end
+    subgraph GoF责任链
+        C1[Handler1] -->|pass-through| C2[Handler2]
+        C2 -->|pass-through| C3[Handler3]
+        C3 --> C4[处理或放弃]
+    end

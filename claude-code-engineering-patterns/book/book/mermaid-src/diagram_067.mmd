@@ -1,0 +1,9 @@
+flowchart TD
+    enter["isClaudeMdExcluded 入口"] --> type_check{"type 是 Managed?"}
+    type_check -->|是| never_exclude["return false\n最高权威，永不排除"]
+    type_check -->|否| pattern_check{"claudeMdExcludes\n配置为空?"}
+    pattern_check -->|是| no_exclude["return false\n无排除规则"]
+    pattern_check -->|否| symlink["resolveExcludePatterns\n处理符号链接"]
+    symlink --> glob_match{"glob 匹配?"}
+    glob_match -->|匹配| excluded["return true\n跳过此文件"]
+    glob_match -->|不匹配| included["return false\n正常加载"]

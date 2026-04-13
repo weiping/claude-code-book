@@ -1,0 +1,18 @@
+flowchart TD
+    A["shouldUseSandbox()"]
+    B{SandboxManager\nisSandboxingEnabled?}
+    C{dangerouslyDisableSandbox\n且允许不沙箱?}
+    D{有命令内容?}
+    E{包含排除命令?}
+    no["return false\n（不使用沙箱）"]
+    yes["return true\n（使用沙箱）"]
+
+    A --> B
+    B -->|否| no
+    B -->|是| C
+    C -->|是| no
+    C -->|否| D
+    D -->|否| no
+    D -->|是| E
+    E -->|是| no
+    E -->|否| yes

@@ -1,0 +1,325 @@
+# 第 13 章写作计划
+
+**批次**：批次 7（来自 plans/batch.md）
+**章节**：ch13 — 生成器与评估器
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+展示内置智能体如何实现 GAN 式的生成/验证分离——planAgent 被硬性限制为只读，verificationAgent 的系统提示词专门对抗自我评估偏差（明确列出模型常见的"合理化拒绝验证"的借口）。AgentTool 通过 Markdown frontmatter 配置智能体定义。读完本章，读者将理解 Harness 如何用"让模型对抗模型"的方式解决"模型无法可靠评估自己输出"这一根本问题。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- 一个模型负责写代码，另一个模型负责验证——这不是简单的分工，而是一种对抗关系。planAgent 只能看不能改，verificationAgent 的工作不是确认"能运行"，而是"拼命让它崩溃"。理解这种 GAN 式的生成/验证分离，比知道具体有哪些内置智能体更重要。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向前链接第 12 章（forkedAgent 是每个 Agent 的底层机制）
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（6 种内置智能体、5 种禁用工具、VERDICT 三种结果、omitClaudeMd 节省 ~5-15 Gtok/week 等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/tools/AgentTool/built-in/verificationAgent.ts | VERIFICATION_SYSTEM_PROMPT（10-130）、RECOGNIZE YOUR OWN RATIONALIZATIONS（53-62）、disallowedTools（139-145） | 全文（152行）|
+| 2 | src/tools/AgentTool/built-in/planAgent.ts | getPlanV2SystemPrompt（22-80）、disallowedTools（77-82）、omitClaudeMd | 全文（92行）|
+| 3 | src/tools/AgentTool/built-in/exploreAgent.ts | getExploreSystemPrompt、EXPLORE_AGENT 定义、model 配置（haiku vs inherit） | 全文（83行）|
+| 4 | src/tools/AgentTool/built-in/generalPurposeAgent.ts | GENERAL_PURPOSE_AGENT 定义、tools: ['*'] | 全文（39行）|
+| 5 | src/tools/AgentTool/builtInAgents.ts | getBuiltInAgents（22-71）—6种智能体注册逻辑 | 全文（72行）|
+| 6 | src/tools/AgentTool/loadAgentsDir.ts | BaseAgentDefinition（106-135）、BuiltInAgentDefinition（136-143）、AgentDefinition 联合类型（162-165） | 行 100-170 |
+| 7 | src/tools/AgentTool/AgentTool.tsx | buildTool 入口（196）、selectedAgent 选择逻辑（324-370） | 行 196-210, 324-370 |
+| 8 | src/tools/AgentTool/runAgent.ts | runAgent 执行入口（248-300） | 行 248-300 |
+
+验证文件存在：
+```bash
+ls src/tools/AgentTool/built-in/verificationAgent.ts src/tools/AgentTool/built-in/planAgent.ts src/tools/AgentTool/built-in/exploreAgent.ts src/tools/AgentTool/built-in/generalPurposeAgent.ts src/tools/AgentTool/builtInAgents.ts src/tools/AgentTool/loadAgentsDir.ts src/tools/AgentTool/AgentTool.tsx src/tools/AgentTool/runAgent.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 13.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 13.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 向前链接第 12 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图 | 图 13-1、13-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 13-1、13-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「同一个模型，既当选手又当裁判，结果必然偏颇。GAN 用两个网络对抗解决这个问题——Harness 用两个 Agent。」
+
+### 节 13.1：问题——为什么模型不能自己验证自己
+- 核心主张：模型生成代码后自我评估存在系统性偏差——"合理化拒绝验证"（rationalization avoidance）是一种可预见的失败模式，而非随机错误
+- 源码锚点：
+  - `src/tools/AgentTool/built-in/verificationAgent.ts:10` — 系统提示词开头："Your job is not to confirm the implementation works — it's to try to break it"——直接指出验证的目标是破坏而非确认
+  - `src/tools/AgentTool/built-in/verificationAgent.ts:53` — "RECOGNIZE YOUR OWN RATIONALIZATIONS"——模型被明确告知它会产生自欺欺人的借口
+  - `src/tools/AgentTool/built-in/verificationAgent.ts:51` — "The implementer is an LLM too — its tests may be heavy on mocks, circular assertions, or happy-path coverage"——明确不信任同级模型的测试
+- 概念层次：定义（自我评估偏差是什么）→ 设计意图（为什么对抗是解法）
+- 权衡分析：N/A
+- 包含元素：列表（verificationAgent 识别的 6 种合理化借口）
+- **⛔ 内容密度规划**：
+  - 引入段要点：模型评估自己输出的偏差不是 bug，是 LLM 的固有特性——verificationAgent 的提示词就是针对这种特性的对抗措施
+  - 解读段要点：6 种合理化借口——"代码看起来对"、"实现的测试已经通过了"、"大概没问题"、"启动服务器看看代码"（而不是请求端点）、"我没有浏览器"（没检查 MCP 工具）、"这太耗时了"。每一种都有对应的对抗指令
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B1
+
+### 节 13.2：黄金法则——能力隔离比角色隔离更重要
+- 核心主张：Claude Code 的智能体分离不是通过不同的"角色设定"实现的，而是通过硬性的工具禁用——planAgent 不能写文件不是因为提示词说"不要写"，而是因为写文件的工具根本不存在
+- 源码锚点：
+  - `src/tools/AgentTool/built-in/planAgent.ts:77` — `disallowedTools: [AGENT_TOOL_NAME, EXIT_PLAN_MODE_TOOL_NAME, FILE_EDIT_TOOL_NAME, FILE_WRITE_TOOL_NAME, NOTEBOOK_EDIT_TOOL_NAME]`——5 种工具被硬性禁用
+  - `src/tools/AgentTool/built-in/verificationAgent.ts:139` — `disallowedTools` 列表：同样禁用了 FILE_EDIT/FILE_WRITE/NOTEBOOK_EDIT/AGENT——验证者不能修改项目
+  - `src/tools/AgentTool/loadAgentsDir.ts:106` — `BaseAgentDefinition` 中的 `disallowedTools?: string[]`——工具禁用是一级配置字段
+  - `src/tools/AgentTool/built-in/verificationAgent.ts:14` — "CRITICAL: DO NOT MODIFY THE PROJECT"——提示词和工具禁用双重保障
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：提示词约束 vs 工具禁用——提示词说"不要修改文件"可能被忽略，工具不存在是不可违反的。Claude Code 选择双保险：提示词（软约束）+ 工具移除（硬约束）
+- 包含元素：表格（4 种内置智能体的工具权限对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：disallowedTools 是智能体隔离的真正执行者——不是"请勿触碰"的牌子，是把门拆了
+  - 解读段要点：planAgent 和 verificationAgent 共享 5 种禁用工具（Agent/FileEdit/FileWrite/NotebookEdit + 各自额外的），exploreAgent 也共享同一套。general-purpose 是唯一拥有全部工具的智能体
+  - 散文与代码比例目标：100% 散文
+- 估计字数：800-1100 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 13.3：适用场景——何时使用哪种内置智能体
+- 核心主张：6 种内置智能体按"权限范围 × 专精程度"形成从通用到专用的梯度
+- 源码锚点：
+  - `src/tools/AgentTool/builtInAgents.ts:45` — agents 数组初始化，从 GENERAL_PURPOSE_AGENT 开始
+  - `src/tools/AgentTool/builtInAgents.ts:51` — Explore/Plan 智能体通过 `areExplorePlanAgentsEnabled()` 控制
+  - `src/tools/AgentTool/builtInAgents.ts:68` — VERIFICATION_AGENT 需要 feature flag 和 GrowthBook flag 双重启用
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：表格（6 种智能体的权限/模型/用途）
+- **⛔ 内容密度规划**：
+  - 引入段要点：6 种智能体不是随意堆叠，每种编码了不同的信任边界
+  - 解读段要点：general-purpose（全权限、默认模型）、Explore（只读、haiku 模型、快速搜索）、Plan（只读、inherit 模型、架构设计）、Verification（只读、禁用文件修改、对抗性验证）、ClaudeCodeGuide（文档查询）、StatuslineSetup（UI配置）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 13.4：工作原理——AgentTool 从定义到执行的完整路径
+- 核心主张：AgentTool 的执行路径是"定义加载→工具过滤→fork子智能体→独立循环→结果返回"，每一步都有对应的隔离机制
+- 源码锚点：
+  - `src/tools/AgentTool/AgentTool.tsx:196` — `AgentTool = buildTool({...})`：AgentTool 自身也是一个标准工具
+  - `src/tools/AgentTool/AgentTool.tsx:324` — `selectedAgent` 选择逻辑：根据 effectiveType 从 activeAgents 中查找
+  - `src/tools/AgentTool/runAgent.ts:248` — `runAgent` 函数：每个 Agent 在独立的 queryLoop 中执行（详见第 12 章 fork 机制）
+  - `src/tools/AgentTool/loadAgentsDir.ts:136` — `BuiltInAgentDefinition`：内置智能体通过 `getSystemPrompt()` 动态生成系统提示词
+  - `src/tools/AgentTool/loadAgentsDir.ts:162` — `AgentDefinition` 联合类型：BuiltIn | Custom | Plugin 三种来源
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：BuiltIn vs Custom vs Plugin——内置智能体用代码定义（getSystemPrompt 函数），自定义智能体用 Markdown frontmatter（用户可配置），Plugin 用插件 API——三种来源共享相同的 BaseAgentDefinition 接口
+- 包含元素：Mermaid 流程图（AgentTool 执行路径）、表格（3 种智能体来源对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：AgentTool 是所有子智能体的统一入口——无论内置还是自定义，都走同一条路径
+  - 解读段要点：执行路径——buildTool 注册 AgentTool → 用户调用时选择 agentType → 从 activeAgents 中查找 → 过滤 disallowedTools → fork 子智能体（复用 CacheSafeParams，详见第 12 章）→ runAgent 启动独立 queryLoop → 结果返回给主智能体
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 13.5：权衡——对抗式验证的 3 个设计代价
+- 核心主张：GAN 式的生成/验证分离提供了高质量的验证，但也带来了 token 成本、延迟和模型依赖三个代价
+- 源码锚点：
+  - `src/tools/AgentTool/loadAgentsDir.ts:132` — `omitClaudeMd?: boolean` 注释："Read-only agents (Explore, Plan) don't need commit/PR/lint guidelines — the main agent has full CLAUDE.md and interprets their results. Saves ~5-15 Gtok/week across 34M+ Explore spawns"——Explore 被调用 3400 万次/周，省 5-15 Gtok
+  - `src/tools/AgentTool/built-in/exploreAgent.ts:65` — model 配置："Ants get inherit to use the main agent's model; external users get haiku for speed"——速度和成本优化
+  - `src/tools/AgentTool/builtInAgents.ts:68` — VERIFICATION_AGENT 需要双重 flag 启用——`feature('VERIFICATION_AGENT')` + `getFeatureValue_CACHED_MAY_BE_STALE('tengu_hive_evidence', false)`——说明验证智能体成本高，默认关闭
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - Token 成本：Verification Agent 需要一次完整的独立会话（系统提示词极长），omitClaudeMd 是针对子智能体的 token 节省策略（5-15 Gtok/week）
+  - 延迟：Verification 异步执行（background: true），用户不等待结果——但问题可能在用户看到"完成"后才被发现
+  - 模型依赖：Verification 的有效性取决于模型是否真的遵循了对抗性提示词——而提示词本身在对抗"模型倾向于偷懒"的倾向
+- 包含元素：对比表格（3 个代价）
+- **⛔ 内容密度规划**：
+  - 引入段要点：对抗式验证的代价和它解决的问题一样真实
+  - 解读段要点：3400 万次/周的 Explore 调用 → omitClaudeMd 策略节省 5-15 Gtok/周；Verification 需要 feature flag 双重启用 → 说明成本和成熟度的权衡；模型可能不遵循对抗提示词 → "RECOGNIZE YOUR OWN RATIONALIZATIONS" 本身就在和模型的天性斗争
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 13.6：踩坑指南——内置智能体中的常见错误
+- 核心主张：最常见的错误是混淆"提示词约束"和"工具约束"——前者可以违反，后者不可违反
+- 源码锚点：
+  - `src/tools/AgentTool/built-in/planAgent.ts:22` — 系统提示词中的 "CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS"——即使提示词强调，仍需 disallowedTools 硬保障
+  - `src/tools/AgentTool/AgentTool.tsx:324` — fork 递归守卫："Fork is not available inside a forked worker"——Agent 不能嵌套调用 Agent
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：两个关键误区
+  - 解读段要点：陷阱一——在 planAgent 中期望它创建临时文件（disallowedTools 包含 FileWrite，临时文件也不行）；陷阱二——在 verificationAgent 中期望它修改源代码来修复问题（它只能报告 PASS/FAIL/PARTIAL）；陷阱三——在子智能体中再次调用 Agent 工具（递归守卫阻止）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 13.7：实证——Verification Agent 的对抗性验证流程
+- 核心主张：一次完整的 Verification 从接收到输出 VERDICT，需要经过构建→测试→对抗性探测→自我审查四个阶段
+- 源码锚点：
+  - `src/tools/AgentTool/built-in/verificationAgent.ts:134` — `VERIFICATION_AGENT` 定义：`background: true`（异步执行）、`color: 'red'`（红色标识）
+  - `src/tools/AgentTool/built-in/verificationAgent.ts:10` — 验证策略按变更类型区分（Frontend/Backend/CLI/Infrastructure 等 11 种）
+  - `src/tools/AgentTool/built-in/verificationAgent.ts:53` — "RECOGNIZE YOUR OWN RATIONALIZATIONS" 自我审查阶段
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 时序图（Verification 执行流程：构建→测试→对抗性探测→VERDICT 输出）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一次 Verification 的完整执行过程
+  - 解读段要点：接收任务描述+变更文件列表 → 按变更类型选择策略（11 种）→ 执行构建和测试 → 运行对抗性探测（并发/边界/幂等/孤儿操作）→ 自我审查（是否有合理化借口？）→ 输出 VERDICT: PASS/FAIL/PARTIAL
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：生成器与评估器的本质
+- 本质：通过工具禁用（disallowedTools）实现能力隔离，通过对抗性提示词（RECOGNIZE YOUR OWN RATIONALIZATIONS）对抗模型自我评估偏差，两者共同构成 GAN 式的生成/验证分离
+- 关键机制：disallowedTools（硬约束）、VERDICT 三值输出（PASS/FAIL/PARTIAL）、omitClaudeMd token 节省、AgentDefinition 联合类型
+- 适用边界：适用于需要独立验证的任务；单次简单修改不需要 Verification Agent
+- 与其他模式的关系：本章的 Agent 是第 12 章（forkedAgent）的具体使用场景；第 14 章（并行世界）将展示多 Agent 并行执行
+
+### 章末：用户能做什么（必填）
+1. 为只读智能体设置 disallowedTools——不要只用提示词约束，要真正移除工具
+2. 设计验证智能体时，明确列出模型的"合理化借口"并逐一对抗
+3. 对高频调用的只读智能体使用 omitClaudeMd——Explore 每周 3400 万次调用证明了 token 节省的价值
+4. 验证结果使用三值输出（PASS/FAIL/PARTIAL）——允许环境限制的诚实报告
+5. 为高风险智能体设置双重 feature flag 启用条件——成本高的能力不应该是默认开启的
+6. 在智能体定义中使用 BaseAgentDefinition 统一接口——内置、自定义、插件共享相同的类型系统
+7. 为每个子智能体设置递归守卫——防止 Agent 嵌套调用 Agent 导致无限递归
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图13-1 | AgentTool 执行路径 | Mermaid flowchart TD | 定义加载→工具过滤→fork→独立queryLoop→结果返回 | 13.4 |
+| 图13-2 | 6种智能体权限矩阵 | Mermaid graph LR | 6 种智能体按权限范围（只读→读写）和专精程度（通用→专用）分布 | 13.3 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 13.4 节（AgentTool 执行路径）——本章核心
+3. 写 13.2 节（黄金法则：能力隔离）
+4. 写 13.1 节（问题）
+5. 写 13.3 节（适用场景）
+6. 写 13.5 节（权衡）
+7. 写 13.6 节（踩坑指南）
+8. 写 13.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '10p' src/tools/AgentTool/built-in/verificationAgent.ts    # VERIFICATION_SYSTEM_PROMPT 开头
+sed -n '53p' src/tools/AgentTool/built-in/verificationAgent.ts    # RECOGNIZE YOUR OWN RATIONALIZATIONS
+sed -n '134p' src/tools/AgentTool/built-in/verificationAgent.ts   # VERIFICATION_AGENT 定义
+sed -n '77p' src/tools/AgentTool/built-in/planAgent.ts            # disallowedTools
+sed -n '22p' src/tools/AgentTool/built-in/planAgent.ts            # READ-ONLY MODE
+sed -n '65p' src/tools/AgentTool/built-in/exploreAgent.ts         # EXPLORE_AGENT model
+sed -n '22p' src/tools/AgentTool/builtInAgents.ts                 # getBuiltInAgents
+sed -n '45p' src/tools/AgentTool/builtInAgents.ts                 # agents 数组
+sed -n '68p' src/tools/AgentTool/builtInAgents.ts                 # VERIFICATION_AGENT 推入
+sed -n '106p' src/tools/AgentTool/loadAgentsDir.ts                # BaseAgentDefinition
+sed -n '132p' src/tools/AgentTool/loadAgentsDir.ts                # omitClaudeMd
+sed -n '136p' src/tools/AgentTool/loadAgentsDir.ts                # BuiltInAgentDefinition
+sed -n '162p' src/tools/AgentTool/loadAgentsDir.ts                # AgentDefinition 联合类型
+sed -n '196p' src/tools/AgentTool/AgentTool.tsx                   # AgentTool buildTool
+sed -n '248p' src/tools/AgentTool/runAgent.ts                     # runAgent
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch13.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

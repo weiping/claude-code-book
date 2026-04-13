@@ -1,0 +1,19 @@
+stateDiagram-v2
+    [*] --> mode_default
+
+    mode_default --> plan: /plan 或 EnterPlanModeTool
+    plan --> mode_default: ExitPlanModeTool
+    mode_default --> acceptEdits: --permission-mode acceptEdits
+    mode_default --> bypassPermissions: --dangerously-skip-permissions
+    acceptEdits --> mode_default: 重置
+    plan --> plan: 转移副作用清除 needsPlanModeExitAttachment
+
+    note right of plan
+        进入：清除 exit attachment
+        离开：设置 exit attachment
+    end note
+
+    note right of bypassPermissions
+        bubble 只在子 Agent 内部使用
+        auto 仅内部构建可见
+    end note

@@ -1,0 +1,534 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 1 章：当模型遇见 Harness - 从 Claude Code 源码提炼的 Harness 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">从 Claude Code 源码提炼的 Harness 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-1-章当模型遇见-harness"><a class="header" href="#第-1-章当模型遇见-harness">第 1 章:当模型遇见 Harness</a></h1>
+<blockquote>
+<p>"模型是引擎，Harness 是车身。引擎决定动力，车身决定你能开到哪里。"</p>
+</blockquote>
+<p>51 万行 TypeScript 代码、2000 个源文件、54 个工具注册——这些数字属于 Claude Code v2.1.88，Anthropic 的 AI 编程助手 CLI。但调用 Claude API 完成一次对话，只需要不到 10 行代码。多出来的 51 万行在做什么？它们构成了一个精密的 <strong>Harness（马具）</strong> 控制层——围绕 LLM 搭建的运行框架，决定模型能稳定、安全、高效地完成多复杂的任务。读完本章，你将看到这张 Harness 架构的全景地图，并理解后续每一章在全局架构中的位置。</p>
+<h2 id="问题51-万行代码在解决什么问题"><a class="header" href="#问题51-万行代码在解决什么问题">问题——51 万行代码在解决什么问题</a></h2>
+<p>裸调 Claude API 只需要几行代码：发送一段文本，收到一段回复。但当你想让 AI 编程助手改完一个文件后记住改动内容、在执行危险命令前先征求许可、在上下文窗口快要爆满时自动压缩历史消息、在主任务之外并行派发子任务——你需要的就不再是一个 API 封装，而是一整套控制架构。</p>
+<p>Claude Code 的代码不是功能堆砌，而是围绕一个单一目标构建的精密系统：<strong>让模型稳定、安全、高效地完成任务</strong>。源码的第一行就揭示了这种工程意识的渗透深度。</p>
+<p>启动序列的第一条语句不是解析参数，不是渲染界面，而是一个性能打点。紧随其后的三行代码分别触发 MDM（移动设备管理，Mobile Device Management）子进程读取和 macOS Keychain 预获取，它们的共同特征是：<strong>副作用与后续模块加载并行执行</strong>。源码注释明确写道："这些副作用必须在所有其他导入之前运行。"这三条并行任务在后续约 135 毫秒的模块加载期间同步完成，将冷启动延迟压到最低。</p>
+<p>这种对启动顺序的精密控制，就是 Harness 工程的缩影。模型负责理解代码、生成方案；Harness 负责确保模型运行在一个可靠的环境里。没有 Harness，模型是裸露的引擎；有了 Harness，模型是可驾驶的整车。</p>
+<p>这 51 万行代码的分布揭示了一个关键事实：<strong>绝大部分代码既不在用户界面，也不在 API 通信，而在两者之间的 Harness 控制层。</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>架构层</th><th>代码量</th><th>核心职责</th></tr></thead><tbody>
+<tr><td><strong>交互层</strong></td><td>~60,000 行</td><td>CLI 入口、Ink（React for CLI）TUI 组件、103 个斜杠命令</td></tr>
+<tr><td><strong>Harness 控制层</strong></td><td>~400,000 行</td><td>9 个子系统：启动、核心循环、提示词、工具编排、上下文、权限、任务、多智能体、辅助</td></tr>
+<tr><td><strong>模型层</strong></td><td>~35,000 行</td><td>Anthropic API 流式通信、Bedrock/Vertex 多提供商支持</td></tr>
+</tbody></table>
+</div>
+<p>交互层管"用户看到什么"，模型层管"如何与 API 说话"，<strong>Harness 控制层管"所有智能决策"</strong>。工具是否允许执行、上下文何时压缩、子智能体如何派生、权限如何分层——这些决策全部由 Harness 做出，模型只负责"建议"，Harness 负责"审批"。</p>
+<p><strong>这些代码的存在不是为了增强模型能力，而是为了管理模型能力的边界。</strong> 模型能生成 Bash 命令，但 Harness 决定是否允许执行；模型能读取任何文件，但 Harness 决定是否需要用户确认；模型能处理无限长的上下文（理论上），但 Harness 决定何时压缩、如何压缩、压缩后保留什么。</p>
+<p>这就是 Harness 工程的核心问题：<strong>什么应该由模型管理，什么必须由 Harness 控制。</strong></p>
+<h2 id="黄金法则harness-的本质是回答一个问题"><a class="header" href="#黄金法则harness-的本质是回答一个问题">黄金法则——Harness 的本质是回答一个问题</a></h2>
+<p>Claude Code 的全部代码归根结底都在回答一个永恒问题：</p>
+<p><strong>什么应该由模型管理，什么必须由 Harness 控制？</strong></p>
+<p>这个问题没有唯一答案，但 Claude Code 的 <code>buildTool</code> 工厂函数给出了一种工程作答方式。<code>buildTool</code> 定义了工具的统一接口——每个工具都必须回答 Harness 的控制问题：是否并发安全？是否只读？是否具有破坏性？</p>
+<p><code>TOOL_DEFAULTS</code> 的默认值策略编码了 Claude Code 对这个问题的立场：</p>
+<ul>
+<li><code>isConcurrencySafe</code> 默认 <code>false</code>——假设工具不安全，除非开发者显式声明</li>
+<li><code>isReadOnly</code> 默认 <code>false</code>——假设工具会写入，除非显式标记</li>
+</ul>
+<p>这套默认值策略体现了 <strong>fail-closed（失败关闭）</strong> 原则：当信息不完整时，系统选择更安全的方向。<strong>一个工具如果开发者忘了标记并发安全性，它会被当作不安全来处理——这可能导致性能损失（不能并行），但绝不会导致安全问题（不会并发执行危险操作）。</strong></p>
+<p><strong>原则 1.1：默认关闭</strong> — 当无法确定操作是否安全时，选择拒绝而非放行。过度保护可能影响性能，但不会造成安全事故。</p>
+<p>这个原则在模型管理和 Harness 控制之间划出了一条清晰的界线：模型决定<strong>做什么</strong>（调用哪个工具、传什么参数），Harness 决定<strong>能做什么</strong>（是否允许执行、是否需要确认、是否可以并行）。两者的交互构成了 Harness 工程的核心张力。</p>
+<h2 id="适用场景谁需要-harness-工程"><a class="header" href="#适用场景谁需要-harness-工程">适用场景——谁需要 Harness 工程</a></h2>
+<p>如果你正在构建一个让 AI 执行操作的软件系统——无论它叫 Agent、Copilot、还是 AI 助手——你都在做 Harness 工程。区别只在于你是否意识到。</p>
+<p>Claude Code 的工具注册表列出了系统暴露给模型的全部工具，涵盖了五类通用 Agent 需求：</p>
+<div class="table-wrapper"><table><thead><tr><th>需求类别</th><th>工具示例</th><th>通用 Agent 中的对应</th></tr></thead><tbody>
+<tr><td>文件操作</td><td>FileReadTool、FileEditTool、FileWriteTool</td><td>读取/修改知识库、配置文件</td></tr>
+<tr><td>命令执行</td><td>BashTool</td><td>调用外部 API、执行系统命令</td></tr>
+<tr><td>搜索</td><td>GlobTool、GrepTool、WebSearchTool</td><td>信息检索、代码搜索</td></tr>
+<tr><td>任务管理</td><td>AgentTool、TaskCreateTool、TaskListTool</td><td>子任务派发、多智能体协调</td></tr>
+<tr><td>用户交互</td><td>AskUserQuestionTool、ConfigTool</td><td>向用户确认、调整配置</td></tr>
+</tbody></table>
+</div>
+<p>这份工具清单揭示了 Harness 工程的通用性——Claude Code 注册的工具类型，与任何 AI Agent 系统需要的工具类型高度重叠。<strong>工具的具体实现不同，但工具的类别和 Harness 管理工具的方式是可以迁移的。</strong></p>
+<p>那么，谁需要关注 Harness 工程？</p>
+<div class="table-wrapper"><table><thead><tr><th>读者类型</th><th>场景</th><th>从本书获得什么</th></tr></thead><tbody>
+<tr><td>Agent 框架开发者</td><td>构建通用的 Agent 运行框架</td><td>工具编排、权限控制、上下文管理的工程模式</td></tr>
+<tr><td>AI 应用工程师</td><td>在产品中集成 AI 能力</td><td>安全护栏、错误处理、性能优化的实践参考</td></tr>
+<tr><td>架构师</td><td>设计大型 AI 系统的分层结构</td><td>三层 + 九子系统架构模型和设计权衡分析方法</td></tr>
+</tbody></table>
+</div>
+<h2 id="工作原理三层架构与九个子系统"><a class="header" href="#工作原理三层架构与九个子系统">工作原理——三层架构与九个子系统</a></h2>
+<p>Claude Code 的代码可以清晰地映射为三层架构。<strong>交互层</strong>处理用户输入和输出渲染，<strong>模型层</strong>封装与 Anthropic API 的通信，中间的 <strong>Harness 控制层</strong>承担所有"智能"决策。而 Harness 控制层内部，又由 9 个职责明确的子系统构成。</p>
+<p><strong>图 1-1：Claude Code 三层架构总图</strong></p>
+<pre><code class="language-mermaid">graph TD
+    subgraph "交互层 / Interaction Layer"
+        CLI["CLI 入口&lt;br/&gt;main.tsx"]
+        TUI["TUI 界面&lt;br/&gt;Ink/React"]
+        CMD["命令系统&lt;br/&gt;103 个斜杠命令"]
+        IDE["IDE 集成&lt;br/&gt;LSP/Bridge"]
+    end
+
+    subgraph "Harness 控制层 / Control Layer"
+        START["启动系统"]
+        CORE["核心循环&lt;br/&gt;状态机"]
+        PROMPT["提示词管理"]
+        TOOL["工具编排"]
+        CTX["上下文管理"]
+        PERM["权限护栏"]
+        TASK["任务编排"]
+        MULTI["多智能体"]
+        AUX["辅助系统"]
+    end
+
+    subgraph "模型层 / Model Layer"
+        API["Anthropic API&lt;br/&gt;流式通信"]
+        MODEL["模型管理&lt;br/&gt;Bedrock/Vertex"]
+    end
+
+    CLI --&gt; START
+    TUI --&gt; CORE
+    CMD --&gt; CORE
+    IDE --&gt; CORE
+    START --&gt; CORE
+    CORE --&gt; PROMPT
+    CORE --&gt; TOOL
+    CORE --&gt; CTX
+    CORE --&gt; PERM
+    CORE --&gt; TASK
+    CORE --&gt; MULTI
+    CORE --&gt; API
+    PROMPT --&gt; API
+    TOOL --&gt; API
+    API --&gt; MODEL
+</code></pre>
+<p>上图展示了三层之间的依赖方向：交互层调用 Harness 控制层，Harness 控制层调用模型层。<strong>反向不存在直接依赖</strong>——模型层不知道工具是什么，交互层不知道 API 怎么调用。</p>
+<h3 id="harness-控制层的九个子系统"><a class="header" href="#harness-控制层的九个子系统">Harness 控制层的九个子系统</a></h3>
+<p>Harness 控制层是 51 万行代码的真正归宿。它内部的 9 个子系统各司其职，通过 <code>QueryEngineConfig</code> 的 30+ 个配置字段精确划定子系统间的接口。</p>
+<p><strong>图 1-2：Harness 控制层九子系统关系图</strong></p>
+<pre><code class="language-mermaid">graph TD
+    START["🚀 启动系统"] --&gt; CORE["🔄 核心循环"]
+    CORE --&gt;|"构建提示词"| PROMPT["📝 提示词管理"]
+    CORE --&gt;|"调用 API"| AUX["⚙️ 辅助系统"]
+    CORE --&gt;|"执行工具"| TOOL["🔧 工具编排"]
+    TOOL --&gt;|"权限检查"| PERM["🛡️ 权限护栏"]
+    CORE --&gt;|"上下文溢出"| CTX["📦 上下文管理"]
+    CORE --&gt;|"派生子任务"| TASK["📋 任务编排"]
+    CORE --&gt;|"创建子智能体"| MULTI["🤖 多智能体"]
+    PROMPT --&gt;|"读取 CLAUDE.md"| CTX
+    TOOL --&gt;|"工具结果"| CTX
+</code></pre>
+<p>以下是每个子系统的一句话定位、源码位置和对应的后续章节：</p>
+<p><strong>1. 启动系统</strong>（详见第 2 章）</p>
+<p>从进程入口到 REPL 就绪的全流程编排。前三行并行触发性能打点、MDM 子进程、Keychain 预获取，将冷启动延迟压到最低。Feature Flag 控制哪些代码被编译加载——每个 flag 都是对"模型在某件事上还不够好"的断言。</p>
+<p><strong>2. 核心循环系统</strong>（详见第 3 章）</p>
+<p>驱动"用户输入 → API 调用 → 工具执行 → 继续或停止"的无限循环。<code>query()</code> 是一个 async generator，通过 <code>while(true)</code> 循环管理跨迭代的状态：消息列表、工具上下文、压缩追踪、输出 token 恢复计数。<code>QueryEngine</code> 类封装此循环为面向 SDK 消费者的接口。</p>
+<p><strong>3. 提示词管理系统</strong>（详见第 5 章）</p>
+<p>动态构建发送给 LLM 的 system prompt。<code>getSystemPrompt()</code> 组装分段式提示词（身份、工具描述、安全指令、输出格式），<code>getSystemContext()</code> 注入 Git 状态快照，CLAUDE.md 加载器从 4 个优先级层级发现和注入项目指令。提示词分段区分缓存/非缓存段落，服务于 Prompt Cache 最大化命中。</p>
+<p><strong>4. 工具编排与执行系统</strong>（详见第 7 章）</p>
+<p>将 LLM 的工具调用请求转化为实际操作。<code>runTools()</code> 按 <code>isConcurrencySafe()</code> 将工具调用分为只读（可并发）和写入（串行）两组，默认并发上限 10。<code>runToolUse()</code> 处理单个工具的完整流程：权限检查 → pre-tool hooks → execute → post-tool hooks。MCP（Model Context Protocol）集成允许动态加载外部工具。</p>
+<p><strong>5. 上下文管理系统</strong>（详见第 11 章）</p>
+<p>管理对话历史和 token 预算，在上下文溢出时压缩。三级压缩策略：自动压缩（上下文超过阈值时触发）、微压缩（增量压缩最新工具结果）、快照压缩（通过 fork agent 生成摘要）。AppState 通过 React Context + <code>createStore()</code> 管理 UI 状态，集中状态模块管理 100+ 个全局状态函数。</p>
+<p><strong>6. 权限护栏系统</strong>（详见第 9 章）</p>
+<p>四层防御确保 LLM 不会执行未授权的危险操作。第一层：配置规则（alwaysAllow/alwaysDeny）；第二层：AI 分类器自动判断（Auto 模式）；第三层：用户自定义 Hook（5022 行代码，6 个触发点）；第四层：交互确认弹窗。组织级策略限制从 API 获取，采用 fail-open 策略。</p>
+<p><strong>7. 任务编排系统</strong>（详见第 8 章）</p>
+<p>管理后台任务生命周期和 Plan 模式。支持 7 种任务类型（LocalAgentTask、InProcessTeammateTask、RemoteAgentTask 等），每种适配不同执行场景。Plan 模式通过工具权限编码"先思考后行动"的约束。</p>
+<p><strong>8. 多智能体系统</strong>（详见第 13 章）</p>
+<p>支持子智能体派生、Swarm/Teammate 协作和 Coordinator 编排三种模式。Fork Subagent 通过 <code>CacheSafeParams</code> 共享父级 API 缓存前缀，实现零成本上下文共享。Coordinator 模式通过环境变量启用中心化编排。</p>
+<p><strong>9. 辅助系统</strong></p>
+<p>API 客户端封装流式/非流式请求和多提供商支持。费用追踪每次调用的成本。设置管理从 5 个优先级来源加载配置（策略 &gt; 远程管理 &gt; 项目 &gt; 用户 &gt; CLI flag）。模型管理处理模型名称映射和提供商检测。</p>
+<h3 id="一次用户请求的完整旅程"><a class="header" href="#一次用户请求的完整旅程">一次用户请求的完整旅程</a></h3>
+<p>上面我们看到了 9 个子系统各自做什么，但还没看到它们如何<strong>协作</strong>。让我们追踪一次用户输入从进系统到出结果的完整旅程，看三层 × 九子系统如何串成一条管道。</p>
+<p><strong>图 1-3：用户请求的完整数据流</strong></p>
+<pre><code class="language-mermaid">graph TD
+    subgraph "交互层"
+        INPUT["用户输入"] --&gt; PUI["processUserInput"]
+        RENDER["REPL 渲染"] --&gt; DISPLAY["终端输出"]
+    end
+
+    subgraph "Harness 控制层"
+        PUI --&gt;|"UserMessage + shouldQuery"| CORE["核心循环 queryLoop"]
+        CORE --&gt;|"构建 prompt"| PROMPT["提示词管理"]
+        PROMPT --&gt;|"systemPrompt + 上下文"| API_PREP["组装 API 请求"]
+        API_PREP --&gt;|"流式请求"| STREAM
+
+        STREAM{{"API 流式响应"}}
+        STREAM --&gt;|"tool_use"| TOOL["工具编排"]
+        STREAM --&gt;|"end_turn"| STOP["停止处理"]
+        STREAM --&gt;|"max_output_tokens"| RECOVER["恢复循环"]
+
+        TOOL --&gt;|"并发安全"| CONC["并发执行"]
+        TOOL --&gt;|"串行"| SER["串行执行"]
+        CONC --&gt; PERM{"权限护栏"}
+        SER --&gt; PERM
+        PERM --&gt;|"允许"| EXEC["tool.execute"]
+        PERM --&gt;|"拒绝"| DENY["拒绝消息"]
+        EXEC --&gt; RESULT["工具结果"]
+
+        RESULT --&gt;|"追加消息"| CORE
+        DENY --&gt;|"追加消息"| CORE
+
+        CORE --&gt;|"token 溢出"| COMPACT["上下文压缩"]
+        COMPACT --&gt; FORK["Fork Agent 生成摘要"]
+        FORK --&gt; BOUNDARY["compact_boundary"]
+        BOUNDARY --&gt; CORE
+    end
+
+    subgraph "模型层"
+        API_SEND["API 客户端"] --&gt;|"messages + systemPrompt"| ANTHROPIC["Anthropic API"]
+        ANTHROPIC --&gt;|"text + thinking + tool_use"| STREAM
+        FORK -.-&gt;|"压缩请求"| ANTHROPIC
+        ANTHROPIC -.-&gt;|"摘要文本"| FORK
+    end
+
+    API_PREP --&gt; API_SEND
+    STOP --&gt;|"yield SDKMessage"| RENDER
+    STREAM --&gt;|"流式消息"| RENDER
+    TOOL --&gt;|"权限弹窗"| RENDER
+</code></pre>
+<p><strong>阶段一：输入解析</strong>（交互层 → Harness 控制层）</p>
+<p>用户在终端输入文本，<code>processUserInput()</code> 解析内容——识别斜杠命令、图片粘贴、@提及，生成 <code>UserMessage</code>。如果是斜杠命令（如 <code>/compact</code>），直接在 Harness 内处理并返回结果，不调用 API。如果需要模型参与（<code>shouldQuery = true</code>），消息被推入核心循环。</p>
+<p><strong>阶段二：提示词构建</strong>（Harness 控制层 · 提示词管理子系统）</p>
+<p>核心循环调用 <code>fetchSystemPromptParts()</code> 并行构建三部分：system prompt（工具描述、安全指令、输出格式）、user context（用户环境信息）、system context（Git 状态快照）。CLAUDE.md 文件从 4 个优先级层级动态注入。所有部分组装后加上 API 缓存断点标记，然后发送给模型层。</p>
+<p><strong>阶段三：模型调用与响应</strong>（Harness 控制层 ↔ 模型层）</p>
+<p>API 客户端将消息列表（messages）和系统提示词（systemPrompt）发送给 Anthropic API。响应以 SSE（Server-Sent Events）流的形式返回，包含三类内容块：<strong>text</strong>（模型生成的文本）、<strong>thinking</strong>（内部推理过程）、<strong>tool_use</strong>（工具调用指令）。Harness 控制层在流式接收的同时就开始处理——不等全部响应到达。上下文压缩时的 Fork Agent 也会向同一 API 发起独立请求来生成摘要。</p>
+<p><strong>阶段四：工具执行</strong>（Harness 控制层 · 工具编排 + 权限护栏）</p>
+<p>如果 API 返回 <code>tool_use</code> 内容块，工具编排子系统接管。工具调用被分为并发安全（只读）和非并发安全（写入）两组。每个工具执行前经过权限护栏的四层检查。执行结果作为 <code>tool_result</code> 消息追加到对话历史，然后<strong>回到阶段二</strong>重新构建提示词并发起下一轮 API 调用。</p>
+<p>这就是核心循环 <code>while(true)</code> 的本质——一个不断在提示词构建、API 调用、工具执行之间循环的状态机，直到模型返回 <code>end_turn</code> 或触发终止条件。</p>
+<p><strong>阶段五：上下文保护</strong>（Harness 控制层 · 上下文管理子系统）</p>
+<p>如果某轮迭代后 token 使用量超过自动压缩阈值，上下文管理子系统启动压缩：通过 fork agent 生成对话摘要，插入 <code>compact_boundary</code> 标记。后续 API 调用只发送边界之后的消息 + 摘要，释放 token 空间。</p>
+<p><strong>阶段六：输出交付</strong>（Harness 控制层 → 交互层）</p>
+<p>输出不是只在最后才回到交互层，而是在整个循环中持续流回：API 流式响应的每个文本块实时送达 REPL 渲染；工具执行前的权限弹窗由交互层的用户确认组件处理；最终 <code>end_turn</code> 后，核心循环 yield 完整的 SDKMessage 给交互层渲染为终端输出。<strong>交互层是信息的终点，也是用户控制的起点——权限弹窗的回复会流回 Harness 继续执行。</strong></p>
+<hr />
+<p><strong>这 9 个子系统不是理论模型，而是源码中可验证的物理边界。</strong> 核心循环是它们的交汇点——上面的数据流图展示了每次 <code>query()</code> 迭代中，核心循环如何同时与提示词管理、工具编排、上下文管理、权限护栏四个子系统协作。</p>
+<h2 id="权衡三层架构的设计选择"><a class="header" href="#权衡三层架构的设计选择">权衡——三层架构的设计选择</a></h2>
+<p>架构不是对错问题，是权衡问题。Claude Code 的每个架构决策都隐含着一个"选 A 不选 B"的理由。理解这些权衡，比记住结构的名字更重要。</p>
+<p><strong>权衡一：Feature Flag vs 配置文件</strong></p>
+<p>Claude Code 使用编译时 Feature Flag（<code>feature('KAIROS')</code>）而非运行时配置文件来控制模块加载。这意味着未开启的功能在编译时就被消除——零运行时开销、零包体积占用。但代价是灵活性：修改功能开关需要重新编译，而不是编辑一个 YAML 文件。</p>
+<p>这个权衡的取舍方向很明确：<strong>对于 AI Agent 运行时，不可预测的条件分支本身就是风险源。</strong> 模型可能意外触达未完全测试的功能路径，Feature Flag 的编译时消除确保了这些路径在运行时物理上不存在。</p>
+<p><strong>权衡二：集中状态 vs 分散状态</strong></p>
+<p><code>bootstrap/state.ts</code> 集中管理了 100+ 个全局状态函数——<code>getOriginalCwd()</code>、<code>setIsRemoteMode()</code>、<code>setMainLoopModelOverride()</code> 等。这个文件有 1762 行，是一个典型的"上帝模块"。</p>
+<p>集中状态的好处是<strong>单一来源（Single Source of Truth）</strong>：任何模块需要获取工作目录、远程模式标志、模型覆盖设置，都从同一个文件获取，不会出现两个模块各自维护一份不同步的状态。代价是文件膨胀——1762 行的状态管理文件增加了理解和修改的认知负担。</p>
+<p><strong>权衡三：九子系统 vs 更粗粒度划分</strong></p>
+<p>9 个子系统带来精准的职责分离——提示词管理与上下文管理分开，权限护栏与 Hook 系统分开，任务编排与多智能体分开。但代价是跨子系统协调的复杂度：核心循环在每次迭代中同时与 4-5 个子系统交互。如果采用更粗粒度的划分（例如只分"工具层"、"上下文层"、"安全层"三层），协调更简单但职责边界模糊。</p>
+<p>Claude Code 的选择：<strong>精准分离优先，因为可维护性比协调简洁性更重要。</strong> 当系统演进时，每个子系统可以独立修改而不影响其他子系统——这种解耦在 51 万行代码的项目中是生存必需的。</p>
+<p><strong>图 1-4：架构决策权衡矩阵</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    subgraph S1["权衡点"]
+        direction TB
+        W1["Feature Flag&lt;br/&gt;编译时编码"]
+        W2["集中状态&lt;br/&gt;Single Source of Truth"]
+        W3["九子系统&lt;br/&gt;精准职责分离"]
+    end
+
+    subgraph S2["获得"]
+        direction TB
+        G1["零运行时开销&lt;br/&gt;物理消除未开启功能"]
+        G2["状态一致性&lt;br/&gt;无同步问题"]
+        G3["子系统独立演进&lt;br/&gt;可维护性"]
+    end
+
+    subgraph S3["代价"]
+        direction TB
+        C1["灵活性降低&lt;br/&gt;需重新编译"]
+        C2["文件膨胀&lt;br/&gt;状态管理"]
+        C3["跨子系统协调&lt;br/&gt;复杂度增加"]
+    end
+
+    W1 --&gt; G1
+    W1 --&gt; C1
+    W2 --&gt; G2
+    W2 --&gt; C2
+    W3 --&gt; G3
+    W3 --&gt; C3
+</code></pre>
+<p><strong>核心权衡总结</strong>：</p>
+<div class="table-wrapper"><table><thead><tr><th>决策维度</th><th>选择 A（Claude Code）</th><th>选择 B</th><th>核心权衡</th></tr></thead><tbody>
+<tr><td>功能开关</td><td>Feature Flag（编译时）</td><td>配置文件（运行时）</td><td>安全性 &gt; 灵活性</td></tr>
+<tr><td>状态管理</td><td>集中（bootstrap/state.ts）</td><td>分散（各模块自管）</td><td>一致性 &gt; 模块内聚</td></tr>
+<tr><td>子系统粒度</td><td>9 个精准子系统</td><td>3 个粗粒度模块</td><td>可维护性 &gt; 协调简洁性</td></tr>
+</tbody></table>
+</div>
+<p><strong>原则 1.2：权衡显式化</strong> — 架构决策必须回答"选了什么、放弃了什么、为什么这样选"。没有权衡的架构决策要么是平庸的，要么是没有被认真思考过的。</p>
+<h2 id="踩坑指南从源码中看到的工程陷阱"><a class="header" href="#踩坑指南从源码中看到的工程陷阱">踩坑指南——从源码中看到的工程陷阱</a></h2>
+<p>在学习 Harness 工程的最佳实践之前，先知道最常见的错误是什么。Claude Code 的源码揭示了三个反复出现的工程陷阱。</p>
+<p><strong>陷阱一：交互层和 Harness 层混淆</strong></p>
+<p>裸调 API 没有"架构"的概念，你随时可以调用，随时可以停止。但真实的 Agent 系统需要把"用户看到什么"（交互层）和"系统做什么决策"（Harness 控制层）分开。Claude Code 的交互层是 REPL.tsx——一个纯渲染组件，不含任何业务逻辑。如果你把权限检查写在 UI 组件里，换一个界面（比如 Web UI）就要重写全部权限逻辑。<strong>交互层只管渲染，Harness 只管决策，两者通过 AppState 接口通信。</strong></p>
+<p><strong>陷阱二：工具默认不安全</strong></p>
+<p><code>TOOL_DEFAULTS</code> 揭示了一个人性化的工程洞察：<strong>开发者会忘记标记工具的安全性</strong>。<code>isConcurrencySafe</code> 默认 <code>false</code> 的设计，意味着"忘记标记"的后果是工具不能并行——性能损失，但安全。如果把默认值设为 <code>true</code>，"忘记标记"的后果就是危险工具被并发执行——性能提升，但可能删除文件、覆盖数据。<strong>默认值的工程含义不是"正常情况"，而是"忘记时的情况"。</strong></p>
+<p><strong>陷阱三：上下文无上限增长</strong></p>
+<p>LLM 的上下文窗口看似很大，但 Agent 系统的对话历史会持续增长。一个调试会话可能产生数万 token 的工具调用记录和返回结果。如果不主动管理上下文窗口，系统要么因为超出窗口限制而崩溃，要么因为上下文过长导致模型注意力分散而输出质量下降。Claude Code 并存了 5 种压缩策略（详见第 11 章），这本身就是对"上下文增长是 Agent 系统的头号敌人"这个认知的工程作答。</p>
+<h2 id="实证三层架构在源码中的验证"><a class="header" href="#实证三层架构在源码中的验证">实证——三层架构在源码中的验证</a></h2>
+<p>三层 + Harness 层九子系统架构不是理论模型，可以从源码的目录结构、import 关系和类型定义中验证。让我们从交互层到模型层，逐一检查物理边界是否真实存在。</p>
+<p><strong>交互层的证据</strong></p>
+<p><code>main.tsx</code> 中的 Commander 注册入口（<code>src/main.tsx:968</code>）是交互层的分叉点——用户输入在这里被解析为命令或对话，然后分发给 Harness 控制层。5005 行的 REPL.tsx（<code>src/screens/REPL.tsx:1</code>）是 TUI 主组件，它的职责是<strong>渲染消息和捕获输入</strong>——不含任何工具执行、权限检查或 API 调用逻辑。103 个命令目录（<code>src/commands/</code>）各自实现一个斜杠命令，全部是"解析输入、路由到 Harness"的模式。<strong>交互层不包含任何业务逻辑。</strong></p>
+<p><strong>Harness 控制层的证据</strong></p>
+<p><code>QueryEngineConfig</code> 类型（<code>src/QueryEngine.ts:130</code>）是 Harness 控制层的总接口。这个类型定义了 30+ 个字段，其中 <code>tools: Tools</code> 连接工具编排子系统，<code>mcpClients</code> 连接 MCP 外部服务，<code>canUseTool</code> 连接权限护栏子系统，<code>initialMessages</code> 连接上下文管理子系统，<code>abortController</code> 连接生命周期管理。<strong>Config 类型就是子系统之间的契约——它规定了核心循环可以向其他子系统传递什么、期望从它们获得什么。</strong></p>
+<p>9 个子系统的源码边界：</p>
+<p><strong>1. 启动系统</strong> — <code>main.tsx</code> 的前三条语句（<code>src/main.tsx:12</code>）是性能打点、MDM 子进程、Keychain 预获取，注释明确标注"这些副作用必须在所有其他导入之前运行"。<code>feature('COORDINATOR_MODE')</code> 和 <code>feature('KAIROS')</code>（<code>src/main.tsx:76</code>）在编译时决定哪些模块被加载——启动系统和后续所有子系统的代码路径都受这些 flag 控制。</p>
+<p><strong>2. 核心循环</strong> — <code>QueryEngine</code> 类（<code>src/QueryEngine.ts:184</code>）封装会话生命周期，<code>query()</code> 函数（<code>src/query.ts:219</code>）是 <code>async function*</code> 生成器，实现 <code>while(true)</code> 循环。<code>QueryEngineConfig</code> 的 30+ 字段精确定义了核心循环与其他子系统的全部交互接口——不多不少。</p>
+<p><strong>3. 提示词管理</strong> — <code>getSystemPrompt()</code>（<code>src/constants/prompts.ts</code>）组装分段式系统提示词，<code>getSystemContext()</code> 和 <code>getUserContext()</code>（<code>src/context.ts</code>）分别构建系统上下文和用户上下文。CLAUDE.md 加载器（<code>src/utils/claudemd.ts</code>）从 4 个优先级层级发现和注入项目指令。提示词的分段结构区分缓存与非缓存段落，服务于 Prompt Cache 命中。</p>
+<p><strong>4. 工具编排与执行</strong> — <code>tools.ts</code> 的注册列表（<code>src/tools.ts:195</code>）包含 54 个工具（19 个始终启用 + 35 个条件启用），全部通过 <code>buildTool</code> 工厂（<code>src/Tool.ts:783</code>）创建，遵循统一的 <code>Tool</code> 接口。<code>runTools()</code>（<code>src/services/tools/toolOrchestration.ts:150</code>）按 <code>isConcurrencySafe()</code> 分区为并发/串行两组。<code>runToolUse()</code>（<code>src/services/tools/toolExecution.ts:337</code>）处理单个工具的权限检查 → hooks → execute → 结果收集完整流程。</p>
+<p><strong>5. 上下文管理</strong> — <code>AppState</code> 类型（<code>src/state/AppStateStore.ts</code>）通过 <code>createStore()</code> 管理 UI 状态。压缩模块（<code>src/services/compact/compact.ts</code>）实现 <code>compactConversation()</code>，通过 fork agent 生成对话摘要。全局状态模块（<code>src/bootstrap/state.ts</code>，1762 行）集中管理 100+ 个状态函数——工作目录、远程模式、模型覆盖等全部从单一来源获取。</p>
+<p><strong>6. 权限护栏</strong> — 权限目录（<code>src/utils/permissions/</code>）包含 24 个文件、9409 行代码，实现四层防御。Hook 系统（<code>src/utils/hooks.ts</code>，5022 行）在 6 个触发点（PreToolUse、PostToolUse、Stop、SessionStart、SessionEnd、Notification）提供外部扩展能力。</p>
+<p><strong>7. 任务编排</strong> — <code>src/tasks/</code> 目录包含 7 种任务类型（LocalAgentTask、InProcessTeammateTask、RemoteAgentTask、DreamTask、LocalShellTask、LocalWorkflowTask、MonitorMcpTask），每种有独立实现目录。Plan 模式通过 EnterPlanModeTool / ExitPlanModeTool 的工具权限切换实现"先规划后执行"。</p>
+<p><strong>8. 多智能体</strong> — <code>AgentTool</code>（<code>src/tools/AgentTool/AgentTool.tsx:196</code>）通过 <code>buildTool</code> 注册，是主循环派发子任务的入口。Swarm 系统（<code>src/utils/swarm/</code>，14 个文件）实现进程内 teammate 创建、权限同步、leader-worker 桥接。Coordinator 模式（<code>src/coordinator/coordinatorMode.ts</code>）通过环境变量 <code>CLAUDE_CODE_COORDINATOR_MODE</code> 启用中心化编排。</p>
+<p><strong>9. 辅助系统</strong> — API 客户端（<code>src/services/api/claude.ts</code>，3419 行）封装流式/非流式请求和多提供商支持。费用追踪（<code>src/cost-tracker.ts</code>）追踪每次调用的成本。设置管理从 5 个优先级来源加载配置（策略 &gt; 远程管理 &gt; 项目 &gt; 用户 &gt; CLI flag）。模型管理（<code>src/utils/model/</code>）处理模型名称映射和提供商检测。</p>
+<p><strong>模型层的证据</strong></p>
+<p><code>src/services/api/claude.ts</code> 是唯一的 API 通信入口，3419 行代码封装了流式/非流式请求、Bedrock/Vertex 多提供商支持、token 使用量追踪。<strong>这个文件不知道工具是什么、权限怎么检查、上下文怎么压缩。</strong> 它的输入是消息列表和系统提示词，输出是流式响应块。模型管理（<code>src/utils/model/</code>）处理模型名称映射和提供商检测，同样不包含任何 Harness 逻辑。</p>
+<p><strong>三层之间的依赖方向是单向的</strong>：交互层 → Harness 控制层 → 模型层。反向不存在直接依赖。这个单向依赖可以在 <code>main.tsx</code> 的 import 链中验证——入口文件引入 <code>QueryEngine</code>（Harness），<code>QueryEngine</code> 引入 <code>claude.ts</code>（模型层），但 <code>claude.ts</code> 的 import 列表中既没有 <code>QueryEngine</code> 也没有任何交互层组件。</p>
+<p><strong>原则 1.3：架构的物理性</strong> — 好的架构分层有源码级的物理证据——import 链、类型定义、目录结构。如果分层只存在于架构图上而无法从代码结构中验证，那它就是理论而非工程。</p>
+<h2 id="本章主成分harness-架构"><a class="header" href="#本章主成分harness-架构">本章主成分：Harness 架构</a></h2>
+<p><strong>本质</strong>：围绕"什么由模型管理，什么由 Harness 控制"这个核心问题组织的三层控制架构。交互层管输入输出，Harness 控制层管所有智能决策（9 个子系统），模型层管 API 通信。</p>
+<p><strong>关键机制</strong>：</p>
+<ul>
+<li>Feature Flag 编码模型能力假设，编译时物理消除未开启功能（启动系统）</li>
+<li><code>buildTool</code> 统一工具接口，fail-closed 默认值确保安全（工具编排子系统）</li>
+<li><code>QueryEngine</code> 管理会话生命周期，<code>QueryEngineConfig</code> 的 30+ 字段定义子系统间契约（核心循环子系统）</li>
+<li>四层权限防御从配置到分类器到 Hook 到交互确认（权限护栏子系统）</li>
+</ul>
+<p><strong>适用边界</strong>：</p>
+<ul>
+<li>✓ 适合：需要稳定、安全、可扩展的 Agent 系统</li>
+<li>✓ 适合：需要多工具编排和多智能体协调的复杂 AI 应用</li>
+<li>✗ 不适合：一次性脚本或简单的 API 封装</li>
+<li>✗ 不适合：不需要工具执行的纯对话系统</li>
+</ul>
+<p><strong>与其他模式的关系</strong>：</p>
+<ul>
+<li>Harness 架构是中间层结构模式，对应 ReAct、Plan-and-Execute 等推理模式</li>
+<li>九子系统各自独立，但通过核心循环的 <code>QueryEngineConfig</code> 接口协作</li>
+</ul>
+<p><strong>后续章节导航</strong>：</p>
+<ul>
+<li>启动系统的并行初始化与 Feature Flag 机制 → 详见第 2 章</li>
+<li>核心循环 QueryEngine 的会话状态机 → 详见第 3 章</li>
+<li>单轮执行从提示词构建到流式工具执行的完整流水线 → 详见第 4 章</li>
+<li>提示词管理子系统的分段缓存与 Prompt Cache 命中策略 → 详见第 5 章</li>
+<li>Skills 懒加载与上下文窗口的自管理 → 详见第 6 章</li>
+<li>工具编排子系统的接口统一、并发安全策略与 MCP 扩展机制 → 详见第 7 章</li>
+<li>任务编排子系统的 Plan Mode 如何通过工具权限编码"先规划后执行"约束 → 详见第 8 章</li>
+<li>权限护栏子系统的渐进谱系与 AI 分类器的递归安全设计 → 详见第 9 章</li>
+<li>Hook 系统如何让 Harness 行为可配置而不改代码 → 详见第 10 章</li>
+<li>上下文管理子系统的 5 种压缩策略各编码了什么模型能力假设 → 详见第 11 章</li>
+<li>上下文重置与缓存命中如何兼顾、MEMORY.md 的分层设计 → 详见第 12 章</li>
+<li>多智能体子系统的 GAN 式生成/验证协作与验证器提示词设计 → 详见第 13 章</li>
+<li>后台任务并行执行与 Coordinator 多智能体协调 → 详见第 14 章</li>
+<li>Feature Flag 驱动的 Harness 自我精简机制 → 详见第 15 章</li>
+<li>可复用的 Harness 工程决策框架，回答"什么由模型管理，什么由 Harness 控制" → 详见第 16 章</li>
+</ul>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用三层 + 九子系统架构模型审视你的 AI 应用</strong>。画出你的应用三层图——交互层在哪里？Harness 控制层有哪些子系统？模型层如何封装？如果某层或某个子系统找不到明确的代码边界，说明那里的架构可能需要重构。</li>
+<li><strong>检查你的工具定义是否有 fail-closed 默认值策略</strong>。如果工具的默认行为是"允许一切"，一次遗漏标记就可能导致安全事故。</li>
+<li><strong>识别"模型管理"和"Harness 控制"的边界</strong>。在你的系统中，列出所有模型可以触发的操作，标注每个操作的 Harness 控制点（权限检查、并发限制、超时控制）。</li>
+<li><strong>用 Feature Flag 的思路评估你应用中硬编码的"模型能力假设"</strong>。你是否在代码中假设"模型一定能正确处理长文本"或"模型一定不会生成危险命令"？这些假设应该被显式编码，而不是隐式存在（详见第 15 章）。</li>
+<li><strong>画出启动序列的时间线</strong>。标注哪些初始化可以并行、哪些有依赖关系。Claude Code 在 135 毫秒内完成三项并行初始化——你的应用有多少启动时间可以利用？（详见第 2 章）</li>
+<li><strong>对照 <code>QueryEngineConfig</code> 的 30+ 字段，检查你的 Agent 系统是否有同样完整的配置契约</strong>。缺失的字段往往意味着缺失的工程考量。</li>
+<li><strong>检查你的上下文管理是否有压缩策略</strong>。如果对话历史无限增长，你需要的不是一个更大的上下文窗口，而是一套压缩策略（详见第 11 章）。</li>
+<li><strong>阅读后续章节前，带着"这个子系统解决了什么权衡"的问题意识</strong>。每章不仅告诉你 Claude Code 做了什么，还会告诉你为什么这样做——权衡才是真正可迁移的工程智慧。</li>
+</ul>
+<hr />
+<p><strong>下一章导读</strong>：本章看到了三层 + 九子系统架构的全景，但没有深入任何子系统。第 2 章将进入第一个子系统——启动系统。我们会看到 Claude Code 的前三行代码如何通过并行初始化在 135 毫秒内完成所有准备工作，以及 Feature Flag 如何编码"模型能力假设"——每个 flag 都是对"模型在某件事上还不够好"的断言。这些 flag 的存在本身，就是 Harness 工程最诚实的自白。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part1/part1.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part2/part2.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part1/part1.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part2/part2.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

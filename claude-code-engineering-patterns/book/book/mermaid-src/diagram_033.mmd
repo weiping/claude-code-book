@@ -1,0 +1,16 @@
+flowchart LR
+    subgraph 三重困境
+        P1["① 中间状态不可见\n await 吞掉进度"]
+        P2["② 背压失控\n emit 超跑消费者"]
+        P3["③ 错误传播\n 每层手动转发 err"]
+    end
+
+    subgraph Async Generator 解法
+        S1["yield 推送每个中间状态\n（包括 stream_request_start）"]
+        S2["for await 协作式调度\n消费完才请求下一个"]
+        S3["throw 穿透 for await\n上层 try/catch 直接捕获"]
+    end
+
+    P1 -->|解决| S1
+    P2 -->|解决| S2
+    P3 -->|解决| S3

@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph local ["层1：本地记忆"]
+        A["MEMORY.md\n索引 200行/25KB"] --> B["topic/*.md\n主题文件"]
+    end
+    subgraph scan ["层2：跨会话检索"]
+        C["scanMemoryFiles\n按 mtimeMs 排序"] --> D["formatMemoryManifest\n时间线清单"]
+    end
+    subgraph team ["层3：团队共享"]
+        E["team/MEMORY.md"] --> F["team/topic/*.md"]
+    end
+    G["loadMemoryPrompt\n统一入口"]
+    local -->|"buildMemoryPrompt"| G
+    scan -->|"recall/extract\n主动召回"| G
+    team -->|"buildCombinedMemoryPrompt"| G
+    G --> H["系统提示词"]

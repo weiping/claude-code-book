@@ -1,0 +1,16 @@
+graph TD
+    subgraph 写入层
+        A["用户消息到达"] --> B["isTranscriptMessage 过滤\n排除 progress 等 UI 状态"]
+        B --> C["UUID 去重\n检查 messageSet.has(uuid)"]
+        C --> D["insertMessageChain\n追加到 sessionId.jsonl"]
+    end
+    subgraph 执行层
+        D --> E["API 请求\n（写入完成后才发出）"]
+        E --> F["AI 响应"]
+        F --> G["再次写入 AI 消息"]
+    end
+    subgraph 恢复层
+        H["--resume"] --> I["loadSessionFile\n读取 JSONL"]
+        I --> J["buildConversationChain\n重建对话链"]
+        J --> K["REPL 恢复"]
+    end

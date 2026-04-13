@@ -1,0 +1,319 @@
+# 第 7 章写作计划
+
+**批次**：批次 4（来自 plans/batch.md）
+**章节**：ch07 — 最小工具基座
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+拆解 Claude Code 工具系统的三个核心设计决策：`buildTool` 工厂如何用统一接口约束 50+ 工具的行为；只读并发/写操作串行的安全策略如何在 `toolOrchestration.ts` 中实现；MCP 协议如何作为工具扩展接口让第三方能力无缝接入。读完本章，你将理解"最小工具基座"的含义——不是工具越少越好，而是核心接口越简单越好，复杂度通过 MCP 外推到生态。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个设计决策有至少一处 `相对路径:行号` 格式的源码引用，重点锚定 `src/Tool.ts:783`（buildTool）和 `src/services/tools/toolOrchestration.ts`
+- 包含至少一个 Mermaid 架构图展示工具接口层次和 MCP 扩展关系
+- 跨章节引用使用"详见第 X 章"格式（至少引用第 4 章、第 8 章、第 9 章）
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- 60+ 个工具，共用一套 7 个字段的接口——buildTool 工厂把所有工具约束到同一张合同上，然后 toolOrchestration 按一条简单规则决定并发还是串行。复杂度不在基座里，在 MCP 生态里。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 向后链接第 8 章（Plan Mode）、第 9 章（权限）
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字（60+ 工具、7 个 DefaultableToolKeys、10 默认并发数等）
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/Tool.ts | Tool interface（362-460）、TOOL_DEFAULTS（756-785）、buildTool（783-792） | 行 362-460, 700-792 |
+| 2 | src/services/tools/toolOrchestration.ts | runTools（19-83）、partitionToolCalls（91-115）、runToolsSerially（118-150）、runToolsConcurrently（152-178）、getMaxToolUseConcurrency（8-11） | 全文（188行） |
+| 3 | src/tools/MCPTool/MCPTool.ts | buildTool 调用、isMcp 字段 | 行 27-55 |
+| 4 | src/services/mcp/client.ts | MCP 工具注册（1765-1800）、readOnlyHint→isConcurrencySafe 映射 | 行 1765-1800 |
+
+验证文件存在：
+```bash
+ls src/Tool.ts src/services/tools/toolOrchestration.ts src/tools/MCPTool/MCPTool.ts src/services/mcp/client.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 7.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 7.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 引用第 4/8/9 章 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图，含工具接口层次图 | 图 7-1、7-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 7-1、7-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「最小不是最少，是最精。一套简单的接口，撑起了 60 个工具，也撑起了无数第三方扩展。」
+
+### 节 7.1：问题——60+ 工具如何共享一套行为约定
+- 核心主张：Tool interface 的 7 个 DefaultableToolKeys 是工具系统的底座——每个工具通过 buildTool 工厂获得统一的安全默认值，不再各自为政
+- 源码锚点：
+  - `src/Tool.ts:707-715` — DefaultableToolKeys 枚举：isEnabled/isConcurrencySafe/isReadOnly/isDestructive/checkPermissions/toAutoClassifierInput/userFacingName
+  - `src/Tool.ts:362` — `export type Tool<...>` — 工具接口定义
+  - `src/Tool.ts:783` — `export function buildTool` — 工厂函数入口
+- 概念层次：定义（问题）→ 设计意图（统一接口的价值）
+- 权衡分析：N/A
+- 包含元素：表格（7 个 DefaultableToolKeys 及其默认值含义）
+- **⛔ 内容密度规划**：
+  - 引入段要点：60 个工具如果各自实现安全检查，出错概率是单工具的 60 倍——buildTool 把安全默认值集中到一处
+  - 解读段要点：7 个可默认字段分两类——行为类（isEnabled/isConcurrencySafe/isReadOnly/isDestructive）决定工具怎么运行，控制类（checkPermissions/toAutoClassifierInput/userFacingName）决定谁能运行
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-900 字
+- 对应 spec 场景：A1、B2
+
+### 节 7.2：黄金法则——fail-closed 默认值策略
+- 核心主张：buildTool 的 7 个默认值全部选择 fail-closed（保守安全）方向——`isConcurrencySafe → false`、`isReadOnly → false`、`isDestructive → false` 意味着"不声明就假定最危险"
+- 源码锚点：
+  - `src/Tool.ts:756-785` — TOOL_DEFAULTS 注释："fail-closed where it matters: isConcurrencySafe → false (assume not safe), isReadOnly → false (assume writes)"
+  - `src/Tool.ts:783` — buildTool 实现：`{ ...TOOL_DEFAULTS, userFacingName: () => def.name, ...def }` — 工厂默认值可被覆盖
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：fail-closed vs fail-open——fail-closed 默认不允许并发、默认假定写操作，代价是工具开发者必须显式声明安全性，收益是任何遗漏声明都不会导致竞争条件
+- 包含元素：对比表格（fail-closed vs fail-open 对 60 个工具的影响）
+- **⛔ 内容密度规划**：
+  - 引入段要点：TOOL_DEFAULTS 注释原文是这个原则最直接的证据——源码注释写明了"fail-closed where it matters"
+  - 解读段要点：三个关键默认值的工程逻辑——isConcurrencySafe=false 防止并发竞争、isReadOnly=false 防止绕过权限检查、toAutoClassifierInput='' 防止工具绕过 AI 安全分类器
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C3、C4、D4、E1
+
+### 节 7.3：适用场景——哪些系统需要工具基座
+- 核心主张：任何 Agent 系统只要有 2 个以上需要不同权限的工具，就需要统一的工具接口
+- 源码锚点：
+  - `src/Tool.ts:436-451` — isMcp/isLsp/shouldDefer/alwaysLoad 字段——工具基座支持三类扩展（内置/MCP/LSP）
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：表格（三类工具来源：内置/MCP/LSP）
+- **⛔ 内容密度规划**：
+  - 引入段要点：不是只有大系统才需要工具基座——任何超过 2 个工具的 Agent 都能从统一接口中获益
+  - 解读段要点：Tool interface 的 isMcp/isLsp/shouldDefer/alwaysLoad 字段揭示了工具基座的扩展性设计——核心接口不变，通过这些字段区分不同来源的工具
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 7.4：工作原理——只读并发、写操作串行
+- 核心主张：toolOrchestration.ts 实现了一个简单但有效的调度策略——把所有工具调用分批：连续的 isConcurrencySafe 工具合并为并发批次，其余串行执行
+- 源码锚点：
+  - `src/services/tools/toolOrchestration.ts:8-11` — `getMaxToolUseConcurrency`：默认最大并发数 10，可通过 `CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY` 环境变量覆盖
+  - `src/services/tools/toolOrchestration.ts:19` — `runTools`：串行迭代批次，对每批次选择并发或串行执行
+  - `src/services/tools/toolOrchestration.ts:84-86` — `Batch` 类型：`{ isConcurrencySafe: boolean; blocks: ToolUseBlock[] }`
+  - `src/services/tools/toolOrchestration.ts:91` — `partitionToolCalls`：注释"2. Multiple consecutive read-only tools"——连续只读工具合并为一批
+  - `src/services/tools/toolOrchestration.ts:109` — 合并条件：`isConcurrencySafe && acc[acc.length - 1]?.isConcurrencySafe`
+  - `src/services/tools/toolOrchestration.ts:103-106` — 容错：`isConcurrencySafe` 抛出异常时保守处理为 false
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：贪心分批 vs 全局最优调度——Claude Code 使用贪心策略（遇到连续只读就合并），而非分析所有工具依赖后做全局最优调度。代价是偶尔无法识别非连续的可并发机会，收益是 O(n) 复杂度、无依赖分析开销（详见第 4 章流式工具执行）
+- 包含元素：Mermaid 流程图（partitionToolCalls 分批逻辑）、表格（并发批次 vs 串行批次示例）
+- **⛔ 内容密度规划**：
+  - 引入段要点：把 60 个工具的调度压缩成一条规则——"连续只读合并并发，其余串行"
+  - 解读段要点：partitionToolCalls 的 reduce 逻辑——逐个检查 isConcurrencySafe，连续的 true 合并到同一批次，false 开启新批次。容错逻辑（异常→false）确保安全。runTools 对并发批次用 runToolsConcurrently、对串行批次用 runToolsSerially
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1100-1500 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 7.5：权衡——工具基座的 3 个设计选择
+- 核心主张：工具基座的三个关键权衡决定了它的能力边界
+- 源码锚点：
+  - `src/services/mcp/client.ts:1770` — `...MCPTool` 展开：MCP 工具通过对象展开复用内置工具基座，不是另起一套
+  - `src/services/mcp/client.ts:1774` — `mcpInfo: { serverName, toolName }` — MCP 工具的身份信息附加在基座上
+  - `src/services/mcp/client.ts:1780` — `isConcurrencySafe() { return tool.annotations?.readOnlyHint ?? false }` — MCP 工具通过 readOnlyHint 注解映射到 isConcurrencySafe
+  - `src/Tool.ts:103-106` — `isConcurrencySafe` 在抛出异常时保守处理为 false
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - MCP 工具复用内置基座（展开合并）：MCP 工具通过 `...MCPTool` 继承内置基座的所有默认值，而非重新实现——统一了权限检查和调度逻辑，代价是 MCP 工具必须适配 Tool interface
+  - readOnlyHint → isConcurrencySafe 映射：MCP 协议的 readOnlyHint 注解自动映射为调度系统的 isConcurrencySafe——第三方工具无需理解内部调度机制，只需声明只读性
+  - 并发容错（异常→false）：isConcurrencySafe 抛出异常时保守处理为不可并发，而非让异常传播——牺牲了偶发的并发机会，确保了调度层的健壮性
+- 包含元素：对比表格（3 个权衡）
+- **⛔ 内容密度规划**：
+  - 引入段要点：三个设计选择定义了基座的扩展边界
+  - 解读段要点：MCP 工具复用基座（通过展开而非继承）、readOnlyHint 映射（接口对齐而非重新声明）、容错保守策略（可用性让位安全性）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 7.6：踩坑指南——工具基座中的常见错误
+- 核心主张：工具基座中最常见的错误是错误声明 isConcurrencySafe 和遗漏 isDestructive
+- 源码锚点：
+  - `src/Tool.ts:756` — TOOL_DEFAULTS 注释中"security-relevant tools must override"（toAutoClassifierInput）
+  - `src/services/tools/toolOrchestration.ts:103-106` — isConcurrencySafe 异常容错注释
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：buildTool 的默认值是安全保障，但误用会创造意外行为
+  - 解读段要点：陷阱一——声明 isConcurrencySafe=true 但工具有共享状态（导致竞争条件）；陷阱二——忘记声明 isDestructive=true（删除操作不触发用户确认）；陷阱三——安全相关工具遗漏实现 toAutoClassifierInput（绕过 AI 分类器，详见第 9 章）
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 7.7：实证——MCP 工具如何复用内置基座
+- 核心主张：一个 MCP 工具从服务器注册到被调度执行，完全走内置工具的相同路径
+- 源码锚点：
+  - `src/tools/MCPTool/MCPTool.ts:28` — `isMcp: true` — 基座的标记字段
+  - `src/services/mcp/client.ts:1770` — `...MCPTool` — MCP 工具继承基座
+  - `src/services/mcp/client.ts:1780` — readOnlyHint 映射到 isConcurrencySafe
+  - `src/services/tools/toolOrchestration.ts:91` — partitionToolCalls 统一处理内置和 MCP 工具
+- 概念层次：实际案例 → 验证方法
+- 包含元素：Mermaid 架构图（MCP 工具 → Tool interface → toolOrchestration）
+- **⛔ 内容密度规划**：
+  - 引入段要点：追踪一个 MCP 工具从注册到被调度的完整路径
+  - 解读段要点：MCP server 连接 → client.ts 把工具转换为 Tool 格式（展开 MCPTool + 覆盖 name/isConcurrencySafe/description）→ 工具列表传入 toolOrchestration → partitionToolCalls 按 isConcurrencySafe 分批 → 与内置工具同样调度
+  - 散文与代码比例目标：100% 散文
+- 估计字数：500-700 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：最小工具基座的本质
+- 本质：一套 7 个字段的 fail-closed 接口，统一约束所有工具的行为，把调度决策压缩为"连续只读并发、其余串行"
+- 关键机制：TOOL_DEFAULTS（fail-closed 默认值）、partitionToolCalls（贪心分批）、readOnlyHint 映射（MCP 接口对齐）
+- 适用边界：适用于需要多类型工具（内置+第三方）的 Agent；单工具系统不需要这层抽象
+- 与其他模式的关系：工具基座是第 4 章（单轮执行）工具调度的实现基础；第 8 章（Plan Mode）通过工具权限编码约束；第 9 章（权限系统）在 checkPermissions 上构建
+
+### 章末：用户能做什么（必填）
+1. 为每个工具声明 isConcurrencySafe，只读工具设为 true 以获得并发优化
+2. 为破坏性操作工具声明 isDestructive=true，确保触发用户确认
+3. 为安全相关工具实现 toAutoClassifierInput，确保通过 AI 分类器审查（详见第 9 章）
+4. 通过 CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY 环境变量调整并发上限（默认 10）
+5. 为你的 MCP 工具设置 readOnlyHint 注解，自动获得并发调度优化
+6. 检查你的工具库中是否有遗漏 fail-closed 声明的工具
+7. 对照 partitionToolCalls 的贪心策略，重新排列工具调用顺序以最大化并发批次
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图7-1 | 工具调度分批策略 | Mermaid flowchart TD | partitionToolCalls 逻辑：遍历工具→检查 isConcurrencySafe→合并/新批→runToolsConcurrently / runToolsSerially | 7.4 |
+| 图7-2 | 工具基座层次与 MCP 扩展 | Mermaid graph LR | Tool interface → buildTool（内置）/ MCPTool展开（MCP）→ toolOrchestration 统一调度 | 7.7 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 7.4 节（只读并发/写操作串行）——本章核心
+3. 写 7.2 节（黄金法则：fail-closed）
+4. 写 7.1 节（问题）
+5. 写 7.3 节（适用场景）
+6. 写 7.5 节（权衡）
+7. 写 7.6 节（踩坑指南）
+8. 写 7.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '707p' src/Tool.ts                                          # DefaultableToolKeys
+sed -n '756p' src/Tool.ts                                          # TOOL_DEFAULTS 注释
+sed -n '783p' src/Tool.ts                                          # buildTool
+sed -n '362p' src/Tool.ts                                          # Tool interface
+sed -n '436p' src/Tool.ts                                          # isMcp/isLsp
+sed -n '8p' src/services/tools/toolOrchestration.ts               # getMaxToolUseConcurrency
+sed -n '19p' src/services/tools/toolOrchestration.ts              # runTools
+sed -n '84p' src/services/tools/toolOrchestration.ts              # Batch type
+sed -n '91p' src/services/tools/toolOrchestration.ts              # partitionToolCalls
+sed -n '103p' src/services/tools/toolOrchestration.ts             # 容错注释
+sed -n '109p' src/services/tools/toolOrchestration.ts             # 合并条件
+sed -n '28p' src/tools/MCPTool/MCPTool.ts                         # isMcp: true
+sed -n '1770p' src/services/mcp/client.ts                         # ...MCPTool 展开
+sed -n '1774p' src/services/mcp/client.ts                         # mcpInfo
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch07.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

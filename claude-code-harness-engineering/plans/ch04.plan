@@ -1,0 +1,324 @@
+# 第 4 章写作计划
+
+**批次**：批次 2（来自 plans/batch.md）
+**章节**：ch04 — 单轮执行的艺术
+**风格**：projector
+
+## 章节意图（从 spec `## 意图` 提取）
+
+拆解单次 API 调用的完整流水线——从提示词构建到流式工具执行再到后采样 Hooks，展示 Harness 如何在"让模型自由行动"与"保护上下文窗口"之间找到平衡。读完本章，读者将理解 Harness 对每次 API 调用施加的 4 层控制结构：提示词裁剪、工具分区调度、流式执行中断、后采样拦截。
+
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个 Mermaid 流程图或架构图
+- 跨章节引用使用"详见第 X 章"格式
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现空洞表述
+- 不得展示代码
+
+**排除范围**：
+- assistant/、server/、ssh/、proactive/、bridge/ 中的 stub 文件
+- 功能使用教程
+- UI 组件渲染逻辑
+- 与 Harness 无关的辅助功能
+
+## ⛔ 风格专属写作要求
+
+**开篇格式**：projector 模式预告框架（80-120字）
+- 每次 API 调用背后有四道关卡——Harness 在把消息送出去前做了什么、工具执行时做了什么、响应回来后做了什么，这四道关卡编码了 Anthropic 对"模型什么时候会失控"的全部预判。
+
+**分节组织**：projector 九段式结构
+
+**章末结构**：projector 主成分提炼（本质、关键机制、适用边界、与其他模式的关系）
+
+**风格专属必须**：
+- 全文不出现代码块
+- 源码仅作为隐含锚点
+- 原则格式「**原则 N.N：[原则名]** — [一句话阐述]」
+- 本章是第 5-12 章的基础，需向后链接
+
+**风格专属禁止**：
+- 不得展示代码
+- 不得使用其他风格的开篇或章末
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 数据驱动：具体数字
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：最后补写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/query.ts | fullSystemPrompt 构建（449）、autocompact 触发（454-540）、callModel 参数（660-710）、StreamingToolExecutor 使用（561-570, 830-870）、handleStopHooks（1267-1300） | 行 449-570, 660-730, 830-870, 1267-1300 |
+| 2 | src/utils/queryContext.ts | fetchSystemPromptParts（44-87）—三路并行构建 | 行 32-90 |
+| 3 | src/services/api/claude.ts | buildSystemPromptBlocks（3213-3240）、getPromptCachingEnabled（333-360）、getCacheControl（358+） | 行 333-370, 3213-3240 |
+| 4 | src/services/tools/StreamingToolExecutor.ts | 并发安全说明注释（36-40）、addTool/getCompletedResults/discard | 行 36-80, 127-185 |
+| 5 | src/query/stopHooks.ts | 后采样 Hooks 结构（1-50） | 行 1-50 |
+
+验证文件存在：
+```bash
+ls src/query.ts src/utils/queryContext.ts src/services/api/claude.ts src/services/tools/StreamingToolExecutor.ts src/query/stopHooks.ts
+```
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在 | 各节锚点 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）" | 各节 | ☐ |
+| A3 | 不引用排除范围 | 无排除路径引用 | 全文 | ☐ |
+| A4 | 不重复其他章内容 | "详见第 X 章" | 各节 | ☐ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无空洞动词 | 全文 | ☐ |
+| B2 | 数据驱动 | 具体数字 | 全文 | ☐ |
+| B3 | 术语标准化 | 首次标注原文 | 全文 | ☐ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 九段式 | 全文 | ☐ |
+| C2 | 风格专属结构 | 九段式完整 | 全文 | ☐ |
+| C3 | 核心主张可提炼 | 1-2 句 | 节 4.2 | ☐ |
+| C4 | 设计权衡有说明 | 选 A 不选 B | 节 4.5 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 正确的链接 | 全文 | ☐ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥2 图 | 图 4-1、4-2 | ☐ |
+| D2 | 图表标注格式 | 标题+说明 | 图表清单 | ☐ |
+| D3 | 代码片段长度 | 零代码块 | 全文 | ☐ |
+| D4 | 源码注释引用 | 注释+路径 | 各节 | ☐ |
+| D5 | 风格专属图表 | projector 架构图 | 图 4-1、4-2 | ☐ |
+
+### E. 风格符合性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | 写作风格符合性 | projector 九段式 | 全文 | ☐ |
+| E2 | 读者对话感 | "我们"+预告 | 全文 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全文 | ☐ |
+
+## 章节骨架
+
+### 开篇（projector 模式预告框架）
+- 可选题词：「控制不是枷锁，是信任。每一道关卡都在说：'我相信你能完成任务，但我要确保你不会跑偏。'」
+
+### 节 4.1：问题——一次 API 调用经历了什么
+- 核心主张：一次 API 调用不是"发送消息→等待回复"，而是经过 4 层 Harness 控制的精密流水线
+- 源码锚点：
+  - `src/query.ts:449` — `fullSystemPrompt = asSystemPrompt(appendSystemContext(...))` — 第 1 层：提示词最终组装
+  - `src/query.ts:561` — `useStreamingToolExecution = config.gates.streamingToolExecution` — 第 3 层：工具分区开关
+  - `src/query.ts:1267` — `stopHookResult = yield* handleStopHooks(...)` — 第 4 层：后采样拦截
+- 概念层次：定义（4 层控制是什么）→ 设计意图（为什么需要 4 层）
+- 权衡分析：N/A（问题定义节）
+- 包含元素：表格（4 层控制结构）、Mermaid 流水线图
+- **⛔ 内容密度规划**：
+  - 引入段要点：大多数 Agent 框架对 API 调用的控制只有"发出去"和"接收回来"，Claude Code 有 4 层——这 4 层编码了 Anthropic 对模型边界的全部预判
+  - 解读段要点：4 层分别是：(1) 提示词裁剪（系统提示词最终组装）、(2) 自动压缩检查（blocking limit）、(3) 流式工具分区调度（并发安全）、(4) 后采样 Hooks 拦截。每层有源码锚点
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：A1、B1
+
+### 节 4.2：黄金法则——Harness 对每次调用施加的控制最小化
+- 核心主张：Harness 对 API 调用的 4 层控制遵循"最小干预"原则——只在模型无法自行判断的边界处介入
+- 源码锚点：
+  - `src/services/api/claude.ts:3213` — `buildSystemPromptBlocks` 注释："IMPORTANT: Do not add any more blocks for caching or you will get a 400" — 提示词分段有硬上限
+  - `src/services/api/claude.ts:333` — `getPromptCachingEnabled` — 按模型类型决定是否启用缓存
+  - `src/services/tools/StreamingToolExecutor.ts:36` — 注释明确区分并发安全 vs 非并发工具
+- 概念层次：设计意图 → 实际案例
+- 权衡分析：最大控制 vs 最小干预——Claude Code 选择最小干预：系统提示词分段上限固定（避免 400 错误）、工具并发默认关闭（fail-closed）、后采样 Hooks 只在必要时拦截
+- 包含元素：对比表格（4 层的介入条件）
+- **⛔ 内容密度规划**：
+  - 引入段要点：为什么不对每次 API 调用做全面审查？因为全面审查本身就会破坏模型的推理连贯性
+  - 解读段要点：每层的介入条件——提示词裁剪只在组装最终请求时触发、缓存控制只有模型支持时启用、工具并发只对声明为并发安全的工具开放、后采样 Hooks 只有配置了才触发
+  - 散文与代码比例目标：100% 散文
+- 估计字数：800-1100 字
+- 对应 spec 场景：C3、C4、E1
+
+### 节 4.3：适用场景——哪些场景需要 4 层控制
+- 核心主张：任何需要工具调用的 Agent 都需要第 3 层（工具分区），任何需要外部审计的系统都需要第 4 层（后采样 Hooks）
+- 源码锚点：
+  - `src/query/stopHooks.ts:1-40` — 后采样 Hooks 的 feature flag 条件导入
+- 概念层次：定义 → 设计意图
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：不是每个 Agent 都需要 4 层——理解每层的适用场景比盲目复制架构更重要
+  - 解读段要点：第 1/2 层（提示词和压缩）是所有 Agent 都需要的基础；第 3 层（流式工具分区）只在多工具并发时有价值；第 4 层（后采样 Hooks）是可选的企业级扩展点
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：E2
+
+### 节 4.4：工作原理——4 层控制的完整流水线
+- 核心主张：4 层控制是串行的——前层失败不进入后层，后层结果可以推翻前层决策
+- 源码锚点：
+  - `src/utils/queryContext.ts:44` — `fetchSystemPromptParts` 三路并行：defaultSystemPrompt + userContext + systemContext
+  - `src/query.ts:449` — `fullSystemPrompt = asSystemPrompt(appendSystemContext(systemPrompt, systemContext))` — 上下文追加到系统提示词
+  - `src/services/api/claude.ts:3213-3240` — `buildSystemPromptBlocks`：按 cacheScope 分段，最多 4 个缓存块
+  - `src/query.ts:561-566` — `streamingToolExecutor` 初始化：并发安全工具可立即执行
+  - `src/services/tools/StreamingToolExecutor.ts:36-40` — 注释说明并发安全 vs 独占执行的策略
+  - `src/services/tools/StreamingToolExecutor.ts:127` — `addTool`：工具到达时判断是否可立即执行
+  - `src/query.ts:1267` — `handleStopHooks`：流式执行结束后触发后采样 Hooks
+  - `src/query.ts:1278-1279` — `preventContinuation`：Hooks 可以阻止循环继续
+- 概念层次：定义 → 设计意图 → 实际案例
+- 权衡分析：并行提示词构建 vs 串行控制层——提示词的三个部分并行构建（fetchSystemPromptParts 用 Promise.all），但 4 层控制是严格串行的（不能跳层）
+- 包含元素：Mermaid 流程图（4 层串行流水线）、表格（各层 I/O 边界）
+- **⛔ 内容密度规划**：
+  - 引入段要点：4 层控制不是独立模块，是流水线——每层的输出是下一层的输入
+  - 解读段要点：第 1 层（提示词）：三路并行构建→合并→追加 systemContext→分段加缓存控制；第 2 层（压缩检查）：计算 token 数→检查 blocking limit→如触发自动压缩则替换消息列表；第 3 层（工具执行）：API 流式响应中实时检测 tool_use 块→并发/独占分区执行→收集结果；第 4 层（后采样 Hooks）：流式结束后触发→可返回阻止继续
+  - 散文与代码比例目标：100% 散文
+- 估计字数：1200-1600 字
+- 对应 spec 场景：A1、C6、D1、E1
+
+### 节 4.5：权衡——流水线设计中的 3 个关键选择
+- 核心主张：4 层控制的设计包含 3 个关键权衡，每个都在"性能"和"安全性"之间做取舍
+- 源码锚点：
+  - `src/services/api/claude.ts:333` — `getPromptCachingEnabled` 多条件判断（全局禁用 > 模型级禁用）
+  - `src/services/tools/StreamingToolExecutor.ts:49` — `private discarded = false` — discard 机制为流式回退提供原子性保证
+  - `src/query.ts:730-735` — 流式回退（streaming fallback）时 discard 旧 executor 并创建新实例，防止孤立 tool_result
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：
+  - Prompt Cache 分段上限：API 限制最多 4 个缓存块，Claude Code 的策略是"尽量命中全局块"——系统提示词永久缓存，工具定义按需缓存
+  - 流式工具并发：并发安全工具可立即执行（提升吞吐），非并发工具必须独占（确保安全）。代价是 StreamingToolExecutor 需要管理复杂的执行队列
+  - 后采样 Hooks 的"阻止继续"：preventContinuation 可以让 Hooks 强制终止循环——强大但危险，错误配置会导致所有请求被拦截
+- 包含元素：对比表格（3 个权衡点）
+- **⛔ 内容密度规划**：
+  - 引入段要点：4 层控制的每个边界都是一个权衡决策点
+  - 解读段要点：3 个权衡——缓存分段的上限约束（4 块硬限制）、工具并发的安全分区策略、后采样 Hooks 的强制终止能力
+  - 散文与代码比例目标：100% 散文
+- 估计字数：700-1000 字
+- 对应 spec 场景：C4、E3
+
+### 节 4.6：踩坑指南——流水线中的工程陷阱
+- 核心主张：4 层控制流水线中最常见的错误是层间状态泄漏和并发工具的不安全声明
+- 源码锚点：
+  - `src/services/api/claude.ts:3215` — 注释 "IMPORTANT: Do not add any more blocks for caching" 是真实踩过的坑
+  - `src/services/tools/StreamingToolExecutor.ts:69` — `discard()` 必须在流式回退时调用，否则孤立 tool_result 会导致 API 错误
+- 概念层次：实际案例 → 可迁移原则
+- 权衡分析：N/A
+- 包含元素：列表
+- **⛔ 内容密度规划**：
+  - 引入段要点：源码注释中的"IMPORTANT"标注是工程师踩坑后留下的标记
+  - 解读段要点：陷阱一——缓存分段超过 4 块会 400（硬约束）；陷阱二——工具错误声明为并发安全会产生竞争条件；陷阱三——流式回退不调用 discard() 会产生孤立 tool_result 导致后续 API 调用失败
+  - 散文与代码比例目标：100% 散文
+- 估计字数：400-600 字
+- 对应 spec 场景：B1
+
+### 节 4.7：实证——从源码追踪一次完整的单轮执行
+- 核心主张：一次单轮执行的完整路径可以从 queryLoop 的每个 checkpoint 追踪
+- 源码锚点：
+  - `src/query.ts:449` — fullSystemPrompt 组装完成
+  - `src/query.ts:454` — autocompact 触发检查（`query_autocompact_start` 到 `query_autocompact_end`）
+  - `src/query.ts:658` — API 流式传输开始（`query_api_streaming_start`）
+  - `src/query.ts:851` — streaming 结束时收集已完成的工具结果
+  - `src/query.ts:1267` — handleStopHooks 触发
+- 概念层次：实际案例 → 验证方法
+- 权衡分析：N/A
+- 包含元素：Mermaid 时序图（单轮执行时间线）
+- **⛔ 内容密度规划**：
+  - 引入段要点：queryCheckpoint 调用散布在 queryLoop 中，构成了单轮执行的完整时间线
+  - 解读段要点：追踪路径——提示词组装→autocompact 检查（可能重写消息列表）→API 流式调用开始→流式工具并发执行→流式结束收集结果→handleStopHooks→决定 continue 或 return
+  - 散文与代码比例目标：100% 散文
+- 估计字数：600-800 字
+- 对应 spec 场景：A1、D1
+
+### 章末结构（projector 主成分提炼）
+
+**主成分提炼**：单轮执行的本质
+- 本质：一个 4 层串行控制流水线，每层只在必要时介入，共同保护上下文窗口不超限、工具调用不越界
+- 关键机制：提示词三路并行构建→分段缓存控制、工具并发/独占分区、后采样 Hooks 拦截
+- 适用边界：适用于需要工具调用和审计控制的 Agent；简单问答场景只需第 1 层
+- 与其他模式的关系：单轮执行是 QueryEngine 循环（第 3 章）的每轮迭代；提示词构建是第 5 章的基础；工具分区是第 7 章的起点；后采样 Hooks 是第 10 章的预告
+
+### 章末：用户能做什么（必填）
+1. 审视你的 Agent 每次 API 调用是否有提示词最终组装层
+2. 检查你的系统提示词是否超过 API 的缓存分段硬限制
+3. 为你的工具库建立并发安全分类，声明每个工具是否支持并发
+4. 为你的 Agent 添加后采样拦截点，用于外部审计或安全检查
+5. 对照 StreamingToolExecutor 的 discard 机制，检查你的工具执行是否有回退清理逻辑
+6. 用 queryCheckpoint 式的埋点为单轮执行建立时间线，识别延迟瓶颈
+7. 评估你的 Agent 是否需要 4 层中的哪几层——不要为了完整性而引入不必要的复杂度
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图4-1 | 单轮执行 4 层控制流水线 | Mermaid flowchart TD | 提示词构建→自动压缩检查→API 调用+流式工具执行→后采样 Hooks | 4.4 |
+| 图4-2 | StreamingToolExecutor 工具调度策略 | Mermaid flowchart LR | tool_use 块到达→并发安全判断→并发/独占执行→结果收集 | 4.4 |
+
+## 写作顺序
+
+1. ⛔ 确认 spec 与风格
+2. 先写 4.4 节（4 层流水线工作原理）——本章核心
+3. 写 4.2 节（黄金法则）
+4. 写 4.1 节（问题）
+5. 写 4.3 节（适用场景）
+6. 写 4.5 节（权衡）
+7. 写 4.6 节（踩坑指南）
+8. 写 4.7 节（实证）
+9. 写章末
+10. 最后补写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '449p' src/query.ts                                    # fullSystemPrompt
+sed -n '561p' src/query.ts                                    # streamingToolExecution
+sed -n '1267p' src/query.ts                                   # handleStopHooks
+sed -n '1278p' src/query.ts                                   # preventContinuation
+sed -n '44p' src/utils/queryContext.ts                        # fetchSystemPromptParts
+sed -n '3213p' src/services/api/claude.ts                     # buildSystemPromptBlocks
+sed -n '3215p' src/services/api/claude.ts                     # IMPORTANT 注释
+sed -n '333p' src/services/api/claude.ts                      # getPromptCachingEnabled
+sed -n '36p' src/services/tools/StreamingToolExecutor.ts      # 并发注释
+sed -n '49p' src/services/tools/StreamingToolExecutor.ts      # discarded
+sed -n '69p' src/services/tools/StreamingToolExecutor.ts      # discard()
+sed -n '127p' src/services/tools/StreamingToolExecutor.ts     # addTool
+sed -n '454p' src/query.ts                                    # autocompact start
+sed -n '658p' src/query.ts                                    # streaming start
+```
+
+## ⛔ Spec 一致性声明
+
+**完整 spec 文件**：`specs/ch04.spec`
+
+### 对齐检查清单
+
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属禁止 |
+| 6 | 章节结构 | ✓ | 九段式 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | A 组 |
+| 12 | 验收场景·B | ✓ | B 组 |
+| 13 | 验收场景·C | ✓ | C 组 |
+| 14 | 验收场景·D | ✓ | D 组 |
+| 15 | 验收场景·E | ✓ | E 组 |
+| 16 | 排除范围 | ✓ | 排除范围 |
+
+**验收场景覆盖统计**：A 4/4 + B 3/3 + C 6/6 + D 5/5 + E 3/3 = **21/21**

@@ -1,0 +1,14 @@
+graph LR
+    A["default\n每步确认"] -->|"Shift+Tab\n解锁"| B["acceptEdits\n编辑自动通过"]
+    B --> C["plan\n只读探索"]
+    C --> D["bypassPermissions\n无护栏"]
+    D -->|"循环回到"| A
+
+    A -.- Note1["color: 默认"]
+    B -.- Note2["color: 默认"]
+    D -.- Note3["color: error\n⚠️ 高危"]
+
+    subgraph 内部谱系
+        E["default"] -->|"ant-only"| F["auto\nAI分类器"]
+        F --> G["bypassPermissions"]
+    end

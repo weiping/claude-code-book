@@ -1,0 +1,13 @@
+graph TD
+    Response["API 响应 usage 字段"]
+    Response --> CCI["cache_creation_input_tokens
+第一次建立缓存的 token 数"]
+    Response --> CRI["cache_read_input_tokens
+从缓存读取的 token 数"]
+    Response --> II["input_tokens
+本次实际计费的 token 数"]
+    
+    CRI -->|"> 0"| Hit["✅ 缓存命中
+节省了费用"]
+    CRI -->|"= 0"| Miss["⚠️ 缓存未命中
+系统 prompt 前缀可能在变化"]

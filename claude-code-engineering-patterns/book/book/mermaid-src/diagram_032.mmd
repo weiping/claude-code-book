@@ -1,0 +1,14 @@
+flowchart TD
+    start[开始一轮 while 迭代] --> api[发送 API 请求]
+    api -->|"AbortSignal 触发"| abort["⚡ 紧急停止\n（interrupt() 触发）"]
+    api -->|"API 响应成功"| stream[流式接收响应]
+    stream --> check{needsFollowUp?}
+    check -->|"false: AI 无工具调用"| normal["✅ 正常出口\n任务完成"]
+    check -->|"true: AI 有工具调用"| execTool[执行工具，继续下一轮]
+    execTool --> turnCheck{超过 maxTurns?}
+    turnCheck -->|是| maxStop["🛡️ 轮次保护\n(maxTurns 限制)"]
+    turnCheck -->|否| start
+
+    style normal fill:#e8f5e9,stroke:#388e3c
+    style abort fill:#ffebee,stroke:#c62828
+    style maxStop fill:#fff3e0,stroke:#e65100

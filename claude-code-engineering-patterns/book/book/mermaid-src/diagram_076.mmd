@@ -1,0 +1,8 @@
+stateDiagram-v2
+    [*] --> normal : 会话开始
+    normal --> warning : tokenUsage >= threshold - 20000\n（isAboveWarningThreshold）
+    warning --> error_state : 同一阈值触发\n（isAboveErrorThreshold）
+    error_state --> autocompact_triggered : tokenUsage >= threshold - 13000\n（isAboveAutoCompactThreshold）
+    autocompact_triggered --> normal : 压缩成功，token 大幅减少
+    autocompact_triggered --> blocking : 压缩失败，tokenUsage >= effectiveWindow - 3000\n（isAtBlockingLimit）
+    blocking --> [*] : 新请求被拒绝

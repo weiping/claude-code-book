@@ -1,0 +1,78 @@
+# 第 25 章 - AutoCompact 与边界标记的实现
+## 写作计划（Plan）
+
+---
+
+## 前置阅读清单
+
+- **第 24 章**：缓存系统总览 — 理解四种压缩策略，AutoCompact 在其中的角色
+- **第 21 章**：上下文组装 — 理解 token 如何计数
+- **第 23 章**：会话系统 — 理解对话历史的存储格式
+
+---
+
+## 章节骨架
+
+### 25.1 Token 警告状态计算
+**核心**：`src/services/compact/autoCompact.ts` 第 93 行的 `calculateTokenWarningState()`
+
+五个状态：NORMAL → YELLOW → RED → ORANGE → CRITICAL
+
+**源码锚点**：
+- WARNING_THRESHOLD_BUFFER_TOKENS（第 63 行）
+- getAutoCompactThreshold（第 72 行）
+- calculateTokenWarningState（第 93 行）
+
+### 25.2 Compact Boundary 标记机制
+**核心**：`src/utils/messages.ts` 第 4557 行的 `createMicrocompactBoundaryMessage()`
+
+当压缩发生时，在对话历史中插入一个"边界消息"，告诉 Claude "历史从这里开始被浓缩"。
+
+**设计意图**：防止 Claude 对已删除的对话产生幻觉。
+
+### 25.3 PROMPT_CACHE_BREAK_DETECTION
+**核心**：Flag 下的检测机制，确认 Prompt Cache 是否被意外破坏
+
+### 25.4 性能与状态转换
+**数据**：每个状态的触发时机、持续时间、压缩动作
+
+### 25.5 与 Prompt Cache 的交互
+**权衡**：压缩 vs 缓存命中率
+
+---
+
+## 图表清单
+
+1. **图 25-1：AutoCompact 状态转移图**（Mermaid 状态图）
+   ```
+   NORMAL --使用量增加--> YELLOW --继续增加--> RED
+   RED --继续增加--> ORANGE --严重溢出--> CRITICAL
+   CRITICAL --压缩发生--> NORMAL
+   ```
+
+2. **图 25-2：calculateTokenWarningState 流程图**（Mermaid 决策树）
+
+3. **表格 25-1：五个状态的行为对比**
+
+4. **时间序列图**：Token 使用量随对话轮数变化，标注每个状态的触发点
+
+---
+
+## 写作顺序
+
+1. 开篇："AutoCompact 触发时，Claude 如何'知道'历史被压缩了？"
+2. 25.1 - Token 计算
+3. 25.2 - 边界标记  
+4. 25.3 - Cache break 检测
+5. 25.4 - 性能数据
+6. 25.5 - 与 Cache 交互
+7. 模式 + 用户能做什么
+
+---
+
+## 估算
+
+- **时间**：2-2.5 小时
+- **字数**：1000-1200 字
+- **锚点**：6-8 个
+- **图表**：4 个

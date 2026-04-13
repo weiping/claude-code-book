@@ -1,0 +1,73 @@
+# 第17章写作计划
+
+**批次**：批次 4
+**章节**：ch17 — PermissionRule 与规则引擎
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/permissions/PermissionRule.ts | PermissionRule 和 PermissionBehavior 类型 | 全文 |
+| 2 | src/utils/permissions/permissionRuleParser.ts | permissionRuleValueFromString(93行)、注释中的示例 | 89-145行 |
+| 3 | src/utils/permissions/shadowedRuleDetection.ts | detectUnreachableRules(193行)、shadowedRule 说明 | 61-100, 193行 |
+| 4 | src/utils/permissions/permissionsLoader.ts | shouldAllowManagedPermissionRulesOnly | 1-40行 |
+
+```bash
+cat src/utils/permissions/PermissionRule.ts | head -40
+sed -n '89,120p' src/utils/permissions/permissionRuleParser.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「你在 settings.json 里写 `"allowedTools": ["Bash(git *)"]`，这条规则经历了什么才变成运行时的权限决策？以及，如果公司 MDM 策略也包含一条关于 Bash 的规则，谁说了算？」
+- 三个问题：1）PermissionRule 的数据结构是什么？2）规则来源优先级如何确定？3）shadowedRuleDetection 解决什么用户体验问题？
+
+### 节 17.1：PermissionRule 的数据结构——一条规则包含哪些信息？
+- 核心主张：PermissionRule 不只是"工具名 + 行为"，还包含来源（source）和匹配内容（ruleContent），这三者共同决定规则的优先级、匹配范围和用户体验消息
+- 源码锚点：`src/utils/permissions/PermissionRule.ts`（PermissionRule 和 PermissionBehavior 类型）
+- 包含元素：PermissionRule 字段表 + PermissionBehavior 枚举说明
+- 估计字数：500字
+
+### 节 17.2：permissionRuleValueFromString——规则字符串如何解析？
+- 核心主张：规则字符串格式如 `Bash(git *)` 或 `Bash(python -c "print(1)")`，解析需要处理括号嵌套和转义；注释里的示例直接展示了边界情况
+- 源码锚点：`src/utils/permissions/permissionRuleParser.ts:89`（示例注释）、`src/utils/permissions/permissionRuleParser.ts:93`（函数定义）
+- 包含元素：解析示例表（三种典型格式 + 对应结果）
+- 估计字数：500字
+
+### 节 17.3：三层来源优先级——managed 为什么总是赢？
+- 核心主张：managed（企业 MDM 管控）> global（用户全局设置）> local（项目本地设置），这不只是优先级，还有 `shouldAllowManagedPermissionRulesOnly` 的强制覆盖——企业管控可以完全禁止用户修改
+- 源码锚点：`src/utils/permissions/permissionsLoader.ts:shouldAllowManagedPermissionRulesOnly`
+- 包含元素：三层优先级表 + 强制覆盖场景说明
+- 估计字数：500字
+
+### 节 17.4：detectUnreachableRules——为什么需要"遮蔽检测"？
+- 核心主张：当低优先级规则（如 local 的 `allow Bash(git *)`）被高优先级规则（如 managed 的 `deny Bash(*)`）完全覆盖时，用户可能误以为自己的规则生效——shadowed rule 检测会给出警告
+- 源码锚点：`src/utils/permissions/shadowedRuleDetection.ts:193`（detectUnreachableRules）、`src/utils/permissions/shadowedRuleDetection.ts:82`（shadowedRule 说明）
+- 估计字数：400字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 结构化规则字符串（Structured Rule String）| 规则需要人类可读（配置文件）又机器可解析（运行时匹配）| 设计简洁的字符串语法（工具名(内容模式)），提供序列化/反序列化对称函数 | 规则需要持久化在配置文件中，且在运行时做匹配 | `src/utils/permissions/permissionRuleParser.ts:93` |
+| 可达性验证（Reachability Validation）| 高层规则会静默覆盖低层规则，用户不知道自己的规则无效 | detectUnreachableRules 在加载时检测被遮蔽的规则并给出警告 | 有多层规则来源，且低层规则可能被高层完全覆盖 | `src/utils/permissions/shadowedRuleDetection.ts:193` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图17-1 | 三层规则来源优先级 | Mermaid flowchart | managed/global/local 的覆盖关系 + shouldAllowManagedOnly | 17.3 |
+| 图17-2 | 规则字符串解析示例 | 表格 | 三种格式 → 对应的 PermissionRuleValue | 17.2 |
+
+## 写作前 checklist
+```bash
+cat src/utils/permissions/PermissionRule.ts | head -40
+sed -n '89,120p' src/utils/permissions/permissionRuleParser.ts
+sed -n '80,100p' src/utils/permissions/shadowedRuleDetection.ts
+sed -n '193p' src/utils/permissions/shadowedRuleDetection.ts
+head -30 src/utils/permissions/permissionsLoader.ts
+```
+
+## 估算
+- 目标字数：2200-2600字
+- 预计轮次：7轮（含2轮验证）

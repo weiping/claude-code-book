@@ -1,0 +1,24 @@
+flowchart TD
+    subgraph L1["第 1 层：发现（1% 预算）"]
+        A["技能文件\nfrontmatter 元数据"] --> B["estimateSkillFrontmatterTokens\n仅计费元数据"]
+        B --> C["getCommandDescription\n250字符截断"]
+        C --> D["技能摘要列表\n≤8000字符"]
+    end
+
+    subgraph L2["第 2 层：模型决策"]
+        E["模型阅读摘要列表"] --> F{技能适用?}
+        F -->|是| G["调用 SkillTool"]
+        F -->|否| H["跳过"]
+    end
+
+    subgraph L3["第 3 层：执行（全文加载）"]
+        G --> I["读取技能全文"]
+        I --> J{context 字段}
+        J -->|inline| K["展开到当前上下文"]
+        J -->|fork| L["启动独立子智能体"]
+    end
+
+    D --> E
+    H --> D
+    K --> M["技能执行完成"]
+    L --> M

@@ -1,0 +1,14 @@
+graph TB
+    A["代码"]
+    B["编译期决策<br/>bun:bundle"]
+    C["feature()"]
+    D["true → 包含<br/>false → 消除"]
+    E["编译产物<br/>.js"]
+    F["运行时决策<br/>GrowthBook"]
+    G["getFeatureValue()"]
+    H["查询规则"]
+    I["缓存结果<br/>5 分钟"]
+    A --> B --> C --> D --> E
+    E --> F --> G --> H --> I
+    style E fill:#ccffcc
+    style I fill:#ccffcc

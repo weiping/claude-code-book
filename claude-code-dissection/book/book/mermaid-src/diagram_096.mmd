@@ -1,0 +1,18 @@
+graph TD
+    A["用户请求<br/>feature X"]
+    B["查询 GrowthBook"]
+    C{"有规则<br/>匹配?"}
+    D{"条件<br/>满足?"}
+    E{"百分比<br/>命中?"}
+    F["返回 true"]
+    G["返回 false"]
+    H["使用默认值"]
+    A --> B --> C
+    C -->|YES| D
+    C -->|NO| H
+    D -->|NO| G
+    D -->|YES| E
+    E -->|YES| F
+    E -->|NO| G
+    H --> F
+    H --> G

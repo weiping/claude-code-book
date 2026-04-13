@@ -1,0 +1,19 @@
+flowchart TD
+    A["Hook 触发\n27 个 HOOK_EVENTS"] --> B{"hook.type?"}
+
+    B -->|command| C["execCommandHook\nshell 命令\n~毫秒"]
+    B -->|prompt| D["execPromptHook\n单次 AI 推理\n~1-2秒"]
+    B -->|http| E["execHttpHook\nHTTP 请求\n~网络延迟"]
+    B -->|agent| F["execAgentHook\n多轮 AI 对话\n~10-60秒"]
+
+    C --> G["返回 stdout"]
+    D --> H["返回 AI 推理结果"]
+    E --> I["返回 HTTP 响应"]
+    F --> J["返回 Agent 决策\n+ ok/reason"]
+
+    J --> K{ok?}
+    K -->|true| L["允许继续"]
+    K -->|false| M["阻止 + reason"]
+
+    F -.- Note1["工具受限\n不可生成子Agent"]
+    E -.- Note2["URL 白名单\n环境变量白名单"]

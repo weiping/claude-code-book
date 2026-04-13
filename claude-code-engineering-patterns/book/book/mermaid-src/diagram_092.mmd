@@ -1,0 +1,18 @@
+flowchart TD
+    enter["stopTask(taskId)"] --> s1{"task.status
+!== 'running'?"}
+    s1 -->|是| err1["throw StopTaskError
+code: 'not_running'"]
+    s1 -->|否| s2{"isLocalShellTask
+(task)?"}
+    s2 -->|是| bash_action["抑制 exit code 137 通知
+（LocalShellTask 特有）
+task 类型收窄为 LocalShellTaskState"]
+    s2 -->|否| agent_action["跳过通知抑制
+（Agent 任务有实际错误载荷）"]
+    bash_action & agent_action --> s3["const command =
+isLocalShellTask(task)
+? task.command
+: task.description"]
+    s3 --> kill["发送 SIGKILL
+更新 status = killed"]

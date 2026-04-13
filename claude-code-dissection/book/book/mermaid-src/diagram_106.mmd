@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant Producer
+    participant Mailbox
+    participant Consumer
+    Producer->>Mailbox: send(msg)
+    Mailbox->>Mailbox: queue.size < max?
+    alt 容量充足
+        Mailbox-->>Producer: ✓ OK
+        Consumer->>Mailbox: receive()
+    else 容量满
+        Mailbox-->>Producer: ✗ BackpressureError
+        Producer->>Producer: 等待重试
+    end

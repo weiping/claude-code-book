@@ -1,0 +1,23 @@
+flowchart LR
+    subgraph 有状态单例
+        direction TB
+        STATE2["STATE 对象"]
+        Get2["get 函数"]
+        Set2["set 函数"]
+        STATE2 --- Get2
+        Set2 --- STATE2
+    end
+
+    subgraph 无状态信号
+        direction TB
+        Signal2["createSignal"]
+        Emit2["emit()"]
+        Sub2["subscribe()"]
+        Signal2 --- Emit2
+        Signal2 --- Sub2
+    end
+
+    QE["QueryEngine"] -->|"读状态"| Get2
+    QE -->|"写状态"| Set2
+    CS["concurrentSessions"] -->|"注册回调"| Sub2
+    SS["switchSession()"] -->|"触发事件"| Emit2

@@ -1,0 +1,104 @@
+# 第2章写作计划
+
+**批次**：批次 1
+**章节**：ch02 — 技术栈选型——React/Ink + Bun + TypeScript 的工程逻辑
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/ink/reconciler.ts | createReconciler(第4行)、reconciler 定义(第224行) | 1-10，220-240行 |
+| 2 | src/replLauncher.tsx | App+REPL 组装，动态 import | 全文(约25行) |
+| 3 | src/main.tsx | feature() 调用(第76-81行)、bun:bundle import(第21行) | 20-90行 |
+| 4 | src/ink/renderer.ts | createRenderer, RenderOptions | 1-35行 |
+
+```bash
+ls src/ink/reconciler.ts src/replLauncher.tsx src/main.tsx src/ink/renderer.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「如果让你从零设计一个 AI Coding Agent 的 CLI，你会用什么渲染方案？大多数人会想到 blessed 或者直接 chalk——Anthropic 用的是 React。」
+- 可选题词：N/A
+- 三个问题：
+  1. React 能在没有 DOM 的终端里运行吗？代价是什么？
+  2. Bun 相比 Node 带来了什么架构级能力？
+  3. `bun:bundle` 是标准 API 吗？它的优势和风险是什么？
+
+### 节 2.1：为什么用 React/Ink 而不是 blessed/chalk
+- 核心主张：React 的组件模型和状态管理能力远超字符串拼接方案，代价是需要自建 reconciler
+- 源码锚点：`src/ink/reconciler.ts:4` — `import createReconciler from 'react-reconciler'`
+- 概念层次：设计意图（为什么选）+ 实际代价（自建 reconciler）
+- 权衡分析：选 React/Ink：组件复用、状态管理、虚拟 DOM diff；不选 blessed：缺乏组件抽象，字符串操作脆弱；不选 chalk：无布局管理
+- 包含元素：对比表（React/Ink vs blessed vs chalk 直接渲染）
+- 估计字数：600字
+- 对应 spec 场景：Ink 选型有两个以上工程理由
+
+### 节 2.2：Bun 替代 Node——关键是 `bun:bundle`
+- 核心主张：Bun 的核心贡献是 `bun:bundle` API，实现编译期死代码消除
+- 源码锚点：`src/main.tsx:21` — `import { feature } from 'bun:bundle'`；`src/main.tsx:76` — `feature('COORDINATOR_MODE')`
+- 概念层次：设计意图 + 实际案例（KAIROS 代码在普通用户构建中物理消失）
+- 权衡分析：Bun target 获得编译期 DCE；代价是只能 Bun 运行，`bun:bundle` 是非标准 API
+- 包含元素：**对比表**（Bun target vs Node target：feature() 支持、产物体积、死代码消除）
+- 估计字数：600字
+- 对应 spec 场景：编译期消除机制说清；bun vs node 对比清晰
+
+### 节 2.3：TypeScript 与构建流程
+- 核心主张：TypeScript 提供类型安全，配合 Bun 的快速编译无需额外 bundler
+- 源码锚点：`package.json` scripts 中的 `bun build src/main.tsx --outdir dist --target bun`
+- 包含元素：简要说明 tsconfig + Bun build 的配置
+- 估计字数：300字
+
+### 节 2.4：自建 reconciler 的代价
+- 核心主张：不能直接用 React DOM，Ink 实现了完整的 host config
+- 源码锚点：`src/ink/reconciler.ts:224` — `const reconciler = createReconciler<...>({...})`
+- 权衡分析：自建 reconciler 的代价是维护成本；收益是完全控制渲染目标（终端字符网格）
+- 包含元素：一句话说明 reconciler 的作用，指向第38章详细分析
+- 估计字数：300字
+- 对应 spec 场景：不越界深入 reconciler
+
+### 章末：模式提炼
+
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 编译期特性门控（Compile-time Feature Gating）| 内部代码不应暴露给外部用户 | 用编译期 flag 而非运行期 if 控制代码包含 | 有内部/外部用户区分 | `src/main.tsx:76` |
+| 声明式终端 UI（Declarative Terminal UI）| CLI 界面随状态变化难以维护 | 用 React 组件描述 UI，reconciler 处理差量更新 | 界面有状态 | `src/ink/reconciler.ts:224` |
+
+### 章末：用户能做什么
+
+1. 评估自己的 CLI 是否应该引入 React/Ink（判断标准：界面是否有状态？）
+2. 用 `bun:bundle` 的 `feature()` 实现编译期的功能开关
+3. 区分"运行期跳过"和"编译期删除"的适用场景
+4. 用 Bun build 而非 webpack/rollup 构建 TypeScript CLI
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图2-1 | Bun target vs Node target 产物对比 | ASCII 对比表 | feature() 支持、产物体积、DCE 能力 | 2.2 |
+| 图2-2 | Ink 的渲染链路 | ASCII box-arrow | React 组件 → reconciler → Yoga → 字符输出 | 2.1/2.4 |
+
+## 写作顺序
+
+1. 先写节 2.2（bun:bundle，最核心差异化选型）
+2. 写节 2.1（Ink 选型，建立在 2.2 的框架上）
+3. 写节 2.4（reconciler 代价，简要）
+4. 写节 2.3（TypeScript，最简单）
+5. 写模式提炼和行动建议
+6. 最后写开篇
+
+## 写作前 checklist
+
+```bash
+sed -n '4p' src/ink/reconciler.ts         # createReconciler import
+sed -n '224p' src/ink/reconciler.ts        # const reconciler = createReconciler
+sed -n '21p' src/main.tsx                  # bun:bundle import
+sed -n '76p' src/main.tsx                  # feature('COORDINATOR_MODE')
+```
+
+## 估算
+
+- 目标字数：2000-2500字
+- 预计轮次：6轮（含2轮验证）

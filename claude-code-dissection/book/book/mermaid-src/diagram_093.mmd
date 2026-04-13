@@ -1,0 +1,10 @@
+graph LR
+    A["用户查询<br/>❓"] --> B["Embedding"]
+    B --> C["相似度计算"]
+    C --> D["Skill A<br/>0.92"]
+    C --> E["Skill B<br/>0.78"]
+    C --> F["Skill C<br/>0.62"]
+    D --> G["排序与展示"]
+    E --> G
+    F --> G
+    style D fill:#ccffcc

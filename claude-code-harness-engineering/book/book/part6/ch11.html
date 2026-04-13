@@ -1,0 +1,387 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 11 章：上下文的五把剪刀 - 从 Claude Code 源码提炼的 Harness 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">从 Claude Code 源码提炼的 Harness 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-11-章上下文的五把剪刀"><a class="header" href="#第-11-章上下文的五把剪刀">第 11 章：上下文的五把剪刀</a></h1>
+<blockquote>
+<p>"一个上下文窗口的死亡方式不只有一种。5 种剪刀，5 种死法，5 种救法。"</p>
+</blockquote>
+<p>同一个问题——"上下文太长了怎么办"——Claude Code 有 5 种不同的答案，每种答案针对不同的失败场景。理解为什么需要 5 种而非 1 种，比知道每种怎么用更重要。读完本章，你将理解每种压缩策略背后编码的"模型能力假设"，以及 queryLoop 中从轻到重的防线链如何在不丢失关键信息的前提下压缩 token 消耗。</p>
+<h2 id="问题为什么需要-5-种压缩策略而非-1-种"><a class="header" href="#问题为什么需要-5-种压缩策略而非-1-种">问题——为什么需要 5 种压缩策略而非 1 种</a></h2>
+<p>如果上下文管理只有一个问题，就不需要 5 种策略。5 种策略的存在本身说明这是 5 个独立问题：</p>
+<ul>
+<li><strong>token 超限</strong>——对话太长，超过上下文窗口，需要全量摘要</li>
+<li><strong>旧工具结果占位</strong>——早先轮次的文件读取、命令输出占据大量空间，但模型已经不需要它们了</li>
+<li><strong>cache TTL 过期</strong>——超过 1 小时后，服务端缓存已经失效，继续发送旧的工具结果是纯浪费</li>
+<li><strong>历史轮次边界</strong>——某些历史消息块可以整段删除而不影响当前任务的连贯性</li>
+<li><strong>API 413 响应</strong>——即使所有预防措施都做了，API 仍然返回"请求过长"，需要紧急压缩</li>
+</ul>
+<p>queryLoop 中的执行顺序揭示了策略间的逻辑关系——源码注释说明："Apply snip before microcompact (both may run — they are not mutually exclusive)"（译：在 microcompact 之前应用 snip，两者可以同时运行——它们不是互斥的），紧接着 "Apply microcompact before autocompact"（译：在 autocompact 之前应用 microcompact）。轻量级策略先行，重量级策略托底。如果轻量级策略已经释放了足够的 token，重量级策略就不会触发。</p>
+<div class="table-wrapper"><table><thead><tr><th>策略</th><th>目标场景</th><th>触发频率</th><th>压缩深度</th></tr></thead><tbody>
+<tr><td>snipCompact</td><td>历史轮次边界</td><td>每轮检查</td><td>浅（删除整块消息）</td></tr>
+<tr><td>microCompact</td><td>旧工具结果占位</td><td>每轮检查</td><td>中（清除工具输出）</td></tr>
+<tr><td>contextCollapse</td><td>可折叠上下文投影</td><td>每轮检查</td><td>中（只读投影，不修改原始消息）</td></tr>
+<tr><td>autoCompact</td><td>token 超限</td><td>阈值触发</td><td>深（全量对话摘要）</td></tr>
+<tr><td>timeBasedMC</td><td>cache TTL 过期</td><td>时间阈值</td><td>中（清除过期工具结果）</td></tr>
+</tbody></table>
+</div>
+<p><strong>原则 11.1：压缩策略按问题分而非按算法分</strong> — 上下文压缩策略<strong>必须</strong>针对不同的失控场景分别设计，而非用一种"万能摘要"应对所有情况。<strong>禁止</strong>将不同触发条件的压缩合并为同一策略——合并意味着要么漏掉某些场景，要么在不必要的时候触发。</p>
+<h2 id="黄金法则每种策略编码一个模型能力假设"><a class="header" href="#黄金法则每种策略编码一个模型能力假设">黄金法则——每种策略编码一个"模型能力假设"</a></h2>
+<p>每种压缩策略不是算法选择，而是一条工程断言——"在这种条件下，模型的记忆能力边界在这里"。源码中的常量就是这些断言的数值表达。</p>
+<p><code>AUTOCOMPACT_BUFFER_TOKENS = 13000</code> 是 autoCompact 的核心假设：给模型留 13000 token 的缓冲区来生成摘要。这个数字编码了断言"模型需要至少 13000 token 的空间才能完成一次高质量的对话摘要"——如果缓冲区太小，摘要生成会被截断，丢失关键信息。</p>
+<p><code>timeBasedMC</code> 的 60 分钟阈值直接映射到 cache TTL 的工程假设。注释说明了选择："60 is the safe choice: the server's 1h cache TTL is guaranteed expired"（译：60 是安全选择——服务端 1 小时的缓存 TTL 保证已过期）。这不是关于模型能力的假设，而是关于基础设施的假设——cache 过期后，旧的工具结果既占据 token 又不提供缓存加速效果。</p>
+<p><code>POST_COMPACT_MAX_FILES_TO_RESTORE = 5</code> 编码了断言"模型在压缩边界后需要哪些上下文才能继续工作"——最多恢复 5 个最近读取的文件。数字 5 来自工程经验：太少则模型丢失当前工作文件，太多则恢复成本抵消了压缩收益。</p>
+<div class="table-wrapper"><table><thead><tr><th>策略</th><th>编码的"能力假设"</th><th>源码常量</th></tr></thead><tbody>
+<tr><td>autoCompact</td><td>模型生成摘要需要 13000 token 缓冲区</td><td><code>AUTOCOMPACT_BUFFER_TOKENS=13000</code></td></tr>
+<tr><td>autoCompact</td><td>连续 3 次失败应停止重试</td><td><code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES=3</code></td></tr>
+<tr><td>autoCompact</td><td>压缩后需要 50000 token 预算恢复上下文</td><td><code>POST_COMPACT_TOKEN_BUDGET=50000</code></td></tr>
+<tr><td>microCompact</td><td>只有 8 类工具的结果值得清除</td><td><code>COMPACTABLE_TOOLS</code>（8 种）</td></tr>
+<tr><td>timeBasedMC</td><td>cache TTL 过期后旧内容无缓存价值</td><td><code>gapThresholdMinutes=60</code></td></tr>
+</tbody></table>
+</div>
+<p><strong>原则 11.2：压缩参数即模型能力声明</strong> — 每个压缩阈值和缓冲区<strong>必须</strong>基于对模型能力的工程判断，而非随意设置。如果模型能力变化（如上下文窗口扩大），这些参数<strong>必须</strong>相应调整——它们不是常量，是变量。</p>
+<h2 id="适用场景什么条件下哪种压缩触发"><a class="header" href="#适用场景什么条件下哪种压缩触发">适用场景——什么条件下哪种压缩触发</a></h2>
+<p>5 种策略按照"触发频率 × 压缩深度"形成从轻到重的梯度。</p>
+<p><strong>snipCompact（浅层、每轮检查）</strong>——检查历史消息中是否存在可以整段删除的轮次边界。适合多轮对话中早期轮次与当前任务无关的场景。触发条件是 Feature Flag 控制。</p>
+<p><strong>microCompact（中层、每轮检查）</strong>——检查工具结果是否可以被清除。<code>COMPACTABLE_TOOLS</code> 白名单定义了 8 类可清除的工具：FileRead、Shell、Grep、Glob、WebSearch、WebFetch、FileEdit、FileWrite。白名单外的工具结果（如自定义 MCP 工具）不会被清除。</p>
+<p><strong>contextCollapse（中层、每轮检查）</strong>——与前两种不同，collapse 不修改原始消息数组，而是在读取时投影一个"折叠视图"。折叠后的消息不在 REPL 数组中，而在 collapse store 中——这意味着折叠可以跨轮次持久化。</p>
+<p><strong>autoCompact（深层、阈值触发）</strong>——当 token 使用量超过 <code>getAutoCompactThreshold(model)</code> 时触发。可以通过 <code>DISABLE_AUTO_COMPACT</code> 环境变量完全禁用。<code>isAutoCompactEnabled()</code> 让这个开关独立于其他策略。</p>
+<p><strong>timeBasedMC（中层、时间阈值触发）</strong>——默认关闭（<code>enabled: false</code>）。适合会话生命周期超过 1 小时的长会话场景，清除 cache TTL 过期后的旧工具结果。需要用户手动配置才能启用。</p>
+<h2 id="工作原理5-种策略的执行机制"><a class="header" href="#工作原理5-种策略的执行机制">工作原理——5 种策略的执行机制</a></h2>
+<p>5 种策略在 queryLoop 中以固定顺序执行——这个顺序不是随意的，而是经过设计的防线链。源码注释清晰地标记了每一步的检查点：<code>query_snip_start</code> → <code>query_microcompact_start</code> → <code>query_autocompact_start</code>。</p>
+<p><strong>图 11-1：queryLoop 中的压缩决策树</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    A["queryLoop 新一轮"] --&gt; B{HISTORY_SNIP\nFeature Flag?}
+    B --&gt;|是| C["snipCompact\n删除历史轮次边界\nsnipTokensFreed 传递"]
+    B --&gt;|否| D["跳过"]
+    C --&gt; E["microCompact\n清除 8 类旧工具结果"]
+    D --&gt; E
+
+    E --&gt; F{CONTEXT_COLLAPSE\nFeature Flag?}
+    F --&gt;|是| G["contextCollapse\n只读投影折叠\n不修改原始消息"]
+    F --&gt;|否| H["跳过"]
+    G --&gt; I{shouldAutoCompact?\ntoken 超限 +\n递归守卫通过}
+    H --&gt; I
+
+    I --&gt;|是| J["autoCompact\n全量对话摘要\n13000 token 缓冲"]
+    I --&gt;|否| K["跳过"]
+    J --&gt; L{consecutiveFailures\n&lt; 3?}
+    L --&gt;|是| M["执行压缩\npost-compact 恢复\n5文件/50000 token"]
+    L --&gt;|否| N["熔断\n不再尝试"]
+    K --&gt; O["继续查询"]
+    M --&gt; O
+
+    C -.- Note1["与 micro 不互斥\n可同时触发"]
+    G -.- Note2["collapse 优先于 autocompact\n如果 collapse 释放足够 token\nautocompact 是 no-op"]
+</code></pre>
+<p><strong>第一步：snipCompact</strong></p>
+<p>检查历史消息中是否存在轮次边界。如果存在，删除边界之前的消息，计算释放的 token 数（<code>snipTokensFreed</code>）。这个数字被传递给后续的 autoCompact——因为 snip 删除了消息，但存活的 assistant 消息的 usage 字段仍反映删除前的 token 计数。源码注释解释："Snip removes messages but the surviving assistant's usage still reflects pre-snip context, so tokenCountWithEstimation can't see the savings."（译：Snip 删除了消息但存活的 assistant 的 usage 仍反映 snip 前的上下文，所以 tokenCountWithEstimation 看不到节省量）。</p>
+<p><strong>第二步：microCompact</strong></p>
+<p>清除白名单中 8 类工具的旧结果。被清除的结果替换为占位消息 <code>'[Old tool result content cleared]'</code>。microCompact 与 snip 不是互斥的——同一轮可以两者都触发。microCompact 在 autoCompact 之前运行，是因为如果轻量级清除已经释放了足够 token，就不需要触发代价更高的全量摘要。</p>
+<p><strong>第三步：contextCollapse</strong></p>
+<p>与前两种策略不同，collapse 不修改原始消息数组。它在读取时投影一个"折叠视图"——折叠后的消息存储在独立的 collapse store 中。这个设计使得折叠可以跨轮次持久化：每次进入 queryLoop 时，<code>projectView()</code> 重放提交日志生成当前视图。源码注释解释了为什么 collapse 在 autoCompact 之前运行："Runs BEFORE autocompact so that if collapse gets us under the autocompact threshold, autocompact is a no-op and we keep granular context instead of a single summary."（译：在 autocompact 之前运行，这样如果 collapse 让 token 数低于 autocompact 阈值，autocompact 就不需要运行，我们保留细粒度的上下文而非一个摘要）。</p>
+<p><strong>第四步：autoCompact</strong></p>
+<p>最重量级的策略——生成完整的对话摘要，替换整个历史。触发条件是 token 使用量超过模型特定的阈值。执行前有 3 层递归守卫：<code>session_memory</code> 和 <code>compact</code> 查询源不触发（防止死锁），<code>marble_origami</code>（上下文 Agent）不触发（防止破坏主线程的已提交日志）。<code>REACTIVE_COMPACT</code> Feature Flag 可以关闭主动 autoCompact，改为仅响应 API 413 错误触发。</p>
+<p><strong>post-compact 恢复</strong></p>
+<p>压缩完成后，系统恢复最近读取的最多 5 个文件，使用 50000 token 的预算。这是压缩后"重建模型工作记忆"的关键步骤——没有它，模型在摘要后无法继续工作。</p>
+<div class="table-wrapper"><table><thead><tr><th>策略</th><th>触发条件</th><th>压缩范围</th><th>代价</th></tr></thead><tbody>
+<tr><td>snipCompact</td><td>Feature Flag + 轮次边界</td><td>删除整块历史消息</td><td>无 API 调用，丢失旧消息</td></tr>
+<tr><td>microCompact</td><td>每轮检查 + 白名单工具</td><td>清除工具输出内容</td><td>无 API 调用，丢失工具结果</td></tr>
+<tr><td>contextCollapse</td><td>Feature Flag + 可折叠消息</td><td>只读投影，不修改原始</td><td>无 API 调用，可逆</td></tr>
+<tr><td>autoCompact</td><td>token 超阈值 + 递归守卫</td><td>全量对话摘要</td><td>一次 API 调用，不可逆</td></tr>
+<tr><td>timeBasedMC</td><td>cache TTL 过期 + 手动启用</td><td>清除过期工具结果</td><td>无 API 调用，默认关闭</td></tr>
+</tbody></table>
+</div>
+<h2 id="权衡多策略并存的-3-个设计代价"><a class="header" href="#权衡多策略并存的-3-个设计代价">权衡——多策略并存的 3 个设计代价</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>决策维度</th><th>选择 A（本系统）</th><th>选择 B</th><th>核心权衡</th></tr></thead><tbody>
+<tr><td>熔断机制</td><td>3 次失败停止</td><td>无限重试</td><td>保护 API 资源 vs 放弃压缩</td></tr>
+<tr><td>策略并发</td><td>snip + micro 可同时触发</td><td>严格互斥</td><td>更细粒度控制 vs 行为不可预测</td></tr>
+<tr><td>时间阈值</td><td>默认关闭（实验性）</td><td>默认开启</td><td>安全验证 vs 功能可达性</td></tr>
+</tbody></table>
+</div>
+<p><strong>代价一：熔断机制是真实生产事故的产物</strong></p>
+<p><code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code> 不是理论设计——源码注释记录了真实的生产数据："BQ 2026-03-10: 1,279 sessions had 50+ consecutive failures (up to 3,272) in a single session, wasting ~250K API calls/day globally."（译：BQ 2026-03-10：1279 个会话有 50 次以上连续失败（最多 3272 次），每天全球浪费约 25 万次 API 调用）。没有熔断机制，autoCompact 会无限重试，每次都消耗 API token 但无法成功压缩。3 次上限是"快速放弃"与"给足够机会"之间的平衡。</p>
+<p><strong>代价二：多策略并发增加行为不可预测性</strong></p>
+<p>snip 和 micro 可以在同一轮都触发——用户可能在一轮中看到上下文被两种不同的策略同时压缩。这种并发设计让压缩更彻底（轻量级策略组合可能释放足够 token 避免重量级策略），但调试时需要同时考虑两种策略的交互效果。</p>
+<p><strong>代价三：时间阈值默认关闭限制功能可达性</strong></p>
+<p>timeBasedMC 是针对"cache TTL 过期后旧工具结果无缓存价值"的优化，但默认关闭。<code>enabled: false</code> 说明这是一个实验性功能——在多策略环境中引入新策略需要验证它不会与其他策略冲突。代价是用户需要手动配置才能获益。</p>
+<h2 id="踩坑指南压缩策略中的常见错误"><a class="header" href="#踩坑指南压缩策略中的常见错误">踩坑指南——压缩策略中的常见错误</a></h2>
+<p><strong>陷阱一：autoCompact 在 compact 查询源中触发死锁</strong></p>
+<p><code>shouldAutoCompact</code> 有递归守卫：<code>session_memory</code> 和 <code>compact</code> 查询源直接返回 false。原因很直接——autoCompact 本身通过 forkedAgent 执行压缩，如果压缩查询再次触发 autoCompact，会无限递归。守卫不是"防御性编程"，是真实会触发的死锁预防。</p>
+<p>❌ 错误做法：在自定义的 forkedAgent 中忽略查询源（<code>querySource</code>）参数，让压缩逻辑在所有查询源中无条件触发。<br />
+✓ 正确做法：所有压缩逻辑必须检查查询源——<code>compact</code>、<code>session_memory</code>、<code>marble_origami</code> 等查询源应跳过压缩。</p>
+<p><strong>陷阱二：期望 microCompact 清除自定义工具结果</strong></p>
+<p><code>COMPACTABLE_TOOLS</code> 只包含 8 种内置工具。自定义 MCP 工具、自定义 Agent 工具的结果不在白名单中——microCompact 不会清除它们。如果一个自定义工具返回了 5000 token 的输出，它将一直保留在上下文中，直到 autoCompact 全量摘要。</p>
+<p>❌ 错误做法：假设所有工具输出都会被 microCompact 自动管理，不控制自定义工具的输出长度。<br />
+✓ 正确做法：为自定义工具实现结果截断。如果工具输出可能很长，在工具内部限制返回长度——microCompact 的白名单不会扩展到自定义工具。</p>
+<p><strong>陷阱三：忽视熔断后上下文继续增长</strong></p>
+<p>autoCompact 连续失败 3 次后熔断，不再尝试压缩。但对话继续进行，token 持续增长。如果不监控熔断状态，上下文会一直增长到 API 的 <code>blocking_limit</code>，最终整个会话崩溃。</p>
+<p>❌ 错误做法：在 autoCompact 熔断后继续正常使用，不调整行为。<br />
+✓ 正确做法：监控 <code>consecutiveFailures</code> 状态。如果熔断触发，考虑手动压缩（<code>/compact</code> 命令）或开新会话。</p>
+<h2 id="实证从-token-计数到压缩触发的决策链"><a class="header" href="#实证从-token-计数到压缩触发的决策链">实证——从 token 计数到压缩触发的决策链</a></h2>
+<p>一次 autoCompact 触发的完整路径可以从 <code>calculateTokenWarningState</code> 追踪到 <code>compactConversation</code>。</p>
+<p><strong>入口</strong>：<code>calculateTokenWarningState</code>（<code>src/services/compact/autoCompact.ts:93</code>）计算当前 token 使用百分比。它返回三个状态：<code>percentLeft</code>（剩余百分比）、<code>isAboveWarningThreshold</code>（超过警告阈值，使用 20000 token 缓冲）、<code>isAboveAutoCompactThreshold</code>（超过自动压缩阈值，使用 13000 token 缓冲）。</p>
+<p><strong>触发判断</strong>：<code>shouldAutoCompact</code>（<code>src/services/compact/autoCompact.ts:160</code>）执行 3 层递归守卫检查——查询源不是 <code>session_memory</code> 或 <code>compact</code>（防死锁），不是 <code>marble_origami</code>（防破坏主线程），Feature Flag 未禁用。如果全部通过，检查 token 数是否超过阈值，减去 <code>snipTokensFreed</code>（snip 已经释放的 token）。</p>
+<p><strong>执行</strong>：<code>autoCompactIfNeeded</code>（<code>src/services/compact/autoCompact.ts:241</code>）检查 <code>consecutiveFailures</code>——如果小于 3，调用 <code>compactConversation</code> 生成摘要。摘要使用 20000 token 的输出预算，保留系统提示词和用户上下文。</p>
+<p><strong>恢复</strong>：压缩后，<code>POST_COMPACT_MAX_FILES_TO_RESTORE = 5</code> 和 <code>POST_COMPACT_TOKEN_BUDGET = 50000</code>（<code>src/services/compact/compact.ts:122-123</code>）控制资源恢复。系统重新读取最近 5 个文件，使用最多 50000 token 的预算重建模型的工作记忆。</p>
+<p><strong>图 11-2：5 种策略的能力/频率矩阵</strong></p>
+<pre><code class="language-mermaid">graph LR
+    subgraph 高频率
+        A["snipCompact\n每轮检查\n浅层删除"]
+        B["microCompact\n每轮检查\n中层清除"]
+        C["contextCollapse\n每轮检查\n只读投影"]
+    end
+
+    subgraph 低频率
+        D["autoCompact\n阈值触发\n深层摘要"]
+        E["timeBasedMC\n时间触发\n中层清除\n默认关闭"]
+    end
+
+    A --&gt;|"释放不足"| B
+    B --&gt;|"释放不足"| C
+    C --&gt;|"释放不足"| D
+    E -.-&gt;|"cache TTL\n独立维度"| B
+
+    D -.- Note1["13000 token 缓冲\n3次熔断\n50000 token 恢复"]
+</code></pre>
+<p>这条路径验证了多策略并存的核心理念：轻量级策略（snip、micro）在每轮都运行，如果它们释放了足够 token，重量级策略（autoCompact）就不需要触发。只有当所有轻量级策略都释放不足时，autoCompact 才作为最后一道防线执行全量摘要。</p>
+<h2 id="本章主成分五种压缩策略的本质"><a class="header" href="#本章主成分五种压缩策略的本质">本章主成分：五种压缩策略的本质</a></h2>
+<p><strong>本质</strong>：5 种策略分别针对 token 超限（autoCompact）、旧工具结果占位（microCompact）、cache TTL 过期（timeBasedMC）、历史轮次边界（snipCompact）和可折叠上下文（contextCollapse）5 种独立的上下文失控场景。每种策略的参数编码了对模型能力和基础设施的工程假设。</p>
+<p><strong>关键机制</strong>：</p>
+<ul>
+<li>执行顺序：轻到重的防线链（snip → micro → collapse → autoCompact）</li>
+<li>熔断机制：<code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES=3</code>（生产数据驱动）</li>
+<li>工具白名单：<code>COMPACTABLE_TOOLS</code> 只覆盖 8 种内置工具</li>
+<li>缓冲区设计：13000 token 摘要缓冲 + 50000 token 恢复预算</li>
+</ul>
+<p><strong>适用边界</strong>：</p>
+<ul>
+<li>✓ 适合：长会话多轮对话的 Agent 系统</li>
+<li>✓ 适合：需要在不同压缩深度间灵活选择的场景</li>
+<li>✗ 不适合：短会话单轮任务（不需要任何压缩策略）</li>
+</ul>
+<p><strong>与其他模式的关系</strong>：</p>
+<ul>
+<li>本章的压缩边界是第 12 章（forkedAgent 上下文隔离）的前置概念——fork 前需要决定传递多少上下文</li>
+<li>第 3 章（QueryEngine 循环）是压缩策略的触发宿主——每轮循环都检查是否需要压缩</li>
+<li>第 10 章（Hooks）的 <code>PreCompact</code> 和 <code>PostCompact</code> 触发点在压缩前后提供拦截机会</li>
+</ul>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>监控上下文使用百分比</strong>。<code>calculateTokenWarningState</code> 的 <code>percentLeft</code> 可以在用户界面中显示——让用户知道压缩何时可能触发。</li>
+<li><strong>为自定义工具实现结果截断</strong>。microCompact 只覆盖 8 种内置工具——自定义工具的长输出不会被自动清除，在工具内部限制返回长度。</li>
+<li><strong>设置合理的摘要缓冲区</strong>。<code>AUTOCOMPACT_BUFFER_TOKENS=13000</code> 是保守选择——如果实现类似系统，宁可多留空间也不要让摘要生成被截断。</li>
+<li><strong>加入熔断机制</strong>。参考 <code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES=3</code>——生产数据证明没有熔断会浪费大量 API 调用。</li>
+<li><strong>长会话场景启用时间阈值压缩</strong>。如果会话生命周期超过 1 小时，timeBasedMC 可以清除 cache TTL 过期后的旧工具结果——但需要手动启用。</li>
+<li><strong>检查你的 COMPACTABLE_TOOLS 等价配置</strong>。不是所有工具结果都值得被 microCompact 处理——只有可能产生大输出的工具才需要进入白名单。</li>
+<li><strong>设计压缩后的资源恢复策略</strong>。参考 <code>POST_COMPACT_MAX_FILES_TO_RESTORE=5</code> 和 <code>POST_COMPACT_TOKEN_BUDGET=50000</code>——没有恢复，模型在摘要后无法继续工作。</li>
+</ul>
+<hr />
+<p><strong>下一章导读</strong>：本章看到了 5 种压缩策略如何在 queryLoop 中逐级收缩上下文。但当 Harness 需要同时执行多个子任务时，压缩不再是"在同一个上下文中腾空间"的问题——而是"如何为每个子任务隔离独立的上下文"。第 12 章将展示 forkedAgent 如何通过上下文隔离实现并行执行，以及这种隔离带来的"上下文分裂"代价。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part6/part6.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part6/ch12.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part6/part6.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part6/ch12.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

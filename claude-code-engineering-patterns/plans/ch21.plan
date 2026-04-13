@@ -1,0 +1,118 @@
+# 第 21 章写作计划
+
+**批次**：批次 6a（来自 plans/batch.md）
+**章节**：ch21 — 第21章：四种执行器——command/prompt/agent/http 的多态设计
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 `src/utils/hooks.ts` 的 `executeHooks()`（第1952行）如何用多态设计将"运行 shell 命令"、"调用 AI"、"启动 Agent"、"发 HTTP 请求"四种行为统一在同一个 Hook 接口下，以及 execAgentHook.ts、execHttpHook.ts、execPromptHook.ts 的专属实现。读者读完后能识别多态执行器模式，并能在自己的扩展系统中应用开放-封闭原则。
+
+## 通用约束
+**排除范围**：AsyncHookRegistry 内部实现（第22章）、hooksConfigSnapshot（第23章）、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「多态执行器」（Polymorphic Executor）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（execAgentHook + execHttpHook 对比），适用范围表，与已知模式对话（GoF 命令模式、策略模式）
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/utils/hooks.ts | executeHooks(1952行)内部结构：matchingHooks获取、安全检查、dispatch逻辑 | 1952-2060 |
+| 2 | src/utils/hooks/execAgentHook.ts | execAgentHook(36行) | 36-100 |
+| 3 | src/utils/hooks/execHttpHook.ts | execHttpHook(123行) | 123-180 |
+| 4 | src/utils/hooks/execPromptHook.ts | execPromptHook(21行) | 21-80 |
+
+```bash
+ls src/utils/hooks/execAgentHook.ts src/utils/hooks/execHttpHook.ts src/utils/hooks/execPromptHook.ts
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：在同一个 Hook 触发点，可以执行四种完全不同的行为：运行 bash 命令、调用 AI 模型、启动子 Agent、发送 HTTP 请求。一个 hook 配置可以同时绑定多种执行器——这是「多态执行器」模式的典型实例。
+
+### 节 21.1：问题
+- 核心主张：**Hook 系统需要支持不断增加的执行器类型，但 executeHooks 主逻辑不应该每次都改动——开放-封闭原则要求新增执行器不影响已有代码**
+- 源码锚点：`src/utils/hooks.ts:1952`（executeHooks 函数签名，不含执行器实现细节）
+- 包含元素：**图21-1** — 4种执行器对比表（类型/输入/输出/典型使用场景）
+- 估计字数：600-800字
+
+### 节 21.2：源码实例1 — execAgentHook（最复杂的执行器）
+- 核心主张：**execAgentHook 是四种执行器中最复杂的——它启动一个完整的多轮 AI 对话，使用 forked transcript 记录子 Agent 的执行历史**
+- 源码锚点：
+  - `src/utils/hooks/execAgentHook.ts:36`（`export async function execAgentHook(`）
+  - `src/utils/hooks/execAgentHook.ts:54`（transcriptPath = agentTranscriptPath，子 Agent 有独立的 transcript）
+  - `src/utils/hooks/execAgentHook.ts:60`（addArgumentsToPrompt — 把 hook 输入注入到 prompt 中）
+  - `src/utils/hooks/execAgentHook.ts:98`（过滤不允许的工具）
+- 概念层次：子 Agent 执行语义、transcript 隔离、工具白名单过滤
+- 估计字数：800-1000字
+
+### 节 21.3：源码实例2 — execHttpHook（最轻量的执行器）
+- 核心主张：**execHttpHook 是四种执行器中最轻量的——它只做 JSON POST，但有 SSRF 防护（URL 模式匹配）和环境变量插值**
+- 源码锚点：
+  - `src/utils/hooks/execHttpHook.ts:123`（`export async function execHttpHook(`）
+  - `src/utils/hooks/execHttpHook.ts:49`（getHttpHookPolicy — URL 模式白名单）
+  - `src/utils/hooks/execHttpHook.ts:64`（urlMatchesPattern — URL 安全检查）
+  - `src/utils/hooks/execHttpHook.ts:89`（interpolateEnvVars — 环境变量插值）
+- 概念层次：HTTP hook 的安全考量（SSRF 防护）、环境变量插值的设计意图（避免 hardcode URL）
+- 估计字数：700-900字
+
+### 节 21.4：模式剖析
+- 核心主张：**多态执行器的本质是"类型即入口"——每个 hook type 字段（command/prompt/agent/http）映射到一个独立的执行函数，executeHooks 只做 dispatch**
+- 估计字数：500-700字
+
+### 节 21.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 扩展系统需要支持不同执行方式 | ✓ | 多态 dispatch，新增不改旧代码 | switch-case（但改旧代码）|
+| hook 执行器有不同的安全边界 | ✓ | 每个执行器可独立实现安全策略 | 统一执行器（但安全控制粒度粗）|
+| 同一触发点需要顺序执行多个执行器 | ✓ | executeHooks 是 async generator，支持流式 yield | Promise.all（但无顺序保证）|
+| 执行器需要强一致性（要么全成功要么全回滚）| ✗ | 每个执行器独立，无事务支持 | 事务执行器（需要自行实现）|
+
+### 节 21.6：权衡与局限
+- prompt/agent 执行器有网络延迟、http 执行器的 SSRF 风险、执行器类型增加时 dispatch 逻辑的维护
+- 估计字数：500-700字
+
+### 节 21.7：与已知模式的对话
+- 与 GoF 命令模式：相同——将操作封装为对象；不同——命令模式通常支持撤销，本模式的执行器是单向的
+- 与 GoF 策略模式：最接近——可替换的算法族；差异在于策略通常同时只用一个，本模式支持同时触发多个
+
+### 章末：模式提炼
+```
+模式名称：多态执行器（Polymorphic Executor）
+问题：扩展系统需要支持多种执行方式，但主调度逻辑不应随执行器类型增加而膨胀
+解决方案：每种执行类型有独立的 exec*Hook 函数，executeHooks 只做 dispatch，新增类型无需改 dispatch
+前置条件：执行器有统一的入参结构（hookInput, toolUseContext, signal 等）
+源码锚点：src/utils/hooks.ts:1952 (executeHooks dispatch), src/utils/hooks/execAgentHook.ts:36
+```
+
+### 章末：你能做什么
+1. 将每种执行类型封装为独立函数（execXxxHook），而非在主函数中写 if/switch
+2. 为 HTTP 执行器实现 URL 白名单和 SSRF 防护（urlMatchesPattern），默认拒绝不在白名单的 URL
+3. 为 agent 执行器实现工具白名单过滤，防止 hook 中的子 Agent 获得超出必要的权限
+4. 在 hook prompt 中支持参数插值（addArgumentsToPrompt），让 hook 配置可以引用触发事件的输入
+5. 用 async generator 实现 executeHooks，支持流式 yield 多个执行器的结果
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图21-1 | 四种执行器对比 | Markdown 表格 | command/prompt/agent/http 的类型/输入/输出/使用场景 | 21.1 |
+
+## 写作前 checklist
+```bash
+grep -n "^async function\* executeHooks" src/utils/hooks.ts
+sed -n '36p' src/utils/hooks/execAgentHook.ts
+sed -n '54p' src/utils/hooks/execAgentHook.ts
+sed -n '123p' src/utils/hooks/execHttpHook.ts
+sed -n '49p' src/utils/hooks/execHttpHook.ts
+sed -n '21p' src/utils/hooks/execPromptHook.ts
+```
+
+## ⛔ Spec 一致性声明
+所有 16 项均 ✓，plan 审查通过。

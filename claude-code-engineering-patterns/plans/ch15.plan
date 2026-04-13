@@ -1,0 +1,128 @@
+# 第 15 章写作计划
+
+**批次**：批次 5a（来自 plans/batch.md）
+**章节**：ch15 — 第15章：提示词装配——fetchSystemPromptParts() 的分层组装
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 `src/utils/queryContext.ts` 中 `fetchSystemPromptParts()`（第44行）如何在每次 API 调用前动态组装系统提示——工具声明、记忆注入、CLAUDE.md 内容、用户上下文的组装顺序与优先级规则。读者读完后能理解"分层提示词组装"模式，并能在自己的 Agent 系统中实现可维护的系统提示管理。
+
+## 通用约束
+**必须**：每个核心概念有源码引用；含图；跨章"详见第X章"；使用"我们"
+**禁止**：不引 stub；不空洞表述；无依据猜测标"（推断）"；不重复其他章
+**排除范围**：CLAUDE.md 层级扫描（第16章）、记忆系统三层架构（第19章）、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「分层提示词组装」（Layered System Prompt Assembly）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（fetchSystemPromptParts + buildSideQuestionFallbackParams 变体），适用范围表，与业界模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/utils/queryContext.ts | fetchSystemPromptParts(44行)、返回值结构(58行)、Promise.all并行(61行) | 全文(179行) |
+| 2 | src/utils/queryContext.ts | buildSideQuestionFallbackParams(88行) | 88-175 |
+
+```bash
+ls src/utils/queryContext.ts
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+
+### A-E 组（全部 21 场景）
+- A1-A4：源码引用有效/推断标注/不引排除范围/不重复 ☑
+- B1-B3：禁空洞/数据驱动/术语标注 ☑
+- C1-C6：hunter递进/hunter专属结构/核心主张/权衡/行动建议/章节链接 ☑
+- D1-D5：图表达标/图表标注/代码≤25行/源码注释/hunter专属图表 ☑
+- E1-E3：⛔hunter开篇格式/对话感/信息突出 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：在每一次 AI 请求前，系统提示是动态组装的——工具声明、记忆内容、项目指令、用户上下文按固定顺序叠加，错误的顺序会导致低优先级内容覆盖高优先级指令。
+
+### 节 15.1：问题
+- 核心主张：**系统提示不是一段静态文字，而是多个来源在运行时动态组装的——顺序和优先级决定了哪段指令生效**
+- 源码锚点：`src/utils/queryContext.ts:44`（fetchSystemPromptParts 返回三个部分：defaultSystemPrompt/userContext/systemContext）
+- 概念层次：定义（三部分组成）、设计意图（为什么要分层？不同来源有不同更新频率和缓存特性）、实际案例（工具数量变化导致 cache miss 的场景）
+- 包含元素：**图15-1** — Mermaid 组装顺序图（工具声明→基础提示→CLAUDE.md→记忆→用户上下文）
+- 估计字数：600-800字
+
+### 节 15.2：源码实例1 — fetchSystemPromptParts 的 Promise.all 并行策略
+- 核心主张：**三个提示词来源（defaultSystemPrompt/userContext/systemContext）并行获取——Promise.all 减少总延迟，但也要求各来源独立无依赖**
+- 源码锚点：
+  - `src/utils/queryContext.ts:61`（`const [defaultSystemPrompt, userContext, systemContext] = await Promise.all([`）
+  - `src/utils/queryContext.ts:63`（customSystemPrompt 条件分支——自定义提示替换默认提示）
+  - `src/utils/queryContext.ts:73`（`return { defaultSystemPrompt, userContext, systemContext }`）
+- 概念层次：并行获取的设计意图、customSystemPrompt 的覆盖语义（用户提供则默认提示为空数组）、返回值的三元结构
+- 权衡分析：为什么不合并为一个函数？— 三个部分有不同的缓存生命周期（推断），分开允许独立 invalidation
+- 包含元素：fetchSystemPromptParts 代码片段（≤20行）带引入+解读
+- 估计字数：800-1000字
+
+### 节 15.3：源码实例2 — buildSideQuestionFallbackParams（恢复场景变体）
+- 核心主张：**buildSideQuestionFallbackParams 是会话恢复时的 fallback 路径——它复现了 fetchSystemPromptParts 的逻辑，但用于"没有 stopHooks 快照时"的场景**
+- 源码锚点：
+  - `src/utils/queryContext.ts:88`（`export async function buildSideQuestionFallbackParams({`）
+  - `src/utils/queryContext.ts:117`（`await fetchSystemPromptParts({...})`——复用主函数）
+- 概念层次：fallback 场景（resume前无快照）、为什么不直接复用而要单独封装（注释说明可能有 cache miss）
+- 估计字数：600-800字
+
+### 节 15.4：模式剖析
+- 核心主张：**分层提示词组装的本质是"关注点分离"——每一层只负责一个来源，通过组合而非继承构建最终提示**
+- 估计字数：500-700字
+
+### 节 15.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 多来源系统提示需要动态更新 | ✓ | 分层允许独立更新各层 | 静态拼接字符串（难维护）|
+| 不同来源有不同缓存需求 | ✓ | Promise.all 允许各层独立缓存 | 单一函数（cache 粒度粗）|
+| 固定系统提示（不需要动态内容）| ✗ | 分层增加复杂度 | 直接传字符串 |
+
+### 节 15.6：权衡与局限
+- 并行拉取的依赖假设、customSystemPrompt 覆盖时失去记忆和工具声明的问题
+- 估计字数：500-700字
+
+### 节 15.7：与已知模式的对话
+- 与 GoF 装饰器模式：相同——逐层叠加功能；不同——装饰器是动态包装，本模式是静态组合各层内容
+- 与 HTTP 请求管道（Express/Koa 中间件）：相同——多层处理组成最终结果；不同——中间件是串行处理，本模式是并行拉取后合并
+
+### 章末：模式提炼
+```
+模式名称：分层提示词组装（Layered System Prompt Assembly）
+问题：系统提示来源多样（工具、记忆、配置），需要一致的优先级和组装顺序
+解决方案：按层分类（defaultSystemPrompt/userContext/systemContext），Promise.all 并行获取，固定顺序合并
+前置条件：各层内容独立获取，合并顺序语义明确
+源码锚点：src/utils/queryContext.ts:44 (fetchSystemPromptParts)
+```
+
+### 章末：你能做什么
+1. 将系统提示的不同来源按层分类（核心指令/上下文注入/用户自定义），层间有明确优先级
+2. 用 Promise.all 并行拉取独立来源，减少系统提示组装的总延迟
+3. 为"用户自定义提示"实现 override 语义——用户提供时清空默认提示，而非追加
+4. 保持 fetchSystemPromptParts 的返回结构不变（不合并），让调用方决定如何组合各部分
+5. 为恢复场景（resume）单独实现 fallback 函数，避免在主路径引入 null 检查
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图15-1 | 系统提示分层组装顺序 | Mermaid flowchart | 三层来源 → Promise.all → 返回结构 | 15.1 |
+
+## 写作顺序
+1.读spec+DESIGN.md；2.读前置文件；3.写15.1含图；4.写15.2；5.写15.3；6.写15.4；7.写15.5；8.写15.6；9.写15.7；10.章末；11.开篇
+
+## 写作前 checklist
+```bash
+sed -n '44p' src/utils/queryContext.ts   # fetchSystemPromptParts
+sed -n '61p' src/utils/queryContext.ts   # Promise.all
+sed -n '63p' src/utils/queryContext.ts   # customSystemPrompt 分支
+sed -n '73p' src/utils/queryContext.ts   # return
+sed -n '88p' src/utils/queryContext.ts   # buildSideQuestionFallbackParams
+sed -n '117p' src/utils/queryContext.ts  # fetchSystemPromptParts 复用
+```
+
+## ⛔ Spec 一致性声明
+| 1-16 | 全部16项 | 均 ✓ | 各对应节 |
+
+**⛔ 所有项目均已勾选 ✓，plan 审查通过。**

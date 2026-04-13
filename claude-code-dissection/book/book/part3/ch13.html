@@ -1,0 +1,454 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 13 章：AgentTool——递归智能体的工具接口 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第13章agenttool递归智能体的工具接口"><a class="header" href="#第13章agenttool递归智能体的工具接口">第13章：AgentTool——递归智能体的工具接口</a></h1>
+<blockquote>
+<p><em>"A tool that spawns tools. A mind that spawns minds. Where does the abstraction end?"</em></p>
+</blockquote>
+<blockquote>
+<p>当 Claude 需要"派出一个子 Agent 去完成任务"时，它调用的是 <code>AgentTool</code>——一个工具的输入是另一个对话的起点。这个递归设计带来了有趣的问题：<code>subagent_type</code> 为什么是可选的？内置 Agent（如 subagent、summarize）如何以工具的形式注册？AgentTool 的职责边界在哪里——它负责执行 Agent，还是只负责"描述如何启动一个 Agent"？</p>
+</blockquote>
+<p><code>AgentTool</code> 是一个工具——可以被 <code>query.ts</code> 调用，有 <code>call()</code> 方法，实现了 <code>Tool</code> 接口。但它的 <code>call()</code> 方法做的事情不是读文件或执行命令，而是<strong>启动另一个完整的 Claude 实例</strong>，那个实例会有自己的 <code>query.ts</code> 循环，可以调用自己的 <code>AgentTool</code>，再启动另一个实例……</p>
+<p>这是递归的智能体系统，而不是无限循环的原因在于：<strong>AgentTool 本身只是接口层</strong>。它负责的是"决定启动什么 Agent、用什么参数、检查哪些权限"，而不是"Agent 如何运行对话循环"。真正的执行循环在 <code>runAgent.ts</code>（第31章），两层之间有清晰的职责边界。</p>
+<h2 id="131-agenttool-的输入-schema启动一个-agent-需要告诉它什么"><a class="header" href="#131-agenttool-的输入-schema启动一个-agent-需要告诉它什么">13.1 AgentTool 的输入 schema——启动一个 Agent 需要告诉它什么？</a></h2>
+<p><code>AgentTool</code> 的 <code>inputSchema</code> 分为两层（<code>src/tools/AgentTool/AgentTool.tsx:85</code>）：</p>
+<pre><code class="language-typescript">// src/tools/AgentTool/AgentTool.tsx:85
+const baseInputSchema = lazySchema(() =&gt; z.object({
+  // 核心参数
+  subagent_type: z.string().optional()
+    .describe('The type of specialized agent to use for this task'),
+  model: z.enum(['sonnet', 'opus', 'haiku']).optional()
+    .describe("Optional model override for this agent"),
+  run_in_background: z.boolean().optional()
+    .describe('Set to true to run this agent in the background'),
+}))
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/AgentTool/AgentTool.tsx:85</code></p>
+<p>三个关键参数：</p>
+<div class="table-wrapper"><table><thead><tr><th>参数</th><th>作用</th><th>可省略？</th></tr></thead><tbody>
+<tr><td><code>subagent_type</code></td><td>指定使用哪种内置 Agent（如 <code>general-purpose</code>、<code>plan</code>）</td><td>✅ 省略时用 <code>general-purpose</code> 或触发 fork 机制</td></tr>
+<tr><td><code>model</code></td><td>覆盖 Agent 的默认模型（sonnet/opus/haiku）</td><td>✅ 省略时沿用 Agent 定义里的模型</td></tr>
+<tr><td><code>run_in_background</code></td><td>是否在后台运行（不阻塞主 Agent）</td><td>✅ 省略时同步等待</td></tr>
+</tbody></table>
+</div>
+<p><code>subagent_type</code> 可选是关键设计决策——当 <code>FORK_SUBAGENT</code> feature flag 开启时，省略 <code>subagent_type</code> 意味着"fork"：子 Agent 继承父 Agent 的完整上下文（消息历史和工具池）。这是第31章的主题，此处只需知道"省略 ≠ 错误"。</p>
+<p>完整 schema 还包含多 Agent 参数（<code>name</code>/<code>team_name</code>/<code>mode</code>/<code>isolation</code>），这些在第29-32章（Swarm 系统）中详细分析。</p>
+<p><strong>源码参考：</strong> <code>src/tools/AgentTool/AgentTool.tsx:90</code>（fullInputSchema）</p>
+<h2 id="132-built-in-agentsagentdefinition-如何定义-agent-行为"><a class="header" href="#132-built-in-agentsagentdefinition-如何定义-agent-行为">13.2 built-in agents——AgentDefinition 如何定义 Agent 行为？</a></h2>
+<p><code>getBuiltInAgents()</code>（<code>src/tools/AgentTool/builtInAgents.ts:22</code>）返回当前会话可用的内置 Agent 列表：</p>
+<pre><code class="language-typescript">// src/tools/AgentTool/builtInAgents.ts:22
+export function getBuiltInAgents(): AgentDefinition[] {
+  // SDK 用户可以通过环境变量禁用所有内置 Agent
+  if (isEnvTruthy(process.env.CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS) &amp;&amp;
+      getIsNonInteractiveSession()) {
+    return []
+  }
+
+  const agents: AgentDefinition[] = [
+    GENERAL_PURPOSE_AGENT,
+    STATUSLINE_SETUP_AGENT,
+  ]
+
+  if (areExplorePlanAgentsEnabled()) {
+    agents.push(EXPLORE_AGENT, PLAN_AGENT)  // feature flag 门控
+  }
+
+  if (isNonSdkEntrypoint) {
+    agents.push(CLAUDE_CODE_GUIDE_AGENT)   // 仅 CLI 模式有
+  }
+
+  if (feature('VERIFICATION_AGENT') &amp;&amp; growthBookGate) {
+    agents.push(VERIFICATION_AGENT)         // 双层 flag 门控
+  }
+
+  return agents
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/AgentTool/builtInAgents.ts:22</code></p>
+<p>每个 Agent 是一个 <code>AgentDefinition</code> 对象（接口定义在 <code>src/tools/AgentTool/loadAgentsDir.ts</code>）。以 <code>GENERAL_PURPOSE_AGENT</code> 为例（<code>src/tools/AgentTool/built-in/generalPurposeAgent.ts</code>）：</p>
+<pre><code class="language-typescript">export const GENERAL_PURPOSE_AGENT: BuiltInAgentDefinition = {
+  agentType: 'general-purpose',
+  whenToUse: 'General-purpose agent for researching complex questions...',
+  tools: ['*'],        // 工具白名单：'*' 表示继承父 Agent 的所有工具
+  source: 'built-in',
+  baseDir: 'built-in',
+  // model 故意留空——使用 getDefaultSubagentModel()
+  getSystemPrompt: getGeneralPurposeSystemPrompt,
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/AgentTool/built-in/generalPurposeAgent.ts</code></p>
+<p><code>AgentDefinition</code> 的关键字段：</p>
+<div class="table-wrapper"><table><thead><tr><th>字段</th><th>作用</th></tr></thead><tbody>
+<tr><td><code>agentType</code></td><td>唯一标识符，对应 <code>subagent_type</code> 参数</td></tr>
+<tr><td><code>whenToUse</code></td><td>注入到 LLM prompt 的使用说明，帮助 LLM 决定何时调用</td></tr>
+<tr><td><code>tools</code></td><td>工具白名单（<code>['*']</code> = 继承父工具集，或列举允许的工具名）</td></tr>
+<tr><td><code>getSystemPrompt</code></td><td>函数，返回该 Agent 的系统提示</td></tr>
+<tr><td><code>model</code></td><td>可选，省略时用 <code>getDefaultSubagentModel()</code></td></tr>
+</tbody></table>
+</div>
+<p>颜色字段在 <code>AgentDefinition</code> 里可以预设（<code>agentDef.color</code>），这样具有品牌色的内置 Agent（如 plan Agent 是蓝色）在每次运行时颜色一致，而非随机分配。</p>
+<p><strong>源码参考：</strong> <code>src/tools/AgentTool/AgentTool.tsx:288</code>（setAgentColor 调用时机）</p>
+<p><code>tools: ['*']</code> 的设计值得注意：<code>general-purpose</code> Agent 继承父 Agent 的完整工具池（因为它的任务范围不确定），而 <code>plan</code> Agent 可能只有有限的工具（因为规划阶段不应该执行危险操作）。工具白名单是在注册时（<code>AgentDefinition</code>）而非运行时声明的，<code>filterAgentsByMcpRequirements</code>（<code>src/tools/AgentTool/loadAgentsDir.ts:filterAgentsByMcpRequirements</code>）会在运行时验证所需 MCP 服务器是否已连接。这让权限控制更可预测。</p>
+<p><strong>图 13-1：built-in Agent 注册与选择流程</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    callNode["AgentTool.call()\nsubagent_type = X"]
+    agentLoader["getBuiltInAgents()\n+ loadAgentsDir()自定义目录"]
+    agentFilter["filterAgentsByMcpRequirements()\n+ filterDeniedAgents()"]
+    findNode{找到 agentType = X?}
+    generalNode["fallback to\nGENERAL_PURPOSE_AGENT"]
+    foundNode["使用找到的 AgentDefinition"]
+    runNode["runAgent() or\nspawnTeammate()"]
+
+    callNode --&gt; agentLoader
+    agentLoader --&gt; agentFilter
+    agentFilter --&gt; findNode
+    findNode --&gt;|否| generalNode
+    findNode --&gt;|是| foundNode
+    generalNode --&gt; runNode
+    foundNode --&gt; runNode
+</code></pre>
+<h2 id="133-agenttool-接口层-vs-runagent-执行层职责如何分离"><a class="header" href="#133-agenttool-接口层-vs-runagent-执行层职责如何分离">13.3 AgentTool 接口层 vs runAgent 执行层——职责如何分离？</a></h2>
+<p><code>AgentTool.call()</code> 在真正启动 Agent 之前，会做一系列验证和准备：</p>
+<pre><code class="language-typescript">// src/tools/AgentTool/AgentTool.tsx:256（简化）
+async call({ prompt, subagent_type, ... }, toolUseContext, ...) {
+  // 1. 检查团队功能权限
+  if (team_name &amp;&amp; !isAgentSwarmsEnabled()) {
+    throw new Error('Agent Teams is not yet available on your plan.')
+  }
+
+  // 2. 检查 in-process teammate 的限制
+  if (isInProcessTeammate() &amp;&amp; teamName &amp;&amp; run_in_background === true) {
+    throw new Error('In-process teammates cannot spawn background agents.')
+  }
+
+  // 3. 查找并选择 Agent 定义
+  const agentDef = subagent_type
+    ? activeAgents.find(a =&gt; a.agentType === subagent_type)
+    : undefined
+
+  // 4. 分配颜色标识
+  if (agentDef?.color) {
+    setAgentColor(subagent_type!, agentDef.color)
+  }
+
+  // 5. 根据参数选择执行模式（Teammate / LocalAgent / 普通 subagent）
+  if (teamName &amp;&amp; name) {
+    return spawnTeammate(...)    // 多 Agent 团队模式
+  }
+  // ... 其他路由 ...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/AgentTool/AgentTool.tsx:256</code></p>
+<p>这段代码做的事情全是<strong>前置检查和路由决策</strong>，不涉及任何对话循环逻辑。实际的对话执行委托给：</p>
+<ul>
+<li><code>spawnTeammate()</code>（<code>src/tools/AgentTool/AgentTool.tsx:290</code>）——多 Agent 团队模式</li>
+<li><code>runAgent()</code>——普通子 Agent 模式（第31章）</li>
+</ul>
+<p><strong>表 13-1：AgentTool 接口层 vs runAgent 执行层职责对比</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>职责</th><th>AgentTool（接口层）</th><th>runAgent（执行层）</th></tr></thead><tbody>
+<tr><td>输入验证</td><td>✅ 校验 schema</td><td>❌ 不做</td></tr>
+<tr><td>权限检查</td><td>✅ 检查 agentSwarmsEnabled</td><td>❌ 不做</td></tr>
+<tr><td>Agent 定义查找</td><td>✅ 匹配 subagent_type</td><td>❌ 接收已查找的定义</td></tr>
+<tr><td>颜色分配</td><td>✅ setAgentColor</td><td>❌ 不做</td></tr>
+<tr><td>执行模式路由</td><td>✅ 决定用哪种 Task 类型</td><td>❌ 不做</td></tr>
+<tr><td>LLM 对话循环</td><td>❌ 不做</td><td>✅ 主责</td></tr>
+<tr><td>工具调用协调</td><td>❌ 不做</td><td>✅ 主责</td></tr>
+<tr><td>结果收集</td><td>❌ 不做</td><td>✅ 主责</td></tr>
+</tbody></table>
+</div>
+<p>这个分离不只是代码组织——它让 <code>AgentTool</code> 可以被 <code>query.ts</code> 像普通工具一样调用（<code>tool.call()</code>），同时让 <code>runAgent</code> 可以被不同的入口（AgentTool、resume、fork）复用。</p>
+<h2 id="134-颜色标识系统八种颜色如何区分并行-agent"><a class="header" href="#134-颜色标识系统八种颜色如何区分并行-agent">13.4 颜色标识系统——八种颜色如何区分并行 Agent？</a></h2>
+<p>当多个 Agent 并行执行时，UI 需要区分每个 Agent 的输出。<code>agentColorManager.ts</code>（<code>src/tools/AgentTool/agentColorManager.ts</code>）维护从 <code>agentType</code> 到颜色的映射：</p>
+<pre><code class="language-typescript">// src/tools/AgentTool/agentColorManager.ts
+export type AgentColorName = 'red'|'blue'|'green'|'yellow'|'purple'|'orange'|'pink'|'cyan'
+
+export const AGENT_COLORS: readonly AgentColorName[] = [
+  'red','blue','green','yellow','purple','orange','pink','cyan'
+] as const
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/AgentTool/agentColorManager.ts</code></p>
+<p>颜色映射存在 <code>bootstrap/state.ts</code> 的 <code>agentColorMap</code> 字段（<code>src/bootstrap/state.ts:111</code>），<code>agentColorIndex</code> 字段（<code>src/bootstrap/state.ts:112</code>）追踪下一个可用颜色的索引。颜色分配是循环的——第9个 Agent 会复用第1个 Agent 的颜色（8种颜色循环）。<code>getAgentColorMap()</code>（<code>src/bootstrap/state.ts:1128</code>）提供只读访问，UI 层根据 <code>agentType</code> 查找颜色并渲染。</p>
+<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:111</code>（agentColorMap 字段）、<code>src/bootstrap/state.ts:1128</code>（getAgentColorMap）</p>
+<h2 id="接口层与执行层的分工"><a class="header" href="#接口层与执行层的分工">接口层与执行层的分工</a></h2>
+<h3 id="为什么-agenttool-不直接执行-agent"><a class="header" href="#为什么-agenttool-不直接执行-agent">为什么 AgentTool 不直接执行 Agent？</a></h3>
+<p>直觉上，一个叫"AgentTool"的工具应该负责 Agent 的完整生命周期。但 Claude Code 把这件事分成了两层：</p>
+<ul>
+<li><strong>AgentTool（接口层）</strong>：负责接收 Claude 的工具调用、验证参数、定义 schema（<code>src/tools/AgentTool/AgentTool.tsx</code>）</li>
+<li><strong>runAgent（执行层）</strong>：负责实际运行 Agent 的对话循环（<code>src/tools/AgentTool/runAgent.ts:248</code>）</li>
+</ul>
+<p><strong>为什么这样分</strong>：<code>runAgent</code> 不只被 AgentTool 调用，还被 <code>/resume</code> 命令、Swarm 编排器等多个入口调用。如果把执行逻辑塞进 AgentTool，这些其他入口就无法复用代码，每个地方都要重新实现 Agent 的对话循环。</p>
+<p>分层设计的收益：任何需要"启动一个 Agent 对话循环"的代码都调用 <code>runAgent</code>，不需要经过工具调用的完整路径。</p>
+<h3 id="为什么-subagent_type-是可选的"><a class="header" href="#为什么-subagent_type-是可选的">为什么 subagent_type 是可选的？</a></h3>
+<p>强制要求调用方指定 <code>subagent_type</code> 会让 Claude 在每次调用 AgentTool 时都必须思考"我需要什么类型的 Agent"——这增加了认知负担。</p>
+<p>省略时的默认行为（使用通用 Agent）覆盖了大多数场景。<code>subagent_type</code> 只在需要特定专业能力（如专门处理代码分析的 Agent）时才需要指定（<code>src/tools/AgentTool/AgentTool.tsx</code>）。</p>
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="接口执行分离interface-execution-separation"><a class="header" href="#接口执行分离interface-execution-separation">接口执行分离（Interface-Execution Separation）</a></h3>
+<p><strong>解决的问题</strong>：工具的前置处理（验证/路由/颜色分配）与核心执行逻辑（对话循环）耦合，难以独立测试，且执行逻辑无法被多个入口复用。</p>
+<p><strong>核心做法</strong>：AgentTool 只负责前置检查和路由决策，执行逻辑（<code>runAgent</code>）作为独立函数，可被 AgentTool/resume/fork 等多个入口复用。</p>
+<p><strong>前置条件</strong>：有复杂的前置处理和可复用的核心执行逻辑两个独立阶段。</p>
+<p><strong>源码证据</strong>：<code>src/tools/AgentTool/AgentTool.tsx:256</code> — <code>call()</code> 函数做验证和路由，最终调用 <code>runAgent()</code> 或 <code>spawnTeammate()</code>，自身不包含对话循环逻辑。</p>
+<h3 id="配置驱动-agent-行为configuration-driven-agent-behavior"><a class="header" href="#配置驱动-agent-行为configuration-driven-agent-behavior">配置驱动 Agent 行为（Configuration-Driven Agent Behavior）</a></h3>
+<p><strong>解决的问题</strong>：不同类型 Agent 的行为（系统提示/工具集/权限模式）需要灵活配置，但硬编码在 AgentTool 里会造成耦合。</p>
+<p><strong>核心做法</strong>：<code>AgentDefinition</code> 结构携带所有行为配置，在注册时（<code>built-in/</code> 目录）而非运行时声明；<code>getBuiltInAgents()</code> 根据 feature flag 和环境变量动态决定暴露哪些 Agent。</p>
+<p><strong>前置条件</strong>：Agent 类型可枚举，且不同 Agent 的行为差异足够大，值得独立配置文件。</p>
+<p><strong>源码证据</strong>：<code>src/tools/AgentTool/builtInAgents.ts:22</code> — <code>getBuiltInAgents()</code> 根据 <code>areExplorePlanAgentsEnabled()</code>/SDK 模式/feature flag 三重条件动态构建 Agent 列表。</p>
+<h2 id="架构图"><a class="header" href="#架构图">架构图</a></h2>
+<p><strong>图 13-1：messages 数组的结构与 token 占比</strong></p>
+<pre><code class="language-mermaid">graph TD
+    Messages["messages 数组
+（API 调用的全部内容）"]
+    Messages --&gt; SP["系统 prompt
+工具描述 ~3000 token
+CLAUDE.md ~1000 token"]
+    Messages --&gt; History["对话历史
+用户消息 + Claude 回复
+平均 200 token/轮"]
+    Messages --&gt; ToolResults["工具结果
+文件内容、命令输出
+可能 1000-10000 token"]
+    
+    ToolResults --&gt;|"最大风险"| Warning["⚠️ 一个大文件
+就能填满 context window"]
+</code></pre>
+<p><strong>图 13-2：历史压缩的时机与策略</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant User
+    participant QE as QueryEngine
+    participant AC as AutoCompact
+    participant API as Claude API
+
+    User-&gt;&gt;QE: 第 50 轮消息
+    QE-&gt;&gt;QE: 计算 token 总量
+    QE-&gt;&gt;AC: token &gt; 阈值?
+    AC--&gt;&gt;QE: 是，触发压缩
+
+    QE-&gt;&gt;QE: 保留最近 20 轮对话
+    QE-&gt;&gt;QE: 压缩早期轮次为摘要
+    QE-&gt;&gt;QE: 插入 boundary message
+    
+    QE-&gt;&gt;API: 发送压缩后的历史
+    API--&gt;&gt;User: 继续对话（Claude 知道历史被压缩了）
+</code></pre>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-认为-agenttool-负责执行子-agent-的整个生命周期"><a class="header" href="#-认为-agenttool-负责执行子-agent-的整个生命周期">❌ 认为 AgentTool 负责执行子 Agent 的整个生命周期</a></h3>
+<p>AgentTool 是"工具接口层"——它的职责是接收 Claude 的工具调用请求、验证参数、描述输入 schema（<code>src/tools/AgentTool/AgentTool.tsx</code>）。实际的执行（<code>runAgent</code> 函数，<code>src/tools/AgentTool/runAgent.ts:248</code>）是分离的执行层。把生命周期管理逻辑（重试、超时、资源清理）混入 AgentTool 会违反这个分工。</p>
+<h3 id="-忽略-built-in-agents-的颜色标识分配机制"><a class="header" href="#-忽略-built-in-agents-的颜色标识分配机制">❌ 忽略 built-in agents 的颜色标识分配机制</a></h3>
+<p>Claude Code 支持最多 8 个并行子 Agent，每个用不同颜色区分（<code>src/tools/AgentTool/built-in/</code>）。颜色分配不是随机的——它基于 Agent 在当前会话中的启动顺序。如果在 UI 层硬编码颜色，并发 Agent 多于一个时颜色会冲突，无法区分哪个 Agent 在输出。</p>
+<h3 id="-假设省略-subagent_type-和指定-subagent_typesubagent-的行为相同"><a class="header" href="#-假设省略-subagent_type-和指定-subagent_typesubagent-的行为相同">❌ 假设省略 subagent_type 和指定 subagent_type='subagent' 的行为相同</a></h3>
+<p><code>subagent_type</code> 缺省时系统会用默认 Agent 定义（无特殊系统提示），指定 <code>'subagent'</code> 时使用 <code>SubagentDefinition</code>（带专门为子任务设计的系统提示）。这两种情况下 Claude 的行为会有微妙但重要的差异，尤其是在需要 Agent 理解自己是"工具性执行者"而非"独立思考者"时。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>为复杂的"创建"操作分离接口层和执行层</strong>：AgentTool（验证/路由）+ runAgent（执行）的分离让两者都更简单——AgentTool 不关心如何运行对话，runAgent 不关心如何验证参数</li>
+<li><strong>用配置结构声明行为，而非在运行时判断</strong>：<code>AgentDefinition.tools: ['*']</code> 比在 runAgent 里检查 <code>if (agentType === 'general-purpose') { allowAllTools = true }</code> 更清晰</li>
+<li><strong>颜色/标识系统用全局状态而非参数传递</strong>：多 Agent 并行时颜色需要在整个会话范围内唯一，全局 Map 比每次传参更自然</li>
+<li><strong>SDK 用户的"空白石板"选项</strong>：<code>CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS</code> 环境变量让 SDK 用户可以从零开始定义 Agent（<code>src/tools/AgentTool/builtInAgents.ts:31</code>），不被内置 Agent 干扰</li>
+</ul>
+<hr />
+<p><em>第13章完成了对 AgentTool 接口层的解析。第14章将完成工具系统篇的最后一章——工具注册与条件加载：<code>tools.ts</code> 如何根据 feature flag 和 USER_TYPE 动态组装工具集，以及 MCP 工具如何热插入这个集合。</em></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part3/ch12.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part3/ch14.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part3/ch12.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part3/ch14.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

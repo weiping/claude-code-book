@@ -1,0 +1,8 @@
+flowchart LR
+    A["registerBundledSkill\n注册到数组"] --> B["getAllCommands\n合并所有来源"]
+    B --> C["1% 预算\n250字符截断"]
+    C --> D["模型决策\n选择技能"]
+    D --> E["SkillTool.call\n读取全文"]
+    E --> F{context?}
+    F -->|inline| G["当前上下文"]
+    F -->|fork| H["独立子智能体"]

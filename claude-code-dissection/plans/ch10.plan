@@ -1,0 +1,80 @@
+# 第10章写作计划
+
+**批次**：批次 3
+**章节**：ch10 — 运行模式状态机——Plan、Auto、Worktree 等模式的实现
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/types/permissions.ts | EXTERNAL_PERMISSION_MODES(16行)、InternalPermissionMode(28行)、INTERNAL_PERMISSION_MODES(33行) | 16-38行 |
+| 2 | src/bootstrap/state.ts | handlePlanModeTransition(1349行)、handleAutoModeTransition | 1349-1400行 |
+| 3 | src/utils/planModeV2.ts | getPlanModeV2AgentCount(5行)、isPlanModeInterviewPhaseEnabled(50行) | 全文 |
+| 4 | src/utils/worktreeModeEnabled.ts | isWorktreeModeEnabled | 全文 |
+
+```bash
+ls src/types/permissions.ts src/utils/planModeV2.ts src/utils/worktreeModeEnabled.ts
+sed -n '16,38p' src/types/permissions.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「`PermissionMode` 类型里有 6 种模式：default/plan/auto/acceptEdits/bypassPermissions/bubble。但用户从 UI 只能设置 5 种。第六种 `bubble` 只能被代码内部使用——为什么？」
+- 三个问题：1）6 种模式的划分原则是什么？2）`auto` 为什么被编译期 feature flag 门控？3）Plan V2 的多 Agent 计数策略是什么？
+
+### 节 10.1：为什么权限系统需要运行"模式"而不是简单的 on/off？
+- 核心主张：权限决策不是二元的——不同场景需要不同的决策粒度（全自动/需确认/规划模式），模式系统让这些粒度可切换
+- 源码锚点：`src/types/permissions.ts:16`（EXTERNAL_PERMISSION_MODES）、`src/types/permissions.ts:28`（InternalPermissionMode = ExternalPermissionMode | 'auto' | 'bubble'）
+- 包含元素：6 种模式的对比表（用户可见性、权限决策方式、适用场景）
+- 权衡分析：模式 vs 每次调用传参
+- 估计字数：600字
+
+### 节 10.2：`auto` 模式为什么对外部用户不存在？
+- 核心主张：`auto` 模式由 `TRANSCRIPT_CLASSIFIER` feature flag 门控，外部构建中 `PermissionMode` 枚举里根本没有这个值
+- 源码锚点：`src/types/permissions.ts:33-36`（feature flag 条件展开）
+- 包含元素：类型级 DCE 的代码示例 + 说明
+- 估计字数：500字
+
+### 节 10.3：模式状态转移——handlePlanModeTransition 做了什么？
+- 核心主张：模式切换不只是修改 mode 字段——进入/离开 plan 模式会触发附件通知（exit attachment），防止快速切换时重复通知
+- 源码锚点：`src/bootstrap/state.ts:1349`（handlePlanModeTransition）、`src/bootstrap/state.ts:1364`（needsPlanModeExitAttachment）
+- 包含元素：Mermaid stateDiagram 展示 default/plan/auto 的合法转移
+- 估计字数：600字
+
+### 节 10.4：Plan V2 的多 Agent 并行计数
+- 核心主张：Plan V2 根据订阅级别决定并行 Agent 数量（Max/Enterprise → 3，其他 → 1），这是 Plan 模式下的性能扩展机制
+- 源码锚点：`src/utils/planModeV2.ts:5`（getPlanModeV2AgentCount）
+- 包含元素：订阅级别 → Agent 数量的对应表
+- 估计字数：400字
+
+### 节 10.5：Worktree 模式的现状
+- 源码锚点：`src/utils/worktreeModeEnabled.ts`（isWorktreeModeEnabled 返回 true）
+- 简短说明 Worktree 模式无条件启用的历史原因
+- 估计字数：200字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 分层模式枚举（Tiered Mode Enumeration）| 外部/内部用户需要不同的模式集合 | 用 feature flag 条件展开枚举，外部用户的类型系统里不包含内部模式 | 有内部/外部用户区分 | `src/types/permissions.ts:33` |
+| 转移副作用显式化（Explicit Transition Side Effects）| 模式切换时的副作用（通知、清理）容易遗漏 | 用专门的 handleXModeTransition 函数封装所有转移副作用 | 模式切换有副作用需要处理 | `src/bootstrap/state.ts:1349` |
+| 订阅级别并行扩展（Subscription-Tiered Parallelism）| 高端用户的工作负载更重，应获得更多并行资源 | 根据订阅级别动态调整并行 Agent 数量 | 有分级订阅产品 | `src/utils/planModeV2.ts:5` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图10-1 | 6种运行模式对比 | 表格 | 用户可见性/决策方式/适用场景 | 10.1 |
+| 图10-2 | 模式状态转移图 | Mermaid stateDiagram-v2 | default/plan/auto 的合法转移路径 | 10.3 |
+
+## 写作前 checklist
+```bash
+sed -n '16,38p' src/types/permissions.ts
+sed -n '1349,1375p' src/bootstrap/state.ts
+sed -n '5,30p' src/utils/planModeV2.ts
+cat src/utils/worktreeModeEnabled.ts
+```
+
+## 估算
+- 目标字数：2200-2600字
+- 预计轮次：8轮（含2轮验证）

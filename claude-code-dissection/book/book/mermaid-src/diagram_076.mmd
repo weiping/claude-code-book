@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant User
+    participant MainAgent as Main Agent<br/>（Window）
+    participant Mailbox
+    participant Teammate as Teammate<br/>（InProcess/Remote）
+    User->>MainAgent: 启动 Swarm
+    MainAgent->>Teammate: spawnMultiAgent()
+    Teammate->>Teammate: 执行，需要权限
+    Teammate->>Mailbox: 发送权限请求
+    Mailbox->>MainAgent: 转发请求
+    MainAgent->>User: 显示权限对话框
+    User->>MainAgent: 批准/拒绝
+    MainAgent->>Mailbox: 权限决策
+    Mailbox->>Teammate: 转发决策
+    Teammate->>Teammate: 继续执行或中止
+    Teammate->>MainAgent: 返回结果

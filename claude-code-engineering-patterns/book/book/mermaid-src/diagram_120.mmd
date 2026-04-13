@@ -1,0 +1,15 @@
+graph LR
+    subgraph manifest [PluginManifestSchema = 合并所有能力]
+        meta[PluginManifestMetadataSchema\nname/version/description]
+        hooks[PluginManifestHooksSchema\nhooks 配置]
+        cmds[PluginManifestCommandsSchema\ncommands 覆盖路径]
+        agents[PluginManifestAgentsSchema\nagents 覆盖路径]
+        skills[PluginManifestSkillsSchema\nskills 覆盖路径]
+        mcp[PluginManifestMcpServerSchema\nMCP 服务器定义]
+        lsp[PluginManifestLspServerSchema\nLSP 服务器定义]
+        etc["...其他能力 sub-schema"]
+    end
+
+    manifest -->|".partial() 合并"| all[plugin.json\n全部字段可选]
+    all -->|"清单声明覆盖"| loader[createPluginFromPath\n加载器]
+    fs["文件系统探测\ncommands/ agents/ skills/"] -->|"目录存在 = 能力声明"| loader

@@ -1,0 +1,7 @@
+graph TD
+    A["设置: /model opusplan"] --> B{"当前模式"}
+    B -->|Plan模式<br/>50% 概率| C["🔴 使用 Opus<br/>成本: 高<br/>能力: 最强"]
+    B -->|普通模式<br/>50% 概率| D["🟢 使用 Sonnet<br/>成本: 低<br/>能力: 足够"]
+    C --> E["平均成本节省 40%<br/>能力完全覆盖"]
+    D --> E
+    style E fill:#e6ffe6

@@ -1,0 +1,113 @@
+# 第 23 章写作计划
+
+**批次**：批次 6b（来自 plans/batch.md）
+**章节**：ch23 — 第23章：hooksConfigSnapshot——配置快照隔离模式
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 `src/utils/hooks/hooksConfigSnapshot.ts`（133行）为何在会话启动时"冻结"Hook 配置快照而非实时读取，以及这一设计如何防止配置变更影响正在运行的会话。读者读完后能理解"配置快照隔离"模式，并能在自己的长运行服务中应用这一模式保证会话内行为一致性。
+
+## 通用约束
+**排除范围**：Frontmatter Hooks（第24章）、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「配置快照隔离」（Config Snapshot Isolation）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（captureHooksConfigSnapshot + updateHooksConfigSnapshot 两个触发点），适用范围表，与已知模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/utils/hooks/hooksConfigSnapshot.ts | captureHooksConfigSnapshot(88行)、updateHooksConfigSnapshot(97行)、getHooksConfigFromSnapshot(112行)、resetHooksConfigSnapshot(124行)、getHooksFromAllowedSources内部(18行) | 全文(133行) |
+
+```bash
+ls src/utils/hooks/hooksConfigSnapshot.ts
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：如果用户在会话中途修改了 Hook 配置文件，当前会话的 hook 行为会立刻改变吗？Claude Code 的答案是：不会——会话启动时已经"拍了一张快照"，后续的配置变更不影响这个快照。
+
+### 节 23.1：问题
+- 核心主张：**长运行会话中实时读取配置会导致"行为不一致"问题——同一次任务可能在不同时间点使用不同的 hook 配置**
+- 源码锚点：`src/utils/hooks/hooksConfigSnapshot.ts:88`（captureHooksConfigSnapshot — "should be called once during application startup"）
+- 概念层次：定义（快照隔离）、设计意图（源码注释明确"called once during application startup"）、实际场景（用户在 /hooks 命令中修改配置，但当前任务不应受影响）
+- 包含元素：**图23-1** — Mermaid，快照创建时机和作用范围（启动时快照 vs 运行时配置变更）
+- 估计字数：600-800字
+
+### 节 23.2：源码实例1 — captureHooksConfigSnapshot + getHooksConfigFromSnapshot
+- 核心主张：**getHooksConfigFromSnapshot 有懒加载保护——如果快照不存在则自动创建，但正常路径是启动时主动 capture**
+- 源码锚点：
+  - `src/utils/hooks/hooksConfigSnapshot.ts:88`（captureHooksConfigSnapshot，注释说明调用时机）
+  - `src/utils/hooks/hooksConfigSnapshot.ts:112`（getHooksConfigFromSnapshot，懒加载 fallback）
+  - `src/utils/hooks/hooksConfigSnapshot.ts:18`（getHooksFromAllowedSources — 权限过滤逻辑：allowManagedHooksOnly/disableAllHooks）
+- 概念层次：懒加载 vs 主动 capture 的语义差异、getHooksFromAllowedSources 的安全过滤层（managed-only、disable-all）
+- 估计字数：800-1000字
+
+### 节 23.3：源码实例2 — updateHooksConfigSnapshot（配置更新的安全刷新）
+- 核心主张：**updateHooksConfigSnapshot 在更新前必须调用 resetSettingsCache——源码注释说明了原因：文件监听的稳定性阈值可能还没过，缓存是旧的**
+- 源码锚点：
+  - `src/utils/hooks/hooksConfigSnapshot.ts:97`（updateHooksConfigSnapshot，注释说明 resetSettingsCache 的必要性）
+  - `src/utils/hooks/hooksConfigSnapshot.ts:4`（`import * as settingsModule` — 直接操作 settings 模块）
+  - `src/utils/hooks/hooksConfigSnapshot.ts:124`（resetHooksConfigSnapshot — 测试用途，"also resets SDK init state to prevent test pollution"）
+- 概念层次：缓存失效（stale cache）问题、resetSettingsCache 的位置（更新前而非更新后）、测试隔离（resetHooksConfigSnapshot 的 side effect）
+- 估计字数：700-900字
+
+### 节 23.4：模式剖析
+- 核心主张：**配置快照隔离的本质是"时间点绑定"——会话行为绑定到会话启动时刻的配置状态，不随后续变更漂移**
+- 估计字数：500-700字
+
+### 节 23.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 长运行会话需要配置一致性 | ✓ | 快照隔离防止"半途换配置" | 实时读取（但导致行为不一致）|
+| 配置有安全策略（managed-only）| ✓ | 快照时一次性评估策略，简化后续访问 | 每次调用都评估（但性能差）|
+| 需要立刻应用配置变更 | ✗ | 快照隔离意味着需要显式调用 update | 实时配置 |
+| 配置变更非常频繁（每秒>10次）| ✗（谨慎）| updateHooksConfigSnapshot 触发 resetSettingsCache，有 IO 成本 | 增量更新 |
+
+### 节 23.6：权衡与局限
+- 快照过期问题（手动更新 vs 自动更新的选择）、resetSettingsCache 的 IO 成本、测试中 resetHooksConfigSnapshot 的 SDK side effect
+- 估计字数：500-700字
+
+### 节 23.7：与已知模式的对话
+- 与数据库事务快照隔离（Snapshot Isolation）：几乎完全一致——事务开始时看到数据的一个快照，后续写操作不影响当前事务；本模式是"会话"粒度的配置快照
+- 与 GoF 代理模式：相同——中间层控制访问；不同——代理模式是透明的，本模式的快照是可见的（有 capture/update/get/reset 接口）
+
+### 章末：模式提炼
+```
+模式名称：配置快照隔离（Config Snapshot Isolation）
+问题：长运行会话中，配置文件可能在会话进行时被修改，导致会话内行为不一致
+解决方案：会话启动时 captureHooksConfigSnapshot 冻结配置快照，会话内只读快照，显式调用 update 才刷新
+前置条件：会话有明确的"启动"时刻（可以 capture），配置变更频率低于会话频率
+源码锚点：src/utils/hooks/hooksConfigSnapshot.ts:88 (captureHooksConfigSnapshot), :97 (update, 注释说明 resetSettingsCache 原因)
+```
+
+### 章末：你能做什么
+1. 在服务启动时 capture 配置快照，而非在每次请求时读取配置文件——降低延迟并保证会话内一致性
+2. 提供显式的 update 接口，让调用方明确控制"何时应用新配置"，而非自动推送
+3. 在 update 前调用 resetSettingsCache，避免因文件监听延迟导致使用过期缓存
+4. 为 reset 接口记录所有 side effect（如 SDK 状态重置），防止测试污染
+5. 在安全配置中实现"managed-only"模式，在 capture 时一次性评估，而非每次查询
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图23-1 | 快照创建时机与作用范围 | Mermaid sequenceDiagram | 启动→capture→使用快照→update（可选）→会话结束 | 23.1 |
+
+## 写作前 checklist
+```bash
+sed -n '18p' src/utils/hooks/hooksConfigSnapshot.ts  # getHooksFromAllowedSources
+sed -n '88p' src/utils/hooks/hooksConfigSnapshot.ts  # captureHooksConfigSnapshot
+sed -n '97p' src/utils/hooks/hooksConfigSnapshot.ts  # updateHooksConfigSnapshot
+sed -n '112p' src/utils/hooks/hooksConfigSnapshot.ts # getHooksConfigFromSnapshot
+sed -n '124p' src/utils/hooks/hooksConfigSnapshot.ts # resetHooksConfigSnapshot
+```
+
+## ⛔ Spec 一致性声明
+所有 16 项均 ✓，plan 审查通过。

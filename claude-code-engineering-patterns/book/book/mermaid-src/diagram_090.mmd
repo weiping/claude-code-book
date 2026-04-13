@@ -1,0 +1,15 @@
+stateDiagram-v2
+    [*] --> pending : 任务创建
+    pending --> running : 开始执行
+    running --> completed : 执行成功
+    running --> failed : 执行出错
+    running --> killed : 被强制终止
+    completed --> [*]
+    failed --> [*]
+    killed --> [*]
+    
+    note right of killed
+        killed = 主动干预（用户/系统停止）
+        failed = 执行出错
+        两者共同构成"不正常终端状态"
+    end note

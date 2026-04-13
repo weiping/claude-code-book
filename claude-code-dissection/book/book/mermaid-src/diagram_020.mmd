@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant Task as 后台任务
+    participant State as 任务状态
+    participant Ink as Ink 渲染器
+    participant Terminal as 终端
+
+    Task->>State: 更新进度 (progress: 50%)
+    State->>Ink: 触发重渲染
+    Ink->>Terminal: 增量更新进度条
+
+    Note over Task,Terminal: ❌ 错误做法
+    Task--xTerminal: 直接 process.stdout.write()
+    Note over Task,Terminal: 会破坏 Ink 的渲染状态

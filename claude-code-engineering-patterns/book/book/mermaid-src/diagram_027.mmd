@@ -1,0 +1,23 @@
+graph LR
+    subgraph models["主要模型（1P 示例）"]
+        opus46["Opus 4.6"]
+        sonnet46["Sonnet 4.6"]
+        haiku45["Haiku 4.5"]
+    end
+    subgraph effort_axis["Effort 轴"]
+        e_max["max effort"]
+        e_high["high effort"]
+        e_low["low/medium effort"]
+    end
+    subgraph think_axis["Thinking 轴"]
+        t_adaptive["adaptive thinking"]
+        t_enabled["enabled thinking"]
+        t_disabled["disabled"]
+    end
+
+    opus46 --> e_max
+    opus46 --> t_adaptive
+    sonnet46 --> e_high
+    sonnet46 --> t_adaptive
+    haiku45 --> e_low
+    haiku45 --> t_disabled

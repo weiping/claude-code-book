@@ -1,0 +1,279 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>附录 E：Feature Flag 完整清单 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="附录-efeature-flag-完整清单"><a class="header" href="#附录-efeature-flag-完整清单">附录 E：Feature Flag 完整清单</a></h1>
+<p>本附录列出 Claude Code v2.1.88 中所有已知的编译期 Feature Flag。这些 Flag 通过 <code>bun:bundle</code> 的 <code>feature()</code> 调用在<strong>编译期固化</strong>，打包后即成为死代码消除（DCE）的判断依据，<strong>运行时无法动态切换</strong>。如需启用某 Flag，须重新编译。</p>
+<hr />
+<h2 id="核心功能-flag"><a class="header" href="#核心功能-flag">核心功能 Flag</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Flag 名</th><th>功能描述</th><th>相关工具/模块</th><th>正文章节</th></tr></thead><tbody>
+<tr><td><code>HISTORY_SNIP</code></td><td>历史记录压缩优化，裁剪过长对话历史以节省 Token</td><td>QueryEngine</td><td>第 9 章</td></tr>
+<tr><td><code>BASH_CLASSIFIER</code></td><td>Bash 命令分类器，为自动权限模式提供命令风险评估</td><td>BashTool / PermissionClassifier</td><td>第 33 章</td></tr>
+<tr><td><code>TRANSCRIPT_CLASSIFIER</code></td><td>转录分类器，对会话历史内容进行分类处理</td><td>TranscriptManager</td><td>第 8 章</td></tr>
+<tr><td><code>REACTIVE_COMPACT</code></td><td>响应式压缩，上下文超出窗口时自动触发压缩流程</td><td>CompactionEngine</td><td>第 19 章</td></tr>
+<tr><td><code>CONTEXT_COLLAPSE</code></td><td>上下文折叠功能，将多轮历史折叠为摘要节点</td><td>QueryEngine</td><td>第 9 章</td></tr>
+<tr><td><code>FORK_SUBAGENT</code></td><td>子 Agent fork 模式，支持从当前会话 fork 出独立子 Agent</td><td>AgentFork</td><td>第 26 章</td></tr>
+<tr><td><code>HISTORY_PICKER</code></td><td>历史对话选择器，允许用户浏览并恢复历史会话</td><td>HistoryUI</td><td>第 17 章</td></tr>
+<tr><td><code>TOKEN_BUDGET</code></td><td>Token 预算管理，为 Agent 执行设置最大 Token 用量上限</td><td>BudgetManager</td><td>第 19 章</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="agent--多智能体-flag"><a class="header" href="#agent--多智能体-flag">Agent / 多智能体 Flag</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Flag 名</th><th>功能描述</th><th>相关工具/模块</th><th>正文章节</th></tr></thead><tbody>
+<tr><td><code>KAIROS</code></td><td>Kairos 模式整体开关，启用异步 Agent 功能集合</td><td>assistant/index.js</td><td>第 20 章</td></tr>
+<tr><td><code>KAIROS_CHANNELS</code></td><td>Kairos 通道功能，支持多通道异步消息传递</td><td>KairosChannel</td><td>第 20 章</td></tr>
+<tr><td><code>KAIROS_DREAM</code></td><td>DreamTask 功能，扩展后台任务系统</td><td>DreamTaskManager</td><td>第 25 章</td></tr>
+<tr><td><code>KAIROS_BRIEF</code></td><td>Brief 功能，生成 Agent 执行摘要报告</td><td>BriefGenerator</td><td>第 41 章</td></tr>
+<tr><td><code>KAIROS_GITHUB_WEBHOOKS</code></td><td>GitHub Webhook 集成，支持事件驱动触发 Agent</td><td>GitHubWebhookServer</td><td>第 41 章</td></tr>
+<tr><td><code>KAIROS_PUSH_NOTIFICATION</code></td><td>推送通知功能，Agent 完成时发送通知</td><td>PushNotificationService</td><td>第 41 章</td></tr>
+<tr><td><code>TERMINAL_PANEL</code></td><td>终端面板功能，影响 Swarm 后端的终端显示</td><td>SwarmBackend</td><td>第 31 章</td></tr>
+<tr><td><code>BRIDGE_MODE</code></td><td>Bridge 模式，支持远程连接和会话桥接</td><td>BridgeServer</td><td>第 32 章</td></tr>
+<tr><td><code>BG_SESSIONS</code></td><td>后台会话功能，允许 Agent 在后台持续运行</td><td>BackgroundSessionManager</td><td>第 28 章</td></tr>
+<tr><td><code>AGENT_TRIGGERS</code></td><td>Agent 触发器功能，支持条件驱动的 Agent 启动</td><td>TriggerEngine</td><td>第 20 章</td></tr>
+<tr><td><code>AGENT_TRIGGERS_REMOTE</code></td><td>远程 Agent 触发器，启用 RemoteTriggerTool</td><td>RemoteTriggerTool</td><td>第 28 章</td></tr>
+<tr><td><code>TEAMMEM</code></td><td>队友记忆功能，Swarm 中各 Teammate 共享记忆池</td><td>TeamMemoryStore</td><td>第 29 章</td></tr>
+<tr><td><code>COORDINATOR_MODE</code></td><td>协调者模式，启用 Coordinator Agent 角色</td><td>CoordinatorAgent</td><td>第 29 章</td></tr>
+<tr><td><code>BUDDY</code></td><td>Buddy 功能，启用辅助 Agent 伴随主 Agent 运行</td><td>BuddyAgent</td><td>第 30 章</td></tr>
+<tr><td><code>MONITOR_TOOL</code></td><td>启用 MonitorTool，提供任务监控和状态查询工具</td><td>MonitorTool</td><td>第 28 章</td></tr>
+<tr><td><code>DAEMON</code></td><td>Daemon 模式，启用后台守护进程管理 Agent 生命周期</td><td>DaemonManager</td><td>第 28 章</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="工具--插件-flag"><a class="header" href="#工具--插件-flag">工具 / 插件 Flag</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Flag 名</th><th>功能描述</th><th>相关工具/模块</th><th>正文章节</th></tr></thead><tbody>
+<tr><td><code>WEB_BROWSER_TOOL</code></td><td>启用 WebBrowserTool，基于无头浏览器的网页抓取工具</td><td>WebBrowserTool</td><td>第 10 章</td></tr>
+<tr><td><code>REVIEW_ARTIFACT</code></td><td>启用 ReviewArtifactTool，代码产物审查工具</td><td>ReviewArtifactTool</td><td>第 10 章</td></tr>
+<tr><td><code>OVERFLOW_TEST_TOOL</code></td><td>启用 OverflowTestTool，用于测试上下文溢出边界</td><td>OverflowTestTool</td><td>开发专用</td></tr>
+<tr><td><code>MCP_SKILLS</code></td><td>MCP Skills 功能，支持插件技能系统</td><td>MCPSkillManager</td><td>第 39 章</td></tr>
+<tr><td><code>MCP_RICH_OUTPUT</code></td><td>MCP 丰富输出格式，支持结构化媒体响应</td><td>MCPClient</td><td>第 13 章</td></tr>
+<tr><td><code>EXPERIMENTAL_SKILL_SEARCH</code></td><td>实验性技能搜索，模糊匹配 Skill 调用</td><td>SkillSearch</td><td>第 14 章</td></tr>
+<tr><td><code>BUILTIN_EXPLORE_PLAN_AGENTS</code></td><td>内置 Explore / Plan Agent，无需外部插件即可使用</td><td>ExploreAgent / PlanAgent</td><td>第 14 章</td></tr>
+<tr><td><code>EXTRACT_MEMORIES</code></td><td>自动提取记忆，从对话中提炼知识写入 Memory 文件</td><td>MemoryExtractor</td><td>第 16 章</td></tr>
+<tr><td><code>ULTRAPLAN</code></td><td>UltraPlan 高级计划模式，生成多层次执行计划</td><td>UltraPlanEngine</td><td>第 34 章</td></tr>
+<tr><td><code>ULTRATHINK</code></td><td>UltraThink 深度推理，延长思考预算以提升推理质量</td><td>UltraThinkEngine</td><td>第 34 章</td></tr>
+<tr><td><code>TORCH</code></td><td>Torch 功能，推断为特殊执行模式（内部实验功能）</td><td>TorchRunner</td><td>内部功能</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="系统--部署-flag"><a class="header" href="#系统--部署-flag">系统 / 部署 Flag</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Flag 名</th><th>功能描述</th><th>相关工具/模块</th><th>正文章节</th></tr></thead><tbody>
+<tr><td><code>AUTO_THEME</code></td><td>终端主题自动检测，根据终端背景色切换配色方案</td><td>ThemeDetector</td><td>第 2 章</td></tr>
+<tr><td><code>SSH_REMOTE</code></td><td>SSH 远程模式，通过 SSH 连接远程主机运行（stub）</td><td>ssh/</td><td>第 41 章</td></tr>
+<tr><td><code>VOICE_MODE</code></td><td>语音模式，支持语音输入/输出（stub）</td><td>voice/</td><td>第 41 章</td></tr>
+<tr><td><code>PROACTIVE</code></td><td>主动模式，允许 Agent 主动发起交互（stub）</td><td>proactive/</td><td>第 41 章</td></tr>
+<tr><td><code>NATIVE_CLIENT_ATTESTATION</code></td><td>原生客户端认证，验证客户端身份的安全机制</td><td>AttestationService</td><td>安全功能</td></tr>
+<tr><td><code>SELF_HOSTED_RUNNER</code></td><td>自托管运行环境，支持私有部署场景</td><td>RunnerBootstrap</td><td>部署功能</td></tr>
+</tbody></table>
+</div>
+<hr />
+<blockquote>
+<p><strong>版本说明</strong>：以上 Flag 清单基于 Claude Code <strong>v2.1.88</strong> 逆向重建版本，通过分析 <code>src/tools.ts</code> 及各源文件的 <code>feature()</code> 调用整理。标注 <code>stub</code> 的模块仅有骨架实现，标注"内部功能"的 Flag 用途尚不完全明确。</p>
+</blockquote>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="appendix-d.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="appendix-f.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="appendix-d.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="appendix-f.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

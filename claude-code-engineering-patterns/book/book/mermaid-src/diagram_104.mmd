@@ -1,0 +1,12 @@
+flowchart TD
+    request[收到权限请求] --> check_swarm{isSwarmWorker?}
+    check_swarm -->|是| swarm_handler[swarmWorkerHandler]
+    check_swarm -->|否| check_coord{isCoordinator?}
+    check_coord -->|是| coord_handler[coordinatorHandler]
+    check_coord -->|否| interactive_handler[interactiveHandler]
+
+    swarm_handler -->|"classifier 自动批准 或 Leader 响应"| done[✓ 权限决策]
+    swarm_handler -->|"null（失败或不是 swarm worker）"| interactive_handler
+    coord_handler -->|"hooks 或 classifier 自动决策"| done
+    coord_handler -->|"null（需要用户介入）"| interactive_handler
+    interactive_handler --> done

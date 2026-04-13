@@ -1,0 +1,11 @@
+graph LR
+    A["MCP 服务器<br/>返回 JSON"] -->|工具定义| B["MCP SDK<br/>解析"]
+    B -->|Tool 对象| C["createMcpAuthTool<br/>包装"]
+    C -->|添加权限检查| D["内部 Tool<br/>对象"]
+    D -->|注册| E["工具系统<br/>第 7 章"]
+    E -->|可调用| F["Claude 使用<br/>该工具"]
+    style A fill:#ffffcc
+    style B fill:#fff4e6
+    style C fill:#fff4e6
+    style D fill:#ffffcc
+    style F fill:#e6ffe6

@@ -1,0 +1,39 @@
+flowchart TD
+    A[循环迭代开始] --> B[第1层 提示词构建]
+
+    subgraph L1[第1层 提示词构建]
+        B1["fetchSystemPromptParts\n三路并行构建"] --> B2["appendSystemContext\n合并系统上下文"]
+        B2 --> B3["buildSystemPromptBlocks\n分段加缓存控制"]
+    end
+
+    B --> L1
+    L1 --> C[第2层 自动压缩检查]
+
+    subgraph L2[第2层 自动压缩]
+        C1{token超阈值?} -->|是| C2[调用压缩Agent\n重写消息列表]
+        C1 -->|否| C3[消息列表不变]
+    end
+
+    C --> L2
+    L2 --> D[第3层 流式工具执行]
+
+    subgraph L3[第3层 流式工具执行]
+        D1["callModel\n流式API调用"] --> D2{工具调用?}
+        D2 -->|并发安全| D3[立即并发执行]
+        D2 -->|非并发| D4[等待独占执行]
+        D3 --> D5[缓冲结果]
+        D4 --> D5
+    end
+
+    D --> L3
+    L3 --> E[第4层 后采样Hooks]
+
+    subgraph L4[第4层 后采样Hooks]
+        E1{有Hooks配置?} -->|是| E2[执行Hooks]
+        E1 -->|否| E3[透明通过]
+        E2 --> E4{preventContinuation?}
+        E4 -->|是| E5[终止循环]
+        E4 -->|否| E6[继续下一轮]
+    end
+
+    E --> L4

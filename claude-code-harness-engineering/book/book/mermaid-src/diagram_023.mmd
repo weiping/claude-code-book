@@ -1,0 +1,18 @@
+graph LR
+    subgraph 高频率
+        A["snipCompact\n每轮检查\n浅层删除"]
+        B["microCompact\n每轮检查\n中层清除"]
+        C["contextCollapse\n每轮检查\n只读投影"]
+    end
+
+    subgraph 低频率
+        D["autoCompact\n阈值触发\n深层摘要"]
+        E["timeBasedMC\n时间触发\n中层清除\n默认关闭"]
+    end
+
+    A -->|"释放不足"| B
+    B -->|"释放不足"| C
+    C -->|"释放不足"| D
+    E -.->|"cache TTL\n独立维度"| B
+
+    D -.- Note1["13000 token 缓冲\n3次熔断\n50000 token 恢复"]

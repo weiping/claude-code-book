@@ -1,0 +1,529 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 18 章：AutoCompact 与上下文折叠——窗口压缩的触发机制 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-18-章autocompact-与上下文折叠窗口压缩的触发机制"><a class="header" href="#第-18-章autocompact-与上下文折叠窗口压缩的触发机制">第 18 章：AutoCompact 与上下文折叠——窗口压缩的触发机制</a></h1>
+<blockquote>
+<p>"一个会自己压缩的系统，比一个等待崩溃的系统更有价值。"</p>
+</blockquote>
+<hr />
+<p>长对话 Agent 最终会遭遇一个不可回避的物理限制：上下文窗口的容量上限。当用户和 AI 聊了几十轮、工具调用返回了大量结果，总 token 数就会逼近模型能接受的最大值。此时，系统有三种选择：直接截断（破坏上下文连续性）、等待 API 报错（用户体验差）、或在溢出之前主动压缩（保留关键信息）。</p>
+<p>Claude Code 选择了第三种，并把触发点定在了一个精确的数字：<strong>剩余 13,000 tokens 时自动压缩</strong>。这就是<strong>自适应上下文压缩</strong>（Adaptive Context Compression）模式——不等溢出，提前在安全缓冲区内完成压缩，用语义摘要替换对话历史，为下一轮工具调用保留足够空间。</p>
+<p>读完这章，我们将理解这一模式的完整实现：从精确的阈值计算，到四阶段渐进式监控，再到防止递归死锁的多重 guard，以及生产数据驱动的电路断路器设计。</p>
+<hr />
+<h2 id="问题上下文窗口是有限资源触发点需要精确"><a class="header" href="#问题上下文窗口是有限资源触发点需要精确">问题：上下文窗口是有限资源，触发点需要精确</a></h2>
+<p>一个 Agent 对话的 token 消耗有多快？每轮对话约 1,000-5,000 tokens，工具调用的返回结果动辄 10,000 tokens 以上。对于一个 200,000 tokens 上下文窗口的模型，一个中等复杂的代码任务很容易在 20-30 轮内就耗尽 60% 的空间。</p>
+<p>问题不在于"会不会溢出"，而在于"在什么时候压缩"。</p>
+<p>太早压缩浪费了有效上下文（可以继续对话的空间被白白清空）。太晚压缩则面临两个风险：一是压缩操作本身需要一次 AI 调用，这次调用的结果也需要写入上下文，如果剩余空间不足以容纳压缩结果，就会陷入死锁；二是用户的下一轮工具调用返回了大量数据，而此时剩余 token 空间不足，导致 API 报错。</p>
+<p><strong>13,000 tokens 的缓冲区</strong>回答了"何时压缩"的问题。<code>src/services/compact/autoCompact.ts:62</code> 定义了这个数字：</p>
+<pre><code class="language-typescript">// src/services/compact/autoCompact.ts:62-65
+export const AUTOCOMPACT_BUFFER_TOKENS = 13_000
+export const WARNING_THRESHOLD_BUFFER_TOKENS = 20_000
+export const ERROR_THRESHOLD_BUFFER_TOKENS = 20_000
+export const MANUAL_COMPACT_BUFFER_TOKENS = 3_000
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/services/compact/autoCompact.ts:62</code></p>
+<p>四个常量定义了上下文监控的四个层次：</p>
+<ul>
+<li><code>AUTOCOMPACT_BUFFER_TOKENS = 13_000</code>：自动压缩触发点——剩余 13,000 tokens 时触发</li>
+<li><code>WARNING_THRESHOLD_BUFFER_TOKENS = 20_000</code>：预警界——剩余 20,000 tokens 时显示 UI 警告</li>
+<li><code>ERROR_THRESHOLD_BUFFER_TOKENS = 20_000</code>：告警界——同为 20,000（当前两者阈值一致）</li>
+<li><code>MANUAL_COMPACT_BUFFER_TOKENS = 3_000</code>：阻塞界——剩余 3,000 tokens 时阻止新请求</li>
+</ul>
+<p>为什么是 13,000？这是"给工具调用结果预留的安全空间"。工具调用（如读取一个大文件、搜索结果）动辄返回数千 tokens，需要保留足够空间容纳结果，否则工具调用本身就会触发 API 的 <code>prompt_too_long</code> 错误。</p>
+<p><strong>图 18-1：上下文窗口容量分区示意</strong></p>
+<pre><code class="language-mermaid">graph LR
+    subgraph 上下文窗口空间分配
+        A["已使用空间\n（对话历史 + 系统提示）"] --&gt; B
+        B["autoCompact 触发区\n（effectiveWindow - 13000）"] --&gt; C
+        C["Warning/Error 区\n（剩余 20000 tokens）"] --&gt; D
+        D["Blocking 阻塞区\n（剩余 3000 tokens）"]
+    end
+    
+    B --&gt;|"超过此线 → 自动压缩"| trigger["autoCompactIfNeeded\n触发"]
+    C --&gt;|"进入此区 → UI 警告"| warn["显示 token 用量警告"]
+    D --&gt;|"进入此区 → 新请求被阻塞"| block["拒绝新的请求"]
+</code></pre>
+<p>注意 autoCompact 触发点（13,000 buffer）早于 Blocking 阻塞点（3,000 buffer）——这是设计上的安全裕度：系统先尝试压缩，如果压缩失败了（网络错误、AI 错误），还有 10,000 tokens 的缓冲区可以继续尝试，而不会立即进入阻塞状态。</p>
+<hr />
+<h2 id="源码实例-1calculatetokenwarningstate-的四阶段监控"><a class="header" href="#源码实例-1calculatetokenwarningstate-的四阶段监控">源码实例 1：calculateTokenWarningState 的四阶段监控</a></h2>
+<p><code>calculateTokenWarningState</code> 是 Claude Code UI 层显示"token 用量进度条"的数据来源，也是触发 autoCompact 的判断核心。它的返回值结构非常紧凑：</p>
+<p>阈值计算从 <code>getAutoCompactThreshold</code> 开始，它在 <code>src/services/compact/autoCompact.ts:72</code> 定义：</p>
+<pre><code class="language-typescript">// src/services/compact/autoCompact.ts:72-89
+export function getAutoCompactThreshold(model: string): number {
+  const effectiveContextWindow = getEffectiveContextWindowSize(model)
+
+  const autocompactThreshold =
+    effectiveContextWindow - AUTOCOMPACT_BUFFER_TOKENS
+
+  // 环境变量覆盖，方便测试 autocompact
+  const envPercent = process.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE
+  if (envPercent) {
+    const parsed = parseFloat(envPercent)
+    if (!isNaN(parsed) &amp;&amp; parsed &gt; 0 &amp;&amp; parsed &lt;= 100) {
+      const percentageThreshold = Math.floor(
+        effectiveContextWindow * (parsed / 100),
+      )
+      return Math.min(percentageThreshold, autocompactThreshold)
+    }
+  }
+
+  return autocompactThreshold
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/services/compact/autoCompact.ts:72</code></p>
+<p>注意 <code>getEffectiveContextWindowSize</code>（第 33 行）的计算：它用模型的上下文窗口减去 <code>reservedTokensForSummary</code>（压缩结果需要的输出空间）。这意味着 autoCompact 的触发阈值是"真实可用空间 - 13,000"，而不是"总上下文 - 13,000"——对于压缩本身的输出空间已提前预留。</p>
+<p><code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code> 环境变量支持按百分比覆盖阈值。这是一个测试钩子——开发者可以设置 <code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=50</code> 把触发点设为有效窗口的 50%，方便测试压缩流程，而不需要等到真实的 13,000 tokens 剩余。</p>
+<p><code>calculateTokenWarningState</code> 本身的逻辑（第 93 行）把这个阈值转化为五个 boolean 状态：</p>
+<pre><code class="language-typescript">// src/services/compact/autoCompact.ts:93-145（简化）
+export function calculateTokenWarningState(
+  tokenUsage: number,
+  model: string,
+): {
+  percentLeft: number
+  isAboveWarningThreshold: boolean    // 剩余 &lt; 20000：UI 预警
+  isAboveErrorThreshold: boolean      // 剩余 &lt; 20000：UI 告警（当前同 warning）
+  isAboveAutoCompactThreshold: boolean // 剩余 &lt; 13000：触发自动压缩
+  isAtBlockingLimit: boolean          // 剩余 &lt; 3000：阻塞新请求
+} {
+  const autoCompactThreshold = getAutoCompactThreshold(model)
+  // 如果 autoCompact 启用，参考点是 autoCompactThreshold；否则用 effectiveWindow
+  const threshold = isAutoCompactEnabled()
+    ? autoCompactThreshold
+    : getEffectiveContextWindowSize(model)
+
+  const percentLeft = Math.max(
+    0,
+    Math.round(((threshold - tokenUsage) / threshold) * 100),
+  )
+
+  const warningThreshold = threshold - WARNING_THRESHOLD_BUFFER_TOKENS
+  const errorThreshold = threshold - ERROR_THRESHOLD_BUFFER_TOKENS
+  
+  const isAboveAutoCompactThreshold =
+    isAutoCompactEnabled() &amp;&amp; tokenUsage &gt;= autoCompactThreshold
+  
+  const defaultBlockingLimit = actualContextWindow - MANUAL_COMPACT_BUFFER_TOKENS
+  const isAtBlockingLimit = tokenUsage &gt;= blockingLimit
+
+  return { percentLeft, isAboveWarningThreshold, isAboveErrorThreshold,
+           isAboveAutoCompactThreshold, isAtBlockingLimit }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/services/compact/autoCompact.ts:93</code></p>
+<p>这里有一个设计细节值得注意：<code>WARNING_THRESHOLD_BUFFER_TOKENS</code> 和 <code>ERROR_THRESHOLD_BUFFER_TOKENS</code> 当前值相同（都是 20,000）。这看起来像是占位符——两个常量分别命名但值相同，说明设计者预留了在未来对两个阈值进行差异化配置的接口，但目前还没有触发差异化的必要（推断）。如果将来要区分"进度条变黄"和"进度条变红"的不同阈值，只需修改 <code>ERROR_THRESHOLD_BUFFER_TOKENS</code> 的值，所有相关逻辑自动生效。</p>
+<p><code>isAboveAutoCompactThreshold</code> 只在 <code>isAutoCompactEnabled()</code> 为 true 时才可能为 true——即使 token 超过阈值，如果 autoCompact 被禁用（通过 <code>DISABLE_AUTO_COMPACT</code> 环境变量或 settings 配置），这个 flag 也不会触发。</p>
+<p><strong>图 18-2：四阶段 token 监控的触发界面</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; normal : 会话开始
+    normal --&gt; warning : tokenUsage &gt;= threshold - 20000\n（isAboveWarningThreshold）
+    warning --&gt; error_state : 同一阈值触发\n（isAboveErrorThreshold）
+    error_state --&gt; autocompact_triggered : tokenUsage &gt;= threshold - 13000\n（isAboveAutoCompactThreshold）
+    autocompact_triggered --&gt; normal : 压缩成功，token 大幅减少
+    autocompact_triggered --&gt; blocking : 压缩失败，tokenUsage &gt;= effectiveWindow - 3000\n（isAtBlockingLimit）
+    blocking --&gt; [*] : 新请求被拒绝
+</code></pre>
+<p>状态机展示了正常路径（压缩成功后回到 normal）和降级路径（压缩失败后滑向 blocking）。13,000 buffer 的设计保证了从"触发压缩"到"进入阻塞"有足够的空间进行失败重试。</p>
+<hr />
+<h2 id="源码实例-2shouldautocompact-的多重-guard"><a class="header" href="#源码实例-2shouldautocompact-的多重-guard">源码实例 2：shouldAutoCompact 的多重 guard</a></h2>
+<p><code>calculateTokenWarningState</code> 告诉我们"是否应该压缩"，但实际的决策函数是 <code>shouldAutoCompact</code>。这个函数最有趣的部分不是阈值计算，而是它的<strong>五个提前返回路径</strong>。</p>
+<pre><code class="language-typescript">// src/services/compact/autoCompact.ts:160-240（简化，含所有关键注释）
+export async function shouldAutoCompact(
+  messages: Message[],
+  model: string,
+  querySource?: QuerySource,
+  snipTokensFreed = 0,
+): Promise&lt;boolean&gt; {
+  
+  // 递归防护：session_memory 和 compact 是 forked agents，会形成死锁
+  if (querySource === 'session_memory' || querySource === 'compact') {
+    return false
+  }
+  
+  // marble_origami 是 ctx-agent——如果它的上下文爆炸并触发 autoCompact，
+  // runPostCompactCleanup 会调用 resetContextCollapse()，
+  // 这会破坏主线程的已提交日志（跨 fork 共享的模块级状态）
+  if (feature('CONTEXT_COLLAPSE')) {
+    if (querySource === 'marble_origami') {
+      return false
+    }
+  }
+
+  if (!isAutoCompactEnabled()) {
+    return false
+  }
+
+  // 响应式模式：不主动压缩，让 API 的 prompt-too-long 触发响应式压缩
+  if (feature('REACTIVE_COMPACT')) {
+    if (getFeatureValue_CACHED_MAY_BE_STALE('tengu_cobalt_raccoon', false)) {
+      return false
+    }
+  }
+
+  // Context Collapse 模式：autoCompact 在 ~93% 处触发，
+  // 但 contextCollapse 在 90% 开始、95% 阻塞。两者会竞争，
+  // autoCompact 通常赢，但这会破坏 contextCollapse 正在保存的细粒度上下文。
+  if (feature('CONTEXT_COLLAPSE')) {
+    const { isContextCollapseEnabled } = require('../contextCollapse/index.js')
+    if (isContextCollapseEnabled()) {
+      return false
+    }
+  }
+
+  // 通过所有 guard 后，实际检查 token 使用量
+  const { isAboveAutoCompactThreshold } = calculateTokenWarningState(
+    tokenCountWithEstimation(messages) - snipTokensFreed,
+    model,
+  )
+  return isAboveAutoCompactThreshold
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/services/compact/autoCompact.ts:160-240</code></p>
+<p>每一个 guard 都对应一个真实的设计约束。</p>
+<p><strong>Guard 1：session_memory / compact 递归防护</strong></p>
+<p>压缩操作 (<code>querySource === 'compact'</code>) 本身需要调用 AI 来生成摘要。如果这次 AI 调用也触发了 autoCompact，就会出现"压缩触发压缩"的无限递归——压缩进程永远不会结束。通过检查 <code>querySource</code>，可以识别出"当前请求本身就是压缩操作"，直接返回 false，斩断递归链。</p>
+<p><strong>Guard 2：marble_origami（ctx-agent）防护</strong></p>
+<p>这是一个更微妙的情况。注释解释了危险在哪里：<code>marble_origami</code> 是 Context Collapse 功能的代号，它是一个专门处理上下文压缩的 forked agent。如果 marble_origami 自己的上下文超限并触发了 autoCompact，autoCompact 会调用 <code>runPostCompactCleanup</code>，后者会调用 <code>resetContextCollapse()</code>——而 <code>contextCollapse</code> 的状态是模块级变量，被主线程和所有 fork 共享。在 fork 里重置主线程的状态，会导致主线程的已提交压缩日志被清空。</p>
+<p><strong>Guard 3：isAutoCompactEnabled()</strong></p>
+<p>用户可以通过 <code>DISABLE_AUTO_COMPACT</code> 环境变量或 settings.json 中的 <code>autoCompactEnabled: false</code> 关闭自动压缩，保留手动 <code>/compact</code> 命令。这个 guard 确保用户的配置选择被尊重。</p>
+<p><strong>Guard 4：contextCollapse 冲突防护</strong></p>
+<p>注释精确描述了冲突场景：autoCompact 在有效窗口的约 93% 时触发（effectiveWindow - 13000），而 contextCollapse 在 90% 时开始保存细粒度上下文、在 95% 时阻塞新 fork 。两者的触发区间重叠——如果同时激活，autoCompact 通常会抢先执行，但这会清空 contextCollapse 正在精心保存的状态。禁用 autoCompact 让 contextCollapse 作为主要的上下文管理者。</p>
+<p><strong>电路断路器</strong></p>
+<p>通过所有 guard 后，<code>autoCompactIfNeeded</code>（第 241 行）还有最后一道防线：</p>
+<pre><code class="language-typescript">// src/services/compact/autoCompact.ts:67-70（BQ 注释 + 常量定义）
+// BQ 2026-03-10: 1,279 sessions had 50+ consecutive failures (up to 3,272)
+// in a single session, wasting ~250K API calls/day globally.
+const MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3
+
+if (
+  tracking?.consecutiveFailures !== undefined &amp;&amp;
+  tracking.consecutiveFailures &gt;= MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES
+) {
+  return { wasCompacted: false }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/services/compact/autoCompact.ts:67</code>（BQ 注释），<code>src/services/compact/autoCompact.ts:260</code>（circuit breaker check）</p>
+<p>这段注释引用了一个真实的生产数据（BQ = BigQuery 分析）：1,279 个会话中出现了 50 次以上的连续压缩失败，最高的一个会话连续失败了 3,272 次，每天浪费约 250,000 次 API 调用。这不是理论上的担忧，而是从监控数据中发现并修复的真实 bug。</p>
+<p><code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code> 是一个电路断路器（Circuit Breaker）：如果压缩连续失败超过 3 次，就认为当前会话的上下文已经"不可挽救地超限"（例如单个工具结果就超过了 13,000 tokens），停止重试。后续的 API 请求会因为 <code>prompt_too_long</code> 错误而直接失败，用户看到明确的错误信息，而不是系统在后台无限循环。</p>
+<p><strong>图 18-3：shouldAutoCompact 的多重 guard 决策树</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    enter["shouldAutoCompact(messages, model, querySource)"] --&gt; g1{"querySource == session_memory\n或 compact?"}
+    g1 --&gt;|是| dead_lock["return false\n（防递归死锁）"]
+    g1 --&gt;|否| g2{"marble_origami\n且 CONTEXT_COLLAPSE?"}
+    g2 --&gt;|是| module_state["return false\n（防主线程状态破坏）"]
+    g2 --&gt;|否| g3{"isAutoCompactEnabled\n== false?"}
+    g3 --&gt;|是| disabled["return false\n（用户已禁用）"]
+    g3 --&gt;|否| g4{"contextCollapse\n已启用?"}
+    g4 --&gt;|是| collapse_owns["return false\n（contextCollapse 是主控）"]
+    g4 --&gt;|否| check["calculateTokenWarningState\n实际检查 token 用量"]
+    check --&gt; result{"isAboveAutoCompactThreshold?"}
+    result --&gt;|是| trigger["return true\n触发压缩"]
+    result --&gt;|否| normal["return false\n正常状态"]
+</code></pre>
+<p>每个 <code>return false</code> 都有独立的注释说明原因——这不是"为了安全加了很多 if"，而是每一条路径对应一个已经踩过的坑或真实的生产数据。</p>
+<hr />
+<h2 id="模式剖析自适应上下文压缩adaptive-context-compression-和递归防护电路断路器recursive-guard--circuit-breaker"><a class="header" href="#模式剖析自适应上下文压缩adaptive-context-compression-和递归防护电路断路器recursive-guard--circuit-breaker">模式剖析：自适应上下文压缩（Adaptive Context Compression） 和递归防护电路断路器（Recursive Guard + Circuit Breaker）</a></h2>
+<p>这两个模式联合工作：Adaptive Context Compression 负责在正确的时机触发压缩；Recursive Guard + Circuit Breaker 负责确保这个触发本身不会制造新的问题。</p>
+<hr />
+<p><strong>图 18-4：autoCompactIfNeeded 的两条压缩路径</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    enter["autoCompactIfNeeded(messages, toolUseContext)"] --&gt; cb{"consecutiveFailures\n&gt;= 3?"}
+    cb --&gt;|是| skip["return wasCompacted=false\n电路断路器燘断"]
+    cb --&gt;|否| check["shouldAutoCompact()模块"]
+    check --&gt;|不需要压缩| no_compact["return wasCompacted=false"]
+    check --&gt;|需要压缩| sm["trySessionMemoryCompaction()尝试"]
+    sm --&gt;|成功| sm_ok["return wasCompacted=true（SM压缩）"]
+    sm --&gt;|失败或不适用| cc["compactConversation()传统压缩"]
+    cc --&gt;|成功| cc_ok["return wasCompacted=true, failures=0"]
+    cc --&gt;|失败| fail["return wasCompacted=false\nconsecutiveFailures++"]
+</code></pre>
+<p>注意两条压缩路径的设计意图：<code>trySessionMemoryCompaction</code> 是实验性功能，优先尝试；失败或不适用时回退到 <code>compactConversation</code> 传统压缩路径。成功后重置 <code>consecutiveFailures = 0</code>，确保德阶段性恢复后不与当前失败计数叠加。</p>
+<p><strong>图 18-5：电路断路器状态转换</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; closed : 会话开始，failures=0
+    closed --&gt; closed : 压缩成功\nfailures=0（重置）
+    closed --&gt; half_open : 压缩失败\nfailures=1
+    half_open --&gt; half_open : 压缩失败\nfailures=2
+    half_open --&gt; open_state : failures &gt;= 3\n熔断
+    open_state --&gt; open_state : 平能尝试均跳过
+    closed --&gt; closed : wasCompacted=true\nfailures重置=0
+    Note: 新会话即重置，不需要定时实探
+</code></pre>
+<p>和传统 Circuit Breaker 模式的1个不同：当前实现没有「半开」状态的自动恢复探测，因为会话级别的超限问题在新会话开始时天然重置。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>长对话 Agent（多轮可能超过上下文窗口）</td><td>✓</td><td>autoCompact 自动处理，用户无感知</td><td>手动 <code>/compact</code>（用户容易忘记）</td></tr>
+<tr><td>多工具调用（工具结果较长）</td><td>✓</td><td>13,000 buffer 专为工具结果预留</td><td>截断工具结果（丢失信息）</td></tr>
+<tr><td>需要精确控制触发时机</td><td>✓（配合环境变量）</td><td><code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code> 支持按百分比覆盖</td><td>硬编码阈值（不可测试）</td></tr>
+<tr><td>短对话（&lt;50% 上下文使用）</td><td>✗</td><td>autoCompact 不触发，增加的只有复杂度</td><td>直接请求</td></tr>
+<tr><td>需要完整保留对话历史</td><td>✗（谨慎）</td><td>压缩是有损的，语义摘要 ≠ 原文</td><td>外部记忆存储（详见第 19 章）</td></tr>
+<tr><td>与其他上下文管理系统并用</td><td>✗（互斥）</td><td>contextCollapse 等系统启用时，autoCompact 被禁用以避免竞争</td><td>选择其中一种机制</td></tr>
+<tr><td>高频失败场景（如工具结果超大）</td><td>✗（自动降级）</td><td>3 次失败后电路断路器熔断，后续不再重试</td><td>缩减工具输出或增大上下文窗口</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p><strong>权衡 1：13,000 tokens 缓冲区的选择代价</strong></p>
+<p>13,000 tokens 是"给工具调用结果预留的空间"，但这个数字并非来自形式化的分析，而是基于实践经验的经验值。不同工具的返回结果大小差异极大：一个简单的文件读取可能只有 100 tokens，而一次 web 搜索结果可能有 5,000-10,000 tokens。13,000 覆盖了"几乎所有工具调用都不会超限"的保守估计。</p>
+<p>代价是：压缩在 token 还足够使用时就触发了，用户可能感觉"还没讲多少，就被压缩了"。<code>MANUAL_COMPACT_BUFFER_TOKENS = 3_000</code> 的阻塞点意味着如果不触发 autoCompact，最多只能在剩余 3,000 tokens 时继续请求——相比 13,000 的触发点，有 10,000 tokens 的"提前量"。</p>
+<p><strong>权衡 2：WARNING 和 ERROR 阈值相同的问题</strong></p>
+<p><code>WARNING_THRESHOLD_BUFFER_TOKENS = 20_000</code> 和 <code>ERROR_THRESHOLD_BUFFER_TOKENS = 20_000</code> 当前值相同，导致 UI 层的"警告"和"错误"状态实际上同时出现——不存在"先警告后出错"的渐进过程。这可能是未来的优化方向（推断），但目前这个设计意味着用户看到的两种颜色的提示实际上表达了相同的语义。</p>
+<p><strong>权衡 3：电路断路器的激进截止</strong></p>
+<p>3 次失败后熔断是从 BQ 数据反推的结果——真实数据显示第 3 次失败后继续重试几乎没有成功案例（因为问题通常是单个工具结果超大，不可恢复）。但这也意味着偶发的网络错误（第 1、2 次 API 调用因为网络超时失败，第 3 次本来可以成功）可能会被误判为"不可恢复的超限"，导致电路断路器过早熔断。<code>consecutiveFailures</code> 在压缩成功时会重置为 0（<code>autoCompactIfNeeded</code> 第 326 行），这减轻了误判的风险，但无法完全消除。</p>
+<p><strong>权衡 4：有损压缩的不可逆性</strong></p>
+<p>压缩是有损操作——AI 生成的语义摘要保留了主要信息，但会丢失细节（如具体的代码行、精确的错误消息）。一旦触发压缩，原始对话历史就不再可用（除非用 <code>--resume</code> 从磁盘恢复，详见第 17 章）。这是"节省 token 与保留信息"之间的根本 trade-off，无法完全规避。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与 GC（垃圾回收）</strong>：两者都是自动的、后台的资源管理机制——开发者不需要手动触发。差异在于语义：GC 回收的是"不可达对象"（binary decision，要么回收要么不回收），autoCompact 压缩的是"历史对话"（lossy operation，有损压缩，保留语义摘要）。GC 不改变剩余对象的语义，autoCompact 会改变 AI 后续能看到的信息范围。</p>
+<p><strong>与滑动窗口缓冲区</strong>：相同点是"维护固定大小的缓冲区，超出时清理旧数据"。差异在于清理策略：滑动窗口直接丢弃最旧的数据（无损于剩余数据，但旧数据消失无法恢复）；autoCompact 在丢弃旧数据前先生成语义摘要——代价是一次额外的 AI 调用，收益是 AI 保留了"压缩前发生了什么"的语义知识。</p>
+<p><strong>与电路断路器（Circuit Breaker，POSA 模式）</strong>：<code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code> 是经典电路断路器模式的直接应用——在连续失败后停止重试，等待系统恢复。差异在于"恢复"机制：传统电路断路器有"半开"状态（定期探测是否可以重试），Claude Code 的电路断路器没有自动恢复（因为上下文超限是会话级的，新会话自然重置）。</p>
+<p><strong>结论</strong>：Adaptive Context Compression 是"GC 思想"（自动资源管理）和"滑动窗口"（缓冲区管理）在 AI 对话场景的融合，加上了"摘要而非丢弃"的语义保留，以及基于真实生产数据（BQ 分析）标定的电路断路器。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="自适应上下文压缩adaptive-context-compression"><a class="header" href="#自适应上下文压缩adaptive-context-compression">自适应上下文压缩（Adaptive Context Compression）</a></h3>
+<p><strong>解决的问题</strong>：长对话 Agent 的上下文窗口会溢出，等到 API 报错再压缩为时已晚，需要在安全缓冲区内提前触发有损但语义完整的压缩。</p>
+<p><strong>核心做法</strong>：监控 token 使用量，在 <code>effectiveContextWindow - AUTOCOMPACT_BUFFER_TOKENS (13,000)</code> 时触发摘要压缩，用 AI 生成的语义摘要替换对话历史，为下一轮工具调用保留空间。</p>
+<p><strong>前置条件</strong>：有可靠的 token 计数方式；压缩 AI 能生成高质量摘要；上下文窗口 &gt; 13,000（几乎所有模型都满足）。</p>
+<p><strong>源码证据</strong>：<code>src/services/compact/autoCompact.ts:62</code>（<code>AUTOCOMPACT_BUFFER_TOKENS = 13_000</code>），<code>src/services/compact/autoCompact.ts:72</code>（<code>getAutoCompactThreshold</code>，动态计算有效阈值）</p>
+<hr />
+<h3 id="递归防护电路断路器recursive-guard--circuit-breaker"><a class="header" href="#递归防护电路断路器recursive-guard--circuit-breaker">递归防护电路断路器（Recursive Guard + Circuit Breaker）</a></h3>
+<p><strong>解决的问题</strong>：① 压缩操作本身是 AI 调用，若不防护会引发"压缩触发压缩"的递归死锁；② 上下文不可恢复超限时无效重试会浪费大量 API 配额（BQ 数据：每天浪费约 250,000 次 API 调用）。</p>
+<p><strong>核心做法</strong>：在 token 检查前对特定 <code>querySource</code> 早返回 false（防递归）；在 <code>autoCompactIfNeeded</code> 层跟踪 <code>consecutiveFailures</code>，超过 <code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES (3)</code> 后熔断，压缩成功则重置计数器。</p>
+<p><strong>前置条件</strong>：调用上下文有可区分的 <code>querySource</code> 字段；有可持久化的失败计数跟踪（<code>AutoCompactTrackingState</code>）。</p>
+<p><strong>源码证据</strong>：<code>src/services/compact/autoCompact.ts:171</code>（<code>querySource === 'compact'</code> 递归防护），<code>src/services/compact/autoCompact.ts:70</code>（<code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code>，BQ 数据支持）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>设置显式的 token 缓冲区常量</strong>（如 <code>AUTOCOMPACT_BUFFER_TOKENS = 13_000</code>），而非"接近上限时"。具体数字让 code review 和监控都更精确——"13,000 tokens 留给工具调用结果"比"接近上限"更容易理解和验证。</p>
+</li>
+<li>
+<p><strong>实现四阶段阈值（warning → error → autoCompact → blocking）</strong>，让用户对上下文用量有渐进式的反馈，而非突然中断。四个常量的命名约定（<code>*_BUFFER_TOKENS</code>）和返回值中的 <code>isAbove*</code> boolean 组合，是这种设计的参考模板。</p>
+</li>
+<li>
+<p><strong>为所有自动触发操作添加 <code>querySource</code> 递归防护</strong>。如果一个操作 A 会触发 AI 调用，AI 调用的上下文里又可能触发 A，必须在 A 的入口检查调用来源，防止无限递归。</p>
+</li>
+<li>
+<p><strong>用 BigQuery 或等效监控工具验证电路断路器的参数</strong>。<code>MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3</code> 不是拍脑袋的数字，是从"1,279 个会话，最多 3,272 次连续失败"的真实数据中得出的。在确定自己系统的断路器参数前，先收集连续失败分布数据。</p>
+</li>
+<li>
+<p><strong>支持环境变量覆盖压缩阈值</strong>（如 <code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code>），方便测试而不需要等待真实的上下文溢出场景。测试钩子和生产行为分离，通过环境变量而非代码分支实现。</p>
+</li>
+<li>
+<p><strong>如果与其他上下文管理系统并用，设计互斥守卫</strong>。autoCompact 与 contextCollapse 的冲突（两者触发区间重叠）需要用 <code>if (isContextCollapseEnabled()) return false</code> 解决。任何时候两套资源管理机制并存，都需要明确的主从关系。</p>
+</li>
+<li>
+<p><strong>压缩成功后重置失败计数器</strong>。电路断路器计数是会话级的，压缩成功意味着系统恢复正常，应该立即重置 <code>consecutiveFailures = 0</code>，避免偶发失败累积污染后续的判断。</p>
+</li>
+</ul>
+<hr />
+<p>AutoCompact 处理的是当前会话内的 token 压缩——"这次对话太长了，压缩一下"。而跨会话的历史保留（之前的对话是如何持久化到磁盘的）是第 17 章的主题。三层记忆架构中的"跨会话提取"（extractMemories）则是一个更高层的系统，负责从历史会话中提炼长期记忆，详见第 19 章。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part4/ch17.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part4/ch19.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part4/ch17.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part4/ch19.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

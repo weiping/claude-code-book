@@ -1,0 +1,80 @@
+# 第5章写作计划
+
+**批次**：批次 2
+**章节**：ch05 — Bootstrap 全局状态——进程的状态脊梁
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/bootstrap/state.ts | type State(45行)、"DO NOT ADD MORE STATE"注释(31行)、bootstrap-isolation规则(15-17行)、createSignal(481行) | 1-35, 45-110, 275-340, 475-490行 |
+| 2 | src/bootstrap/state.ts | getSessionId(431行)、totalCostUSD字段、OTel 指标字段 | 430-450, 95-115行 |
+
+```bash
+ls src/bootstrap/state.ts
+sed -n '31p' src/bootstrap/state.ts
+sed -n '45,55p' src/bootstrap/state.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「`src/bootstrap/state.ts` 第31行有一行注释：`// DO NOT ADD MORE STATE HERE - BE JUDICIOUS WITH GLOBAL STATE`。为什么要在代码里写这种警告？」
+- 三个问题：1）把 50+ 变量集中在一个模块是"反模式"吗？2）为什么这里有 OpenTelemetry 指标？3）bootstrap-isolation 规则是什么，违反它有什么后果？
+
+### 节 5.1：为什么集中全局状态，而不是分散管理？
+- 核心主张：当状态需要被多个子系统读写时，分散反而增加耦合；集中并显式标注不可滥用
+- 源码锚点：`src/bootstrap/state.ts:31`（"DO NOT ADD MORE"注释）、`src/bootstrap/state.ts:45`（State 类型定义）
+- 权衡分析：集中 vs 分散（React context / module-level 变量 / 函数传参）
+- 包含元素：State 类型的字段分组表（会话/成本/模型/遥测四组）
+- 估计字数：700字
+
+### 节 5.2：bootstrap-isolation 规则解决什么问题？
+- 核心主张：bootstrap 模块是最底层依赖，允许任意 import 会导致循环依赖；eslint 自定义规则是架构约束的代码化
+- 源码锚点：`src/bootstrap/state.ts:15-17`（注释说明为什么需要特殊 import 方式）
+- 包含元素：循环依赖的ASCII示意图
+- 估计字数：500字
+
+### 节 5.3：OpenTelemetry 指标为什么内嵌在 State 里？
+- 核心主张：遥测对象与会话生命周期对齐，嵌入 State 避免初始化时序问题
+- 源码锚点：`src/bootstrap/state.ts:95-115`（meter/sessionCounter 等 OTel 字段）
+- 权衡分析：独立 sidecar vs 内嵌 State
+- 估计字数：500字
+
+### 节 5.4：createSignal 如何通知状态变化？
+- 源码锚点：`src/bootstrap/state.ts:481`（sessionSwitched signal）
+- 简短说明信号模式，指向第23章（会话恢复时的 switchSession）
+- 估计字数：300字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 有注释的全局状态（Annotated Global State）| 全局状态被滥用导致难以维护 | 集中存放 + 显式"DO NOT ADD MORE"注释 + eslint 规则执行 | 多子系统共享状态 | `src/bootstrap/state.ts:31` |
+| 架构约束代码化（Codified Architecture Constraint）| 架构规则靠口头约定难以执行 | 自定义 eslint 规则将依赖方向约束转为可自动检查的规则 | 有明确的模块依赖规范 | `src/bootstrap/state.ts:17` |
+| 遥测生命周期对齐（Telemetry Lifecycle Alignment）| OTel 对象与业务对象生命周期不同步 | 将遥测指标对象内嵌到会话状态对象 | 遥测需要按会话粒度统计 | `src/bootstrap/state.ts:95` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图5-1 | State 字段分组 | classDiagram 或表格 | 四组字段及代表性字段名 | 5.1 |
+| 图5-2 | bootstrap-isolation 防止循环依赖 | flowchart | bootstrap → X → bootstrap 的循环示意 | 5.2 |
+
+## 写作顺序
+1. 先写节 5.1（集中 vs 分散的核心权衡）
+2. 写节 5.2（bootstrap-isolation 规则）
+3. 写节 5.3（OTel 内嵌）
+4. 写节 5.4（createSignal，简短）
+5. 模式提炼，开篇
+
+## 写作前 checklist
+```bash
+sed -n '31p' src/bootstrap/state.ts       # DO NOT ADD MORE STATE
+sed -n '45,55p' src/bootstrap/state.ts    # State type definition
+sed -n '15,17p' src/bootstrap/state.ts    # bootstrap-isolation
+sed -n '481p' src/bootstrap/state.ts      # createSignal
+```
+
+## 估算
+- 目标字数：2200-2600字
+- 预计轮次：6轮（含2轮验证）

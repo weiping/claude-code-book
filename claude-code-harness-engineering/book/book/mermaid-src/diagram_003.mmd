@@ -1,0 +1,28 @@
+flowchart LR
+    subgraph S1["权衡点"]
+        direction TB
+        W1["Feature Flag<br/>编译时编码"]
+        W2["集中状态<br/>Single Source of Truth"]
+        W3["九子系统<br/>精准职责分离"]
+    end
+
+    subgraph S2["获得"]
+        direction TB
+        G1["零运行时开销<br/>物理消除未开启功能"]
+        G2["状态一致性<br/>无同步问题"]
+        G3["子系统独立演进<br/>可维护性"]
+    end
+
+    subgraph S3["代价"]
+        direction TB
+        C1["灵活性降低<br/>需重新编译"]
+        C2["文件膨胀<br/>状态管理"]
+        C3["跨子系统协调<br/>复杂度增加"]
+    end
+
+    W1 --> G1
+    W1 --> C1
+    W2 --> G2
+    W2 --> C2
+    W3 --> G3
+    W3 --> C3

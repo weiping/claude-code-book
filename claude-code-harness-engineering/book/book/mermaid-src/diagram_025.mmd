@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph load_order["加载顺序 - 优先级从低到高"]
+        A["1. Managed\n/etc/claude-code/CLAUDE.md\n全局管理指令"] --> B["2. User\n~/.claude/CLAUDE.md\n用户全局指令"]
+        B --> C["3. Project\nCLAUDE.md + .claude/rules/*.md\n项目级指令"]
+        C --> D["4. Local\nCLAUDE.local.md\n本地私有指令"]
+    end
+
+    D --> E["MEMORY.md 入口文件\n200行 / 25KB 上限"]
+    E --> F["loadMemoryPrompt\n注入系统提示词动态区"]
+
+    E -.-> G["@include 指令\n指向详细记忆文件"]
+    G -.-> H["4 种记忆类型\nuser / feedback\nproject / reference"]
+
+    A -.- Note1["后加载的\n优先级更高"]

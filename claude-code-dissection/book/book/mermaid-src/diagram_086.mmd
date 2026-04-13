@@ -1,0 +1,10 @@
+graph LR
+    A["用户创建<br/>DXT 包"] --> B["package.json<br/>+ 代码"]
+    B --> C["上传到<br/>Marketplace"]
+    C --> D["用户安装<br/>/plugin install"]
+    D --> E["验证签名<br/>+ 权限"]
+    E --> F["插件激活<br/>接收事件"]
+    F --> G["运行中<br/>执行命令/钩子"]
+    G --> H["升级/卸载<br/>清理资源"]
+    style F fill:#ccffcc
+    style G fill:#ccffcc

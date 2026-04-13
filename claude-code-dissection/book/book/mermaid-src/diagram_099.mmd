@@ -1,0 +1,13 @@
+graph LR
+    A["状态改变"] --> B["生成新 vdom"]
+    B --> C["Reconcile"]
+    C --> D["方案 1：全屏渲染"]
+    D --> E["清屏"]
+    E --> F["重绘 1,920 字"]
+    F --> G["闪烁 😞"]
+    C --> H["方案 2：增量渲染"]
+    H --> I["Diff 网格"]
+    I --> J["仅更新 50 字"]
+    J --> K["无闪烁 ✨"]
+    style K fill:#ccffcc
+    style G fill:#ffcccc

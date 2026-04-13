@@ -1,0 +1,639 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 34 章：跨会话记忆——extractMemories 与 teamMemorySync - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-34-章跨会话记忆---extractmemories-与-teammemorysync"><a class="header" href="#第-34-章跨会话记忆---extractmemories-与-teammemorysync">第 34 章：跨会话记忆 - extractMemories 与 teamMemorySync</a></h1>
+<blockquote>
+<p>当 Agent A 解决了一个复杂的技术问题后会话结束了。一个月后，Agent B 遇到了类似的问题。系统如何确保 B 能从 A 的经验中学习？为什么不能直接保存整个对话记录？什么信息值得被提炼成"可复用的记忆"？</p>
+</blockquote>
+<hr />
+<h2 id="341-记忆提炼的困难"><a class="header" href="#341-记忆提炼的困难">34.1 记忆提炼的困难</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p>每一个会话都产生信息，但不是所有信息都值得被记忆。</p>
+<pre><code>会话末尾的对话历史：
+  Agent："我尝试了 3 种方法"
+  Assistant："方法 1 失败了，原因是 X"
+  Assistant："方法 2 成功了，用了 Y 技巧"
+  Agent："谢谢，我学到了新东西"
+问题：
+  Q1：需要保存 50 条消息吗？太浪费 storage
+  Q2：保存最后 5 条？太少了，丢失了上下文
+  Q3：需要保存所有中间尝试吗？下一个 Agent 不需要"失败的过程"
+  Q4：怎样自动判断哪些信息"值得记忆"？
+</code></pre>
+<h3 id="设计意图extractmemories-机制"><a class="header" href="#设计意图extractmemories-机制">设计意图：extractMemories 机制</a></h3>
+<p>Claude Code 在每个会话结束时，<strong>自动提炼关键记忆</strong>：
+在 <code>src/services/SessionMemory/sessionMemory.ts</code> 中：</p>
+<pre><code class="language-typescript">/**
+ * 会话内存提炼流程
+ * 在会话结束时被调用，将对话转换为可复用的记忆片段
+ */
+async function extractMemories(
+  messages: Message[],
+  context: SessionContext
+): Promise&lt;Memory[]&gt; {
+  // 第一步：识别"转折点"（breakthrough moments）
+  // 第二步：针对每个转折点，抽取关键技巧和失败原因
+  // 第三步：去重和汇总
+  // 第四步：用 LLM 生成机器可读的总结（YAML）
+}
+</code></pre>
+<hr />
+<h2 id="342-记忆提炼的三层机制"><a class="header" href="#342-记忆提炼的三层机制">34.2 记忆提炼的三层机制</a></h2>
+<h3 id="机制-1转折点检测breakthrough-detection"><a class="header" href="#机制-1转折点检测breakthrough-detection">机制 1：转折点检测（Breakthrough Detection）</a></h3>
+<p><strong>目标</strong>：找到对话中"真正有价值的时刻"</p>
+<pre><code>典型的对话转折点标志：
+  ✓ Agent 说"啊，我明白了"或"好的，试试这样"
+  ✓ Assistant 给出新的建议或否定之前的假设
+  ✓ 用户表达满意（"太好了""完美"）
+  ✓ 问题从"卡住"变为"解决"
+</code></pre>
+<p><strong>实现</strong>（<code>src/services/SessionMemory/breakPointDetector.ts</code>）：</p>
+<pre><code class="language-typescript">// 伪代码
+function detectBreakthruPoints(messages: Message[]): number[] {
+  const points = []
+  for (let i = 0; i &lt; messages.length; i++) {
+    const msg = messages[i]
+    // 启发式 1：情绪转变
+    if (containsSentiment(msg, ['realized', 'got it', 'now I see'])) {
+      points.push(i)
+    }
+    // 启发式 2：工具执行后状态改变
+    if (msg.type === 'tool_result' &amp;&amp; isSuccessful(msg)) {
+      if (!wasSuccessfulBefore(messages, i)) {
+        points.push(i)  // 从失败 → 成功
+      }
+    }
+    // 启发式 3：代码生成成功
+    if (msg.type === 'code' &amp;&amp; followedByPositiveFeedback(messages, i)) {
+      points.push(i)
+    }
+  }
+  return points
+}
+</code></pre>
+<h3 id="机制-2记忆片段化memory-segmentation"><a class="header" href="#机制-2记忆片段化memory-segmentation">机制 2：记忆片段化（Memory Segmentation）</a></h3>
+<p>在每个转折点周围，抽取一个"记忆块"：</p>
+<pre><code>转折点前 3 条消息 + 转折点本身 + 转折点后 2 条消息
+= 完整的"从问题→尝试→发现"的故事弧
+例子：
+  [问题] Agent："这个递归函数怎么优化？"
+  [尝试 1] Assistant："试试 memoization"
+  [反馈 1] Agent："还是慢"
+  ──────────── 转折点
+  [关键] Assistant："用动态规划，这样时间复杂度是..."
+  [验证] Agent："对，现在快多了！"
+  [结论] "我学到了 DP 在这个场景的应用"
+记忆块大小：平均 7-10 条消息（相比 50+ 条对话历史）
+</code></pre>
+<h3 id="机制-3llm-总结与-yaml-序列化"><a class="header" href="#机制-3llm-总结与-yaml-序列化">机制 3：LLM 总结与 YAML 序列化</a></h3>
+<p>每个记忆块被发送给 LLM 进行结构化总结：</p>
+<pre><code class="language-typescript">// 伪代码
+async function summarizeMemoryBlock(block: Message[]): Promise&lt;Memory&gt; {
+  const summary = await llm.generate({
+    model: 'haiku',  // 便宜的模型，这不是主要工作
+    prompt: `
+      总结这段对话中学到的技巧。
+      用 YAML 格式：
+      ---
+      topic: &lt;主题&gt;
+      problem: &lt;原始问题是什么&gt;
+      solution: &lt;解决方案是什么&gt;
+      keyInsight: &lt;最重要的洞察&gt;
+      failedAttempts: &lt;为什么之前失败&gt;
+      applicableTo: &lt;这个技巧适用于什么场景&gt;
+      ---
+    `,
+    context: block
+  })
+  return parseYAML(summary)
+}
+</code></pre>
+<p><strong>输出示例</strong>：</p>
+<pre><code class="language-yaml">topic: "递归优化"
+problem: "递归函数超时"
+solution: "使用动态规划而不是纯递归"
+keyInsight: "Memoization 只能缓存参数，DP 才能减少重复计算"
+failedAttempts: 
+  - "单纯加缓存，没有改变算法复杂度"
+  - "没有识别出子问题的重叠"
+applicableTo:
+  - "斐波那契数列"
+  - "最长公共子序列"
+  - "背包问题"
+</code></pre>
+<hr />
+<h2 id="343-团队记忆同步teammemorysync"><a class="header" href="#343-团队记忆同步teammemorysync">34.3 团队记忆同步（teamMemorySync）</a></h2>
+<h3 id="定义-1"><a class="header" href="#定义-1">定义</a></h3>
+<p>在多 Agent 系统中，记忆不是私有的，而是<strong>共享的知识库</strong>。</p>
+<pre><code>Agent A 的会话 → 提炼记忆 → 保存到 .claude/team/memories/
+                                 ↓
+Agent B 开始新会话 → 搜索相关记忆 → "我看到之前有人解决过类似问题"
+</code></pre>
+<h3 id="实现流程"><a class="header" href="#实现流程">实现流程</a></h3>
+<p><strong>步骤 1：记忆存储</strong>（<code>src/services/teamMemorySync/memoryStorage.ts</code>）</p>
+<pre><code class="language-typescript">// 会话结束后
+async function saveSessionMemories(
+  teamId: string,
+  agentId: string,
+  memories: Memory[]
+): Promise&lt;void&gt; {
+  const memDir = `.claude/teams/${teamId}/memories/${agentId}/`
+  for (const mem of memories) {
+    const fileName = `${mem.topic.slugify()}_${Date.now()}.yaml`
+    const filePath = path.join(memDir, fileName)
+    await fs.writeFile(filePath, serializeMemory(mem))
+    // 记录元数据
+    await logMemoryMetadata({
+      teamId, agentId, fileName,
+      timestamp: Date.now(),
+      tokensSaved: estimateTokens(mem),  // 这次记忆节省了多少 token？
+    })
+  }
+}
+</code></pre>
+<p><strong>步骤 2：记忆发现</strong>（<code>src/services/teamMemorySync/memoryDiscovery.ts</code>）
+当新 Agent 开始会话时：</p>
+<pre><code class="language-typescript">async function findRelevantTeamMemories(
+  teamId: string,
+  currentTopic: string,
+  limit: number = 5
+): Promise&lt;Memory[]&gt; {
+  // 步骤 1：搜索所有队友的记忆目录
+  const memoryDirs = await fs.readdir(
+    `.claude/teams/${teamId}/memories/`
+  )
+  // 步骤 2：对每个记忆进行相似度评分
+  const scored = []
+  for (const memoryFile of allMemoryFiles) {
+    const memory = parseYAML(await fs.readFile(memoryFile))
+    // 相似度计算：cosine similarity on embeddings
+    const similarity = cosineSimilarity(
+      embed(currentTopic),
+      embed(memory.topic + ' ' + memory.keyInsight)
+    )
+    if (similarity &gt; 0.5) {  // 阈值
+      scored.push({ memory, similarity })
+    }
+  }
+  // 步骤 3：按相似度排序，返回 top 5
+  return scored
+    .sort((a, b) =&gt; b.similarity - a.similarity)
+    .slice(0, limit)
+    .map(s =&gt; s.memory)
+}
+</code></pre>
+<p><strong>步骤 3：记忆注入到提示词</strong>（<code>src/services/teamMemorySync/memoryInjection.ts</code>）</p>
+<pre><code class="language-typescript">function buildSystemPromptWithTeamMemories(
+  basePrompt: string,
+  relevantMemories: Memory[]
+): string {
+  if (relevantMemories.length === 0) {
+    return basePrompt
+  }
+  const memorySection = `
+## 团队知识库（来自之前的会话）
+${relevantMemories.map(mem =&gt; `
+### ${mem.topic}
+- **问题**: ${mem.problem}
+- **解决方案**: ${mem.solution}
+- **核心洞察**: ${mem.keyInsight}
+- **应用场景**: ${mem.applicableTo.join(', ')}
+`).join('\n')}
+你可以使用上述知识，但要注意它们可能是在特定的上下文中获得的。
+确认当前问题是否真的适用这些解决方案。
+  `
+  return basePrompt + '\n' + memorySection
+}
+</code></pre>
+<hr />
+<h2 id="344-防护机制敏感信息扫描"><a class="header" href="#344-防护机制敏感信息扫描">34.4 防护机制：敏感信息扫描</a></h2>
+<h3 id="问题"><a class="header" href="#问题">问题</a></h3>
+<p>不是所有的记忆都应该被保存到团队共享目录。</p>
+<pre><code>危险的记忆内容：
+  ✗ API 密钥
+  ✗ 用户密码
+  ✗ 个人隐私信息
+  ✗ 企业机密（源代码、财务数据）
+  ✗ PII（Personally Identifiable Information）
+</code></pre>
+<h3 id="实现secretscanner"><a class="header" href="#实现secretscanner">实现：secretScanner</a></h3>
+<p>在 <code>src/services/SessionMemory/secretScanner.ts</code> 中：</p>
+<pre><code class="language-typescript">function scanMemoryForSecrets(memory: Memory): string[] {
+  const found = []
+  // 扫描 1：API 密钥模式
+  const apiKeyPattern = /(?:api[_-]?key|token|secret)[\s:=]+(['"`]?)([a-zA-Z0-9\-_.]{32,})\1/gi
+  if (apiKeyPattern.test(memory.toString())) {
+    found.push('API_KEY_DETECTED')
+  }
+  // 扫描 2：信用卡号
+  const ccPattern = /\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b/g
+  if (ccPattern.test(memory.toString())) {
+    found.push('CREDIT_CARD_DETECTED')
+  }
+  // 扫描 3：Email 地址（可能是 PII）
+  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+  const emails = memory.toString().match(emailPattern) || []
+  if (emails.length &gt; 3) {  // 超过 3 个 email 可能是列表
+    found.push('PII_EMAIL_LIST')
+  }
+  return found
+}
+</code></pre>
+<p><strong>保护策略</strong>：</p>
+<pre><code class="language-typescript">if (secretsFound.length &gt; 0) {
+  // 选项 1：拒绝保存此记忆
+  throw new Error(`Cannot save memory: ${secretsFound.join(', ')} detected`)
+  // 选项 2：编辑敏感部分（推荐）
+  memory.solution = redactSecrets(memory.solution)
+  memory.problem = redactSecrets(memory.problem)
+  // 选项 3：只保存到私人目录（不团队共享）
+  await saveToPrivateMemory(memory)
+}
+</code></pre>
+<hr />
+<h2 id="图解"><a class="header" href="#图解">图解</a></h2>
+<p><strong>图 34-1：记忆提炼的三层机制</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["会话对话（50+ 条）"]
+    B["步骤 1：转折点检测"]
+    C["破裂点&lt;br/&gt;① 情绪转变&lt;br/&gt;② 失败→成功&lt;br/&gt;③ 代码成功"]
+    D["步骤 2：片段化"]
+    E["记忆块&lt;br/&gt;前 3 + 转折 + 后 2"]
+    F["步骤 3：LLM 总结"]
+    G["YAML 序列化"]
+    H["最终记忆&lt;br/&gt;10 条消息 → 结构化"]
+    A --&gt; B --&gt; C
+    C --&gt; D --&gt; E
+    E --&gt; F --&gt; G --&gt; H
+    style H fill:#ccffcc
+</code></pre>
+<p><strong>图 34-2：团队记忆同步流程</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant A as Agent A
+    participant ES as extractMemories
+    participant SD as Storage
+    participant NE as Agent B&lt;br/&gt;（新会话）
+    participant MD as Memory&lt;br/&gt;Discovery
+    A-&gt;&gt;ES: 会话结束，提取记忆
+    ES-&gt;&gt;SD: 保存到 .claude/teams/
+    SD-&gt;&gt;MD: Agent B 开始新会话
+    MD-&gt;&gt;MD: 语义搜索
+    MD-&gt;&gt;NE: 注入相关记忆
+    NE-&gt;&gt;NE: 结合新知识和历史洞察
+</code></pre>
+<p><strong>图 34-3：敏感信息扫描与保护</strong></p>
+<pre><code class="language-mermaid">graph TB
+    A["记忆块"]
+    B["secretScanner"]
+    C{"有敏感&lt;br/&gt;信息?"}
+    D["拒绝保存"]
+    E["编辑/脱敏"]
+    F["保存到私人&lt;br/&gt;目录"]
+    G["保存到团队&lt;br/&gt;共享目录"]
+    A --&gt; B --&gt; C
+    C --&gt;|YES| D
+    C --&gt;|YES| E --&gt; F
+    C --&gt;|NO| G
+    style G fill:#ccffcc
+    style F fill:#fff4e6
+    style D fill:#ffcccc
+</code></pre>
+<p><strong>图 34-4：记忆热度的时间衰减</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["新鲜记忆 &amp;lt;1周"]
+    B["新鲜度：100%"]
+    C["权重：1.0×"]
+    D["中等新鲜 1-4周"]
+    E["新鲜度：70%"]
+    F["权重：0.7×"]
+    G["陈旧 &amp;gt;1月"]
+    H["新鲜度：30%"]
+    I["权重：0.3×"]
+    J["极陈旧 &amp;gt;1年"]
+    K["存档"]
+    A --&gt; B --&gt; C
+    C --&gt;|时间推移| D --&gt; E --&gt; F
+    F --&gt;|继续推移| G --&gt; H --&gt; I
+    I --&gt;|继续推移| J --&gt; K
+</code></pre>
+<p><strong>表格 34-1：记忆提炼的启发式规则</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>规则</th><th>信号</th><th>置信度</th><th>例子</th></tr></thead><tbody>
+<tr><td><strong>情绪转变</strong></td><td>realized, got it, breakthrough</td><td>高</td><td>"啊，我明白了，问题在于..."</td></tr>
+<tr><td><strong>失败→成功</strong></td><td>tool_result 从错变对</td><td>高</td><td>第 1 次运行失败，第 3 次成功</td></tr>
+<tr><td><strong>代码验证</strong></td><td>code + positive feedback</td><td>中</td><td>"这段代码确实提高了性能"</td></tr>
+<tr><td><strong>解释清晰化</strong></td><td>从抽象→具体</td><td>中</td><td>"那是什么意思？→ 意思是..."</td></tr>
+<tr><td><strong>重复模式</strong></td><td>同一话题多次提及</td><td>低</td><td>"这个问题出现了 3 次"</td></tr>
+<tr><td><strong>表格 34-2：成本计量示例</strong></td><td></td><td></td><td></td></tr>
+<tr><td>场景</td><td>对话长度</td><td>提炼成本</td><td>节省 token</td></tr>
+<tr><td>------</td><td>---------</td><td>---------</td><td>-----------</td></tr>
+<tr><td>简单 Q&amp;A</td><td>6 条</td><td>50</td><td>20</td></tr>
+<tr><td>工具使用教学</td><td>20 条</td><td>100</td><td>150</td></tr>
+<tr><td>复杂问题排查</td><td>40 条</td><td>150</td><td>500</td></tr>
+<tr><td>闲聊</td><td>15 条</td><td>80</td><td>10</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="闭包式状态初始化closure-scoped-state-initialization"><a class="header" href="#闭包式状态初始化closure-scoped-state-initialization">闭包式状态初始化（Closure-Scoped State Initialization）</a></h3>
+<p><strong>解决的问题</strong>：全局模块级变量在测试中难以重置，导致测试之间相互污染；但将状态完全传递为参数又增加了每个调用点的复杂度。</p>
+<p><strong>核心做法</strong>：将可变状态存储在 <code>init()</code> 函数的闭包内部（而非模块级变量），调用 <code>init()</code> 时创建新的闭包状态，之后的调用通过模块级函数代理访问该闭包。测试时每次 <code>beforeEach</code> 调用 <code>init()</code> 即可得到干净状态。</p>
+<p><strong>前置条件</strong>：模块有明确的"初始化"生命周期；需要在测试中支持隔离；状态在初始化后是单例的（同一时间只有一个活跃实例）。</p>
+<p><strong>源码证据</strong>：<code>src/services/extractMemories/extractMemories.ts:11</code> — 注释："State is closure-scoped inside initExtractMemories() rather than module-level"；<code>src/services/extractMemories/extractMemories.ts:296</code> — <code>initExtractMemories()</code> 建立闭包状态；<code>src/services/extractMemories/extractMemories.ts:598</code> — <code>executeExtractMemories()</code> 调用闭包内的实现。</p>
+<hr />
+<h3 id="etag-条件同步etag-based-conditional-sync"><a class="header" href="#etag-条件同步etag-based-conditional-sync">ETag 条件同步（ETag-Based Conditional Sync）</a></h3>
+<p><strong>解决的问题</strong>：团队记忆同步时，如果内容没有变化，每次都下载完整内容既浪费带宽又增加延迟；但如何知道内容是否变化？</p>
+<p><strong>核心做法</strong>：服务端为每个记忆内容计算哈希作为 ETag；客户端请求时携带上次记录的 ETag（<code>If-None-Match</code> header）；服务端比较后内容相同返回 304 Not Modified，客户端跳过处理。</p>
+<p><strong>前置条件</strong>：服务端支持 ETag + 条件 GET；客户端维护每个资源的上次已知 ETag（存储在 <code>SyncState</code> 中）。</p>
+<p><strong>源码证据</strong>：<code>src/services/teamMemorySync/index.ts:100</code> — <code>SyncState</code> 类型包含 <code>etag?: string</code> 字段；<code>src/services/teamMemorySync/index.ts:207-208</code> — <code>headers['If-None-Match']</code> 条件请求头的设置；<code>src/services/teamMemorySync/index.ts:134</code> — <code>hashContent()</code> 用于计算本地内容的 checksum。</p>
+<hr />
+<h3 id="机密扫描防护secret-scanner-protection"><a class="header" href="#机密扫描防护secret-scanner-protection">机密扫描防护（Secret Scanner Protection）</a></h3>
+<p><strong>解决的问题</strong>：用户可能不小心把含有 API key、密码的会话内容提取进记忆，团队同步时这些机密会扩散到所有团队成员。</p>
+<p><strong>核心做法</strong>：在提取记忆前扫描内容（<code>secretScanner</code>），检测常见的机密模式（API key 格式、密码字段等），发现可疑内容时拒绝提取并警告用户。</p>
+<p><strong>前置条件</strong>：有可靠的机密模式库；扫描不应过于激进（减少误报）；发现机密时必须明确告知用户原因。</p>
+<p><strong>源码证据</strong>：<code>src/services/teamMemorySync/secretScanner.ts</code> — 机密检测的核心实现；在 <code>executeExtractMemories</code> 调用链中集成，提取前扫描。</p>
+<h2 id="346-记忆的生命周期"><a class="header" href="#346-记忆的生命周期">34.6 记忆的生命周期</a></h2>
+<h3 id="ttl-与过期"><a class="header" href="#ttl-与过期">TTL 与过期</a></h3>
+<p>记忆不是永久的，随着时间推移可能过期：</p>
+<pre><code>新鲜记忆（&lt;1 周）：
+  → 搜索权重：1.0（完全重视）
+  → 使用频率：优先展示给所有 Agent
+中等新鲜（1-4 周）：
+  → 搜索权重：0.7（有所衰减）
+  → 使用频率：只对相关话题展示
+陈旧记忆（&gt;1 个月）：
+  → 搜索权重：0.3（很少用）
+  → 使用频率：只在无相关新记忆时展示
+极陈旧（&gt;1 年）：
+  → 自动存档到历史库（不再参与实时搜索）
+</code></pre>
+<h3 id="记忆热度"><a class="header" href="#记忆热度">记忆热度</a></h3>
+<pre><code class="language-typescript">function computeMemoryRelevance(
+  memory: Memory,
+  currentTopic: string,
+  timeSinceCreation: number  // 毫秒
+): number {
+  // 因子 1：话题相似度
+  const topicSimilarity = cosineSimilarity(
+    embed(currentTopic),
+    embed(memory.topic)
+  )
+  // 因子 2：时间衰减
+  const daysOld = timeSinceCreation / (1000 * 60 * 60 * 24)
+  const timeFactor = 1 / (1 + 0.1 * daysOld)  // 指数衰减
+  // 因子 3：使用历史（多少个 Agent 用过这条记忆）
+  const usageCount = memory.usageCount || 0
+  const popularityFactor = 1 + 0.05 * Math.log(usageCount + 1)
+  return topicSimilarity * timeFactor * popularityFactor
+}
+</code></pre>
+<hr />
+<h2 id="延伸extractmemories-的状态管理与-teammemorysync-的-etag-机制"><a class="header" href="#延伸extractmemories-的状态管理与-teammemorysync-的-etag-机制">延伸：extractMemories 的状态管理与 teamMemorySync 的 ETag 机制</a></h2>
+<p><code>initExtractMemories</code>（<code>src/services/extractMemories/extractMemories.ts:296</code>）是闭包式状态初始化的典型：</p>
+<pre><code class="language-typescript">// src/services/extractMemories/extractMemories.ts:296
+export function initExtractMemories(): void {
+  // 状态存在闭包里，而非模块级别变量
+  // 这让测试可以在每个 beforeEach 调用 init 得到干净状态
+}
+
+// src/services/extractMemories/extractMemories.ts:598
+export async function executeExtractMemories(
+  messages: Message[]
+): Promise&lt;void&gt; {
+  // 在会话末尾调用，从对话历史中提炼持久记忆
+}
+</code></pre>
+<p><code>teamMemorySync</code> 的 <code>SyncState</code>（<code>src/services/teamMemorySync/index.ts:100</code>）包含 ETag 追踪：</p>
+<pre><code class="language-typescript">// src/services/teamMemorySync/index.ts:100
+export type SyncState = {
+  etag?: string  // 上次同步时的 ETag
+  lastSyncTime?: number
+  // 其他同步状态
+}
+
+// src/services/teamMemorySync/index.ts:121
+export function createSyncState(): SyncState {
+  return {}  // 初始状态，没有 etag
+}
+</code></pre>
+<p><strong>ETag 的作用</strong>：服务端对每次记忆内容的 hash 作为 ETag。客户端在同步时发送上次记录的 ETag，服务端比较——如果内容未变（ETag 相同），返回 304 Not Modified，客户端跳过更新。这避免了在记忆内容没有实际变化时的重复下载（<code>src/services/teamMemorySync/index.ts</code>）。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-记忆文件使用普通-json大量记忆时查询缓慢"><a class="header" href="#-记忆文件使用普通-json大量记忆时查询缓慢">❌ 记忆文件使用普通 JSON，大量记忆时查询缓慢</a></h3>
+<p>1000 条记忆的 JSON 文件体积可能超过 1MB，每次检索都要解析整个 JSON 并遍历。随着记忆积累，启动时间和检索时间线性增长。应该使用带索引的存储格式（SQLite、LMDB）（<code>src/services/memory/</code>）。</p>
+<h3 id="-跨会话记忆没有时间衰减6-个月前的记忆和昨天的同等对待"><a class="header" href="#-跨会话记忆没有时间衰减6-个月前的记忆和昨天的同等对待">❌ 跨会话记忆没有时间衰减，6 个月前的记忆和昨天的同等对待</a></h3>
+<p>"用户上周说喜欢 Vue" 比 "用户两年前说喜欢 jQuery" 更相关。没有时间权重的记忆检索会把过期信息和最新信息混在一起，降低记忆的有效性。</p>
+<h3 id="-多设备会话同步时没有冲突解决策略"><a class="header" href="#-多设备会话同步时没有冲突解决策略">❌ 多设备/会话同步时没有冲突解决策略</a></h3>
+<p>会话 A 在 09:00 更新了一条记忆，会话 B 也在 09:01 更新了同一条记忆。最后写入的覆盖最先写入的，可能丢失有效信息。<code>teamMemorySync</code> 应该有 last-write-wins 或 merge 策略，而不是直接覆写（<code>src/services/memory/teamMemorySync.ts</code>）。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用带索引的格式存储记忆</strong>：SQLite 或 LMDB 替代 JSON 文件，让大量记忆下的检索保持 O(log n)</li>
+<li><strong>给记忆加时间权重</strong>：最近的记忆权重更高，避免过期信息影响 Claude 的判断</li>
+<li><strong>实现记忆的冲突检测</strong>：两个会话更新同一条记忆时，记录冲突并用 last-write-wins 或人工 merge 解决</li>
+<li><strong>定期归档旧记忆</strong>：超过 N 天的记忆自动移到冷存储，保持活跃记忆库的规模可控</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part9/ch33.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part9/ch35.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part9/ch33.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part9/ch35.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

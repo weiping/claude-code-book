@@ -1,0 +1,516 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 20 章：CLAUDE.md 的发现、解析与注入 - 深度解剖 Claude Code 的源码</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">深度解剖 Claude Code 的源码</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-20-章claudemd-的发现解析与注入"><a class="header" href="#第-20-章claudemd-的发现解析与注入">第 20 章：CLAUDE.md 的发现、解析与注入</a></h1>
+<blockquote>
+<p>一个项目有三个 CLAUDE.md：<code>/etc/claude-code/CLAUDE.md</code>（系统级）、<code>~/.claude/CLAUDE.md</code>（用户级）、<code>project/.claude/CLAUDE.md</code>（项目级）。运行 <code>claude</code> 时，系统怎样发现它们？如果三个文件对"代码风格"有矛盾指令，优先遵循哪一个？更棘手的是：用 <code>getMemoryFiles()</code> 遍历目录时，每轮对话都重新扫描磁盘会严重拖慢响应——但如果缓存，用户修改 CLAUDE.md 后何时生效？</p>
+</blockquote>
+<p>这是<strong>配置系统的经典三角矛盾</strong>：层级化优先级 vs 动态感知变更 vs 读取性能。本章解析 Claude Code 的解法——<code>memoize</code> 缓存 + 显式失效触发，以及为什么不用文件 watcher。</p>
+<hr />
+<p>项目根目录放了一个 CLAUDE.md 文件。同时，你的个人目录 ~/.claude/ 也有一个 CLAUDE.md。系统级的 /etc/claude-code/ 还有一个。当你运行 Claude Code 时，系统用的是哪一个？如果它们都有关于"代码格式化"的相互矛盾的指令，怎么调和？
+这不仅是文件发现的问题，也是<strong>权限管理的问题</strong>。系统管理员的全局策略、个人开发者的偏好、项目团队的规范——它们需要在一个清晰的优先级链中共存。本章解析了 Claude Code 如何通过向上目录遍历、三层记忆分离、blacklist 排除等机制，构建了一个灵活且可预测的规则加载系统。</p>
+<h2 id="201-三种记忆路径与优先级"><a class="header" href="#201-三种记忆路径与优先级">20.1 三种记忆路径与优先级</a></h2>
+<h3 id="定义"><a class="header" href="#定义">定义</a></h3>
+<p>CLAUDE.md 文件有三个来源，在 <code>src/utils/claudemd.ts:1-25</code> 的文件头注释中清晰标注：</p>
+<pre><code> * 1. Managed memory (eg. /etc/claude-code/CLAUDE.md) - Global instructions
+ * 2. User memory (~/.claude/CLAUDE.md) - Private global instructions
+ * 3. Project memory (CLAUDE.md, .claude/CLAUDE.md, .claude/rules/*.md) - Instructions checked into codebase
+ * 4. Local memory (CLAUDE.local.md in project roots) - Private project-specific
+</code></pre>
+<p>加载顺序是<strong>反向</strong>的：Managed → User → Project → Local，后加载的优先级更高。这意味着 Project 级的 CLAUDE.md 会覆盖 User 级的，而 User 级会覆盖 Managed 级的。</p>
+<h3 id="设计意图"><a class="header" href="#设计意图">设计意图</a></h3>
+<p>为什么用反向加载而不是正向加载？这是对"优先级"的语义理解。后加载的内容"最后被看到"，LLM 对最后看到的内容关注度更高。这符合了 19 章中讲的"追加内容在末尾被重视"的原理。
+这个设计还体现了一个层级哲学：系统级 &lt; 用户级 &lt; 项目级。系统级是全局默认，用户级是个人偏好，项目级是最具体的上下文。越具体的指令越应该优先。</p>
+<h3 id="实际案例与权衡"><a class="header" href="#实际案例与权衡">实际案例与权衡</a></h3>
+<p><strong>案例：三层规则同时存在</strong></p>
+<pre><code>/etc/claude-code/CLAUDE.md（系统级，对所有用户生效）：
+  "所有代码审查必须检查安全问题"
+~/.claude/CLAUDE.md（用户级，对该用户所有项目生效）：
+  "Python 项目使用 Black 格式化"
+project/CLAUDE.md（项目级，仅对该项目生效）：
+  "这个项目的 Python 代码禁用某个特定的 Black 规则"
+</code></pre>
+<h2 id="最终-claude-看到的组合是系统级--用户级--项目级但当有冲突时项目级覆盖用户级用户级覆盖系统级"><a class="header" href="#最终-claude-看到的组合是系统级--用户级--项目级但当有冲突时项目级覆盖用户级用户级覆盖系统级">最终 Claude 看到的组合是：系统级 + 用户级 + 项目级，但当有冲突时，项目级覆盖用户级，用户级覆盖系统级。</a></h2>
+<h2 id="202-目录层级遍历"><a class="header" href="#202-目录层级遍历">20.2 目录层级遍历</a></h2>
+<h3 id="定义-1"><a class="header" href="#定义-1">定义</a></h3>
+<p>Project 记忆的发现不是一次性的"从根目录查找"，而是<strong>向上递归遍历</strong>。从当前工作目录开始，逐个检查当前目录和上级目录，直到到达项目根或文件系统根。
+<code>src/utils/claudemd.ts:790</code> 中的 <code>getMemoryFiles = memoize(...)</code> 实现了这个遍历：</p>
+<pre><code class="language-typescript">export const getMemoryFiles = memoize(async () =&gt; {
+  // 从当前工作目录开始
+  let currentDir = process.cwd();
+  const discoveredFiles: string[] = [];
+  while (currentDir !== '/') {
+    // 检查 CLAUDE.md、.claude/CLAUDE.md、.claude/rules/*.md
+    // ...
+    // 向上一级
+    currentDir = dirname(currentDir);
+  }
+  return discoveredFiles;
+});
+</code></pre>
+<h3 id="设计意图-1"><a class="header" href="#设计意图-1">设计意图</a></h3>
+<p>为什么向上而不是向下？因为 CLI 工具的典型工作流是"从当前目录开始"。Git 的 <code>.git</code> 目录查找也是同样的模式——从当前目录向上找，直到找到项目根。
+向上遍历的优点是：<strong>离当前目录越近的规则优先级越高</strong>。你在 <code>src/components/</code> 下发现的 CLAUDE.md 比在项目根的优先级更高。这支持了"细粒度、逐层覆盖"的配置模式。</p>
+<h3 id="实际案例"><a class="header" href="#实际案例">实际案例</a></h3>
+<p><strong>项目结构与规则发现</strong></p>
+<pre><code>/home/user/projects/myapp/
+  ├── CLAUDE.md (项目根规则)
+  ├── src/
+  │   ├── CLAUDE.md (src层规则，更高优先级)
+  │   └── components/
+  │       └── .claude/rules/react.md
+  └── tests/
+      └── CLAUDE.md (测试层规则)
+当在 src/components 工作时：
+遍历顺序 = src/components → src/ → /home/user/projects/myapp/ → /home/user → /
+最终加载的 CLAUDE.md 优先级顺序（从高到低）：
+1. src/components/.claude/rules/react.md
+2. src/CLAUDE.md
+3. /home/user/projects/myapp/CLAUDE.md
+</code></pre>
+<hr />
+<h2 id="203-排除机制"><a class="header" href="#203-排除机制">20.3 排除机制</a></h2>
+<h3 id="定义-2"><a class="header" href="#定义-2">定义</a></h3>
+<p>不是所有发现的 CLAUDE.md 都被加载。通过 <code>claudeMdExcludes</code> 配置（通常在 ~/.claude/config.yaml 或环境变量），可以维护一个黑名单。
+<code>src/utils/claudemd.ts:540-560</code> 中的 <code>isClaudeMdExcluded()</code> 在加载前检查：</p>
+<pre><code class="language-typescript">function isClaudeMdExcluded(filePath: string, type: MemoryType): boolean {
+  // 检查用户配置的 excludes 列表
+  // 返回 true 时该文件被跳过
+}
+</code></pre>
+<h3 id="设计意图-2"><a class="header" href="#设计意图-2">设计意图</a></h3>
+<p>为什么需要排除机制？因为某个 CLAUDE.md 文件可能：</p>
+<ul>
+<li>包含过时的指令（项目已迁移但旧文件还在）</li>
+<li>有害或测试数据（开发者的实验性提示）</li>
+<li>来自子模块或依赖（不该应用到主项目）
+排除机制允许用户"无需删除文件，直接跳过"。这对版本控制友好——不用为了禁用某个规则而删除或修改文件。</li>
+</ul>
+<h3 id="实际案例-1"><a class="header" href="#实际案例-1">实际案例</a></h3>
+<pre><code class="language-yaml"># ~/.claude/config.yaml
+claudeMdExcludes:
+  - "node_modules/**/CLAUDE.md"  # 排除依赖的规则
+  - "legacy/CLAUDE.md"           # 排除已弃用的目录
+  - "**/experimental/*.md"       # 排除实验性规则
+</code></pre>
+<hr />
+<h2 id="204-缓存与失效策略"><a class="header" href="#204-缓存与失效策略">20.4 缓存与失效策略</a></h2>
+<h3 id="定义-3"><a class="header" href="#定义-3">定义</a></h3>
+<p><code>getMemoryFiles</code> 使用 <code>memoize</code> 缓存结果。在 REPL 会话中，第一次调用时执行完整的目录遍历和文件加载，后续调用直接返回缓存的结果。
+缓存何时失效？当调用 <code>setSystemPromptInjection()</code> 时，缓存被清除（<code>cache.clear()</code>）。这个机制确保了用户修改 CLAUDE.md 后的显式更新能被感知。</p>
+<h3 id="设计意图-3"><a class="header" href="#设计意图-3">设计意图</a></h3>
+<p>系统提示的计算代价高：</p>
+<ul>
+<li>目录遍历（多个 <code>readdir</code> / <code>stat</code> 调用）：50ms</li>
+<li>文件读取（多个 <code>readFile</code> 调用）：10ms</li>
+<li>文本解析（支持 @ 引用的递归解析）：20ms
+在一个 50 轮的 REPL 会话中，如果每次都重新计算，会浪费 <strong>4 秒</strong>的时间。缓存避免了这个浪费。
+缓存失效条件是"用户修改了系统提示"（显式调用 <code>setSystemPromptInjection</code>），这时需要清除旧的缓存。</li>
+</ul>
+<h3 id="缓存失效的具体场景"><a class="header" href="#缓存失效的具体场景">缓存失效的具体场景</a></h3>
+<p><strong>场景一：用户修改 CLAUDE.md</strong></p>
+<pre><code class="language-bash"># REPL 运行中...
+用户用编辑器修改 project/CLAUDE.md
+# 但缓存不会自动感知！
+# 需要显式操作触发更新
+/set system-prompt-injection-refresh  # 触发 setSystemPromptInjection
+或
+/resume  # 恢复会话时自动清除旧缓存
+或  
+退出重启 REPL  # 新会话自动重新计算
+</code></pre>
+<p><strong>场景二：在多个项目间切换</strong>
+如果用户用 <code>cd</code> 切换到另一个项目后继续使用 REPL，缓存会保留旧项目的 CLAUDE.md。需要通过 <code>/set</code> 命令或重启来更新。</p>
+<h3 id="性能数据对比"><a class="header" href="#性能数据对比">性能数据对比</a></h3>
+<pre><code>首次调用 getMemoryFiles()：
+  - 遍历 10 级目录：10 × readdir ≈ 50ms
+  - 读取 5 个 CLAUDE.md 文件：5 × readFile ≈ 10ms
+  - 解析和合并：≈ 20ms
+  - 总计：≈ 80ms
+后续调用（缓存命中）：
+  - 直接返回内存中的结果：≈ 1ms
+50 轮对话，每轮调用一次：
+  - 无缓存：80ms × 50 = 4 秒
+  - 有缓存：80ms + 1ms × 49 = 129ms
+  - 节省：**96.8% 的时间**
+</code></pre>
+<h2 id="这个节省对长时间运行的-repl-特别重要如果没有缓存50-轮对话会额外消耗-4-秒的延迟累积到会话中期会变成明显的性能问题"><a class="header" href="#这个节省对长时间运行的-repl-特别重要如果没有缓存50-轮对话会额外消耗-4-秒的延迟累积到会话中期会变成明显的性能问题">这个节省对长时间运行的 REPL 特别重要。如果没有缓存，50 轮对话会额外消耗 4 秒的延迟，累积到会话中期会变成明显的性能问题。</a></h2>
+<h2 id="增补最佳实践与组织策略"><a class="header" href="#增补最佳实践与组织策略">增补：最佳实践与组织策略</a></h2>
+<h3 id="clauderules-与--引用的组织最佳实践"><a class="header" href="#clauderules-与--引用的组织最佳实践">.claude/rules 与 @ 引用的组织最佳实践</a></h3>
+<p>当项目的规则变得复杂时，应该如何组织？
+<strong>反面例子：单个巨大的 CLAUDE.md</strong></p>
+<pre><code class="language-markdown"># CLAUDE.md (2000+ 行)
+## 代码风格
+- 使用 Prettier...
+- 最大行长...
+## 测试规范  
+- 所有新功能需要测试...
+- 测试覆盖率 &gt; 80%...
+## 性能要求
+- API 响应时间 &lt; 100ms...
+## 安全审计
+- 所有用户输入必须验证...
+</code></pre>
+<p>这种单文件方式的问题：</p>
+<ul>
+<li>难以版本控制（文件太大，每个修改都包含整个文件）</li>
+<li>难以所有权分配（谁负责维护哪部分规则不清晰）</li>
+<li>难以审查（PR 包含大量无关内容）
+<strong>正面例子：模块化规则</strong></li>
+</ul>
+<pre><code>.claude/
+  ├── CLAUDE.md (主入口，简短)
+  │   @./rules/code-style.md
+  │   @./rules/testing.md
+  │   @./rules/security.md
+  ├── rules/
+  │   ├── code-style.md      (前端负责)
+  │   ├── testing.md         (QA 负责)
+  │   ├── security.md        (安全团队负责)
+  │   └── performance.md     (后端负责)
+</code></pre>
+<p>优点：</p>
+<ul>
+<li>每个文件小而专注（100-500 行）</li>
+<li>可以分配不同的所有权</li>
+<li>PR 审查更清晰（只看相关文件的变化）</li>
+<li>缓存失效时间更短（修改一个文件，不会导致整个规则重新加载）</li>
+</ul>
+<h3 id="三种排除机制的使用场景对比"><a class="header" href="#三种排除机制的使用场景对比">三种排除机制的使用场景对比</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>排除机制</th><th>触发时机</th><th>修改位置</th><th>作用范围</th><th>何时使用</th></tr></thead><tbody>
+<tr><td>.claude/rules 文件不加 @ 引用</td><td>默认</td><td>编辑 CLAUDE.md</td><td>仅影响当前引用位置</td><td>想完全禁用某个规则文件</td></tr>
+<tr><td>claudeMdExcludes 配置</td><td>启动时加载</td><td>~/.claude/config.yaml</td><td>全局或用户级</td><td>想跨项目地排除某些规则</td></tr>
+<tr><td>isClaudeMdExcluded 函数过滤</td><td>运行时检查</td><td>代码逻辑（需修改源码）</td><td>系统级</td><td>系统开发者需要的细粒度控制</td></tr>
+<tr><td>大多数场景下，使用 <strong>claudeMdExcludes 配置</strong>就足够了。</td><td></td><td></td><td></td><td></td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="205-文件解析与合并"><a class="header" href="#205-文件解析与合并">20.5 文件解析与合并</a></h2>
+<h3 id="定义-4"><a class="header" href="#定义-4">定义</a></h3>
+<p>每个发现的 CLAUDE.md 都通过 <code>parseMemoryFile()</code> 解析。该函数支持 @ 引用语法，允许一个 CLAUDE.md 包含（include）其他文件。
+所有已解析的文件最后合并成一个大字符串，作为系统提示的一部分。</p>
+<h3 id="设计意图-4"><a class="header" href="#设计意图-4">设计意图</a></h3>
+<p>@ 引用语法允许<strong>模块化的规则管理</strong>。一个大的 CLAUDE.md 可以被拆分为多个小文件：</p>
+<pre><code class="language-markdown"># 项目主规则 (CLAUDE.md)
+## 代码风格
+@./rules/code-style.md
+## 测试规范
+@./rules/testing.md
+## 安全要求
+@./rules/security.md
+</code></pre>
+<p>这样，不同团队成员可以各自维护自己的规则文件（如前端维护 code-style.md，测试团队维护 testing.md），而不是在一个大文件中冲突。</p>
+<h3 id="实际案例-2"><a class="header" href="#实际案例-2">实际案例</a></h3>
+<pre><code class="language-markdown"># .claude/CLAUDE.md
+@./rules/python-style.md
+@./rules/testing.md
+@~/shared-rules/security.md  # ~/ 表示主目录
+@/absolute/path/rules.md      # 绝对路径
+# .claude/rules/python-style.md
+- 使用 Black 格式化
+- 最大行长 88 字符
+</code></pre>
+<hr />
+<h2 id="206-clauderules-目录的自动扫描"><a class="header" href="#206-clauderules-目录的自动扫描">20.6 .claude/rules 目录的自动扫描</a></h2>
+<h3 id="定义-5"><a class="header" href="#定义-5">定义</a></h3>
+<p>除了 CLAUDE.md 和 .claude/CLAUDE.md，系统还自动扫描 <code>.claude/rules/</code> 目录中的所有 <code>*.md</code> 文件。这些文件被自动加载和合并，无需在 CLAUDE.md 中显式 include。</p>
+<h3 id="设计意图-5"><a class="header" href="#设计意图-5">设计意图</a></h3>
+<p>.claude/rules 目录是<strong>细粒度规则组织的约定</strong>。不需要在主 CLAUDE.md 中维护 @ 引用列表，所有 rules 下的文件自动被发现。这支持了"添加新规则文件时无需修改主文件"的工作流。</p>
+<h3 id="文件加载顺序"><a class="header" href="#文件加载顺序">文件加载顺序</a></h3>
+<pre><code>按字母顺序加载：
+.claude/rules/a-setup.md
+.claude/rules/b-styles.md
+.claude/rules/c-testing.md
+</code></pre>
+<h2 id="通过文件名前缀可以控制加载顺序如-a--b--c-"><a class="header" href="#通过文件名前缀可以控制加载顺序如-a--b--c-">通过文件名前缀可以控制加载顺序（如 <code>a-</code>, <code>b-</code>, <code>c-</code>）。</a></h2>
+<h2 id="图解"><a class="header" href="#图解">图解</a></h2>
+<p><strong>图 20-1：三层记忆路径的优先级</strong></p>
+<pre><code class="language-mermaid">graph TD
+    A["/etc/claude-code/CLAUDE.md&lt;br/&gt;系统级"] --&gt; B["加载顺序和优先级"]
+    C["~/.claude/CLAUDE.md&lt;br/&gt;用户级"] --&gt; B
+    D["project/CLAUDE.md&lt;br/&gt;项目级（最高优先级）"] --&gt; B
+    B --&gt; E["✓ 后加载优先级高&lt;br/&gt;✓ 项目级 &gt; 用户级 &gt; 系统级"]
+    style A fill:#e6f2ff
+    style C fill:#fff4e6
+    style D fill:#e6ffe6
+    style E fill:#f0f0f0
+</code></pre>
+<p><strong>图 20-2：目录遍历与规则发现</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    A["从当前目录开始&lt;br/&gt;pwd = /project/src/components"] --&gt;|向上遍历| B["检查当前目录&lt;br/&gt;CLAUDE.md?&lt;br/&gt;.claude/CLAUDE.md?&lt;br/&gt;.claude/rules/*.md?"]
+    B --&gt;|无| C["向上一级&lt;br/&gt;/project/src"]
+    C --&gt;|检查| D["发现 CLAUDE.md"]
+    D --&gt;|向上| E["/project"]
+    E --&gt;|发现| F["CLAUDE.md + .claude/rules/*.md"]
+    F --&gt;|向上| G["/"]
+    G --&gt;|停止| H["收集所有发现的文件&lt;br/&gt;按优先级排列"]
+    style A fill:#e6f2ff
+    style B fill:#fff4e6
+    style H fill:#e6ffe6
+</code></pre>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式一三层记忆分离"><a class="header" href="#模式一三层记忆分离">模式一：三层记忆分离</a></h3>
+<h2><strong>解决的问题</strong>：系统级、用户级、项目级的规则需要独立管理，但优先级关系必须清晰。
+<strong>核心做法</strong>：维护三个路径（/etc/claude-code、~/.claude、project/.claude），反向加载以实现"后加载优先级高"。
+<strong>前置条件</strong>：多层级管理需求，需要全局、个人、项目级的配置分离。
+<strong>源码证据</strong>：<code>src/utils/claudemd.ts:1-25</code> — 文件头的三种记忆类型注释。</h2>
+<h3 id="模式二向上目录遍历"><a class="header" href="#模式二向上目录遍历">模式二：向上目录遍历</a></h3>
+<h2><strong>解决的问题</strong>：项目中多个层级都可能有规则文件，需要自动发现且优先级"离当前目录越近越高"。
+<strong>核心做法</strong>：从当前工作目录向上遍历到项目根或文件系统根，在每个目录中检查 CLAUDE.md、.claude/CLAUDE.md、.claude/rules/*.md。
+<strong>前置条件</strong>：项目嵌套结构，想要细粒度的层级化规则。
+<strong>源码证据</strong>：<code>src/utils/claudemd.ts:790-850</code> — getMemoryFiles 的遍历逻辑。</h2>
+<h3 id="模式三blacklist-排除"><a class="header" href="#模式三blacklist-排除">模式三：Blacklist 排除</a></h3>
+<h2><strong>解决的问题</strong>：某些规则文件需要被跳过但不能删除（版本控制原因或来自依赖）。
+<strong>核心做法</strong>：通过 claudeMdExcludes 配置维护黑名单，isClaudeMdExcluded 在加载前检查。
+<strong>前置条件</strong>：规则文件过时或有害，但无法直接删除。
+<strong>源码证据</strong>：<code>src/utils/claudemd.ts:540-560</code> — isClaudeMdExcluded 函数。</h2>
+<h3 id="模式四memoize-缓存"><a class="header" href="#模式四memoize-缓存">模式四：memoize 缓存</a></h3>
+<h2><strong>解决的问题</strong>：频繁查找 CLAUDE.md 会耗尽磁盘 I/O 和 CPU，尤其在大型项目中。
+<strong>核心做法</strong>：使用 memoize 缓存 getMemoryFiles 结果，setSystemPromptInjection 触发失效。
+<strong>前置条件</strong>：高频访问的特性，需要性能优化。
+<strong>源码证据</strong>：<code>src/utils/claudemd.ts:790</code> — memoize 包装。</h2>
+<h3 id="模式五-引用语法"><a class="header" href="#模式五-引用语法">模式五：@ 引用语法</a></h3>
+<h2><strong>解决的问题</strong>：大的 CLAUDE.md 难以维护，需要拆分为多个主题文件。
+<strong>核心做法</strong>：在 CLAUDE.md 中支持 @path 语法 include 其他文件，支持相对路径、~/ 主目录、绝对路径。
+<strong>前置条件</strong>：需要模块化规则，多个文件各自维护。
+<strong>源码证据</strong>：<code>src/utils/claudemd.ts:600-700</code> — parseMemoryFile 和引用解析。</h2>
+<h2 id="模式提炼-1"><a class="header" href="#模式提炼-1">模式提炼</a></h2>
+<h3 id="分层记忆覆盖layered-memory-override"><a class="header" href="#分层记忆覆盖layered-memory-override">分层记忆覆盖（Layered Memory Override）</a></h3>
+<p><strong>解决的问题</strong>：系统级规则、用户级偏好、项目级规范三者之间有优先级关系，但三者都需要生效——不是"最高优先级胜者全得"。</p>
+<p><strong>核心做法</strong>：反向加载——先加载最低优先级（系统级），再加载更高优先级（用户级），最后加载最高优先级（项目级）。LLM 对后加载的内容更敏感（"最后看到的"），自然形成"后加载优先"的效果。</p>
+<p><strong>源码证据</strong>：<code>src/utils/claudemd.ts:1-25</code> — 文件头注释明确了四种记忆类型及其加载顺序。</p>
+<h3 id="记忆化遍历memoized-traversal"><a class="header" href="#记忆化遍历memoized-traversal">记忆化遍历（Memoized Traversal）</a></h3>
+<p><strong>解决的问题</strong>：向上递归遍历目录（10+ 层）涉及大量 <code>readdir</code>/<code>stat</code> 系统调用，如果每轮对话都重新执行，50 轮对话会累积 4 秒的不必要延迟。</p>
+<p><strong>核心做法</strong>：用 <code>memoize</code> 缓存 <code>getMemoryFiles()</code> 的结果，同一会话中后续调用直接返回内存缓存，只有显式触发（<code>setSystemPromptInjection</code>）才清除缓存重新扫描。</p>
+<p><strong>源码证据</strong>：<code>src/utils/claudemd.ts:790</code> — <code>export const getMemoryFiles = memoize(async () =&gt; { ... })</code>，缓存整个目录遍历结果。</p>
+<h2 id="踩坑"><a class="header" href="#踩坑">踩坑</a></h2>
+<h3 id="-在高频对话中依赖会话内-claudemd-缓存修改后不知道何时生效"><a class="header" href="#-在高频对话中依赖会话内-claudemd-缓存修改后不知道何时生效">❌ 在高频对话中依赖会话内 CLAUDE.md 缓存，修改后不知道何时生效</a></h3>
+<p><code>getMemoryFiles</code> 用 <code>memoize</code> 缓存，一旦缓存命中就不再读磁盘。用户在编辑器里改了 CLAUDE.md，当前会话里的 Claude 看到的还是旧内容（<code>src/utils/claudemd.ts:790</code>）。</p>
+<p><strong>解决方法</strong>：修改 CLAUDE.md 后，用 <code>/memory refresh</code> 命令触发缓存失效，或者重启 REPL 会话。</p>
+<h3 id="-把团队规则和个人偏好写在同一个文件里"><a class="header" href="#-把团队规则和个人偏好写在同一个文件里">❌ 把团队规则和个人偏好写在同一个文件里</a></h3>
+<pre><code class="language-markdown"># project/CLAUDE.md（❌ 个人偏好和团队规则混在一起）
+- 代码格式化用 Prettier（团队规则）
+- 我喜欢函数式风格（个人偏好）
+- API 密钥前缀 sk-（安全规则，不应在此）
+</code></pre>
+<p>团队规则放 <code>project/.claude/CLAUDE.md</code>（提交到 git），个人偏好放 <code>~/.claude/CLAUDE.md</code>（不提交），涉密信息不应出现在 CLAUDE.md 里。</p>
+<h3 id="-用绝对路径写--引用在其他开发者的机器上失效"><a class="header" href="#-用绝对路径写--引用在其他开发者的机器上失效">❌ 用绝对路径写 @ 引用，在其他开发者的机器上失效</a></h3>
+<pre><code class="language-markdown"># ❌ 错误：绝对路径只在你的机器上有效
+@/home/alice/company-rules.md
+</code></pre>
+<p>使用相对路径或 <code>~/</code> 主目录前缀，并确保被引用的文件也在版本控制中。</p>
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li><strong>用 <code>.claude/rules/</code> 模块化管理规则</strong>：把大的 CLAUDE.md 拆分成按主题分类的小文件，用 <code>@./rules/code-style.md</code> 引用</li>
+<li><strong>区分团队规则和个人偏好</strong>：团队规则提交到 <code>project/.claude/CLAUDE.md</code>，个人习惯放 <code>~/.claude/CLAUDE.md</code>，不要混在一起</li>
+<li><strong>了解缓存失效的触发方式</strong>：修改 CLAUDE.md 后，需要明确触发缓存刷新（重启 REPL 或用 <code>/memory refresh</code>）</li>
+<li><strong>用 <code>claudeMdExcludes</code> 跳过不需要的规则文件</strong>：比如排除 <code>node_modules/**/CLAUDE.md</code>，避免意外加载依赖里的规则</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part5/ch19.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part5/ch21.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part5/ch19.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part5/ch21.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../theme/mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

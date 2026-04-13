@@ -1,0 +1,10 @@
+graph TD
+    A["认证流程对比"]
+    A --> B["OAuth"]
+    B --> B1["用户打开浏览器<br/>登录 OAuth 提供商<br/>授予 Claude Code<br/>交换 token"]
+    A --> C["xaa"]
+    C --> C1["企业网络中<br/>用户已登录<br/>Claude Code 请求<br/>企业 token<br/>交换 MCP token"]
+    B1 --> B2["用户体验<br/>需要重定向到浏览器<br/>可能多次登录"]
+    C1 --> C2["用户体验<br/>透明、无需干预<br/>一次登录即可<br/>所有应用"]
+    style B2 fill:#ffe6e6
+    style C2 fill:#e6ffe6

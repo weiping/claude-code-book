@@ -1,0 +1,70 @@
+# 第14章写作计划
+
+**批次**：批次 4
+**章节**：ch14 — 工具注册与条件加载
+**风格**：autopsy 工程师解剖
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/tools.ts | getAllBaseTools(193行)、条件展开逻辑(210-270行)、assembleToolPool(345行) | 193-360行 |
+| 2 | src/services/mcp/client.ts | getMcpToolsCommandsAndResources 或 connectToServer | 595-630行 |
+
+```bash
+sed -n '193p' src/tools.ts
+sed -n '345p' src/tools.ts
+```
+
+## 章节骨架
+
+### 开篇
+- 开篇触发点：「普通用户用 `claude` 命令，ant 内部用户也用 `claude` 命令——两者的工具列表里有哪些不同的工具？答案不在配置文件里，在 `getAllBaseTools()` 的条件展开里。」
+- 三个问题：1）工具集由哪几类来源组成？2）MCP 工具什么时候插入？3）feature flag 控制的工具和 USER_TYPE 控制的工具有什么区别？
+
+### 节 14.1：为什么工具集是运行时动态组装的，而不是静态列表？
+- 核心主张：同一份源码需要在不同环境（内部/外部/SDK/远程）提供不同的工具集，静态列表无法满足；条件展开在编译期 DCE 和运行期条件之间选择最合适的隔离级别
+- 源码锚点：`src/tools.ts:193`（getAllBaseTools 函数）、`src/tools.ts:214`（USER_TYPE ant 条件）
+- 包含元素：工具集四来源的 Mermaid flowchart
+- 权衡分析：静态列表 vs 动态组装 vs 插件注册表
+- 估计字数：600字
+
+### 节 14.2：USER_TYPE 条件工具——为什么不用 feature flag？
+- 核心主张：USER_TYPE 是运行期环境变量检查（非编译期 DCE），因为某些 ant-only 工具（如 REPLTool）在外部产物中存在但不应被调用；而 feature flag 门控的工具在外部产物中根本不存在
+- 源码锚点：`src/tools.ts:214-215`（USER_TYPE ant 门控的 ConfigTool/TungstenTool）
+- 包含元素：USER_TYPE vs feature flag 的对比表
+- 估计字数：500字
+
+### 节 14.3：assembleToolPool——MCP 工具如何热插入？
+- 核心主张：基础工具在启动时固定，MCP 工具在连接建立后通过 assembleToolPool 动态合并；MCP 连接失败时对应工具集合自动为空，不影响其他工具
+- 源码锚点：`src/tools.ts:345`（assembleToolPool）、`src/tools.ts:352`（filterToolsByDenyRules 对 MCP 工具的过滤）
+- 包含元素：Mermaid 图展示工具池最终组装
+- 估计字数：500字
+
+### 节 14.4：getToolsForDefaultPreset——工具名单对 prompt cache 的影响
+- 核心主张：工具名单是 prompt cache key 的一部分，频繁变化（如每次 MCP 连接状态变化）会破坏缓存命中率；注释里有明确说明
+- 源码锚点：`src/tools.ts:179`（getToolsForDefaultPreset）、注释中的 Statsig 链接说明
+- 估计字数：400字
+
+### 章末：模式提炼
+| 模式名 | 解决的问题 | 核心做法 | 前置条件 | 源码证据 |
+|--------|-----------|---------|---------|---------|
+| 分层条件工具集（Layered Conditional Toolset）| 不同环境需要不同工具集，且隔离强度要求不同 | 编译期 DCE 处理代码级隔离，运行期条件处理实例级差异，MCP 动态插入处理第三方扩展 | 有多个用户群/运行环境，且工具可用性因环境而异 | `src/tools.ts:193,214,345` |
+| Cache-Key 稳定性约束（Cache-Key Stability Constraint）| 工具名单变化导致 prompt cache 失效 | 将影响 cache key 的工具名单固定化，MCP 等动态部分通过其他机制处理 | 需要最大化 prompt cache 命中率 | `src/tools.ts:179` |
+
+## 图表清单
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图14-1 | 工具集四来源组装图 | Mermaid flowchart | 基础工具+USER_TYPE工具+feature工具+MCP工具 → 最终工具池 | 14.1 |
+| 图14-2 | USER_TYPE vs feature flag 对比 | 表格 | 隔离方式/代码在产物中/可被绕过/适用场景 | 14.2 |
+
+## 写作前 checklist
+```bash
+sed -n '193,230p' src/tools.ts      # getAllBaseTools
+sed -n '345,360p' src/tools.ts      # assembleToolPool
+sed -n '179,192p' src/tools.ts      # getToolsForDefaultPreset
+```
+
+## 估算
+- 目标字数：2200-2600字
+- 预计轮次：6轮（含2轮验证）

@@ -1,0 +1,150 @@
+# 第 22 章写作计划
+
+**批次**：批次 5（第五篇：提示词工程）
+**章节**：ch22 — 第22章：模型自动选择——Opus、Sonnet 与 Haiku 的路由逻辑
+**风格**：autopsy（工程师解剖）
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/model/model.ts | getDefaultMainLoopModelSetting 函数与订阅级别判断 | 行号 178-200 |
+| 2 | src/utils/model/model.ts | getDefaultOpusModel、getDefaultSonnetModel、getDefaultHaikuModel | 行号 105-145 |
+| 3 | src/utils/model/model.ts | opusplan/sonnetplan 别名处理与 Plan 模式触发 | 行号 152-175 |
+| 4 | src/utils/model/model.ts | getSmallFastModel 与 Haiku 使用场景 | 行号 36-50 |
+| 5 | src/bootstrap/state.ts | getMainLoopModelOverride、setMainLoopModelOverride 用户覆盖 | 行号 350-400 |
+| 6 | src/utils/subscription.ts | isMaxSubscriber、isProSubscriber 等订阅级别判断函数 | 行号 1-100 |
+
+验证文件存在：
+```bash
+ls -l src/utils/model/model.ts \
+      src/bootstrap/state.ts \
+      src/utils/subscription.ts
+```
+
+## 章节骨架
+
+### 开篇（必填）
+- **开篇触发点**：同样的指令，Pro 用户和 Max 用户运行，Claude Code 使用的是同一个模型吗？如果不是，怎么决定谁用 Opus、谁用 Sonnet？如果用户用 `/model` 命令改了，又会影响什么？
+- **工程问题**：Claude 模型有多个版本（Opus、Sonnet、Haiku），不同订阅级别支持不同模型。系统需要根据订阅级别、运行模式、用户命令自动选择最合适的模型。这是一个多层次的路由问题。
+- **权衡**：性能（Sonnet 快，Opus 慢）vs 能力（Opus 最强，Sonnet 次之，Haiku 最快最轻）vs 成本（Opus 贵，Sonnet 中等，Haiku 最便宜）vs 用户期望
+
+### 节 22.1：订阅级别与默认模型路由
+- **核心主张**：系统根据订阅级别自动选择默认模型：Max/TeamPremium 订阅 → Opus；Pro/Enterprise/PAYG → Sonnet；ant 内部用户 → 配置或 Opus 1M。
+- **源码锚点**：`src/utils/model/model.ts:178-200` — getDefaultMainLoopModelSetting 中的订阅级别判断逻辑
+- **概念层次**：业务规则 / 代码实现 / 实际例子
+- **权衡分析**：为什么这样分级？Opus 是最强模型，合理分配给付费最高的用户（Max/TeamPremium）。Pro 用户获得 Sonnet，性能足以应对大多数编程任务。这种分级最大化价值分化。
+- **包含元素**：订阅级别与模型的对应表、源码中的条件判断展示、用户感受的差异说明
+- **估计字数**：600-800 字
+- **对应 spec 场景**：verify_subscription_routing_table
+
+### 节 22.2：opusplan / sonnetplan 别名与 Plan 模式升级
+- **核心主张**：系统支持 opusplan 和 sonnetplan 两个特殊别名。设置 `/model opusplan` 后，只有在 Plan 模式运行时才使用 Opus；其他模式仍用 Sonnet。这允许用户在"需要最强模型的复杂规划"和"日常快速对话"之间切换。
+- **源码锚点**：`src/utils/model/model.ts:152-175` — opusplan 别名的条件判断：`getUserSpecifiedModelSetting() === 'opusplan' && isPlanMode() ? getDefaultOpusModel() : ...`
+- **概念层次**：别名设计 / 条件路由 / 使用场景
+- **权衡分析**：为什么需要 opusplan 而不是直接设置 `--model opus`？opusplan 的设计允许用户在通常模式下用 Sonnet 节省成本，只在 Plan 模式（需要深度推理规划项目修改）时升级到 Opus。这是成本与能力的动态平衡。
+- **包含元素**：条件判断的伪代码、模式转换时模型切换的示意图、成本对比表格
+- **估计字数**：600-800 字
+- **对应 spec 场景**：verify_opusplan_alias
+
+### 节 22.3：getSmallFastModel 与 Haiku 的快速任务场景
+- **核心主张**：系统通过 getSmallFastModel() 获取 Haiku（或用户配置的快速模型）。Haiku 被用于不需要深度推理的快速任务，如快速分类、简短问题判断、正则表达式生成等。
+- **源码锚点**：`src/utils/model/model.ts:36-50` — getSmallFastModel 函数定义与使用场景注释
+- **概念层次**：模型选择 / 使用场景 / 成本节省
+- **权衡分析**：Haiku 的推理能力远弱于 Opus，为什么还要用？某些任务（如"这个文件名是否符合规范"）不需要 Opus 的推理能力，Haiku 足够且快得多（50ms vs 500ms）、成本低 10 倍。
+- **包含元素**：Haiku 使用场景列表、任务类型与模型选择的决策表、延迟与成本对比
+- **估计字数**：500-700 字
+- **对应 spec 场景**：verify_haiku_use_cases
+
+### 节 22.4：用户模型覆盖与优先级链
+- **核心主张**：系统的模型选择优先级链是：用户显式覆盖（`--model` 参数或 `/model` 命令）> 别名设置（opusplan/sonnetplan） > 订阅级别路由 > 默认。用户覆盖始终最高优先级。
+- **源码锚点**：`src/bootstrap/state.ts:getMainLoopModelOverride/setMainLoopModelOverride` — 全局状态中的用户覆盖存储
+- **概念层次**：优先级设计 / 覆盖生效范围 / 状态管理
+- **权衡分析**：为什么用户覆盖优先级最高？尊重用户意图是 CLI 工具的基本原则。用户明确指定模型时，系统应该无条件执行，而非根据模式或订阅猜测。
+- **包含元素**：优先级链的流程图、覆盖生效范围说明（全会话 vs 单请求）、状态切换的生命周期
+- **估计字数**：500-700 字
+- **对应 spec 场景**：verify_user_override_priority
+
+### 节 22.5：模型名验证与错误处理
+- **核心主张**：系统设置模型时进行验证，确保指定的模型名称有效。如果用户输入了无效的模型名（如 `/model gpt-4`），系统会检查订阅是否支持、模型名是否存在，然后返回有意义的错误提示。
+- **源码锚点**：`src/utils/model/model.ts` — validateModel 或类似的验证函数
+- **概念层次**：输入验证 / 错误消息 / 用户体验
+- **权衡分析**：为什么要验证而不是直接发送请求到 API（让 API 返回错误）？本地验证快速反馈（10ms vs 500ms），同时能提供有针对性的建议（"你的订阅不支持 Opus"vs "Model not found"）。
+- **包含元素**：有效模型名列表（按订阅级别）、常见错误提示示例
+- **估计字数**：400-600 字
+- **对应 spec 场景**：verify_invalid_model_name_handling
+
+### 节 22.6：模型版本与 1M 上下文窗口
+- **核心主张**：某些模型支持 1M（百万 token）上下文窗口。系统可能会自动选择 1M 版本（用 `[1m]` 后缀表示）或需要用户显式选择。该设计平衡了成本（1M 窗口的 cache 成本更高）和能力（支持处理超大文件或长对话历史）。
+- **源码锚点**：`src/utils/model/model.ts:189-195` — isOpus1mMergeEnabled 判断与 `[1m]` 后缀的处理
+- **概念层次**：模型变体 / 后缀表示法 / 自动选择逻辑
+- **权衡分析**：1M 窗口为什么需要显式选择而不是默认？1M 模型的 cache 成本（写入 8x 倍）和延迟更高，适合处理"确实需要超长窗口"的任务，而不是日常使用。
+- **包含元素**：模型名与后缀的关系表、1M 窗口与标准窗口的成本对比、何时使用 1M 的建议
+- **估计字数**：400-600 字
+- **对应 spec 场景**：verify_source_citations_exist
+
+### 章末：模式提炼（必填）
+
+| 模式名 | 解决的问题 | 核心做法（一句话） | 前置条件 | 源码证据锚点 |
+|--------|-----------|-----------------|---------|------------|
+| 订阅级别路由 | 不同付费用户应该用不同模型 | 实现订阅级别查询（isMaxSubscriber、isProSubscriber），根据结果返回对应模型 | 多个订阅级别 | `src/utils/model/model.ts:178-200` |
+| opusplan 动态升级 | 大部分时间用 Sonnet，特定模式需要 Opus | 定义 opusplan 别名，Plan 模式时返回 Opus，其他模式返回 Sonnet | 成本与能力的权衡 | `src/utils/model/model.ts:152-175` |
+| Haiku 快速通道 | 快速任务不需要 Opus 的推理能力 | 对非关键路径任务调用 getSmallFastModel() 获取 Haiku，降低延迟和成本 | 任务分类清晰 | `src/utils/model/model.ts:36-50` |
+| 优先级链路由 | 多种模型选择方式需要统一 | 实现优先级链（用户覆盖 > 别名 > 订阅 > 默认），按优先级逐级尝试 | 多层级的选择方式 | `src/bootstrap/state.ts:getMainLoopModelOverride` |
+| 本地模型验证 | 无效模型名导致 API 错误浪费 | 在设置模型前本地验证名称和订阅支持，快速反馈和有针对性的建议 | 用户经常输入无效值 | `src/utils/model/model.ts` |
+
+### 章末：用户能做什么（必填）
+
+阅读本章后，工程师能做到：
+1. **理解自己的模型分配**：根据订阅级别，知道默认使用什么模型、有哪些 Plan 模式的别名
+2. **优化成本与能力的平衡**：使用 opusplan 别名，在通常情况下用 Sonnet 节省成本，只在需要深度规划时升级到 Opus
+3. **利用 Haiku 快速处理**：识别哪些任务适合 Haiku（快速判断、分类），主动调用 getSmallFastModel() 降低延迟
+4. **诊断模型选择问题**：当 Claude Code 使用的模型不符合预期时，能追踪优先级链（用户覆盖 > 别名 > 订阅 > 默认）
+5. **设计多模型架构**：在自己的系统中实现类似的优先级链路由，支持用户选择、默认降级、快速通道等多种模式
+6. **处理模型不可用情况**：理解本地验证的必要性，为自己的系统实现"模型名验证 + 错误提示"的流程
+7. **利用 1M 上下文窗口**：理解何时需要 1M 模型（超大文件、长对话历史），如何显式选择 1M 版本
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图22-1 | 订阅级别与模型的对应表 | 表格 | Max/TeamPremium/Pro/Enterprise/PAYG 订阅与对应模型的映射 | 22.1 |
+| 图22-2 | opusplan 别名的条件路由 | Mermaid flowchart | 根据 isPlanMode() 和 opusplan 设置，决策返回 Opus 还是 Sonnet | 22.2 |
+| 图22-3 | 模型选择优先级链 | 流程图 | 用户覆盖 → 别名 → 订阅级别路由 → 默认，逐级判断 | 22.4 |
+| 图22-4 | 任务类型与模型选择 | 决策表 | 不同任务类型（规划、编码、快速判断、分类）对应的模型建议 | 22.3 |
+
+## 写作顺序
+
+1. **先写 22.1**（订阅级别路由）— 是本章基础，最直接的业务规则
+2. **写 22.2**（opusplan 别名）— 最重要的用户功能，引入条件路由的概念
+3. **写 22.3**（Haiku 快速通道）— 相对独立，易于理解
+4. **写 22.4**（优先级链）— 整合前面的所有路由方式
+5. **写 22.5**（模型验证）— 错误处理和用户体验
+6. **写 22.6**（1M 上下文）— 高级特性，依赖前面的模型选择理解
+7. **补写模式提炼** — 五个模式自然浮现
+8. **补写开篇** — 写出"为什么重要"
+9. **补写用户能做什么** — 生成 7 条行动建议
+
+## 写作前 checklist
+
+执行以下命令确认所有源码锚点存在：
+```bash
+PROJECT_ROOT="$(pwd)"
+BOOK_ROOT="${PROJECT_ROOT}/book"
+
+# 验证 ch22 的所有源码锚点
+grep -n "getDefaultMainLoopModelSetting" "${PROJECT_ROOT}/src/utils/model/model.ts" | grep -q "178" && echo "✓ getDefaultMainLoopModelSetting 在约 178 行" || grep -n "getDefaultMainLoopModelSetting" "${PROJECT_ROOT}/src/utils/model/model.ts"
+
+grep -n "getDefaultOpusModel\|getDefaultSonnetModel\|getDefaultHaikuModel" "${PROJECT_ROOT}/src/utils/model/model.ts" | head -3
+
+sed -n '152,175p' "${PROJECT_ROOT}/src/utils/model/model.ts" | grep -q "opusplan\|sonnetplan" && echo "✓ opusplan/sonnetplan 别名处理存在" || echo "✗ 不存在"
+
+grep -n "getSmallFastModel" "${PROJECT_ROOT}/src/utils/model/model.ts" | grep -q "36" && echo "✓ getSmallFastModel 在约 36 行" || grep -n "getSmallFastModel" "${PROJECT_ROOT}/src/utils/model/model.ts"
+
+echo "✓ 所有 ch22 锚点检查完毕"
+```
+
+如果任何锚点不存在，重新搜索正确行号：
+```bash
+grep -n "getDefaultMainLoopModelSetting\|opusplan\|getSmallFastModel" "${PROJECT_ROOT}/src/utils/model/model.ts"
+```

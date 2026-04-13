@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant User as 用户（Ctrl+C）
+    participant REPL as REPL
+    participant QE as QueryEngine
+    participant Q as query.ts
+    participant Tool as BashTool
+
+    User->>REPL: 按 Ctrl+C
+    REPL->>QE: interrupt()
+    QE->>QE: this.abortController.abort()
+    Note over QE: 同一个 AbortController
+    QE-->>Q: abortController.signal 触发
+    Q-->>Q: 停止流式读取
+    Q-->>Tool: 传递 signal，终止 shell 进程
+    Q-->>QE: generator 提前结束
+    QE-->>REPL: 对话中断

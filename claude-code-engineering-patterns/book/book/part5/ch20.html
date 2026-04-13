@@ -1,0 +1,475 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 20 章：20+ 事件的生命周期地图——Hooks 全景 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-20-章27-个事件的生命周期地图hooks-全景"><a class="header" href="#第-20-章27-个事件的生命周期地图hooks-全景">第 20 章：27 个事件的生命周期地图——Hooks 全景</a></h1>
+<blockquote>
+<p>"可观测性不是事后加上去的，而是在系统的每个决策点预留的窗口。"</p>
+</blockquote>
+<hr />
+<p>每当 AI 执行一次工具调用，Claude Code 至少触发 3 个精心命名的事件：调用前的 PreToolUse、调用成功后的 PostToolUse、调用失败后的 PostToolUseFailure。将视野扩展到整个会话——从会话启动到子 Agent 管理，从权限决策到配置变更——系统一共预埋了 <strong>27 个事件节点</strong>，构成了一张完整的 Agent 生命周期地图。</p>
+<p>这 27 个事件不是随意堆砌的通知信号，而是按照"可独立拦截"的原则精心划分的：每个节点对应一种特定的执行时机，每种时机允许外部代码注入决策或收集数据。这就是<strong>可观测 Agent 事件总线</strong>（Observable Agent Event Bus）模式——用穷举关键时刻的方式，把一个原本不透明的 AI 行为系统变成可审计、可拦截的编程接口。</p>
+<p>理解这 27 个事件的分组逻辑，你就能在自己的 Agent 系统中设计一套"每个关键时刻都可以拦截"的钩子体系，而不是依赖日志或 monkey-patching 去感知 Agent 行为。</p>
+<hr />
+<h2 id="问题ai-agent-的行为是不透明的"><a class="header" href="#问题ai-agent-的行为是不透明的">问题：AI Agent 的行为是不透明的</a></h2>
+<p>当用户让 AI 帮忙"整理一下代码目录"时，AI 可能会删除它认为不需要的文件。你怎么阻止它？</p>
+<p>一个没有钩子系统的 Agent 框架给出的答案只有两种：要么修改框架源码插入检查点，要么在工具执行后检查结果并亡羊补牢。两种方案都代价高昂——前者破坏可维护性，后者为时已晚。</p>
+<p><strong>钩子（Hook）事件</strong>的本质是一种"可中断的观察点"：在系统执行路径的关键节点，预先定义命名信号，允许外部代码注册处理器。与普通日志的区别在于，部分钩子事件支持<strong>阻断</strong>（block）——处理器可以返回拒绝决策，阻止后续操作继续。</p>
+<p>Claude Code 的 27 个钩子事件定义在 <code>src/entrypoints/sdk/coreTypes.ts:25</code> 的 <code>HOOK_EVENTS</code> 数组中：</p>
+<pre><code class="language-typescript">// src/entrypoints/sdk/coreTypes.ts:25-53
+export const HOOK_EVENTS = [
+  'PreToolUse',
+  'PostToolUse',
+  'PostToolUseFailure',
+  'Notification',
+  'UserPromptSubmit',
+  'SessionStart',
+  'SessionEnd',
+  'Stop',
+  'StopFailure',
+  'SubagentStart',
+  'SubagentStop',
+  'PreCompact',
+  'PostCompact',
+  'PermissionRequest',
+  'PermissionDenied',
+  'Setup',
+  'TeammateIdle',
+  'TaskCreated',
+  'TaskCompleted',
+  'Elicitation',
+  'ElicitationResult',
+  'ConfigChange',
+  'WorktreeCreate',
+  'WorktreeRemove',
+  'InstructionsLoaded',
+  'CwdChanged',
+  'FileChanged',
+] as const
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/entrypoints/sdk/coreTypes.ts:25</code></p>
+<p><code>as const</code> 将这个数组转换为字符串字面量联合类型（<code>'PreToolUse' | 'PostToolUse' | ...</code>）。这个设计选择意味着每个事件名都是一个可在编译期检查的类型——注册了不存在的事件名会在编译时报错，而不是运行时静默失败。</p>
+<p><strong>图 20-1：27 个事件的分组地图</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>分组</th><th>事件名（数量）</th><th>典型用途</th><th>支持 block？</th></tr></thead><tbody>
+<tr><td>工具生命周期</td><td>PreToolUse、PostToolUse、PostToolUseFailure（3）</td><td>拦截/审计工具调用</td><td>✓（PreToolUse）</td></tr>
+<tr><td>会话生命周期</td><td>SessionStart、SessionEnd、Stop、StopFailure（4）</td><td>会话初始化/清理</td><td>部分</td></tr>
+<tr><td>用户交互</td><td>Notification、UserPromptSubmit（2）</td><td>消息拦截/审计</td><td>部分</td></tr>
+<tr><td>子 Agent</td><td>SubagentStart、SubagentStop（2）</td><td>子 Agent 监控</td><td>部分</td></tr>
+<tr><td>上下文压缩</td><td>PreCompact、PostCompact（2）</td><td>压缩前后处理</td><td>—</td></tr>
+<tr><td>权限</td><td>PermissionRequest、PermissionDenied（2）</td><td>权限决策介入</td><td>✓（PermissionRequest）</td></tr>
+<tr><td>系统配置</td><td>Setup、ConfigChange、InstructionsLoaded（3）</td><td>配置变更响应</td><td>—</td></tr>
+<tr><td>任务管理</td><td>TaskCreated、TaskCompleted、TeammateIdle（3）</td><td>任务生命周期</td><td>—</td></tr>
+<tr><td>用户问答</td><td>Elicitation、ElicitationResult（2）</td><td>人机对话拦截</td><td>✓（Elicitation）</td></tr>
+<tr><td>文件/工作树</td><td>WorktreeCreate、WorktreeRemove、CwdChanged、FileChanged（4）</td><td>环境变更感知</td><td>—</td></tr>
+</tbody></table>
+</div>
+<p>这张地图揭示了一个设计意图：<strong>支持 block 的事件都是"执行前"事件</strong>——PreToolUse、PermissionRequest、Elicitation，它们允许外部代码在不可逆操作发生前介入。"执行后"事件（PostToolUse、PostCompact）只能观测和追加信息，无法撤销已完成的操作。</p>
+<hr />
+<h2 id="源码实例-1工具调用生命周期pretooluse-的拦截-执行-汇报切面"><a class="header" href="#源码实例-1工具调用生命周期pretooluse-的拦截-执行-汇报切面">源码实例 1：工具调用生命周期——PreToolUse 的"拦截-执行-汇报"切面</a></h2>
+<p>工具调用是 AI 行为中风险最高的环节。我们来看这三个事件如何形成一个完整的切面。</p>
+<p><code>createBaseHookInput</code> 是所有钩子事件的通用输入基础，定义在 <code>src/utils/hooks.ts:301</code>：</p>
+<pre><code class="language-typescript">// src/utils/hooks.ts:301-330（简化）
+export function createBaseHookInput(
+  permissionMode?: string,
+  sessionId?: string,
+  agentInfo?: { agentId?: string; agentType?: string },
+): {
+  session_id: string
+  transcript_path: string
+  cwd: string
+  permission_mode?: string
+  agent_id?: string
+  agent_type?: string
+} {
+  const resolvedSessionId = sessionId ?? getSessionId()
+  // agent_type: 子 Agent 的类型优先于 --agent flag，
+  // hooks 用 agent_id 存在与否区分子 Agent 和主线程调用
+  const resolvedAgentType = agentInfo?.agentType ?? getMainThreadAgentType()
+  return {
+    session_id: resolvedSessionId,
+    transcript_path: getTranscriptPathForSession(resolvedSessionId),
+    cwd: getCwd(),
+    permission_mode: permissionMode,
+    agent_id: agentInfo?.agentId,
+    agent_type: resolvedAgentType,
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks.ts:301</code></p>
+<p>这个函数揭示了<strong>所有钩子事件共享一个最小公共接口</strong>的设计原则：<code>session_id</code>（可追踪性）、<code>transcript_path</code>（关联到对话记录）、<code>cwd</code>（当前工作目录），加上可选的 <code>permission_mode</code> 和 <code>agent_id</code>。无论是 PreToolUse 还是SessionEnd，基础字段都相同——钩子处理器无需关心当前是哪个具体事件就能实现通用的日志记录或追踪逻辑。</p>
+<p><code>agent_id</code> 字段值得特别注意：注释中说"hooks 用 agent_id 存在与否区分子 Agent 和主线程调用"。这意味着钩子处理器可以通过检查 <code>agent_id</code> 是否存在，判断当前的工具调用是由主 Agent 还是子 Agent 发起的，从而实现不同的处理策略。</p>
+<p><code>getMatchingHooks</code> 负责按事件名查找已注册的钩子处理器（<code>src/utils/hooks.ts:1603</code>）。对于工具相关事件，它使用 <code>tool_name</code> 作为匹配查询：</p>
+<pre><code class="language-typescript">// src/utils/hooks.ts:1617-1625
+switch (hookInput.hook_event_name) {
+  case 'PreToolUse':
+  case 'PostToolUse':
+  case 'PostToolUseFailure':
+  case 'PermissionRequest':
+  case 'PermissionDenied':
+    matchQuery = hookInput.tool_name  // 按工具名匹配
+    break
+  ...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks.ts:1617</code></p>
+<p>这一设计让钩子注册者可以精确控制"我只对 BashTool 的调用感兴趣"，而不必接收所有工具的事件然后自己过滤。不同事件使用不同的 <code>matchQuery</code>：SubagentStart/Stop 用 <code>agent_type</code>，SessionEnd 用 <code>reason</code>，FileChanged 用 <code>basename(file_path)</code>——每种事件的"可区分维度"不同，匹配字段也就不同。</p>
+<p>PreToolUse 的钩子响应格式（来自 <code>src/types/hooks.ts</code> 的 <code>syncHookResponseSchema</code>）支持多种操作：</p>
+<ul>
+<li><code>decision: 'approve' | 'block'</code>：批准或阻断工具执行</li>
+<li><code>hookSpecificOutput.updatedInput</code>：修改传给工具的输入参数</li>
+<li><code>hookSpecificOutput.permissionDecision</code>：影响后续的权限决策</li>
+<li><code>hookSpecificOutput.additionalContext</code>：向 AI 注入额外的上下文信息</li>
+</ul>
+<p><strong>图 20-2：工具调用 Hook 触发序列</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant AI as Claude AI
+    participant Hook as Hook System
+    participant Tool as Tool Executor
+
+    AI-&gt;&gt;Hook: PreToolUse\n{tool_name, tool_input, session_id}
+    Hook-&gt;&gt;Hook: getMatchingHooks(匹配 tool_name)
+    alt 返回 block
+        Hook--&gt;&gt;AI: decision=block, reason=...
+        Note over AI: 终止工具调用
+    else 返回 approve / 无响应
+        Hook--&gt;&gt;AI: decision=approve (或默认通过)
+        AI-&gt;&gt;Tool: 执行工具
+        alt 工具成功
+            Tool--&gt;&gt;AI: 返回结果
+            AI-&gt;&gt;Hook: PostToolUse\n{tool_name, tool_result}
+            Hook--&gt;&gt;AI: additionalContext（可选）
+        else 工具失败
+            Tool--&gt;&gt;AI: 错误信息
+            AI-&gt;&gt;Hook: PostToolUseFailure\n{tool_name, error}
+            Hook--&gt;&gt;AI: additionalContext（可选）
+        end
+    end
+</code></pre>
+<p>注意序列图中的两条路径：成功路径（PostToolUse）和失败路径（PostToolUseFailure）。两个事件是独立的，不是同一个事件的成功/失败变体，这让钩子注册者可以分别注册不同的处理逻辑——成功时写入审计日志，失败时触发告警通知。</p>
+<hr />
+<h2 id="源码实例-2会话与子-agent-生命周期超时差异化设计"><a class="header" href="#源码实例-2会话与子-agent-生命周期超时差异化设计">源码实例 2：会话与子 Agent 生命周期——超时差异化设计</a></h2>
+<p>会话生命周期事件与工具调用事件有一个根本区别：<strong>SessionEnd 必须等待钩子完成，否则会话关闭可能导致数据丢失</strong>。这一差异体现在独立的超时配置上。</p>
+<p><code>getSessionEndHookTimeoutMs</code> 是 SessionEnd 专属的超时获取函数（<code>src/utils/hooks.ts:176</code>）：</p>
+<pre><code class="language-typescript">// src/utils/hooks.ts:175-182
+const SESSION_END_HOOK_TIMEOUT_MS_DEFAULT = 1500
+// ...
+export function getSessionEndHookTimeoutMs(): number {
+  const raw = process.env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS
+  const parsed = raw ? parseInt(raw, 10) : NaN
+  return Number.isFinite(parsed) &amp;&amp; parsed &gt; 0
+    ? parsed
+    : SESSION_END_HOOK_TIMEOUT_MS_DEFAULT
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks.ts:175</code></p>
+<p>默认超时是 <strong>1,500 毫秒</strong>，并且支持通过环境变量 <code>CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS</code> 覆盖。为什么 SessionEnd 需要独立的超时值，而不是复用其他事件的超时配置？</p>
+<p>在会话正常关闭的场景下，系统正在清理状态、关闭文件句柄、写入最终记录。如果 SessionEnd 的钩子（比如"会话结束后同步记忆到远程服务器"）超时了，有两种处理策略：<strong>等待更长时间</strong>（让数据同步完成，代价是会话关闭被延迟）或<strong>直接跳过</strong>（代价是数据丢失）。1,500ms 的默认值是一个在"不让用户等太久"和"给钩子足够时间完成写操作"之间的折中——比大多数工具调用的 hook 超时更短，但足以完成一次网络请求。</p>
+<p>钩子系统还内置了一个安全门禁：<code>shouldSkipHookDueToTrust</code>（<code>src/utils/hooks.ts:286</code>）：</p>
+<pre><code class="language-typescript">// src/utils/hooks.ts:286-298
+export function shouldSkipHookDueToTrust(): boolean {
+  // 非交互模式（SDK）中，信任是隐式的——始终执行
+  const isInteractive = !getIsNonInteractiveSession()
+  if (!isInteractive) {
+    return false
+  }
+
+  // 交互模式中，所有 hooks 都需要信任
+  const hasTrust = checkHasTrustDialogAccepted()
+  return !hasTrust
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks.ts:286</code></p>
+<p>这个函数区分了两种运行模式：</p>
+<ul>
+<li><strong>非交互（SDK）模式</strong>：调用者是已知的程序，信任是隐式的，不需要用户确认</li>
+<li><strong>交互（CLI）模式</strong>：用户可能运行了来源不明的 <code>.claude/settings.json</code> 中的钩子配置，必须通过信任对话框后才能执行</li>
+</ul>
+<p>为什么需要这个门禁？因为钩子是可以执行任意 shell 命令的——如果一个被分享的项目目录中包含了恶意的 hook 配置，未经确认直接执行会带来安全风险。<code>shouldSkipHookDueToTrust</code> 是钩子系统的安全边界：<strong>执行用户明确信任的钩子，跳过不明来源的钩子</strong>。</p>
+<p>子 Agent 事件（<code>SubagentStart</code>/<code>SubagentStop</code>）则让钩子系统具备了<strong>层次结构的可观测性</strong>。从 <code>getMatchingHooks</code> 的匹配逻辑可以看到，这两个事件以 <code>agent_type</code> 作为匹配条件——注册者可以选择"只监控 task 类型的子 Agent 启动"，而不必接收所有子 Agent 的事件。</p>
+<hr />
+<h2 id="模式剖析可观测-agent-事件总线的核心结构"><a class="header" href="#模式剖析可观测-agent-事件总线的核心结构">模式剖析：可观测 Agent 事件总线的核心结构</a></h2>
+<p><strong>可观测 Agent 事件总线</strong>模式由四个相互协作的组成部分构成：</p>
+<p><strong>1. 穷举式事件枚举（Exhaustive Event Enumeration）</strong>：<code>HOOK_EVENTS</code> 以字符串字面量联合类型定义，是一个封闭集合。外部代码不能"动态注册新的事件类型"——只能注册对已有 27 个事件中某个的处理器。这个设计选择牺牲了扩展性（添加新事件需要修改枚举），换取了<strong>编译期完整性</strong>：任何对事件名的拼写错误都会在编译期被发现。</p>
+<p><strong>2. 共同基础接口（Common Base Interface）</strong>：<code>createBaseHookInput</code> 保证所有事件都携带 <code>session_id</code>、<code>transcript_path</code>、<code>cwd</code>——这三个字段让每个钩子调用都可以被追溯到具体的会话和工作目录，是可观测性的基础设施。</p>
+<p><strong>3. 精细匹配查询（Fine-grained Match Query）</strong>：<code>getMatchingHooks</code> 的 switch-case 逻辑为每种事件选择最合适的匹配维度——工具事件用 <code>tool_name</code>，文件事件用文件名，子 Agent 事件用 <code>agent_type</code>。这让钩子注册者能够精确表达"我关心什么"的意图。</p>
+<p><strong>4. 阻断能力分层（Blocking Capability Stratification）</strong>：只有"执行前"事件（PreToolUse、PermissionRequest、Elicitation）支持阻断响应（<code>decision: 'block'</code>）；"执行后"事件只能附加上下文。这个设计反映了一个工程现实：阻断必须在不可逆操作发生前进行，事后只能观测和修复。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>审计 AI 操作记录</td><td>✓</td><td>PostToolUse 可记录所有工具调用结果、入参和出参</td><td>日志文件（不可拦截，且需另外实现）</td></tr>
+<tr><td>阻止 AI 删除特定目录</td><td>✓</td><td>PreToolUse 返回 block 可在执行前阻断</td><td>直接修改框架源码（破坏可维护性）</td></tr>
+<tr><td>子 Agent 行为监控</td><td>✓</td><td>SubagentStart/Stop 成对触发，携带 agent_type</td><td>N/A</td></tr>
+<tr><td>权限决策自动化</td><td>✓</td><td>PermissionRequest 允许钩子返回 allow/deny</td><td>手动确认（效率低）</td></tr>
+<tr><td>同步高频事件（每次击键）</td><td>✗（谨慎）</td><td>FileChanged 等事件的钩子执行有异步开销（推断）</td><td>内联检查或防抖处理</td></tr>
+<tr><td>修改 AI 核心决策逻辑</td><td>✗</td><td>事件总线是观察+附加上下文，无法替换 AI 的推理过程</td><td>系统提示词工程</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p><strong>权衡 1：27 个事件的维护成本</strong></p>
+<p><code>HOOK_EVENTS</code> 是一个硬编码的字符串字面量联合类型。每次系统新增功能（如未来的 <code>MemoryWrite</code> 或 <code>SubagentMessage</code> 事件），都需要修改这个数组，同时更新所有相关的 switch-case（如 <code>getMatchingHooks</code>）。当前 27 个事件的设计覆盖了几乎所有可观测节点，但随着功能演进，枚举膨胀是不可避免的（推断）。与"开放式事件注册"（允许插件定义新事件类型）相比，封闭枚举的代价是更高的维护成本，收益是更强的类型安全。</p>
+<p><strong>权衡 2：同步拦截与性能</strong></p>
+<p>PreToolUse 等支持 block 的事件是同步拦截的——工具执行必须等待钩子处理器返回决策。如果钩子处理器调用了远程服务（如将操作发送到审计后端等待批准），这会直接增加工具调用的延迟。异步钩子（<code>async: true</code> 响应格式）可以绕过这一限制，但异步钩子无法返回 block 决策。<strong>这是一个根本性的 trade-off：实时拦截需要同步等待，低延迟需要异步执行，两者不可兼得。</strong></p>
+<p><strong>权衡 3：SessionEnd 的 1,500ms 默认超时</strong></p>
+<p>1,500ms 对于大多数网络请求是足够的，但如果钩子需要执行耗时操作（如同步大量记忆文件），用户就需要手动配置 <code>CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS</code>。这个配置项的存在本身就说明：设计者知道这个默认值不能满足所有场景，预留了逃生通道。</p>
+<p><strong>权衡 4：shouldSkipHookDueToTrust 的粒度</strong></p>
+<p>当前信任检查是全局的——要么信任所有钩子，要么跳过所有钩子。无法表达"信任来自官方插件的钩子，但不信任项目目录里的自定义钩子"（推断）。更细粒度的信任策略（如基于来源的白名单）会增加安全模型的复杂性，当前实现选择了简单但偏保守的全局开关。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与 GoF 观察者模式（Observer Pattern）</strong>：两者都是发布-订阅机制。根本差异在于<strong>介入能力</strong>：标准观察者（GoF）只能被动接收状态变化通知，无法阻止或修改被观察对象的行为；Claude Code 的 PreToolUse 钩子可以返回 <code>decision: 'block'</code> 中止工具执行，PostToolUse 可以返回 <code>updatedInput</code> 修改工具输出传给 AI 的内容。这使本模式更接近**拦截器（Interceptor）**而非观察者。</p>
+<p><strong>与 EIP 事件驱动消费者（Event-Driven Consumer）</strong>：事件驱动消费者是异步解耦模式——生产者发布事件，消费者异步处理，两者通过消息队列解耦，互不等待。Claude Code 的同步 hook 与之相反：在决策性事件（PreToolUse）上，系统<strong>必须</strong>等待钩子返回才能继续执行。异步钩子（<code>async: true</code>）更接近 EIP 消费者模式，但以失去阻断能力为代价。</p>
+<p><strong>与面向切面编程 AOP（Aspect-Oriented Programming）</strong>：本模式与 AOP 最为接近。AOP 的核心概念是"切入点"（Pointcut，定义在哪里切入）+"通知"（Advice，切入后执行什么）。HOOK_EVENTS 枚举是系统预定义的所有切入点，钩子处理器是对应的通知。差异在于：AOP 通常在编译期或类加载期织入，运行时没有性能开销；Claude Code 的钩子是运行时动态查找（<code>getMatchingHooks</code>），有额外的查找和执行开销。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="可观测-agent-事件总线observable-agent-event-bus"><a class="header" href="#可观测-agent-事件总线observable-agent-event-bus">可观测 Agent 事件总线（Observable Agent Event Bus）</a></h3>
+<p><strong>解决的问题</strong>：AI Agent 的行为不可审计、不可拦截，外部系统无法在不修改框架源码的情况下介入关键操作。</p>
+<p><strong>核心做法</strong>：在执行路径的关键节点预埋 27 个命名事件，使用字符串字面量联合类型保证编译期完整性，允许外部注册处理器；其中"执行前"事件支持阻断，"执行后"事件支持附加上下文。</p>
+<p><strong>前置条件</strong>：Agent 框架有明确的执行路径；事件节点的数量有限且稳定（不适合需要频繁新增事件类型的高速演进场景）。</p>
+<p><strong>源码证据</strong>：<code>src/entrypoints/sdk/coreTypes.ts:25</code>（<code>HOOK_EVENTS</code> 27 个事件，<code>as const</code> 字面量联合）；<code>src/utils/hooks.ts:1603</code>（<code>getMatchingHooks</code>，按事件精细匹配）</p>
+<hr />
+<h3 id="事件超时差异化event-timeout-differentiation"><a class="header" href="#事件超时差异化event-timeout-differentiation">事件超时差异化（Event Timeout Differentiation）</a></h3>
+<p><strong>解决的问题</strong>：不同生命周期节点对"等待钩子完成"的容忍度不同——会话结束需要给写操作足够时间，而普通工具调用需要快速响应。</p>
+<p><strong>核心做法</strong>：为关键事件（SessionEnd）配置独立的超时常量（<code>SESSION_END_HOOK_TIMEOUT_MS_DEFAULT = 1500</code>）和环境变量覆盖机制（<code>CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS</code>），而非全局统一超时。</p>
+<p><strong>前置条件</strong>：不同事件有明确不同的时序语义（"必须等待完成"vs"可以超时跳过"）。</p>
+<p><strong>源码证据</strong>：<code>src/utils/hooks.ts:175</code>（<code>SESSION_END_HOOK_TIMEOUT_MS_DEFAULT = 1500</code>）；<code>src/utils/hooks.ts:176</code>（<code>getSessionEndHookTimeoutMs</code>，支持环境变量覆盖）</p>
+<hr />
+<h3 id="信任门禁trust-gating"><a class="header" href="#信任门禁trust-gating">信任门禁（Trust Gating）</a></h3>
+<p><strong>解决的问题</strong>：钩子可以执行任意 shell 命令，项目目录中的恶意钩子配置在未经确认的情况下会造成安全风险。</p>
+<p><strong>核心做法</strong>：在执行任何钩子前检查信任状态（<code>shouldSkipHookDueToTrust</code>），非交互模式（SDK）隐式信任，交互模式必须通过显式信任对话框；信任未建立时跳过所有钩子。</p>
+<p><strong>前置条件</strong>：有可区分"交互"和"非交互"的运行模式；有持久化的信任状态（<code>checkHasTrustDialogAccepted</code>）。</p>
+<p><strong>源码证据</strong>：<code>src/utils/hooks.ts:286</code>（<code>shouldSkipHookDueToTrust</code>，根据会话类型和信任状态决定是否跳过）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>用字符串字面量联合类型定义 Agent 事件枚举（<code>as const</code>），而非数字 ID 或普通字符串</strong>。编译期完整性检查能在事件名拼写错误时立即报错，而不是运行时静默丢失钩子。</p>
+</li>
+<li>
+<p><strong>为工具调用设计"前-后-失败"三元事件对</strong>（PreToolUse/PostToolUse/PostToolUseFailure）。成功和失败是独立事件而非参数变体，让钩子注册者可以精确表达"只关心失败的 BashTool 调用"，而不必在通用处理器中自己判断。</p>
+</li>
+<li>
+<p><strong>为不同事件类型选择最有意义的匹配维度</strong>。工具事件用工具名匹配，文件事件用文件名匹配，子 Agent 事件用 <code>agent_type</code> 匹配——让注册者能精确过滤，而不是接收所有事件后自己过滤。</p>
+</li>
+<li>
+<p><strong>为关键生命周期事件（如会话结束）配置独立的超时值</strong>，区分"数据写入必须完成"和"可以超时跳过"的钩子。一个全局超时无法同时满足高响应性和数据完整性的要求。</p>
+</li>
+<li>
+<p><strong>为所有钩子事件定义共同基础接口</strong>（<code>session_id</code>、工作目录、时间戳），保证每个钩子调用都可以被追溯到具体的执行上下文。钩子处理器越通用，基础字段就越重要。</p>
+</li>
+<li>
+<p><strong>在钩子执行前实现信任门禁</strong>，区分受信任的内置钩子和来源不明的外部钩子。特别是在支持插件的系统中，不经验证直接执行所有钩子是一个常见的安全漏洞。</p>
+</li>
+<li>
+<p><strong>将"阻断能力"限制在执行前事件</strong>。不要试图在事件总线上实现"撤销"（执行后 block）——这会引入复杂的状态回滚逻辑。清晰区分"可阻断的执行前事件"和"只可观测的执行后事件"，让系统行为更可预测。</p>
+</li>
+</ul>
+<hr />
+<p>27 个事件定义了"能在哪里介入"，而介入后的实际执行——钩子命令如何触发、command/prompt/agent 三种执行器如何工作——是第 21 章的主题（详见第 21 章）。钩子的异步注册和并发控制机制，则由 <code>AsyncHookRegistry</code> 管理（详见第 22 章）。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part5/part.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part5/ch21.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part5/part.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part5/ch21.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

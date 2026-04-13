@@ -1,0 +1,15 @@
+graph TD
+    A["autoCompactIfNeeded()<br/>尝试压缩"] -->|成功| B["重置失败计数"]
+    A -->|失败| C["失败计数 +1"]
+    
+    C -->|失败次数 = 1| D["继续重试<br/>logs: [WARN] Compact failed"]
+    C -->|失败次数 = 2| E["继续重试<br/>logs: [WARN] Compact failed again"]
+    C -->|失败次数 = 3| F["停止尝试<br/>禁用 AutoCompact"]
+    
+    D --> G["下一轮继续工作"]
+    E --> G
+    F --> H["让 API 直接返回错误<br/>用户看到明确的错误消息"]
+    
+    style B fill:#e6ffe6
+    style G fill:#ffffcc
+    style H fill:#ffe6e6

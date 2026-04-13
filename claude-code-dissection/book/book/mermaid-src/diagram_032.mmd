@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant App as 应用启动
+    participant Tools as getAllBaseTools()
+    participant SP as 系统 Prompt
+    participant Cache as Prompt Cache
+    participant API as Claude API
+
+    App->>Tools: 计算工具列表（一次）
+    Tools-->>SP: 序列化工具描述
+    SP->>Cache: cache_control: ephemeral
+    Note over Cache: cache key = hash(工具描述前缀)
+    App->>API: 第 1 轮对话
+    API-->>App: cache_creation_tokens += 3000
+    App->>API: 第 2 轮对话（工具列表不变）
+    API-->>App: cache_read_tokens += 3000（命中缓存）

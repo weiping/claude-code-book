@@ -1,0 +1,24 @@
+flowchart TD
+    input["bash 命令输入"]
+    classify["语义分类\nisSearchOrReadBashCommand()"]
+    sed_check{是 sed -i 命令?}
+    sed_parse["parseSedEditCommand()\n→ 展示为文件编辑 diff"]
+    sandbox{shouldUseSandbox?}
+    exec["执行命令\n本地 shell 或沙箱"]
+    size{输出 > 2000字节?}
+    disk["写磁盘\n返回路径 + 预览"]
+    inline["直接返回\n完整输出"]
+    result["ToolResult\n→ 回填到 query.ts"]
+
+    input --> classify
+    classify --> sed_check
+    sed_check -->|是| sed_parse
+    sed_check -->|否| sandbox
+    sed_parse --> exec
+    sandbox -->|是| exec
+    sandbox -->|否| exec
+    exec --> size
+    size -->|是| disk
+    size -->|否| inline
+    disk --> result
+    inline --> result

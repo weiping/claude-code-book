@@ -1,0 +1,154 @@
+# 第 21 章写作计划
+
+**批次**：批次 5（第五篇：提示词工程）
+**章节**：ch21 — 第21章：上下文组装——git 状态、工具描述与用户上下文的构建
+**风格**：autopsy（工程师解剖）
+
+## 前置阅读清单
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/context.ts | getGitStatus、MAX_STATUS_CHARS 的采集与截断 | 行号 20, 36-100 |
+| 2 | src/context.ts | getSystemContext 与 getUserContext 的定义 | 行号 116-180 |
+| 3 | src/utils/queryContext.ts | fetchSystemPromptParts 三路并发采集 | 行号 1-100 |
+| 4 | src/utils/model/cacheKey.ts | 如何用 context 生成 cache-key 前缀 | 行号 1-50 |
+| 5 | src/utils/git.ts | git status 特殊处理（分支、unstaged 文件等） | 行号 1-100 |
+| 6 | src/services/api/buildSystemPromptInput.ts | context 如何被注入 API 请求 | 行号 1-100 |
+
+验证文件存在：
+```bash
+ls -l src/context.ts \
+      src/utils/queryContext.ts \
+      src/utils/model/cacheKey.ts \
+      src/utils/git.ts \
+      src/services/api/buildSystemPromptInput.ts
+```
+
+## 章节骨架
+
+### 开篇（必填）
+- **开篇触发点**：你在 feature 分支工作，修改了 src/app.ts，还有未 commit 的测试文件。当你让 Claude 帮你写代码时，Claude 怎么知道你在哪个分支、当前目录是什么、哪些文件被修改了？这些信息怎么进入对话的？
+- **工程问题**：Claude 是无状态的，但 Claude Code 需要将**用户的运行环境**（git 分支、文件状态、工作目录）编织进 API 请求。这个"上下文注入"系统是 Claude Code 理解本地环境的关键。
+- **权衡**：完整性（采集尽可能多的环境信息）vs 成本（token 消耗、缓存效率）vs 隐私（某些信息是否应该发送到 API）
+
+### 节 21.1：三路并发采集——getSystemContext、getUserContext、gitStatus
+- **核心主张**：上下文采集分三路：getSystemContext（平台/版本等系统信息）、getUserContext（工作目录、git 分支等用户相关）、getGitStatus（git 文件变化）。三路并发执行以加快采集速度。
+- **源码锚点**：`src/utils/queryContext.ts` — fetchSystemPromptParts 函数的三路 Promise.all
+- **概念层次**：架构设计 / 并发模型 / 实际例子
+- **权衡分析**：为什么三路而不是单路？三路对应三个不同的数据源（系统/用户/git），并发可以充分利用 I/O 时间（git status 通常最慢）。单路会三倍延迟。
+- **包含元素**：并发流程图、伪代码展示 Promise.all 协调、性能对比表格
+- **估计字数**：600-800 字
+- **对应 spec 场景**：verify_context_separation
+
+### 节 21.2：git status 采集与 MAX_STATUS_CHARS 截断
+- **核心主张**：getGitStatus 调用 `git status --porcelain` 获取文件变化列表。但输出可能很长（超大项目的未 commit 文件数百个），所以设置 MAX_STATUS_CHARS 截断限制，超出部分被标注为 `truncated: true`。
+- **源码锚点**：`src/context.ts:20` — MAX_STATUS_CHARS 常量定义, `src/context.ts:36-100` — getGitStatus 实现与截断逻辑
+- **概念层次**：采集方法 / 截断策略 / 标注机制
+- **权衡分析**：MAX_STATUS_CHARS 的值为什么是 2000？这是一个权衡：足够表达大多数项目的状态（20-200 个文件），但不会让 token 消耗失控。截断后标注 `truncated: true` 让 Claude 知道信息不完整。
+- **包含元素**：git status 输出示例、截断前后的对比、Claude 收到 truncated 标记时的理解提示
+- **估计字数**：500-700 字
+- **对应 spec 场景**：verify_git_status_collection
+
+### 节 21.3：getUserContext 与 getSystemContext 的分工
+- **核心主张**：getUserContext 包含用户相关信息（工作目录、git 分支、git 远程 URL）；getSystemContext 包含系统级信息（操作系统、Claude Code 版本、Python/Node 版本）。两者分工使得上下文可以被不同的场景使用。
+- **源码锚点**：`src/context.ts:155-185` — getUserContext, `src/context.ts:116-145` — getSystemContext
+- **概念层次**：信息分类 / 设计意图 / 实际字段示例
+- **权衡分析**：为什么分开而不是合并成一个 context？分开可以在特定场景只使用需要的部分（如系统检查只需 getSystemContext），降低 token 成本。
+- **包含元素**：两个 context 的字段列表对比表、实际 JSON 示例
+- **估计字数**：400-600 字
+- **对应 spec 场景**：verify_context_separation
+
+### 节 21.4：cache-key 前缀概念
+- **核心主张**：systemPrompt + getUserContext + getSystemContext 合并后作为 cache-key 前缀发送给 Anthropic。具有相同前缀的请求可以复用 prompt cache，降低 token 成本（cached tokens 计费更低）。
+- **源码锚点**：`src/utils/model/cacheKey.ts` — cache-key 前缀生成逻辑
+- **概念层次**：缓存设计 / token 成本优化 / 实现细节
+- **权衡分析**：为什么 context 要成为 cache-key 前缀？context 是请求的"稳定前置"，不同请求的 context 大多相同（同一个工作目录、同一个 git 分支），所以能够复用缓存。如果 context 频繁变化，缓存命中率会低。
+- **包含元素**：cache-key 示例、缓存命中/未命中的对比、token 成本计算
+- **估计字数**：500-700 字
+- **对应 spec 场景**：verify_cache_key_prefix_explained
+
+### 节 21.5：memoize 缓存——避免重复采集
+- **核心主张**：getGitStatus、getUserContext、getSystemContext 都使用 memoize 缓存。在同一个 REPL 会话中多次对话，这些上下文被采集一次就被缓存，后续调用返回缓存值。什么时候缓存失效？取决于具体函数（git status 可能从不失效，除非用户修改了文件；工作目录改变时 getUserContext 需要失效）。
+- **源码锚点**：`src/context.ts:36` — `export const getGitStatus = memoize(async () => ...)`
+- **概念层次**：缓存设计 / 失效时机 / 性能影响
+- **权衡分析**：为什么用 memoize 而不是每次重新采集？git status 可能耗时 100-500ms（大型项目），如果对话中多次调用就会累积延迟。一次采集 + 缓存是合理的。缓存不失效的假设是：单个 REPL 会话内，环境信息基本稳定。
+- **包含元素**：缓存命中示例、性能对比（有缓存 vs 无缓存）
+- **估计字数**：400-600 字
+- **对应 spec 场景**：verify_context_memoize
+
+### 节 21.6：非 git 仓库的降级处理
+- **核心主张**：不是所有目录都是 git 仓库。当 getIsGit() 返回 false 时，getGitStatus 返回 null，上下文中省略 git 相关字段。这确保系统在非 git 环境也能正常工作。
+- **源码锚点**：`src/context.ts` — getIsGit 检查逻辑
+- **概念层次**：错误处理 / 降级策略 / 兼容性
+- **权衡分析**：为什么主动检查而不是让 git 命令失败后捕获错误？主动检查避免了异常处理的开销，使代码流更清晰。同时允许系统在非 git 环境提供有意义的降级（省略 git 字段，继续采集其他 context）。
+- **包含元素**：条件判断的伪代码、非 git 环境的 context 示例
+- **估计字数**：300-500 字
+- **对应 spec 场景**：verify_non_git_repo_handling
+
+### 章末：模式提炼（必填）
+
+| 模式名 | 解决的问题 | 核心做法（一句话） | 前置条件 | 源码证据锚点 |
+|--------|-----------|-----------------|---------|------------|
+| 三路并发采集 | 上下文采集速度慢 | 将采集分为三路（系统/用户/git），使用 Promise.all 并发执行 | 多个独立的数据源 | `src/utils/queryContext.ts` |
+| git status 截断 | git 输出过长导致 token 消耗 | 采集 git status 后检查长度，超过 MAX_STATUS_CHARS 则截断并标注 truncated | 项目文件众多或未 commit | `src/context.ts:20, 36-100` |
+| 上下文分类 | 不同场景需要不同的信息 | 将上下文分为 getSystemContext（系统级）和 getUserContext（用户级），支持场景化选择 | 多种使用场景 | `src/context.ts:116-185` |
+| cache-key 前缀 | 同一环境的多次请求重复发送 context | 将 systemPrompt + context 作为 cache-key 前缀，相同前缀的请求复用 prompt cache | 需要成本优化 | `src/utils/model/cacheKey.ts` |
+| memoize 缓存 | 频繁采集 context 导致延迟 | 对 getGitStatus、getUserContext、getSystemContext 使用 memoize 缓存，REPL 会话内复用 | 单会话多次调用 | `src/context.ts:36` |
+
+### 章末：用户能做什么（必填）
+
+阅读本章后，工程师能做到：
+1. **理解 Claude 如何感知本地环境**：知道 git 分支、文件状态、工作目录等信息如何被采集并发送给 Claude
+2. **优化 token 成本**：理解 MAX_STATUS_CHARS 截断的作用，知道如何调整该值以平衡完整性和成本
+3. **在非 git 环境工作**：理解系统如何降级处理非 git 目录，知道在 git 可用和不可用时 context 的差异
+4. **调试上下文问题**：当 Claude 对本地环境的理解有误时，能追踪 getUserContext 和 getGitStatus 的采集结果
+5. **利用 prompt cache 优化**：理解上下文作为 cache-key 前缀的角色，知道如何在不改变 context 的情况下重复请求以复用缓存
+6. **扩展上下文采集**：基于三路并发采集的架构，能为新的上下文类型（如环境变量、文件列表）添加第四路
+7. **处理大项目的 context 爆炸**：理解 git status 截断的必要性，能在大型项目中调整采集策略以保持性能
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图21-1 | 三路并发采集流程 | Mermaid flowchart | getSystemContext、getUserContext、getGitStatus 三路并发执行，汇聚后生成上下文 | 21.1 |
+| 图21-2 | git status 截断示例 | 代码对比 | 完整的 git status 输出 vs 截断后的输出，展示 truncated 标记 | 21.2 |
+| 图21-3 | 上下文字段对比 | 表格 | getSystemContext 和 getUserContext 的字段列表、数据类型、示例值 | 21.3 |
+| 图21-4 | cache-key 前缀示例 | 示例 | systemPrompt + context 合并后的实际 cache-key，以及缓存命中的场景 | 21.4 |
+
+## 写作顺序
+
+1. **先写 21.1**（三路并发）— 是本章的架构基础，其他节都依赖这个模型
+2. **写 21.2**（git status 截断）— 最具体的采集逻辑，易于理解
+3. **写 21.3**（context 分类）— 两种 context 的定义和分工
+4. **写 21.4**（cache-key 前缀）— 上下文的运行时使用方式
+5. **写 21.5**（memoize 缓存）— 性能优化，与采集紧密相关
+6. **写 21.6**（非 git 降级）— 边界条件和容错机制
+7. **补写模式提炼** — 五个模式自然浮现
+8. **补写开篇** — 写出"为什么重要"
+9. **补写用户能做什么** — 生成 7 条行动建议
+
+## 写作前 checklist
+
+执行以下命令确认所有源码锚点存在：
+```bash
+PROJECT_ROOT="$(pwd)"
+BOOK_ROOT="${PROJECT_ROOT}/book"
+
+# 验证 ch21 的所有源码锚点
+sed -n '20p' "${PROJECT_ROOT}/src/context.ts" | grep -q "MAX_STATUS_CHARS" && echo "✓ MAX_STATUS_CHARS 常量存在" || echo "✗ 不存在"
+
+sed -n '36p' "${PROJECT_ROOT}/src/context.ts" | grep -q "getGitStatus" && echo "✓ getGitStatus 函数存在" || echo "✗ 不存在"
+
+sed -n '116p' "${PROJECT_ROOT}/src/context.ts" | grep -q "getSystemContext" && echo "✓ getSystemContext 函数存在" || echo "✗ 不存在"
+
+sed -n '155p' "${PROJECT_ROOT}/src/context.ts" | grep -q "getUserContext" && echo "✓ getUserContext 函数存在" || echo "✗ 不存在"
+
+grep -q "fetchSystemPromptParts" "${PROJECT_ROOT}/src/utils/queryContext.ts" && echo "✓ fetchSystemPromptParts 存在" || echo "✗ 不存在"
+
+echo "✓ 所有 ch21 锚点检查完毕"
+```
+
+如果任何锚点不存在，重新搜索正确行号：
+```bash
+grep -n "MAX_STATUS_CHARS\|getGitStatus\|getSystemContext\|getUserContext" "${PROJECT_ROOT}/src/context.ts"
+```

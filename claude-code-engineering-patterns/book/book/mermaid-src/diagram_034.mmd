@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> MessageStarted : message_start
+    MessageStarted --> BlockStarted : content_block_start
+    BlockStarted --> BlockDelta : content_block_delta
+    BlockDelta --> BlockDelta : content_block_delta（累积）
+    BlockDelta --> BlockStarted : content_block_stop → 下一个 block
+    BlockStarted --> MessageDelta : message_delta（usage 更新）
+    MessageDelta --> Done : message_stop
+    Done --> [*] : yield AssistantMessage

@@ -1,0 +1,45 @@
+graph TD
+    subgraph "交互层"
+        INPUT["用户输入"] --> PUI["processUserInput"]
+        RENDER["REPL 渲染"] --> DISPLAY["终端输出"]
+    end
+
+    subgraph "Harness 控制层"
+        PUI -->|"UserMessage + shouldQuery"| CORE["核心循环 queryLoop"]
+        CORE -->|"构建 prompt"| PROMPT["提示词管理"]
+        PROMPT -->|"systemPrompt + 上下文"| API_PREP["组装 API 请求"]
+        API_PREP -->|"流式请求"| STREAM
+
+        STREAM{{"API 流式响应"}}
+        STREAM -->|"tool_use"| TOOL["工具编排"]
+        STREAM -->|"end_turn"| STOP["停止处理"]
+        STREAM -->|"max_output_tokens"| RECOVER["恢复循环"]
+
+        TOOL -->|"并发安全"| CONC["并发执行"]
+        TOOL -->|"串行"| SER["串行执行"]
+        CONC --> PERM{"权限护栏"}
+        SER --> PERM
+        PERM -->|"允许"| EXEC["tool.execute"]
+        PERM -->|"拒绝"| DENY["拒绝消息"]
+        EXEC --> RESULT["工具结果"]
+
+        RESULT -->|"追加消息"| CORE
+        DENY -->|"追加消息"| CORE
+
+        CORE -->|"token 溢出"| COMPACT["上下文压缩"]
+        COMPACT --> FORK["Fork Agent 生成摘要"]
+        FORK --> BOUNDARY["compact_boundary"]
+        BOUNDARY --> CORE
+    end
+
+    subgraph "模型层"
+        API_SEND["API 客户端"] -->|"messages + systemPrompt"| ANTHROPIC["Anthropic API"]
+        ANTHROPIC -->|"text + thinking + tool_use"| STREAM
+        FORK -.->|"压缩请求"| ANTHROPIC
+        ANTHROPIC -.->|"摘要文本"| FORK
+    end
+
+    API_PREP --> API_SEND
+    STOP -->|"yield SDKMessage"| RENDER
+    STREAM -->|"流式消息"| RENDER
+    TOOL -->|"权限弹窗"| RENDER

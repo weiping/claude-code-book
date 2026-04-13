@@ -1,0 +1,11 @@
+{
+  "theme": "default",
+  "themeVariables": {
+    "fontFamily": "PingFang SC, Heiti SC, sans-serif",
+    "fontSize": "14px"
+  },
+  "flowchart": { "htmlLabels": false, "useMaxWidth": false },
+  "sequence": { "useMaxWidth": false },
+  "class": { "htmlLabels": false },
+  "stateDiagram": { "htmlLabels": false }
+}
