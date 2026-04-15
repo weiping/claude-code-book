@@ -1,23 +1,15 @@
-graph LR
-    subgraph 交叉类型（TypeScript 选择）
-        BASE2["TaskStateBase
-{id, type, status, ...}"]
-        SPECIFIC2["{ type: 'local_bash'
-command: string }"]
-        RESULT2["LocalShellTaskState
-（扁平展开）"]
-        BASE2 -->|"&amp;"| RESULT2
-        SPECIFIC2 -->|"&amp;"| RESULT2
+flowchart LR
+    subgraph local ["层1：本地记忆"]
+        A["MEMORY.md\n索引 200行/25KB"] --> B["topic/*.md\n主题文件"]
     end
-    subgraph 继承链（OOP 方案）
-        BASE1["TaskBase
-{id, type, status, ...}"]
-        CHILD1["LocalShellTask
-extends TaskBase
-{command: string}"]
-        BASE1 -->|extends| CHILD1
+    subgraph scan ["层2：跨会话检索"]
+        C["scanMemoryFiles\n按 mtimeMs 排序"] --> D["formatMemoryManifest\n时间线清单"]
     end
-    RESULT2 -->|"支持 {...prevTask, status: 'x'}
-不可变更新"| OK["✓ 适合 React 状态管理"]
-    CHILD1 -->|"需考虑 prototype chain
-运行时 instanceof"| WARN["⚠ 序列化后失效"]
+    subgraph team ["层3：团队共享"]
+        E["team/MEMORY.md"] --> F["team/topic/*.md"]
+    end
+    G["loadMemoryPrompt\n统一入口"]
+    local -->|"buildMemoryPrompt"| G
+    scan -->|"recall/extract\n主动召回"| G
+    team -->|"buildCombinedMemoryPrompt"| G
+    G --> H["系统提示词"]

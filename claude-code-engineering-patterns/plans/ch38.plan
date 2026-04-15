@@ -1,29 +1,30 @@
 # 第 38 章写作计划
 
-**批次**：批次 10a（来自 plans/batch.md）
-**章节**：ch38 — 第38章：Marketplace 协议——官方注册表与第三方源
+**批次**：批次 9a（来自 plans/batch.md）
+**章节**：ch38 — PermissionRule 规则引擎——allowedTools 的 glob 匹配与优先级链
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/services/mcp/officialRegistry.ts`（72行）如何预获取官方 MCP 注册表 URL、验证 MCP 服务器是否来自官方源，以及 `pluginOperations.ts` 的 VALID_INSTALLABLE_SCOPES（user/project/local）如何隔离不同来源的插件。
+揭示 `src/utils/permissions/permissionRuleParser.ts`（198行）如何解析 `Bash(npm install)` 格式的规则字符串，以及 `shellRuleMatching.ts`（228行）中 glob 匹配与 `:*` 语法的工程设计。读者读完后能理解规则引擎的解析与匹配机制，并能在自己的 Agent 系统中实现类似的声明式权限规则。
 
 ## 通用约束
-**排除范围**：Plugin 生命周期（第37章）、插件包内部结构（第39章）、stubs
+**排除范围**：第 37 章三层防线全景（不重复）、第 39 章三态处理器（不展开）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「预获取信任边界」（Pre-fetch Trust Boundary）
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「声明式规则解析引擎」（Declarative Rule Parser）
 **章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（officialRegistry + VALID_INSTALLABLE_SCOPES），适用范围表，与已知模式对话
+**必须**：≥2处实例（permissionRuleParser + shellRuleMatching），适用范围表，与已知模式对话
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
+
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/services/mcp/officialRegistry.ts | prefetchOfficialMcpUrls(33行)、isOfficialMcpUrl(66行)、fail-closed注释(64行) | 全文(72行) |
-| 2 | src/services/plugins/pluginOperations.ts | VALID_INSTALLABLE_SCOPES(72行)、assertInstallableScope(90行)、VALID_UPDATE_SCOPES(78行) | 71-105 |
+| 1 | src/utils/permissions/permissionRuleParser.ts | permissionRuleValueFromString(93行)、escapeRuleContent(55行)、unescapeRuleContent(74行)、normalizeLegacyToolName(31行) | 全文(198行) |
+| 2 | src/utils/permissions/shellRuleMatching.ts | hasWildcards(54行)、permissionRuleExtractPrefix(43行)、ShellPermissionRule类型(25行) | 全文(228行) |
 
 ```bash
-cat src/services/mcp/officialRegistry.ts
+ls src/utils/permissions/permissionRuleParser.ts src/utils/permissions/shellRuleMatching.ts
 ```
 
 ## Spec 验收场景清单（E > A > B = C > D）
@@ -32,58 +33,84 @@ cat src/services/mcp/officialRegistry.ts
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：一个 MCP 服务器 URL 怎么证明自己来自 Anthropic 官方？Claude Code 的答案是：在启动时预获取官方注册表，然后用 Set 查找——O(1) 验证，fail-closed（注册表未加载时默认不信任）。
+触发句：`Bash(npm install)` 是 Claude Code 权限规则的标准格式——工具名加括号内的内容。但括号里如果有括号怎么办？这需要一个转义机制。而 `Bash(npm:*)` 这种 `:*` 语法又是什么？这两个问题揭示了规则引擎的真实复杂度。
 
 ### 节 38.1：问题
-- 核心主张：**第三方 MCP 服务器和官方服务器使用相同的协议——区分它们需要一个"信任注册表"，但实时查询会有延迟**
-- 源码锚点：`src/services/mcp/officialRegistry.ts:64`（注释："Undefined registry → false (fail-closed)"）
+- 核心主张：**权限规则需要匹配"工具名+内容模式"，纯字符串比较不够，glob 语义不统一，自定义格式 `Bash(content)` 是折中方案**
+- 源码锚点：`src/utils/permissions/permissionRuleParser.ts:90`（注释示例：`permissionRuleValueFromString('Bash(npm install)') => { toolName: 'Bash', ruleContent: 'npm install' }`）
+- 包含元素：**图38-1** — 规则字符串格式图（工具名+括号+内容+转义规则）
+- 估计字数：600-800字
 
-### 节 38.2：源码实例1 — officialRegistry（预获取 + fail-closed）
-- 核心主张：**prefetchOfficialMcpUrls 是 fire-and-forget——启动时异步获取，不阻塞初始化；isOfficialMcpUrl 是同步 O(1) 查找，fail-closed**
+### 节 38.2：源码实例1 — permissionRuleParser（解析与转义）
+- 核心主张：**规则解析的核心挑战是"括号转义"——内容中的括号需要 `\(` 转义，`findFirstUnescapedChar` 处理嵌套括号**
 - 源码锚点：
-  - `src/services/mcp/officialRegistry.ts:33`（prefetchOfficialMcpUrls 注释："Fire-and-forget"）
-  - `src/services/mcp/officialRegistry.ts:40`（官方注册表 URL）
-  - `src/services/mcp/officialRegistry.ts:66`（isOfficialMcpUrl）
-  - `src/services/mcp/officialRegistry.ts:70`（resetOfficialMcpUrlsForTesting）
+  - `src/utils/permissions/permissionRuleParser.ts:82`（注释说明解析格式）
+  - `src/utils/permissions/permissionRuleParser.ts:93`（`export function permissionRuleValueFromString(`）
+  - `src/utils/permissions/permissionRuleParser.ts:55`（`export function escapeRuleContent(content: string)`）
+  - `src/utils/permissions/permissionRuleParser.ts:74`（`export function unescapeRuleContent(content: string)`）
+  - `src/utils/permissions/permissionRuleParser.ts:19`（注释：向后兼容旧工具名的 normalizeLegacyToolName）
+- 概念层次：转义/反转义的对称性、findFirstUnescapedChar 处理嵌套括号、normalizeLegacyToolName 的向后兼容
+- 估计字数：900-1100字
 
-### 节 38.3：源码实例2 — VALID_INSTALLABLE_SCOPES（安装范围隔离）
-- 核心主张：**插件安装范围（user/project/local）决定了权限边界——managed 范围只能通过 managed-settings.json 安装，不允许用户或代码直接安装**
+### 节 38.3：源码实例2 — shellRuleMatching（`:*` 语法与 glob）
+- 核心主张：**`:*` 是 legacy 语法（前缀匹配），新语法支持 glob `*`——hasWildcards 区分两者，permissionRuleExtractPrefix 处理 legacy**
 - 源码锚点：
-  - `src/services/plugins/pluginOperations.ts:72`（VALID_INSTALLABLE_SCOPES = ['user', 'project', 'local']）
-  - `src/services/plugins/pluginOperations.ts:71`（注释：排除 'managed'）
-  - `src/services/plugins/pluginOperations.ts:90`（assertInstallableScope）
+  - `src/utils/permissions/shellRuleMatching.ts:43`（`permissionRuleExtractPrefix`——提取 `:*` 前缀）
+  - `src/utils/permissions/shellRuleMatching.ts:54`（`hasWildcards`——检测 unescaped `*`）
+  - `src/utils/permissions/shellRuleMatching.ts:25`（ShellPermissionRule 类型）
+  - `src/utils/permissions/shellRuleMatching.ts:12`（空字节哨兵用于 wildcard 转义——精妙的实现细节）
+- 概念层次：`:*` legacy 兼容 vs 新 glob 语法、空字节哨兵防止转义后的 `*` 被误识别
+- 估计字数：700-900字
 
-### 节 38.4-38.7：模式剖析/适用范围/权衡/对话
-- 模式：预获取信任边界（先加载注册表，后查询）、范围隔离（不同来源的安装限制）
-- 与安全模式 fail-closed：相同——未知时默认拒绝
+### 节 38.4：模式剖析
+- 核心主张：**声明式规则解析引擎的本质是"格式即契约"——规则字符串 `Bash(npm:*)` 本身就是完整的权限声明，不需要代码配置**
+- 估计字数：500-700字
+
+### 节 38.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 用户需要声明"允许执行 npm 开头的命令" | ✓ | `Bash(npm:*)` 格式简洁直观 | 代码配置（需要技术背景）|
+| 规则需要版本控制（放在配置文件）| ✓ | 字符串格式可以 git commit | 数据库存储（不随代码走）|
+| 复杂的条件权限（AND/OR 组合）| ✗ | 本格式只支持单条规则 | 规则表达式语言 |
+
+### 节 38.6：权衡与局限
+- 转义机制复杂（双重转义）、`:*` legacy 语法与 glob `*` 共存导致混乱、normalizeLegacyToolName 的向后兼容维护成本
+- 估计字数：500-700字
+
+### 节 38.7：与已知模式的对话
+- 与 Unix glob：相同——用通配符表达文件/命令模式；不同——本系统有工具名前缀，glob 只在内容部分
+- 与 DSL（领域特定语言）：本格式是微型 DSL，`Tool(content)` 是其完整语法
 
 ### 章末：模式提炼
 ```
-模式名称：预获取信任边界（Pre-fetch Trust Boundary）
-问题：实时验证服务器可信度会增加延迟，但不验证有安全风险
-解决方案：启动时 fire-and-forget 预获取信任列表，运行时 O(1) 查找，注册表未加载时 fail-closed
-前置条件：信任列表相对稳定（不需要实时更新），可以在后台加载
-源码锚点：src/services/mcp/officialRegistry.ts:33 (prefetchOfficialMcpUrls), :64 (fail-closed注释)
+模式名称：声明式规则解析引擎（Declarative Rule Parser）
+问题：权限规则需要由用户配置（不是代码），但用户输入的字符串需要精确解析和转义
+解决方案：定义 Tool(content) 格式，用 escapeRuleContent/unescapeRuleContent 对称转义，解析时用 findFirstUnescapedChar
+前置条件：有明确的规则格式约定，转义字符不会出现在合法内容中
+源码锚点：src/utils/permissions/permissionRuleParser.ts:93 (permissionRuleValueFromString)
 ```
 
 ### 章末：你能做什么
-1. 用 fire-and-forget 预获取信任列表，不阻塞启动路径
-2. 实现 fail-closed——注册表未加载时返回 false，而非 true（默认不信任未知来源）
-3. 为测试提供 resetXxxForTesting 函数，避免测试间状态污染
-4. 用 assert 而非 guard 验证安装范围——非法范围应该抛出异常，而非静默忽略
+1. 用 `Tool(content)` 格式设计权限规则字符串，分离工具名和内容模式
+2. 实现对称的 escape/unescape 函数对，确保规则字符串的序列化/反序列化不丢信息
+3. 用 findFirstUnescapedChar 处理嵌套括号，而非简单的 indexOf（容易被转义字符欺骗）
+4. 将 legacy 规则格式的兼容逻辑（normalizeLegacyToolName）集中在解析层，不泄漏到业务逻辑
+5. 用空字节哨兵替换 wildcard 字符进行临时处理，避免后续正则匹配错误识别转义的 `\*`
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图38-1 | 官方 vs 第三方 MCP 信任验证流程 | Mermaid flowchart | 启动预获取→注册表→isOfficialMcpUrl查找 | 38.1 |
+| 图38-1 | 规则字符串格式 | ASCII | `Tool(content)` 结构 + 转义示例 + `:*` vs glob `*` 对比 | 34.1 |
 
 ## 写作前 checklist
 ```bash
-sed -n '33p' src/services/mcp/officialRegistry.ts   # fire-and-forget
-sed -n '64p' src/services/mcp/officialRegistry.ts   # fail-closed 注释
-sed -n '66p' src/services/mcp/officialRegistry.ts   # isOfficialMcpUrl
-sed -n '72p' src/services/plugins/pluginOperations.ts  # VALID_INSTALLABLE_SCOPES
-sed -n '71p' src/services/plugins/pluginOperations.ts  # 排除managed注释
+sed -n '82p' src/utils/permissions/permissionRuleParser.ts   # 解析注释
+sed -n '90p' src/utils/permissions/permissionRuleParser.ts   # 示例注释
+sed -n '93p' src/utils/permissions/permissionRuleParser.ts   # permissionRuleValueFromString
+sed -n '55p' src/utils/permissions/permissionRuleParser.ts   # escapeRuleContent
+sed -n '43p' src/utils/permissions/shellRuleMatching.ts      # permissionRuleExtractPrefix
+sed -n '54p' src/utils/permissions/shellRuleMatching.ts      # hasWildcards
+sed -n '12p' src/utils/permissions/shellRuleMatching.ts      # 空字节哨兵
 ```
 
 ## ⛔ Spec 一致性声明

@@ -1,29 +1,31 @@
 # 第 28 章写作计划
 
-**批次**：批次 7b（来自 plans/batch.md）
-**章节**：ch28 — 第28章：DreamTask——后台自主执行的设计意图
+**批次**：批次 6b（来自 plans/batch.md）
+**章节**：ch28 — Frontmatter Hooks——Skill 与 Agent 的声明式钩子注册
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/tasks/DreamTask/DreamTask.ts`（157行）代表的"Agent 主动触发后台工作"模式，以及自主任务调度与用户触发任务在架构上的本质差异。读者读完后能理解 Agent 自主性的工程边界，并能分析"主动触发 vs 被动触发"在 Agent 系统设计中的取舍。
+揭示 `src/utils/hooks/registerSkillHooks.ts` 和 `registerFrontmatterHooks.ts` 如何让用户通过 Markdown frontmatter 声明钩子，以及"声明式注册"与"命令式注册"在工程权衡上的差异。读者读完后能理解声明式钩子注册的边界与局限，并能在自己的系统中合理选择两种注册方式。
 
 ## 通用约束
-**排除范围**：LocalAgentTask（第26章）、RemoteAgentTask（第27章）、Swarm（第29-32章）、stubs
+**排除范围**：Skill 加载完整流程（第 18 章）、hooksConfigSnapshot 机制（第 27 章）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「后台任务透明化」（Background Task Transparency）
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「声明式钩子注册」（Declarative Hook Registration）
 **章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（registerDreamTask + addDreamTurn 增量更新），适用范围表，与已知模式对话
+**必须**：≥2处实例（registerSkillHooks + registerFrontmatterHooks），适用范围表，与已知模式对话
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
 
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/tasks/DreamTask/DreamTask.ts | 全文（157行）——DreamTaskState、registerDreamTask、addDreamTurn、completeDreamTask、kill、rollbackConsolidationLock | 全文 |
+| 1 | src/utils/hooks/registerSkillHooks.ts | registerSkillHooks(主函数)、once:true 的 onHookSuccess 回调 | 全文(64行) |
+| 2 | src/utils/hooks/registerFrontmatterHooks.ts | registerFrontmatterHooks、Stop→SubagentStop 转换逻辑 | 全文(67行) |
+| 3 | src/utils/hooks/sessionHooks.ts | addSessionHook 接口 | 关键导出函数 |
 
 ```bash
-ls src/tasks/DreamTask/DreamTask.ts
+ls src/utils/hooks/registerSkillHooks.ts src/utils/hooks/registerFrontmatterHooks.ts
 ```
 
 ## Spec 验收场景清单（E > A > B = C > D）
@@ -32,84 +34,82 @@ ls src/tasks/DreamTask/DreamTask.ts
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：当 AI Agent 主动启动一个内存整理任务时，用户怎么知道发生了什么？DreamTask 的设计答案是：把本来看不见的后台操作"注入"到现有的任务 UI 框架中——不修改后台 Agent，只加可见性。
+触发句：用户不需要写一行 JavaScript，只需要在 Markdown 的 frontmatter 中声明 `hooks: { PreToolUse: [...] }`，Claude Code 就会在工具调用前触发这个 hook。这就是"声明式钩子注册"——把 hook 配置从代码降级为数据。
 
 ### 节 28.1：问题
-- 核心主张：**Agent 自主触发的后台任务（如内存整理）对用户是"黑盒"——没有进度、没有状态、崩溃后不知道发生了什么；DreamTask 专门解决这个透明化问题**
-- 源码锚点：`src/tasks/DreamTask/DreamTask.ts:1`（文件头部注释："Makes the otherwise-invisible forked agent visible in the footer pill and Shift+Down dialog. The dream agent itself is unchanged — this is pure UI surfacing"）
-- 包含元素：**图28-1** — Mermaid 状态图，DreamTask 的两阶段（starting→updating）和生命周期
+- 核心主张：**命令式注册（代码调用 registerHook）给用户带来了"必须写代码"的门槛，而大多数 hook 用例只需要简单的触发逻辑**
+- 源码锚点：`src/utils/hooks/registerSkillHooks.ts:1`（注释说明这是 session-scoped hooks，"persist for the duration of the session"）
+- 包含元素：**图28-1** — 声明式 vs 命令式注册对比表（配置位置/能力范围/适用场景）
 - 估计字数：600-800字
 
-### 节 28.2：源码实例1 — registerDreamTask + DreamTaskState 字段语义
-- 核心主张：**DreamTaskState 的特殊字段（phase/sessionsReviewing/filesTouched/turns）反映了"整理任务"的语义——不是通用的工具调用计数，而是针对记忆整理的专属视图**
+### 节 28.2：源码实例1 — registerSkillHooks（技能级钩子注册）
+- 核心主张：**registerSkillHooks 遍历 HOOK_EVENTS 枚举，将 frontmatter 中每个事件的 matchers 转为 session hook——once:true 的 hook 在首次成功后自动注销**
 - 源码锚点：
-  - `src/tasks/DreamTask/DreamTask.ts:26`（DreamTaskState：type 'dream', phase, sessionsReviewing, filesTouched, turns）
-  - `src/tasks/DreamTask/DreamTask.ts:12`（`const MAX_TURNS = 30`——只保留最近30轮）
-  - `src/tasks/DreamTask/DreamTask.ts:54`（registerDreamTask 函数）
-  - `src/tasks/DreamTask/DreamTask.ts:37`（filesTouched 注释："INCOMPLETE reflection... Treat as 'at least these were touched'"）
-- 概念层次：filesTouched 的不完整性说明（只捕获 Edit/Write 工具调用）、MAX_TURNS 的滚动窗口设计、phase 两态的触发条件
-- 估计字数：900-1100字
+  - `src/utils/hooks/registerSkillHooks.ts:22`（`export function registerSkillHooks(`）
+  - `src/utils/hooks/registerSkillHooks.ts:30`（`for (const eventName of HOOK_EVENTS) {`——遍历所有事件）
+  - `src/utils/hooks/registerSkillHooks.ts:37`（once:true 的 onHookSuccess 回调——"one-shot hook"）
+  - `src/utils/hooks/registerSkillHooks.ts:50`（`addSessionHook(setAppState, sessionId, eventName, ...)`）
+- 概念层次：遍历 HOOK_EVENTS 的设计（穷举保证不遗漏）、once:true 的语义（自清理钩子）、sessionId 作用域
+- 估计字数：800-1000字
 
-### 节 28.3：源码实例2 — addDreamTurn 的增量更新 + kill 的特殊回滚
-- 核心主张：**addDreamTurn 的空操作优化（turn 为空且无新 touched 路径时直接返回原 task）和 kill 时回滚 consolidation lock，体现了"最小干扰"原则**
+### 节 28.3：源码实例2 — registerFrontmatterHooks（Stop→SubagentStop 的语义转换）
+- 核心主张：**registerFrontmatterHooks 有一个关键转换：对 Agent 的 frontmatter hooks，`Stop` 事件自动转为 `SubagentStop`——因为子 Agent 完成时触发的是 SubagentStop，不是 Stop**
 - 源码锚点：
-  - `src/tasks/DreamTask/DreamTask.ts:72`（addDreamTurn，含空操作短路：turn.text===''&toolUseCount===0&newTouched.length===0→return task）
-  - `src/tasks/DreamTask/DreamTask.ts:120`（kill 函数中 rollbackConsolidationLock——kill 时需要回滚 mtime，"same path as fork-failure catch"）
-  - `src/tasks/DreamTask/DreamTask.ts:107`（completeDreamTask：notified:true immediately，注释说明原因）
-- 概念层次：空操作优化（避免无效重渲染）、kill 的 consolidation lock 回滚语义
+  - `src/utils/hooks/registerFrontmatterHooks.ts:18`（`export function registerFrontmatterHooks(`）
+  - `src/utils/hooks/registerFrontmatterHooks.ts:37`（isAgent 参数控制 Stop→SubagentStop 转换）
+  - `src/utils/hooks/registerFrontmatterHooks.ts:43`（注释说明原因："subagents trigger SubagentStop, not Stop"）
+- 概念层次：isAgent 参数的语义（技能 vs Agent 的生命周期差异）、Stop vs SubagentStop 的事件语义区别
 - 估计字数：700-900字
 
 ### 节 28.4：模式剖析
-- 核心主张：**后台任务透明化的本质是"非侵入式可观测性"——不修改后台任务本身，只在任务框架层增加一个"观察者任务对象"代理其状态**
+- 核心主张：**声明式注册的本质是"配置即规约"——hook 的触发逻辑由数据描述，框架负责解释，用户不需要了解执行细节**
 - 估计字数：500-700字
 
 ### 节 28.5：适用范围
 | 场景 | 适用性 | 理由 | 替代方案 |
 |------|--------|------|---------|
-| Agent 自主触发的后台操作需要 UI 可见 | ✓ | DreamTask 不改后台逻辑，纯 UI 代理 | 直接修改后台 Agent（侵入性高）|
-| 后台操作可能失败需要用户感知 | ✓ | failDreamTask 推送通知 | 静默失败（用户无感）|
-| 后台操作的输出极其复杂（需要完整分析）| ✗ | DreamTask 只保留最近30轮，信息不完整 | 完整 transcript 记录 |
-| 需要用户交互的后台任务 | ✗ | Dream 设计为自主运行，无交互接口 | 前台任务 |
+| 简单的触发逻辑（只需要指定事件+命令）| ✓ | frontmatter 表达力足够 | 命令式注册（但需要写代码）|
+| once:true 的单次触发钩子 | ✓ | 内建 onHookSuccess 自清理 | 手动在回调中 deregister |
+| 复杂条件判断（A触发后才注册B）| ✗ | frontmatter 是静态的，无法表达动态条件 | 命令式注册 |
+| 需要访问注册时的 JS 上下文 | ✗ | frontmatter 是数据，无法访问运行时状态 | 命令式注册（闭包捕获）|
 
 ### 节 28.6：权衡与局限
-- filesTouched 的不完整性（只捕获特定工具调用）、MAX_TURNS=30 的信息丢失、consolidation lock 回滚的错误处理复杂性
+- frontmatter 表达力有限（无法写条件逻辑）、遍历 HOOK_EVENTS 耦合于枚举（新增事件需要更新枚举）
 - 估计字数：500-700字
 
 ### 节 28.7：与已知模式的对话
-- 与 GoF 观察者模式：相同——观察后台任务状态；不同——观察者不能修改被观察对象，本模式的 DreamTask 还负责更新自己的状态
-- 与 Sidecar 模式（POSA/microservice）：最接近——辅助容器透明观察主容器；DreamTask 是"状态 Sidecar"，不在网络层而在应用状态层
+- 与 Spring Annotations（@EventListener）：相同——声明式绑定事件处理器；不同——注解是编译期，本模式是运行时解析 frontmatter
+- 与 CSS 选择器（声明式样式）：相同——配置数据描述"在什么时候做什么"；不同——CSS 有层叠优先级，本模式钩子是追加的
 
 ### 章末：模式提炼
 ```
-模式名称：后台任务透明化（Background Task Transparency）
-问题：Agent 自主触发的后台操作对用户不可见，出错时无法诊断
-解决方案：创建 DreamTask 代理对象，不修改后台 Agent，只将其状态转化为 UI 可读的任务对象
-前置条件：有统一的 Task UI 框架（TaskState 联合类型），后台 Agent 有回调接口注入状态更新
-源码锚点：src/tasks/DreamTask/DreamTask.ts:1 (注释说明设计意图), :54 (registerDreamTask)
+模式名称：声明式钩子注册（Declarative Hook Registration）
+问题：用户需要注册 hook 但不想写代码，命令式注册门槛高
+解决方案：解析 Markdown frontmatter 的 hooks 字段，将其转为 session-scoped hooks 的注册调用
+前置条件：有统一的 hook 配置格式（HooksSettings 类型），有 addSessionHook 等命令式接口作为底层
+源码锚点：src/utils/hooks/registerSkillHooks.ts:30 (遍历HOOK_EVENTS), registerFrontmatterHooks.ts:37 (Stop→SubagentStop)
 ```
 
 ### 章末：你能做什么
-1. 用"代理任务对象"模式透明化后台 AI 操作——不修改后台逻辑，只加可见性层
-2. 为后台操作状态实现滚动窗口（MAX_TURNS=30），而非保留全量历史
-3. 在 addXxxTurn 中实现空操作短路（所有字段未变化时直接返回原对象），避免无效 React 重渲染
-4. 为自主任务的 kill 实现"回滚"语义——任务被强制停止时，恢复任务开始前的关键状态
-5. 对"不完整的信息"诚实标注（filesTouched 注释说明"INCOMPLETE reflection"），让下游消费者知道边界
+1. 实现 registerDeclarativeHooks 类型的函数，将配置数据转为命令式注册调用——两种注册方式共用底层
+2. 为一次性 hook（once:true）实现 onHookSuccess 自清理回调，而非让调用方手动管理
+3. 区分不同来源的 hook 生命周期语义（技能 hook 的 sessionId vs Agent hook 的 agentId）
+4. 在 Agent 上下文中自动转换 Stop→SubagentStop，让 frontmatter 配置更直觉化
+5. 遍历完整事件枚举（HOOK_EVENTS）注册所有声明的 hook，保证不遗漏
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图28-1 | DreamTask 生命周期 | Mermaid stateDiagram | starting→updating（触发：Edit/Write）→completed/failed/killed | 28.1 |
+| 图28-1 | 声明式 vs 命令式注册对比 | Markdown 表格 | 配置位置/能力范围/使用门槛/适用场景 | 24.1 |
 
 ## 写作前 checklist
 ```bash
-sed -n '1p' src/tasks/DreamTask/DreamTask.ts    # 设计意图注释
-sed -n '12p' src/tasks/DreamTask/DreamTask.ts   # MAX_TURNS
-sed -n '26p' src/tasks/DreamTask/DreamTask.ts   # DreamTaskState
-sed -n '37p' src/tasks/DreamTask/DreamTask.ts   # filesTouched 注释
-sed -n '54p' src/tasks/DreamTask/DreamTask.ts   # registerDreamTask
-sed -n '72p' src/tasks/DreamTask/DreamTask.ts   # addDreamTurn 空操作
-sed -n '107p' src/tasks/DreamTask/DreamTask.ts  # completeDreamTask notified
-sed -n '120p' src/tasks/DreamTask/DreamTask.ts  # kill rollback
+sed -n '22p' src/utils/hooks/registerSkillHooks.ts   # registerSkillHooks
+sed -n '30p' src/utils/hooks/registerSkillHooks.ts   # for HOOK_EVENTS
+sed -n '37p' src/utils/hooks/registerSkillHooks.ts   # once:true
+sed -n '18p' src/utils/hooks/registerFrontmatterHooks.ts  # registerFrontmatterHooks
+sed -n '37p' src/utils/hooks/registerFrontmatterHooks.ts  # isAgent 判断
+sed -n '43p' src/utils/hooks/registerFrontmatterHooks.ts  # Stop→SubagentStop 注释
 ```
 
 ## ⛔ Spec 一致性声明

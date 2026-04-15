@@ -1,15 +1,7 @@
-flowchart TD
-    md["Skill.md\n---\nname: deploy\ndescription: ...\ncontext: fork\n---\n正文内容..."]
-    
-    md -->|parseFrontmatter| frontmatter["FrontmatterData\n{name, description,\nexecutionContext...}"]
-    md -->|正文部分| body["Markdown 正文\n(延迟加载)"]
-    
-    frontmatter -->|parseSkillFrontmatterFields| command["Command 对象\n{name, description,\nallowedTools,\ncontext: fork}"]
-    
-    command -->|注册到 getAllCommands| registry["Commands 注册表"]
-    registry -->|AI 调用时 findCommand| skill_tool[SkillTool.call]
-    body -->|调用时注入| skill_tool
-    
-    skill_tool -->|context=fork?| fork{是否 fork?}
-    fork -->|是| forked["executeForkedSkill\n独立 token 预算"]
-    fork -->|否| inline["内联执行\n注入当前对话"]
+classDiagram
+    class ClassifierResult {
+        +matches boolean
+        +matchedDescription string
+        +confidence high_or_medium_or_low
+        +reason string
+    }

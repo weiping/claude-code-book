@@ -1,14 +1,15 @@
 flowchart TD
-    start[开始一轮 while 迭代] --> api[发送 API 请求]
-    api -->|"AbortSignal 触发"| abort["⚡ 紧急停止\n（interrupt() 触发）"]
-    api -->|"API 响应成功"| stream[流式接收响应]
-    stream --> check{needsFollowUp?}
-    check -->|"false: AI 无工具调用"| normal["✅ 正常出口\n任务完成"]
-    check -->|"true: AI 有工具调用"| execTool[执行工具，继续下一轮]
-    execTool --> turnCheck{超过 maxTurns?}
-    turnCheck -->|是| maxStop["🛡️ 轮次保护\n(maxTurns 限制)"]
-    turnCheck -->|否| start
-
-    style normal fill:#e8f5e9,stroke:#388e3c
-    style abort fill:#ffebee,stroke:#c62828
-    style maxStop fill:#fff3e0,stroke:#e65100
+    start([调用 getMainLoopModel]) --> A{getMainLoopModelOverride\n不为 undefined?}
+    A -->|是: 会话/启动覆盖| R1["返回覆盖模型\n（来自 STATE.mainLoopModelOverride）"]
+    A -->|否| B{process.env.ANTHROPIC_MODEL\n不为空?}
+    B -->|是: 环境变量| allow1{isModelAllowed?}
+    allow1 -->|否| C
+    allow1 -->|是| R2["返回环境变量指定的模型"]
+    B -->|否| C{settings.model\n不为空?}
+    C -->|是: 用户设置| allow2{isModelAllowed?}
+    allow2 -->|否| D
+    allow2 -->|是| R3["返回用户保存的模型"]
+    C -->|否| D[getDefaultMainLoopModel]
+    D --> E{isMaxSubscriber\n或 TeamPremium?}
+    E -->|是| R4["返回 Opus（最高层订阅）"]
+    E -->|否| R5["返回 Sonnet（默认）"]

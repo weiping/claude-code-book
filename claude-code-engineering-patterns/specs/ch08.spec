@@ -1,20 +1,20 @@
 spec: task
-name: "第8章：QueryEngine 主循环——工具调用的编排逻辑"
+name: "第8章：IDE 集成——Bridge 协议与 LSP 服务"
 tags: [book-chapter, part-2]
 ---
 
 ## 意图
 
-追踪 `src/QueryEngine.ts`（1295行）中"用户输入→AI响应→工具调用→再次请求"主循环的完整编排逻辑，识别重试机制（`src/QueryEngine.ts:946`）和中断模式（`QueryEngine.interrupt()`，第1158行）的实现。读者读完后能识别 AI 工具调用主循环的通用编排模式，并能在自己的系统中实现稳定的多轮工具调用循环。
+分析 Claude Code 如何通过 Bridge 协议（src/bridge/，32 个文件）桥接 VS Code 等 IDE，通过 LSP 服务（src/services/lsp/，7 个文件）提供语言服务协议支持。读者读完后能理解 Bridge 模式如何让同一个 Agent 同时服务终端和 IDE 两种交互界面，并能在自己的 Agent 项目中复用这一"双界面桥接"模式。
 
 ## 已定决策
 
+- 写作语言：中文正文，英文技术术语保留原文
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/QueryEngine.ts（class QueryEngine，第184行）
-- 前置依赖：第4章（processUserInput 将输入传入 QueryEngine）
-
+- 核心文件：src/bridge/（bridgeMain.ts、bridgeApi.ts、bridgeConfig.ts、bridgeMessaging.ts、bridgePermissionCallbacks.ts 等）
+- 关联文件：src/services/lsp/（LSPClient.ts、LSPServerInstance.ts、LSPServerManager.ts）
 
 ## 约束
 
@@ -24,66 +24,73 @@ tags: [book-chapter, part-2]
 - ⛔ 每节开篇格式与 hunter 风格匹配（模式预告，不引用源码）
 - 跨章节引用使用"详见第 X 章"格式，不重复解释
 - ⛔ 展示至少 2 处源码实例，证明模式的普遍性
-- 包含适用范围表（什么场景用/不用该模式）
+- 包含适用范围表
 - 包含权衡与局限分析
-- 包含与已知业界模式的对话（至少引用一个 GoF/POSA/EIP 模式）
+- 包含与已知业界模式的对话
 - 使用"我们"而非"用户"/"读者"建立对话感
 
 ### 禁止
-- ⛔ 开篇不得直接引用源码路径或行号（开篇是问题场景+模式预告+价值承诺，150-200字）
+- ⛔ 开篇不得直接引用源码路径或行号
 - 不得引用排除范围中的 stub 或未实现模块
 - 不得出现"介绍了…"、"描述了…"、"讲解了…"等空洞表述
-- 不得对源码中没有依据的设计意图做无标注的猜测（必须标注「（推断）」）
-- 不得重复已在其他章节详细讲解的内容（用交叉引用代替）
+- 不得对源码中没有依据的设计意图做无标注的猜测
+- 不深入 Bridge 的每个文件（这是架构概览章，不展开 32 个文件的逐个分析）
+- 不展开权限系统完整逻辑（详见第 15 章、第 37 章）
 
 ## 边界
 
 ### 允许修改
-- book/src/part2/ch08.md
+- book/src/part2/ch08-NEW.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不展开流式响应管道细节（第9章）
-- 不展开 Tool 接口契约（第10章）
+- 不分析 src/assistant/、src/ssh/、src/server/、src/proactive/
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch08_hunter_opening
-  假设 读者打开第8章
-  当 读者阅读第一屏内容
+  测试: ch08_hunter_style_opening
+  假设 读者打开第 8 章
+  当 读者阅读章节第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: 主循环流程图存在
-  测试: ch08_main_loop_diagram
-  假设 读者阅读主循环节
-  当 读者检查图表
-  那么 包含一个 Mermaid 流程图，展示输入→AI响应→工具调用→再次请求的循环结构
+场景: Bridge 架构有图表
+  测试: ch08_bridge_diagram
+  假设 读者阅读 Bridge 架构节
+  当 读者检查图表区域
+  那么 包含一个 Mermaid 或 ASCII 图展示终端和 IDE 通过 Bridge 通信的架构
+  那么 图表上方有 **图 8-X：[标题]** 标注
 
-场景: 重试机制说明
-  测试: ch08_retry_mechanism
-  假设 读者阅读重试节
-  当 读者检查重试逻辑的描述
-  那么 章节展示重试触发条件、最大重试次数（或限制）的源码依据
-
-场景: 中断机制说明
-  测试: ch08_interrupt_mechanism
-  假设 读者阅读中断节
-  当 读者检查 interrupt() 方法的实现描述
-  那么 章节说明中断信号如何从外部传入并在主循环中生效
+场景: LSP 集成有分析
+  测试: ch08_lsp_integration
+  假设 本章讨论 LSP 服务
+  当 读者检查相关内容
+  那么 有源码引用指向 src/services/lsp/ 下的文件
+  那么 说明了 LSP 如何与 Bridge 协同工作
 
 场景: 源码引用有效性
   测试: ch08_source_anchors
   层级: 集成
-  假设 读者跟随章节中的源码引用
+  假设 读者跟随本章中的源码引用
   当 读者在项目目录查找每处路径和行号
-  那么 每处引用都实际存在于对应文件
+  那么 每处引用都实际存在于对应文件的对应行
 
-场景: 模式命名框存在
-  测试: ch08_pattern_box
+场景: 不引用排除范围
+  测试: ch08_no_excluded_refs
+  层级: 集成
+  假设 DESIGN.md 列出了排除范围
+  当 读者检查本章所有源码路径
+  那么 没有任何路径落在 src/assistant/、src/ssh/、src/server/、src/proactive/ 中
+
+场景: 模式命名框格式规范
+  测试: ch08_pattern_box_format
   假设 本章使用 hunter 风格
-  当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"可中断主循环"模式
+  当 读者检查模式剖析节或章末
+  那么 存在至少 1 个模式命名框，格式为：
+    模式名称：[中文名 + 英文名]
+    问题：[一句话描述问题]
+    解决方案：[一句话描述方案]
+    源码锚点：[文件:行号 或 函数名]
 
 场景: 章末行动建议
   测试: ch08_action_items
@@ -91,20 +98,12 @@ tags: [book-chapter, part-2]
   当 读者检查"你能做什么"节
   那么 包含 5-8 条以行动动词开头的可操作建议
 
-场景: 不引用排除范围
-  测试: ch08_no_excluded_refs
-  层级: 集成
-  假设 DESIGN.md 列出了排除范围
-  当 读者检查本章所有源码路径
-  那么 没有路径落在排除范围 stub 模块中
-
-
 场景: ⛔ hunter 开篇格式（最高优先级）
   测试: ch08_hunter_opening_format
   假设 读者打开本章
-  当 读者阅读第一屏内容（开篇节）
+  当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号
-  那么 开篇包含三要素：问题场景（200字内）+ 模式预告（30字内一句话）+ 价值承诺（50字内）
+  那么 开篇包含三要素：问题场景+模式预告+价值承诺
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
@@ -133,16 +132,6 @@ tags: [book-chapter, part-2]
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
-场景: 模式命名框格式规范
-  测试: ch08_pattern_box_format
-  假设 本章使用 hunter 风格
-  当 读者检查模式剖析节或章末
-  那么 存在至少 1 个模式命名框，格式为：
-    模式名称：[中文名 + 英文名]
-    问题：[一句话描述问题]
-    解决方案：[一句话描述方案]
-    源码锚点：[文件:行号 或 函数名]
-
 场景: 读者对话感
   测试: ch08_reader_voice
   假设 本章使用 hunter 风格
@@ -160,6 +149,6 @@ tags: [book-chapter, part-2]
 
 ## 排除范围
 
-- 流式响应管道的内部实现（第9章）
-- Tool 接口契约定义（第10章）
-- src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
+- src/assistant/、src/ssh/、src/server/、src/proactive/（stub）
+- src/buddy/、src/voice/（UI 细节）
+- LSP 协议本身的规范讲解

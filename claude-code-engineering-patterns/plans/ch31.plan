@@ -1,32 +1,31 @@
 # 第 31 章写作计划
 
-**批次**：批次 8a（来自 plans/batch.md）
-**章节**：ch31 — 第31章：三种 Teammate 后端——in-process/tmux/auto 的选型逻辑
+**批次**：批次 7b（来自 plans/batch.md）
+**章节**：ch31 — RemoteAgentTask——远程任务的通信架构
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/utils/swarm/backends/` 目录下 InProcessBackend.ts（339行）、TmuxBackend.ts（764行）、detection.ts（128行）三种 Teammate 运行后端的差异，以及 auto 模式如何在性能（in-process）与隔离性（tmux）之间做自动权衡。
+揭示 `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`（855行）如何把本地任务模型扩展到远程执行，以及在 SSE/WebSocket/轮询三种通信方式中如何选型。读者读完后能理解远程 Agent 任务的通信架构设计，并能在自己的分布式 Agent 系统中做有依据的通信方式选型。
 
 ## 通用约束
-**排除范围**：leaderPermissionBridge（第30章）、permissionSync（第32章）、stubs
+**排除范围**：LocalAgentTask（第 30 章）、DreamTask（第 32 章）、Swarm（第29-32章）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「可插拔运行后端」（Pluggable Runtime Backend）
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「远程任务代理」（Remote Task Proxy）
 **章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（InProcessBackend vs TmuxBackend），适用范围表，与已知模式对话（策略模式）
+**必须**：≥2处实例（RemoteAgentTaskState 字段 + pollRemoteSessionEvents 轮询），适用范围表，与已知模式对话
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
 
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/utils/swarm/backends/detection.ts | isInsideTmuxSync(36行)、isInsideTmux(50行)、TMUX env var 注释(32-34行) | 全文 |
-| 2 | src/utils/swarm/backends/registry.ts | 后端选择逻辑、cachedBackend、getTeammateModeFromSnapshot | 全文 |
-| 3 | src/utils/swarm/backends/InProcessBackend.ts | InProcessBackend class(38行)、setContext(49行)、spawn(72行) | 38-90 |
-| 4 | src/utils/swarm/backends/TmuxBackend.ts | paneCreationLock(29行) | 19-55 |
+| 1 | src/tasks/RemoteAgentTask/RemoteAgentTask.tsx | RemoteAgentTaskState(22行)、RemoteTaskType(60行)、pollStartedAt字段(41行)、RemoteTaskCompletionChecker(73行) | 22-90 |
+| 2 | src/utils/teleport.ts | pollRemoteSessionEvents 函数 | 相关行 |
 
 ```bash
-ls src/utils/swarm/backends/
+ls src/tasks/RemoteAgentTask/RemoteAgentTask.tsx
+grep -n "pollRemoteSessionEvents\|export.*function.*poll" src/utils/teleport.ts | head -10
 ```
 
 ## Spec 验收场景清单（E > A > B = C > D）
@@ -35,85 +34,79 @@ ls src/utils/swarm/backends/
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：当用户在 tmux 中启动 Claude Code 时，Teammate 会在新的 tmux 面板中运行；在交互终端外（CI/CD 环境）启动时，Teammate 会在同一进程内运行——这个自动选择是如何实现的？
+触发句：远程 Agent 任务（在云端服务器上运行）与本地任务共享同一套 Task 状态机接口——但通信方式完全不同：不是本地函数调用，而是轮询远程事件流。
 
 ### 节 31.1：问题
-- 核心主张：**不同运行环境对 Teammate 后端的需求不同——交互终端需要可视化（tmux pane），CI/CD 需要性能（in-process）——单一后端无法覆盖所有场景**
-- 源码锚点：`src/utils/swarm/backends/detection.ts:32`（注释："We ONLY check the TMUX env var. We do NOT run tmux display-message as a fallback because that command will succeed if ANY tmux server is running on the system"）
-- 包含元素：**图31-1** — 三种后端对比表（性能/隔离性/可视化/适用环境）
+- 核心主张：**远程 Agent 任务的核心挑战是"状态同步"——本地 UI 需要实时反映远程进程的状态，但网络延迟和断连使同步变得复杂**
+- 源码锚点：`src/tasks/RemoteAgentTask/RemoteAgentTask.tsx:41`（pollStartedAt 字段注释："Review timeout clocks from here so a restore doesn't immediately time out a task spawned >30min ago"）
+- 包含元素：**图31-1** — Mermaid，本地 RemoteAgentTask 与远程 Agent 进程的通信架构
 - 估计字数：600-800字
 
-### 节 31.2：源码实例1 — InProcessBackend（同进程，性能优先）
-- 核心主张：**InProcessBackend 必须在 spawn 前调用 setContext 注入 AppState——这不是构造函数注入，而是运行时注入，因为 Context 在 spawn 时才可用**
+### 节 31.2：源码实例1 — RemoteAgentTaskState 的远程特有字段
+- 核心主张：**RemoteAgentTaskState 比 LocalAgentTaskState 多了 remoteTaskType、sessionId、todoList、ultraplanPhase 等远程特有字段——这些字段反映了远程执行的不透明性**
 - 源码锚点：
-  - `src/utils/swarm/backends/InProcessBackend.ts:28`（注释："Unlike pane-based backends (tmux/iTerm2), in-process teammates run in the..."）
-  - `src/utils/swarm/backends/InProcessBackend.ts:38`（`export class InProcessBackend implements TeammateExecutor`）
-  - `src/utils/swarm/backends/InProcessBackend.ts:49`（setContext 注释："Must be set via setContext() before spawn() is called"）
-  - `src/utils/swarm/backends/InProcessBackend.ts:72`（spawn 函数）
-- 概念层次：in-process 的优势（无进程启动延迟）和代价（与主进程共享内存/崩溃影响主进程）
+  - `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx:22`（RemoteAgentTaskState 完整定义）
+  - `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx:60`（REMOTE_TASK_TYPES：5种远程任务类型）
+  - `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx:73`（RemoteTaskCompletionChecker 类型——可插拔的完成检查器）
+  - `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx:54`（ultraplanPhase 字段，状态从远程解析）
+- 概念层次：remoteTaskType 的5种类型（remote-agent/ultraplan/ultrareview/autofix-pr/background-pr）、isLongRunning 语义（不在第一个 result 后就完成）
 - 估计字数：900-1100字
 
-### 节 31.3：源码实例2 — TmuxBackend + auto detection（进程隔离，可视化）
-- 核心主张：**TmuxBackend 用文件系统锁（paneCreationLock Promise 链）防止并行 spawn 时的竞态条件——tmux 命令不是原子性的，必须串行化**
+### 节 31.3：源码实例2 — pollRemoteSessionEvents（轮询而非推送）
+- 核心主张：**RemoteAgentTask 用轮询（polling）而非 WebSocket——轮询简单容错（网络断连后可以重试），但有延迟；pollStartedAt 防止恢复时误判超时**
 - 源码锚点：
-  - `src/utils/swarm/backends/TmuxBackend.ts:28`（`let paneCreationLock: Promise<void> = Promise.resolve()`）
-  - `src/utils/swarm/backends/TmuxBackend.ts:29`（注释："Lock mechanism to prevent race conditions when spawning teammates in parallel"）
-  - `src/utils/swarm/backends/detection.ts:36`（`export function isInsideTmuxSync(): boolean`——仅检查 TMUX 环境变量）
-  - `src/utils/swarm/backends/registry.ts:22`（cachedDetectionResult — 检测结果缓存）
-- 概念层次：Promise 链作为轻量级锁、auto detection 的环境变量检查策略、缓存检测结果的必要性
+  - `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx:19`（`import { pollRemoteSessionEvents } from '../../utils/teleport.js'`）
+  - `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx:81`（RemoteTaskCompletionChecker 注释："Checkers that hit external APIs should self-throttle"）
+- 概念层次：轮询 vs SSE vs WebSocket 的选型理由（容错性优先）、pollStartedAt 的超时计算意义
 - 估计字数：700-900字
 
 ### 节 31.4：模式剖析
-- 核心主张：**可插拔运行后端的本质是"环境感知策略选择"——在运行时检测环境，缓存选择结果，统一接口调用**
+- 核心主张：**远程任务代理的本质是"本地状态机代理远程进程"——本地维护一份镜像状态，通过轮询保持同步，对 UI 呈现与本地任务相同的接口**
 - 估计字数：500-700字
 
 ### 节 31.5：适用范围
 | 场景 | 适用性 | 理由 | 替代方案 |
 |------|--------|------|---------|
-| 需要跨环境（交互/非交互）自适应的系统 | ✓ | auto 模式根据环境变量自动选择 | 配置文件手动指定（但用户体验差）|
-| 并发 spawn 多个 Teammate | ✓ | TmuxBackend 的 paneCreationLock 防竞态 | 串行 spawn（但慢）|
-| CI/CD 环境无交互终端 | ✓ | auto 检测非交互模式后选 in-process | 强制 tmux（在 CI 中不可用）|
-| 需要完全进程隔离（Teammate 崩溃不影响主进程）| ✓ | tmux/外部进程天然隔离 | in-process（但崩溃传播）|
-| 超低延迟任务分派（<10ms）| ✓ | in-process 无进程启动开销 | tmux（spawn tmux pane 需要数百ms）|
+| 长时间运行的云端 AI 任务（>5分钟）| ✓ | 轮询容忍网络中断，任务可从断点恢复 | WebSocket（但断线后需重连）|
+| 多种任务类型共享同一 UI 框架 | ✓ | RemoteTaskType 枚举支持5种类型 | 每种类型独立 UI（难维护）|
+| 需要实时流式输出（每秒更新）| ✗（谨慎）| 轮询有延迟，不如 SSE | SSE/WebSocket |
+| 延迟敏感的交互（<200ms响应）| ✗ | 轮询间隔通常>1s | 直连本地进程 |
 
 ### 节 31.6：权衡与局限
-- in-process 的内存共享风险、TmuxBackend 的 shell 初始化延迟（pane 创建后需等待 rc 文件加载）、检测结果缓存后不响应环境变化
+- 轮询延迟（用户看到的进度有延迟）、超时处理复杂性（pollStartedAt vs 任务创建时间）、isLongRunning 的边界情况
 - 估计字数：500-700字
 
 ### 节 31.7：与已知模式的对话
-- 与 GoF 策略模式：最接近——可替换的算法族，统一接口；差异是策略通常在编译时选择，本模式在运行时根据环境动态选择
-- 与 Abstract Factory：相同——创建不同系列的后端对象；差异是 Abstract Factory 通常有多个产品，本模式只有一个 Executor 接口
+- 与 GoF 代理模式（Proxy）：相同——本地代理透明访问远程资源；不同——代理模式通常是同步的，本模式需要处理异步轮询和超时
+- 与 EIP 事件驱动消费者：相同——消费远程事件流；不同——事件驱动是推送，本模式是主动轮询
 
 ### 章末：模式提炼
 ```
-模式名称：可插拔运行后端（Pluggable Runtime Backend）
-问题：不同运行环境需要不同的执行模型（in-process vs 独立进程），但调用方代码不应该感知差异
-解决方案：定义统一的 TeammateExecutor 接口，auto detection 在启动时检测环境并缓存后端选择
-前置条件：后端选择条件可以在启动时确定（环境变量/平台检测）
-源码锚点：src/utils/swarm/backends/registry.ts (auto detection), src/utils/swarm/backends/detection.ts:36
+模式名称：远程任务代理（Remote Task Proxy）
+问题：远程进程的状态需要在本地 UI 中呈现，但远程状态变化不透明、网络不可靠
+解决方案：本地维护一份 RemoteAgentTaskState 镜像状态，通过轮询 pollRemoteSessionEvents 保持同步
+前置条件：远程任务有唯一 sessionId，可通过 API 查询当前状态
+源码锚点：src/tasks/RemoteAgentTask/RemoteAgentTask.tsx:22 (RemoteAgentTaskState), :41 (pollStartedAt)
 ```
 
 ### 章末：你能做什么
-1. 为不同运行环境定义统一的 Executor 接口，让调用方不感知后端差异
-2. 只检查环境变量（TMUX）而非执行外部命令来检测运行环境——更快更可靠
-3. 缓存后端检测结果（cachedDetectionResult），避免每次 spawn 时重复检测
-4. 用 Promise 链而非 mutex 实现轻量级串行化锁，防止并发 spawn 的竞态条件
-5. 在 InProcessBackend.spawn 中要求调用方先调用 setContext，而非在构造函数中——Context 可能在构造时不可用
+1. 为远程任务在本地维护镜像状态，而非实时直连远程——网络中断后本地状态仍可显示
+2. 记录 pollStartedAt 而非任务创建时间，让恢复后的超时计算基于"本地开始监控"的时刻
+3. 设计可插拔的完成检查器（RemoteTaskCompletionChecker），让不同任务类型有不同的完成判断逻辑
+4. 为长时间任务设计 isLongRunning 语义，区分"第一次返回结果"和"真正完成"
+5. 为轮询实现 self-throttle 机制，避免对远程 API 的过度请求
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图31-1 | 三种后端对比 | Markdown 表格 | in-process/tmux/auto 的性能/隔离性/适用环境 | 31.1 |
+| 图31-1 | RemoteAgentTask 通信架构 | Mermaid flowchart | 本地状态机 ↔ 轮询 ↔ 远程 Agent 进程 | 27.1 |
 
 ## 写作前 checklist
 ```bash
-sed -n '32p' src/utils/swarm/backends/detection.ts    # TMUX 注释
-sed -n '36p' src/utils/swarm/backends/detection.ts    # isInsideTmuxSync
-sed -n '28p' src/utils/swarm/backends/InProcessBackend.ts  # 注释
-sed -n '38p' src/utils/swarm/backends/InProcessBackend.ts  # class
-sed -n '49p' src/utils/swarm/backends/InProcessBackend.ts  # setContext 注释
-sed -n '28p' src/utils/swarm/backends/TmuxBackend.ts  # paneCreationLock
-sed -n '29p' src/utils/swarm/backends/TmuxBackend.ts  # 竞态注释
+sed -n '22p' src/tasks/RemoteAgentTask/RemoteAgentTask.tsx  # RemoteAgentTaskState
+sed -n '41p' src/tasks/RemoteAgentTask/RemoteAgentTask.tsx  # pollStartedAt 注释
+sed -n '60p' src/tasks/RemoteAgentTask/RemoteAgentTask.tsx  # REMOTE_TASK_TYPES
+sed -n '73p' src/tasks/RemoteAgentTask/RemoteAgentTask.tsx  # RemoteTaskCompletionChecker
 ```
 
 ## ⛔ Spec 一致性声明

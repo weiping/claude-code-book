@@ -1,23 +1,27 @@
 flowchart TD
-    start["你的 CLI 产品"] --> s1{工具调用超过 10 个?}
-    s1 -->|是| a1["引入 buildTool 统一契约\n（第10章模式）"]
-    s1 -->|否| wait1["继续积累，暂缓引入"]
+    subgraph host ["宿主进程（Claude Code）"]
+        loader["createPluginFromPath\n加载插件"]
+        mcp_resolver["resolvePluginMcpEnvironment"]
+        lsp_resolver["resolvePluginLspEnvironment"]
+    end
 
-    a1 --> s2{上下文/提示词代码\n散布各处?}
-    s2 -->|是| a2["引入分层提示词组装\n（第15章模式）"]
-    s2 -->|否| wait2["保持现有结构"]
+    subgraph plugin_env ["插件子进程环境变量"]
+        root["CLAUDE_PLUGIN_ROOT\n= plugin.path\n（版本化安装目录，只读）"]
+        data["CLAUDE_PLUGIN_DATA\n= getPluginDataDir(source)\n（持久化数据目录，可读写）"]
+        other["其他 env\n（插件声明，${VAR} 展开）"]
+    end
 
-    a2 --> s3{需要钩入 AI\n操作进行审计/监控?}
-    s3 -->|是| a3["引入 Hook 事件总线\n（第20-22章模式）"]
-    s3 -->|否| wait3["继续观察"]
+    subgraph filesys ["文件系统"]
+        install["~/.claude/plugins/marketplaces/\nplugin@version/\n（CLAUDE_PLUGIN_ROOT 指向这里）"]
+        persist["~/.claude/plugin-data/\nplugin@marketplace/\n（CLAUDE_PLUGIN_DATA 指向这里）"]
+        project["当前项目目录\n（插件子进程无直接路径）"]
+    end
 
-    a3 --> s4{任务需要后台化\n或并发执行?}
-    s4 -->|是| a4["引入 Task 系统\n（第25-28章模式）"]
-    s4 -->|否| wait4["单线程足够"]
-
-    a4 --> s5{需要多 Agent\n并行协作?}
-    s5 -->|是| a5["引入 Swarm 架构\n（第29-32章模式）"]
-    s5 -->|否| wait5["单 Agent 已满足需求"]
-
-    a5 --> platform["你的 Agent 平台"]
-    a1 & a2 & a3 & a4 --> sec["始终需要：\n分层安全防线\n（第33章）"]
+    loader --> mcp_resolver
+    loader --> lsp_resolver
+    mcp_resolver --> root
+    mcp_resolver --> data
+    lsp_resolver --> root
+    lsp_resolver --> data
+    root --> install
+    data --> persist

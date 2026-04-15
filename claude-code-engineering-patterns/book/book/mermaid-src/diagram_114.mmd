@@ -1,6 +1,13 @@
-graph LR
-    startup[启动流程] -->|"调用"| manager["PluginInstallationManager\n(事件流消费层)"]
-    manager -->|"setAppState"| appstate["AppState\n(状态层)"]
-    manager -->|"onProgress 回调"| reconciler["reconcileMarketplaces\n(安装执行层)"]
-    appstate -->|"订阅"| ui["REPL UI\n(渲染层)"]
-    reconciler -->|"事件推送"| manager
+stateDiagram-v2
+    [*] --> initial: createDenialTrackingState()
+    initial --> tracking: 首次记录
+
+    tracking --> tracking: recordDenial(+1/+1)
+    tracking --> tracking: recordSuccess(重置consecutive)
+
+    tracking --> fallback_consecutive: consecutive >= 3
+    tracking --> fallback_total: total >= 20
+
+    fallback_consecutive --> tracking: 用户审核后继续
+    fallback_total --> reset: 用户审核后重置
+    reset --> tracking: totalDenials归零

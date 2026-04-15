@@ -1,14 +1,12 @@
 flowchart TD
-    start([调用 resolveAppliedEffort]) --> env{getEffortEnvOverride\n读取 CLAUDE_CODE_EFFORT_LEVEL}
-    env -->|"null（env='unset'/'auto'）"| none["返回 undefined\n不发送 effort 参数"]
-    env -->|"有具体值（如 'low'）"| max1{resolved === 'max'\n且模型不支持 max?}
-    env -->|"undefined（未设置）"| app{appStateEffortValue\n不为 undefined?}
-    app -->|"是（用户显式设置）"| max2{resolved === 'max'\n且模型不支持 max?}
-    app -->|"否"| model_def["getDefaultEffortForModel(model)\n按订阅者/模型类型"]
-    model_def --> max3{resolved === 'max'\n且模型不支持 max?}
-    max1 -->|"是"| downgrade["降级为 'high'\n（静默处理）"]
-    max1 -->|"否"| r1["返回 env 指定值"]
-    max2 -->|"是"| downgrade
-    max2 -->|"否"| r2["返回 appState 值"]
-    max3 -->|"是"| downgrade
-    max3 -->|"否"| r3["返回模型默认值"]
+    caller[SDK 调用者] -->|"for await"| submitMessage["QueryEngine.submitMessage()\n src/QueryEngine.ts:209"]
+    submitMessage -->|"for await"| query["query()\nsrc/query.ts:219"]
+    query -->|"yield*"| queryLoop["queryLoop()\nsrc/query.ts:241"]
+    queryLoop --> whileTrue["while(true)\nsrc/query.ts:307"]
+    whileTrue --> apiCall[发送 API 请求]
+    apiCall --> streaming[流式接收响应]
+    streaming --> needsFollowUp{needsFollowUp?}
+    needsFollowUp -->|true: 有 tool_use 块| execTool[执行工具]
+    execTool --> whileTrue
+    needsFollowUp -->|"false: 无 tool_use"| exit[退出 while]
+    exit --> terminal[返回 Terminal]

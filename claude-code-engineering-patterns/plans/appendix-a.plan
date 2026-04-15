@@ -1,27 +1,174 @@
-# 附录 A：Hook 事件速查表
+# 附录 A 写作计划：Hook 事件速查表
 
 **类型**：附录
-**风格**：reference（精炼参考，无论全书 STYLE_ID 是什么）
-**目标长度**：视内容而定，表格为主
+**风格**：`reference`（精炼参考，无论全书 STYLE_ID 是什么）
+**目标长度**：~1500 字（以分类表格为主，不含表格线）
+
+## 章节意图
+
+为读者提供 Claude Code 全部 27 个 Hook 事件的一页速查表。每个事件列出触发时机、输入字段、退出码语义和典型用途，按功能类别分组。读者无需翻阅正文即可快速确定"我需要监听哪个事件、退出码怎么设"。完整的钩子系统设计分析见第 24-26 章。
+
+## 通用约束
+
+**通用必须**：
+- 每个事件的源码锚点指向 `src/utils/hooks/hooksConfigManager.ts`
+- 表格数据必须从源码提取，不得凭记忆编写
+- 跨章节引用使用"详见第 X 章"格式
+- 事件按功能类别分组，每组按触发时序排列
+
+**通用禁止**：
+- 不得展开设计分析（正文职责）
+- 不得重复第 24-26 章的内容，仅引用
+- 不得遗漏任何已知事件
+- 不得使用模糊词描述触发时机
+
+**排除范围**：
+- 钩子的注册、执行、超时机制的详细实现（见第 24-25 章）
+- Hook 配置文件的 schema 定义（见第 26 章）
+
+## 风格专属写作要求
+
+**开篇格式**（reference — 条目概览）：一句话说明本附录覆盖范围 + 读者在什么场景需要查这一附录 + 源码来源标注。
+
+**分节组织**（reference — 分类表格）：按功能类别分节，每节一张表格，表头为：事件名 | 触发时机 | 输入 JSON 字段 | 退出码语义 | 典型用途。类别之间用二级标题分隔。
+
+**章末结构**（reference — 条目导航 + 版本说明）：退出码速查汇总表 + 版本信息脚注。不需要模式提炼。
+
+**风格专属必须**：
+- 每个类别有独立二级标题和小计数量标注（如"工具调用类（5 个）"）
+- 表格列宽紧凑，信息密度高
+- matcher 字段单独说明，不在每行重复
+
+**风格专属禁止**：
+- 不展开任何事件的工程分析或设计权衡
+- 不用正文风格的叙事/设问句式
+- 不添加"为什么这样设计"类解释
+
+**通用写作铁律**：
+- ⛔ 源码第一：主源码文件为 `src/utils/hooks/hooksConfigManager.ts`
+- ⛔ 数据驱动：事件数量、字段名必须与源码一致
+- ⛔ 术语标准化：首次出现标注原文（如 Hook 事件（Hook Event））
+- ⛔ 开篇铁律：开篇最后补写，简洁覆盖范围即可
 
 ## 数据提取清单
 
-> ⛔ 附录内容必须从已完成的章节中提取，不得凭记忆编写。
-
-**内容描述**：所有 27 个 HookEvent 类型的速查表。列：事件名 | 触发时机 | Input 类型 | Output 类型 | 典型用途 | 源码位置。来源：src/entrypoints/sdk/coreTypes.ts + src/utils/hooks.ts
+> ⛔ 附录内容必须从源码和已完成章节中提取，不得凭记忆编写。每条数据必须有源码锚点或章节出处。
 
 | # | 提取来源 | 提取方法 | 目标数据 |
 |---|---------|---------|---------|
-| 1 | 全部 ch*.md | 搜索相关内容 | 表格数据行 |
-| 2 | 源码文件 | grep 搜索 | 验证和补全 |
+| 1 | `src/utils/hooks/hooksConfigManager.ts` | `grep -n 'HookEvent\|PreToolUse\|PostToolUse\|SessionStart\|Stop\|SubagentStart\|SubagentStop\|AgentTool\|HookRegister\|sdkRead\|sdkWrite\|PermissionDenied\|PermissionRequest\|Elicitation\|ConfigChange\|CwdChanged\|FileChanged\|Worktree\|TaskCreated\|TaskCompleted\|TeammateIdle\|Notification\|UserPromptSubmit\|PreCompact\|PostCompact\|InstructionsLoaded\|Setup\|StopFailure'` | 全部 27 个事件的名称、描述、退出码语义、触发时机 |
+| 2 | `src/utils/hooks/hooksConfigManager.ts` | `grep -n 'matcher\|tool_name'` | matcher 字段的定义和支持的事件列表 |
+| 3 | `src/entrypoints/agentSdkTypes.ts` | `grep -n 'HookEvent\|HookInput\|HookOutput\|ElicitationResult\|HistorySave\|HistoryLoad'` | 事件的 input/output 结构体定义、SDK 集成类事件 |
+| 4 | 第 24-26 章（`book/src/part7/ch24.md` ~ `part7/ch26.md`） | 读取"20+ 事件的生命周期地图"及钩子系统相关节 | 事件的典型用途、设计意图、触发时序，用于交叉验证 |
+| 5 | `src/utils/hooks/hooksConfigManager.ts` | `grep -n 'exitCode\|exit_code\|exit 0\|exit 2'` 或通读事件定义 | 各事件的退出码语义（0/2/其他的含义差异） |
+| 6 | `src/utils/hooks/hooksConfigManager.ts` | 通读全文件，统计事件总数和分类 | 事件总数（27）及类别分组依据 |
+| 7 | 已写完的 `book/src/appendix-a.md` | `cat` 全文 | 已写内容的结构、类别、字段名——plan 必须准确反映 |
 
 ## 结构骨架
 
-1. 说明本附录用途和查阅场景（~50字）
-2. 速查表（主体内容）
-3. 说明表格生成时间（基于哪个版本的源码）
+### 开篇（~80 字）
+- 条目概览：列出全部 27 个 Hook 事件，说明本附录用途（快速查阅触发时机和用途）
+- 源码来源标注：`src/utils/hooks/hooksConfigManager.ts`
+- 交叉引用：完整设计分析见第 24-26 章
 
-## 写作前验证
-- [ ] 已从各章节提取原始数据
-- [ ] 每条数据已验证源码锚点有效性
-- [ ] 按字母/分类排序完成
+### 节 1：工具调用类（5 个）
+- 源码锚点：`src/utils/hooks/hooksConfigManager.ts`
+- 表格列：事件名 | 触发时机 | 输入 JSON 字段 | 退出码语义 | 典型用途
+- 事件：PreToolUse, PostToolUse, PostToolUseFailure, PermissionDenied, PermissionRequest
+- 附加：matcher 字段说明（工具调用类事件支持按 `tool_name` 过滤）
+
+### 节 2：会话生命周期类（5 个）
+- 事件：SessionStart, SessionEnd, Stop, StopFailure, Setup
+- 注意 StopFailure 是 fire-and-forget 事件（退出码被忽略）
+
+### 节 3：用户交互类（3 个）
+- 事件：UserPromptSubmit, Notification, PermissionDenied（交叉引用工具调用类）
+
+### 节 4：压缩类（2 个）
+- 事件：PreCompact, PostCompact
+- PreCompact 的 exit 2 可阻止压缩
+
+### 节 5：多智能体协作类（5 个）
+- 事件：SubagentStart, SubagentStop, TeammateIdle, TaskCreated, TaskCompleted
+- 注意 TaskCreated 的 exit 2 可阻止创建任务
+
+### 节 6：MCP 交互类（2 个）
+- 事件：Elicitation, ElicitationResult
+
+### 节 7：配置与文件系统类（6 个）
+- 事件：ConfigChange, InstructionsLoaded, WorktreeCreate, WorktreeRemove, CwdChanged, FileChanged
+- InstructionsLoaded 是 fire-and-forget（仅观测，不可阻断）
+
+### 章末：退出码速查表
+- 三行汇总表：exit 0 / exit 2 / 其他（1, 非0）的通用语义
+- 脚注：StopFailure 和 InstructionsLoaded 忽略退出码
+- 版本标注：基于 v2.1.88，共 27 个事件
+
+### 章末：快速查阅路径
+- 按使用场景分组的事件跳转指引
+
+## 表格列定义
+
+| 列名 | 内容 | 示例 |
+|------|------|------|
+| 事件名 | HookEvent 枚举值 | `PreToolUse` |
+| 触发时机 | 一句话描述何时触发 | 工具执行前 |
+| 输入 JSON 字段 | 钩子回调接收的输入字段名 | 工具调用参数 / `inputs` + `response` |
+| 退出码语义 | 0/2/其他 各自的含义 | 0=不显示；2=拦截并报错给模型 |
+| 典型用途 | 最常见的使用场景 | 记录工具调用、拦截危险操作 |
+
+> 注：实际写作中未使用"Input 类型"和"Output 类型"列（DESIGN.md 原始定义），而是简化为"输入 JSON 字段"和"退出码语义"两列，因为源码中事件输入是 JSON 字段而非独立 TypeScript 类型，退出码比 Output 类型更实用。
+
+## 图表清单
+
+附录 A 为纯表格速查，不需要 Mermaid 图表或 ASCII 图。
+
+## 写作顺序
+
+1. 从 `src/utils/hooks/hooksConfigManager.ts` 提取全部事件定义
+2. 按功能类别分组，确定每组的事件数量
+3. 填写各分类表格（事件名、触发时机、输入字段、退出码、典型用途）
+4. 补充 matcher 字段说明
+5. 编写退出码速查汇总表
+6. 写开篇说明段（最后补写）
+7. 写版本脚注
+
+## 写作前验证 checklist
+
+```bash
+# 1. 验证主源码文件存在
+ls "${PROJECT_ROOT}/src/utils/hooks/hooksConfigManager.ts"
+
+# 2. 统计事件总数
+grep -cE 'PreToolUse|PostToolUse|PostToolUseFailure|PermissionDenied|PermissionRequest|SessionStart|SessionEnd|Stop|StopFailure|Setup|UserPromptSubmit|Notification|PreCompact|PostCompact|SubagentStart|SubagentStop|TeammateIdle|TaskCreated|TaskCompleted|Elicitation|ElicitationResult|ConfigChange|InstructionsLoaded|WorktreeCreate|WorktreeRemove|CwdChanged|FileChanged" "${PROJECT_ROOT}/src/utils/hooks/hooksConfigManager.ts"
+
+# 3. 验证交叉引用的章节文件存在
+ls "${BOOK_ROOT}/src/part7/ch24.md" "${BOOK_ROOT}/src/part7/ch25.md" "${BOOK_ROOT}/src/part7/ch26.md"
+
+# 4. 验证已写完的附录文件
+ls "${BOOK_ROOT}/src/appendix-a.md"
+```
+
+- [ ] 已从 `src/utils/hooks/hooksConfigManager.ts` 提取全部 27 个事件
+- [ ] 每个事件的触发时机、输入字段、退出码语义已验证
+- [ ] 事件分类和数量与源码一致：工具调用类(5) + 会话生命周期类(5) + 用户交互类(3) + 压缩类(2) + 多智能体协作类(5) + MCP交互类(2) + 配置与文件系统类(6) = 28 表格行（含 1 行交叉引用），实际去重后 27 个独立事件
+- [ ] matcher 字段说明已包含
+- [ ] fire-and-forget 事件（StopFailure、InstructionsLoaded）已标注
+- [ ] 退出码速查汇总表已包含
+- [ ] 版本信息脚注已包含
+- [ ] 交叉引用（第 24-26 章）正确
+
+## ⛔ Spec 一致性声明
+
+**附录类型**：Hook 事件速查表（从 DESIGN.md 附录 A 定义）
+
+### DESIGN.md 对齐检查
+
+| # | DESIGN.md 要求 | 是否已反映 | 对应 plan 节 |
+|---|---------------|-----------|-------------|
+| 1 | 内容：所有 20+ HookEvent 类型的速查表 | ☑ | 结构骨架 节 1-7 |
+| 2 | 列定义：事件名 \| 触发时机 \| Input 类型 \| Output 类型 \| 典型用途 \| 源码位置 | ☑（调整为更实用的列） | 表格列定义 |
+| 3 | 来源：`src/utils/hooks.ts` + `src/entrypoints/agentSdkTypes.ts` | ☑（主来源扩展为 hooksConfigManager.ts） | 数据提取清单 |
+| 4 | reference 风格 | ☑ | 风格专属写作要求 |
+
+> **调整说明**：DESIGN.md 指定的列为"事件名 | 触发时机 | Input 类型 | Output 类型 | 典型用途 | 源码位置"，实际写作中调整为"事件名 | 触发时机 | 输入 JSON 字段 | 退出码语义 | 典型用途"。理由：(1) 源码中事件输入是具体 JSON 字段而非独立 TypeScript 类型名；(2) 退出码语义比 Output 类型对使用者更实用；(3) 源码位置统一指向 hooksConfigManager.ts，无需每行重复。此调整使速查表更实用，符合 reference 风格的"快速查阅"定位。

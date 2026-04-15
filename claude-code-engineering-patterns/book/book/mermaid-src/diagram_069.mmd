@@ -1,13 +1,15 @@
-graph LR
-    subgraph 权威范围
-        A["机构层\n（Managed）\n不可排除"]
-        B["个人全局层\n（User）\n可 claudeMdExcludes"]
-        C["项目层\n（Project）\n可 claudeMdExcludes"]
-        D["个人私有层\n（Local）\n可 claudeMdExcludes"]
-    end
-    subgraph 优先级
-        A -->|最低优先级| B
-        B --> C
-        C --> D
-        D -->|最高优先级| end_note["CWD 最近的文件\n最后加载"]
-    end
+mindmap
+  root((分层提示词组装))
+    固定层定义
+      defaultSystemPrompt 工具声明
+      userContext 用户配置
+      systemContext 环境上下文
+    并行拉取协议
+      Promise.all
+      层间无依赖约束
+    结构化返回
+      三元组不合并
+      调用方叠加额外内容
+    覆盖语义声明
+      customSystemPrompt双重清空
+      替换而非追加

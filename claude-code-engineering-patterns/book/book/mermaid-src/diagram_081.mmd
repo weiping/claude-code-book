@@ -1,11 +1,16 @@
-flowchart TD
-    A["读入 MEMORY.md 内容"] --> B{行数 > 200?}
-    B -->|"是"| C["取前 200 行"]
-    B -->|"否"| D["保持原内容"]
-    C --> E{截断后 > 25KB?}
-    D --> E
-    E -->|"是"| F["在最后换行符处切断\n（不截断中间一行）"]
-    E -->|"否"| G["直接返回"]
-    F --> H["追加警告，说明触发上限类型"]
-    G --> I["返回 EntrypointTruncation"]
-    H --> I
+graph TD
+    subgraph 写入层
+        A["用户消息到达"] --> B["isTranscriptMessage 过滤\n排除 progress 等 UI 状态"]
+        B --> C["UUID 去重\n检查 messageSet.has(uuid)"]
+        C --> D["insertMessageChain\n追加到 sessionId.jsonl"]
+    end
+    subgraph 执行层
+        D --> E["API 请求\n（写入完成后才发出）"]
+        E --> F["AI 响应"]
+        F --> G["再次写入 AI 消息"]
+    end
+    subgraph 恢复层
+        H["--resume"] --> I["loadSessionFile\n读取 JSONL"]
+        I --> J["buildConversationChain\n重建对话链"]
+        J --> K["REPL 恢复"]
+    end

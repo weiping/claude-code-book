@@ -1,19 +1,19 @@
 spec: task
-name: "第39章：Plugin 包结构——目录约定、package.json 契约与沙箱边界"
-tags: [book-chapter, part-9]
+name: "第 39 章：权限处理器三态——interactive/coordinator/swarmWorker 的策略差异"
+tags: [book-chapter, part-10]
 ---
 
 ## 意图
 
-揭示 Claude Code 插件包的内部结构——`package.json` 的扩展字段、`commands/`、`skills/`、`hooks/`、`agents/`、`mcp/` 等目录约定的绑定机制，以及插件与宿主进程之间的隔离边界。读者读完后能理解插件包的"目录即能力声明"设计，并能设计符合此约定的插件包。
+揭示 `src/hooks/toolPermission/handlers/` 下 interactiveHandler.ts（536行）、coordinatorHandler.ts（65行）、swarmWorkerHandler.ts 如何为同一个权限请求在三种运行场景下提供不同处理策略——交互模式弹出确认框、协调器模式转发给 Leader、Swarm Worker 模式使用预授权缓存。读者读完后能理解权限处理策略多态的工程价值，并能在自己的系统中实现场景感知的权限处理。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/utils/plugins/loadPluginCommands.ts、loadPluginHooks.ts、loadPluginAgents.ts、mcpPluginIntegration.ts
-- 前置依赖：第37章（插件生命周期，安装后需要加载能力）
+- 核心文件：src/hooks/toolPermission/handlers/interactiveHandler.ts（536行）、coordinatorHandler.ts（65行）、swarmWorkerHandler.ts
+- 前置依赖：第 37 章（三层防线）、第 33 章（Swarm 架构，Worker 角色）
 
 
 ## 约束
@@ -39,53 +39,53 @@ tags: [book-chapter, part-9]
 ## 边界
 
 ### 允许修改
-- book/src/part9/ch39.md
+- book/src/part10/ch39.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不重复第37章对生命周期的描述
+- 不重复第 37 章对三层防线全景的描述
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch39_hunter_opening
-  假设 读者打开第39章
+  测试: ch35_hunter_opening
+  假设 读者打开第 39 章
   当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: 目录约定全景图
-  测试: ch39_directory_conventions
-  假设 读者阅读包结构节
-  当 读者检查图表
-  那么 包含一个插件包目录结构示意图，展示 commands/、skills/、hooks/、agents/、mcp/ 各目录的用途
+场景: 三态策略对比表
+  测试: ch35_three_mode_table
+  假设 读者阅读三态对比节
+  当 读者检查三种处理器的说明
+  那么 章节有对比表格，列出 interactive/coordinator/swarmWorker 各自的触发条件、处理方式、权限结果
 
-场景: 沙箱隔离边界说明
-  测试: ch39_sandbox_boundary
-  假设 读者阅读隔离边界节
-  当 读者追问"插件是否能访问宿主进程的所有 API"
-  那么 章节展示插件与宿主之间的边界约定（哪些可以访问，哪些被限制）
+场景: 分叉判断逻辑说明
+  测试: ch35_branching_logic
+  假设 读者阅读分叉判断节
+  当 读者追问"系统如何决定使用哪种处理器"
+  那么 章节展示处理器选择的判断逻辑（如：是否在交互模式、是否是 coordinator、是否是 swarm worker）
 
 场景: 源码引用有效性
-  测试: ch39_source_anchors
+  测试: ch35_source_anchors
   层级: 集成
   假设 读者跟随章节中的源码引用
   当 读者在项目目录查找每处路径和行号
   那么 每处引用都实际存在于对应文件
 
 场景: 模式命名框存在
-  测试: ch39_pattern_box
+  测试: ch35_pattern_box
   假设 本章使用 hunter 风格
   当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"目录即能力声明"模式
+  那么 存在至少 1 个格式规范的模式命名框，提炼"场景感知权限处理"模式
 
 场景: 章末行动建议
-  测试: ch39_action_items
+  测试: ch35_action_items
   假设 读者读完本章
   当 读者检查"你能做什么"节
   那么 包含 5-8 条以行动动词开头的可操作建议
 
 场景: 不引用排除范围
-  测试: ch39_no_excluded_refs
+  测试: ch35_no_excluded_refs
   层级: 集成
   假设 DESIGN.md 列出了排除范围
   当 读者检查本章所有源码路径
@@ -93,7 +93,7 @@ tags: [book-chapter, part-9]
 
 
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch39_hunter_opening_format
+  测试: ch35_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -101,33 +101,33 @@ tags: [book-chapter, part-9]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch39_multi_instance_proof
+  测试: ch35_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch39_applicability_table
+  测试: ch35_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch39_tradeoffs_and_limits
+  测试: ch35_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch39_known_pattern_dialogue
+  测试: ch35_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch39_pattern_box_format
+  测试: ch35_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -137,7 +137,7 @@ tags: [book-chapter, part-9]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch39_reader_voice
+  测试: ch35_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -145,7 +145,7 @@ tags: [book-chapter, part-9]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch39_key_info_highlight
+  测试: ch35_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
@@ -153,6 +153,6 @@ tags: [book-chapter, part-9]
 
 ## 排除范围
 
-- Marketplace 协议（第38章）
-- 插件生命周期（第37章）
+- PermissionRule 规则引擎（第 38 章）
+- TrustDialog/denialTracking（第 40 章）
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）

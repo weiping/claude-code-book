@@ -1,30 +1,15 @@
-classDiagram
-    class ToolDef {
-        +call() 必填
-        +description() 必填
-        +inputSchema 必填
-        +name 必填
-        isConcurrencySafe()? 可选覆盖
-        isReadOnly()? 可选覆盖
-        isDestructive()? 可选覆盖
-        checkPermissions()? 可选覆盖
-    }
+flowchart TD
+    SP["System Prompt（数万 token）"]
+    SP --> SPLIT["splitSysPromptPrefix()"]
 
-    class TOOL_DEFAULTS {
-        +isEnabled() true
-        +isConcurrencySafe() false
-        +isReadOnly() false
-        +isDestructive() false
-        +checkPermissions() allow
-        +toAutoClassifierInput() 空字符串
-        +userFacingName() 空字符串
-    }
+    SPLIT --> STATIC["静态前缀（工具描述 + CLI 系统提示）\ncacheScope = 'org'\n→ API 端 cache_control = 'ephemeral'"]
+    SPLIT --> DYNAMIC["动态后缀（用户记忆 + CLAUDE.md + 工具命令）\n越过 SYSTEM_PROMPT_DYNAMIC_BOUNDARY 标记\n不缓存"]
 
-    class BuiltTool {
-        全部 ToolDef 字段
-        全部 TOOL_DEFAULTS 字段
-        覆盖规则 def 优先于 defaults
-    }
+    MSGS["消息历史（Message[]）"]
+    MSGS --> CB["addCacheBreakpoints()"]
+    CB --> LAST["最后一条消息\n添加 cache_control 标记（唯一一个）"]
+    CB --> REST["其余消息\n无 cache_control"]
 
-    ToolDef --> BuiltTool : buildTool() spread
-    TOOL_DEFAULTS --> BuiltTool : buildTool() spread
+    STATIC -->|"第一次发送"| CC["cache_creation_input_tokens\n成本高"]
+    STATIC -->|"后续命中"| CR["cache_read_input_tokens\n成本低"]
+    DYNAMIC -->|"每次计费"| IT["input_tokens\n普通费率"]

@@ -1,8 +1,14 @@
-<div class="part-page">
-  <div class="part-label">PART VIII</div>
-  <div class="part-number">第八篇</div>
-  <div class="part-title">安全与权限系统：Agent 行为的边界工程</div>
-  <div class="part-rule"></div>
-  <div class="part-desc">拦截、规则、确认——三层防线保护每一次 Agent 操作。PermissionRule 的 glob 匹配、处理器三态策略、信任对话的持久化——权限系统是 Agent 能够被信任的工程保证。</div>
-  <div class="part-chapters">第 33—36 章</div>
-</div>
+# 第八篇：Task 系统——后台执行的基础设施
+
+> *目的：理解 Harness·任务编排子系统——7 种后台任务的生命周期管理*
+
+本篇从 7 种任务类型的统一状态机出发，经过子进程 Agent 隔离、远程任务通信架构，到达自主执行的 DreamTask。
+
+---
+
+## 本章导航
+
+- [第 29 章：7 种任务类型的状态机——Task 系统设计](ch29.md)
+- [第 30 章：LocalAgentTask——子 Agent 的进程模型与 I/O 协议](ch30.md)
+- [第 31 章：RemoteAgentTask——远程任务的通信架构](ch31.md)
+- [第 32 章：DreamTask——后台自主执行的设计意图](ch32.md)

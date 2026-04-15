@@ -1,8 +1,15 @@
-<div class="part-page">
-  <div class="part-label">PART II</div>
-  <div class="part-number">第二篇</div>
-  <div class="part-title">查询引擎：从用户输入到 AI 响应</div>
-  <div class="part-rule"></div>
-  <div class="part-desc">追踪一次用户输入的完整旅程——从路由分流到斜杠命令、从模型选择到流式响应管道，六个子系统串联成一条可中断的推理管道。</div>
-  <div class="part-chapters">第 4—9 章</div>
-</div>
+# 第二篇：交互层——用户如何与系统对话
+
+> *目的：理解交互层的四个子系统——CLI 入口、REPL 界面、命令系统、IDE 集成——如何接收和路由用户输入*
+
+本篇追踪用户输入从终端到系统的完整路径：从 CLI 启动分叉、到 REPL 交互渲染、到命令路由决策、到 IDE 桥接。
+
+---
+
+## 本章导航
+
+- [第 4 章：CLI 入口与模式分叉——从 main.tsx 到 REPL / Headless / SDK](ch04.md)
+- [第 5 章：REPL 界面架构——5000 行组件的交互设计](ch05.md)
+- [第 6 章：用户输入分流——`processUserInput` 的路由决策树](ch06.md)
+- [第 7 章：斜杠命令系统——103 个命令的注册、加载与执行](ch07.md)
+- [第 8 章：IDE 集成——Bridge 协议与 LSP 服务](ch08.md)

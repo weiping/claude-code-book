@@ -1,11 +1,10 @@
-flowchart TD
-    start[calculatePluginVersion 调用] --> check1{manifest.version?}
-    check1 -->|有| v1["返回 semver 固定版本\n如 '1.2.3'"]
-    check1 -->|无| check2{providedVersion?}
-    check2 -->|有| v2["返回调用方传入的版本\n如 '^1.0.0' 或 '~2.1.0'"]
-    check2 -->|无| check3{gitCommitSha?}
-    check3 -->|有| v3["返回 SHA 前12位\n即隐式 latest = 当前 HEAD"]
-    check3 -->|无| check4{installPath?}
-    check4 -->|能读出 SHA| v4[读取安装目录的 git SHA]
-    check4 -->|无法获取| v5["返回 'unknown'"]
-    v4 --> v3
+flowchart LR
+    deny1[拒绝1] --> deny2[拒绝2] --> deny3[拒绝3]
+    deny3 -->|consecutive=3| trigger_c[⚡ 连续阈值触发]
+
+    deny_a[拒绝] --> ok1[成功] --> deny_b[拒绝] --> ok2[成功]
+    ok2 --> deny_c[...共20次拒绝]
+    deny_c -->|total=20| trigger_t[⚡ 总量阈值触发]
+
+    trigger_c --> fallback[降级到交互模式]
+    trigger_t --> fallback

@@ -1,16 +1,17 @@
-sequenceDiagram
-    participant AI as AI 模型
-    participant QE as QueryEngine
-    participant Schema as inputSchema.safeParse()
-    participant Call as tool.call()
-
-    AI->>QE: 工具调用 JSON（unknown 类型）
-    QE->>Schema: 验证参数格式
-    alt 验证通过
-        Schema-->>QE: z.infer&lt;Input&gt;（类型安全）
-        QE->>Call: call(verified_args)
-        Call-->>QE: ToolResult
-    else 验证失败（额外字段/类型错误）
-        Schema-->>QE: ZodError（字段路径 + 原因）
-        QE-->>AI: 错误反馈，请重新生成参数
-    end
+mindmap
+    root(正交推理深度控制)
+        Effort 轴
+            EFFORT_LEVELS 枚举
+            resolveAppliedEffort 优先级链
+            env CLAUDE_CODE_EFFORT_LEVEL
+            max effort 仅 Opus 4.6
+        Fast Mode 轴
+            isFastModeEnabled env 控制
+            isFastModeAvailable 多条件
+            getFastModeState 三态
+            与计费系统联动
+        Thinking 轴
+            ThinkingConfig union type
+            adaptive 无 budget 参数
+            enabled 显式 budgetTokens
+            shouldEnableThinkingByDefault 默认开

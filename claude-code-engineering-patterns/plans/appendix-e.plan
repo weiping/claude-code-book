@@ -1,27 +1,182 @@
-# 附录 E：Feature Flag 完整清单
+# 附录 E 写作计划：Feature Flag 完整清单
 
-**类型**：附录
-**风格**：reference（精炼参考，无论全书 STYLE_ID 是什么）
-**目标长度**：视内容而定，表格为主
+**类型**：附录（速查参考）
+**风格**：reference（精炼表格为主，无论全书 STYLE_ID 是什么）
+**目标长度**：~2000 字（表格为主，正文极少）
 
-## 数据提取清单
+---
 
-> ⛔ 附录内容必须从已完成的章节中提取，不得凭记忆编写。
+## 1. 数据提取清单
 
-**内容描述**：所有 bun:bundle feature('xxx') 的条件分支与 flag 名称。列：Flag 名 | 条件分支 | 影响的模块 | 用途说明。来源：src/main.tsx + bun:bundle 使用处
+> ⛔ 附录内容必须从源码提取，不得凭记忆编写。每条数据必须有源码锚点或章节出处。
 
 | # | 提取来源 | 提取方法 | 目标数据 |
 |---|---------|---------|---------|
-| 1 | 全部 ch*.md | 搜索相关内容 | 表格数据行 |
-| 2 | 源码文件 | grep 搜索 | 验证和补全 |
+| 1 | `src/main.tsx` | `grep -o "feature('[^']*')" \| sort -u` | 18 个 feature flag 及条件分支（详见下文 §5 完整清单） |
+| 2 | `src/` 全目录（排除 node_modules） | `grep -rln "feature('" src/ --include="*.ts" --include="*.tsx" \| sort -u` | 全部 ~87 个唯一 flag 名称、使用文件分布、总引用次数 |
+| 3 | `book/src/part1/ch03.md` | 读取第 3 章 | DCE 机制说明、feature() 工作原理、构建时门控概念 |
+| 4 | `DESIGN.md` 附录 E 节 + 已写 `book/src/appendix-e.md` | 对照现有内容 | 验证已有内容准确性、识别需修正的错误章节引用 |
 
-## 结构骨架
+---
 
-1. 说明本附录用途和查阅场景（~50字）
-2. 速查表（主体内容）
-3. 说明表格生成时间（基于哪个版本的源码）
+## 2. 结构骨架
 
-## 写作前验证
-- [ ] 已从各章节提取原始数据
-- [ ] 每条数据已验证源码锚点有效性
-- [ ] 按字母/分类排序完成
+```
+# 附录 E：Feature Flag 完整清单
+
+## 说明段（~100 字）
+  - 定义：`bun:bundle feature('FLAG')` 编译期条件分支
+  - 机制：DCE 在打包时消除 false 分支，运行时不可切换
+  - 交叉引用：详见第 3 章「构建时特性开关」
+  - 统计：共 87 个唯一 Flag，main.tsx 中使用 18 个，全项目引用 ~828 处
+
+## 一、核心功能 Flag（8 项）
+  - TRANSCRIPT_CLASSIFIER, BASH_CLASSIFIER, REACTIVE_COMPACT, CONTEXT_COLLAPSE,
+    HISTORY_SNIP, TOKEN_BUDGET, FORK_SUBAGENT, HISTORY_PICKER
+
+## 二、Agent / 多智能体 Flag（18 项）
+  - KAIROS 全家桶（7 项）+ COORDINATOR_MODE, BG_SESSIONS, BRIDGE_MODE, 
+    TERMINAL_PANEL, AGENT_TRIGGERS, AGENT_TRIGGERS_REMOTE, TEAMMEM, 
+    BUDDY, MONITOR_TOOL, DAEMON, AGENT_MEMORY_SNAPSHOT
+
+## 三、工具 / 插件 / Skill Flag（15 项）
+  - MCP_SKILLS, MCP_RICH_OUTPUT, WEB_BROWSER_TOOL, REVIEW_ARTIFACT,
+    EXPERIMENTAL_SKILL_SEARCH, BUILTIN_EXPLORE_PLAN_AGENTS, EXTRACT_MEMORIES,
+    ULTRAPLAN, ULTRATHINK, TORCH, OVERFLOW_TEST_TOOL, WORKFLOW_SCRIPTS,
+    VERIFICATION_AGENT, SKILL_IMPROVEMENT, RUN_SKILL_GENERATOR
+
+## 四、上下文 / 压缩 / 提示词 Flag（10 项）
+  - CACHED_MICROCOMPACT, COMPACTION_REMINDERS, PROMPT_CACHE_BREAK_DETECTION,
+    CONNECTOR_TEXT, HOOK_PROMPTS, STREAMLINED_OUTPUT, AWAY_SUMMARY,
+    MESSAGE_ACTIONS, QUICK_SEARCH, FILE_PERSISTENCE
+
+## 五、连接 / 通信 Flag（10 项）
+  - DIRECT_CONNECT, SSH_REMOTE, UDS_INBOX, LODESTONE, CCR_MIRROR,
+    CCR_AUTO_CONNECT, CCR_REMOTE_SETUP, CHICAGO_MCP, UPLOAD_USER_SETTINGS,
+    DOWNLOAD_USER_SETTINGS
+
+## 六、遥测 / 调试 / 平台 Flag（14 项）
+  - SHOT_STATS, PERFETTO_TRACING, ENHANCED_TELEMETRY_BETA, COWORKER_TYPE_TELEMETRY,
+    MEMORY_SHAPE_TELEMETRY, COMMIT_ATTRIBUTION, SLOW_OPERATION_LOGGING,
+    DUMP_SYSTEM_PROMPT, HARD_FAIL, ABLATION_BASELINE, ANTI_DISTILLATION_CC,
+    UNATTENDED_RETRY, TREE_SITTER_BASH, TREE_SITTER_BASH_SHADOW
+
+## 七、平台 / 部署 / 杂项 Flag（12 项）
+  - AUTO_THEME, VOICE_MODE, PROACTIVE, DAEMON, NATIVE_CLIENT_ATTESTATION,
+    SELF_HOSTED_RUNNER, BYOC_ENVIRONMENT_RUNNER, IS_LIBC_GLIBC, IS_LIBC_MUSL,
+    TEMPLATES, NEW_INIT, NATIVE_CLIPBOARD_IMAGE, POWERSHELL_AUTO_MODE,
+    BUILDING_CLAUDE_APPS, ALLOW_TEST_VERSIONS, BREAK_CACHE_COMMAND
+
+## 版本说明段（~50 字）
+  - 基于 v2.1.88 逆向重建版本
+  - 统计摘要：N 个 Flag
+```
+
+---
+
+## 3. 表格列定义
+
+每张分类表使用统一的 5 列格式：
+
+| 列名 | 说明 | 示例 |
+|------|------|------|
+| **Flag 名** | `feature('FLAG_NAME')` 中的 FLAG_NAME 字符串，等宽格式 | `` `TRANSCRIPT_CLASSIFIER` `` |
+| **功能描述** | 一句话描述 flag 控制什么能力 | "Auto 模式分类器，用 AI 模型判断操作安全性" |
+| **引用次数** | 全 `src/` 中 `feature('FLAG')` 出现的总次数 | 107 |
+| **主要模块** | 使用该 flag 最核心的 1-3 个源文件（相对 `src/`） | `main.tsx`, `utils/permissions/yoloClassifier.ts` |
+| **正文章节** | 正文中首次或最详细讨论的章节号 | "第 3 章、第 16 章" |
+
+列宽策略：Flag 名固定窄列；功能描述为主要宽度；引用次数右对齐数字。
+
+---
+
+## 4. 关键 Flag 清单（必须覆盖，来自 DESIGN.md）
+
+以下 5 个 Flag 在 DESIGN.md 中明确要求，必须出现在附录中且描述准确：
+
+| Flag | DESIGN.md 要求 | 源码验证 | 引用数 | 关键文件 |
+|------|---------------|---------|--------|---------|
+| `KAIROS` | Assistant 模块整体开关 | ✅ main.tsx:80 | 154 | `assistant/index.js`, `main.tsx`, `tools.ts` |
+| `FORK_SUBAGENT` | Fork 子智能体 | ✅ commands.ts:113 | 4 | `commands/branch/index.ts`, `tools/AgentTool/forkSubagent.ts` |
+| `COORDINATOR_MODE` | Coordinator 多智能体编排 | ✅ main.tsx:76 | 32 | `coordinator/coordinatorMode.ts`, `QueryEngine.ts` |
+| `TRANSCRIPT_CLASSIFIER` | Auto 模式分类器 | ✅ main.tsx:171 | 107 | `utils/permissions/yoloClassifier.ts`, `main.tsx` |
+| `COMPUTER_USE` | 计算机使用 | ⚠️ 未在 feature() 调用中出现，可能通过其他机制控制 | — | `utils/computerUse/`（非 feature flag 门控） |
+
+> **注意**：`COMPUTER_USE` 在 DESIGN.md 中列为关键 Flag，但源码中未发现 `feature('COMPUTER_USE')` 调用。该功能可能通过其他机制（如工具注册条件）控制。附录中应注明此发现。
+
+---
+
+## 5. 完整 Flag 数据（已从源码提取，可直接写入）
+
+### 5.1 main.tsx 中的 18 个 Flag
+
+基于 `grep -o "feature('[^']*')" src/main.tsx | sort -u` 提取：
+
+| Flag | main.tsx 行号 | 用途 |
+|------|-------------|------|
+| `COORDINATOR_MODE` | :76 | 条件导入 coordinatorMode 模块 |
+| `KAIROS` | :80-81 | 条件导入 assistant + gate 模块 |
+| `TRANSCRIPT_CLASSIFIER` | :171, :337, :1399, :2663, :3829, :4285 | Auto 模式分类器，贯穿启动、权限、工具注册 |
+| `DIRECT_CONNECT` | :548, :612, :3156, :3961, :4058 | 直连模式（PendingConnect） |
+| `SSH_REMOTE` | :577, :706, :3193, :4045 | SSH 远程模式（PendingSSH） |
+| `BG_SESSIONS` | :1116 | 后台会话 |
+| `WEB_BROWSER_TOOL` | :1571 | WebView 浏览器工具提示 |
+| `UPLOAD_USER_SETTINGS` | :963 | 用户设置上传 |
+| `CHICAGO_MCP` | :1477, :1608 | Chicago MCP 服务器 |
+| `KAIROS_CHANNELS` | :1642, :3844 | 多通道消息 |
+| `KAIROS_BRIEF` | :1728, :2184, :2915, :3838 | Brief 摘要功能 |
+| `LODESTONE` | :647, :3781 | Lodestone 功能 |
+| `UDS_INBOX` | :1910, :1945, :3835 | Unix Domain Socket 消息收件箱 |
+| `BRIDGE_MODE` | :2246, :3866, :4322 | Bridge 远程控制模式 |
+| `PROACTIVE` | :2197, :3832, :4612 | 主动建议模式 |
+| `CCR_MIRROR` | :2918 | CCR 镜像模式 |
+| `HARD_FAIL` | :3870 | 硬失败模式 |
+| `AGENT_MEMORY_SNAPSHOT` | :2258 | Agent 记忆快照 |
+
+### 5.2 commands.ts 中的独有 Flag
+
+`commands.ts` 中出现但 main.tsx 未直接使用的 Flag：
+
+`DAEMON`, `VOICE_MODE`, `HISTORY_SNIP`, `MCP_SKILLS`, `EXPERIMENTAL_SKILL_SEARCH`,
+`FORK_SUBAGENT`, `BUDDY`, `ULTRAPLAN`, `TORCH`, `CCR_REMOTE_SETUP`, `WORKFLOW_SCRIPTS`
+
+### 5.3 其他文件中的 Flag
+
+所有不在 main.tsx / commands.ts 中的 Flag（由工具、服务、组件文件使用）：
+
+`BASH_CLASSIFIER`, `REACTIVE_COMPACT`, `CONTEXT_COLLAPSE`, `TOKEN_BUDGET`,
+`KAIROS_DREAM`, `KAIROS_GITHUB_WEBHOOKS`, `KAIROS_PUSH_NOTIFICATION`,
+`TEAMMEM`, `MONITOR_TOOL`, `REVIEW_ARTIFACT`, `OVERFLOW_TEST_TOOL`,
+`MCP_RICH_OUTPUT`, `BUILTIN_EXPLORE_PLAN_AGENTS`, `EXTRACT_MEMORIES`,
+`AUTO_THEME`, `SELF_HOSTED_RUNNER`, `VERIFICATION_AGENT`, `CACHED_MICROCOMPACT`,
+`PROMPT_CACHE_BREAK_DETECTION`, `CONNECTOR_TEXT`, 等共 ~87 个唯一 Flag。
+
+---
+
+## 6. 写作前验证 Checklist
+
+- [ ] **源码完整性**：已从 `src/main.tsx` 提取全部 18 个 feature() flag（`grep -o | sort -u` 验证）
+- [ ] **全项目覆盖**：已从 `src/` 全目录提取全部 87 个唯一 flag 名称
+- [ ] **DCE 准确性**：已从第 3 章 (`book/src/part1/ch03.md`) 理解 DCE 机制，说明段准确引用
+- [ ] **章节引用正确**：每个 flag 的「正文章节」列有源码证据支撑（对照已写章节内容验证）
+- [ ] **DESIGN.md 覆盖**：5 个关键 Flag（KAIROS, FORK_SUBAGENT, COORDINATOR_MODE, TRANSCRIPT_CLASSIFIER, COMPUTER_USE）全部出现
+- [ ] **COMPUTER_USE 说明**：已标注该 Flag 未在 feature() 调用中出现，非 DCE 门控
+- [ ] **分类合理**：87 个 Flag 按功能域分为 7 类，每类 8-18 项
+- [ ] **现有内容校对**：已对照已写 `book/src/appendix-e.md`，修正其中的错误章节引用和虚构模块名
+- [ ] **引用次数验证**：表中「引用次数」列经 `grep -c` 验证
+- [ ] **排序一致**：每张表内 Flag 按引用次数降序排列（高影响力优先）
+
+---
+
+## 7. 与现有 appendix-e.md 的差异（需修正）
+
+已写的 `book/src/appendix-e.md` 存在以下问题，重写时需修正：
+
+| 问题 | 现有内容 | 修正为 |
+|------|---------|--------|
+| Flag 总数不完整 | 仅列出 ~35 个 | 实际 87 个唯一 Flag |
+| 虚构模块名 | `AgentFork`, `CompactionEngine`, `BudgetManager` 等 | 使用实际源文件路径如 `tools/AgentTool/forkSubagent.ts` |
+| 错误章节引用 | `HISTORY_SNIP → 第 14 章` | 应为第 3 章（DCE 机制）/ 相关上下文章节 |
+| 缺少引用数据 | 无引用次数列 | 增加引用次数列，量化 Flag 影响范围 |
+| COMPUTER_USE 未说明 | 未列入 | 注明源码中未发现 feature() 调用 |
+| 缺少全项目统计 | 无 | 增加统计摘要：87 Flag / ~828 处引用 / 18 个在 main.tsx |

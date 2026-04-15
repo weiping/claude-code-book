@@ -1,433 +1,243 @@
 # 第 8 章写作计划
 
-**批次**：批次 2b（来自 plans/batch.md）
-**章节**：ch08 — 第8章：QueryEngine 主循环——工具调用的编排逻辑
-**风格**：hunter（模式猎人）
+**批次**：批次 2（来自 plans/batch.md）
+**章节**：ch08 — IDE 集成——Bridge 协议与 LSP 服务
+**风格**：hunter
 
----
+## 章节意图
 
-## 章节意图（从 spec `## 意图` 提取）
+分析 Claude Code 如何通过 Bridge 协议（src/bridge/，32 个文件）桥接 VS Code 等 IDE，通过 LSP 服务（src/services/lsp/，7 个文件）提供语言服务协议支持。读者读完后能理解 Bridge 模式如何让同一个 Agent 同时服务终端和 IDE 两种交互界面，并能在自己的 Agent 项目中复用这一"双界面桥接"模式。
 
-追踪 `src/QueryEngine.ts`（1295行）中"用户输入→AI响应→工具调用→再次请求"主循环的完整编排逻辑，识别重试机制（`src/QueryEngine.ts:946`）和中断模式（`QueryEngine.interrupt()`，第1158行）的实现。读者读完后能识别 AI 工具调用主循环的通用编排模式，并能在自己的系统中实现稳定的多轮工具调用循环。
+## 通用约束
 
----
-
-## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
-
-**通用必须**（从 spec 约束·必须 前 4 条提取）：
+**通用必须**：
 - 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
 - 包含至少一个可渲染的 Mermaid 流程图或 ASCII 架构图
 - 跨章节引用使用"详见第 X 章"格式，不重复解释
 - 使用"我们"而非"用户"/"读者"建立对话感
 
-**通用禁止**（从 spec 约束·禁止 前 4 条提取）：
-- 不得引用排除范围中的 stub 或未实现模块（src/assistant/、src/ssh/、src/server/、src/proactive/）
-- 不得出现"介绍了…"、"描述了…"、"讲解了…"等空洞表述
-- 不得对源码中没有依据的设计意图做无标注的猜测（必须标注「（推断）」）
-- 不得重复已在其他章节详细讲解的内容（用交叉引用代替）
+**通用禁止**：
+- 开篇不得直接引用源码路径或行号
+- 不得出现"介绍了…"、"描述了…"等空洞表述
+- 不得对源码中没有依据的设计意图做无标注的猜测
+- 不深入 Bridge 的每个文件（架构概览，不是逐文件分析）
 
-**排除范围**（从 spec `## 排除范围` 提取）：
-- 流式响应管道的内部实现（第9章）
-- Tool 接口契约定义（第10章）
-- src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
-
----
+**排除范围**：
+- src/assistant/、src/ssh/、src/server/、src/proactive/（stub）
+- src/buddy/、src/voice/（UI 细节）
+- LSP 协议本身的规范讲解（仅分析 Claude Code 如何使用 LSP）
 
 ## ⛔ 风格专属写作要求
 
-> STYLE_ID = hunter（模式猎人）
+**开篇格式**：hunter 模式预告（150-200字）：问题场景 + 模式预告 + 价值承诺。⛔ 不得直接引用源码。描述"同一个 Agent 如何同时服务终端用户和 IDE 用户"的挑战，预告"双界面桥接（Dual-Interface Bridge）"模式。
 
-**开篇格式**：模式预告（150-200字）
-- 以"在代码库中，N 处地方用同样方式解决同一问题"切入
-- 预告模式名称：「可中断多轮工具调用循环」
-- 价值承诺：读完能识别并实现一个稳定的 AI 工具调用主循环
-- ⛔ 开篇禁止直接引用任何源码路径或行号
-- ⛔ 全章不混用其他风格的写作手法
+**分节组织**：
+`## [模式预告开篇]` → `## 问题` → `## 源码实例 1：Bridge 主循环` → `## 源码实例 2：LSP 服务集成` → `## 模式剖析：双界面桥接` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 模式提炼` → `## 你能做什么`
 
-**分节组织**：hunter 风格结构
-```
-## [模式预告开篇]
-## 问题
-## 源码实例 1（QueryEngine.ts 主循环）
-## 源码实例 2（AgentTool/runAgent.ts 变体）
-## 模式剖析
-## 适用范围
-## 权衡与局限
-## 与已知模式的对话
-## 你能做什么
-```
-
-**章末结构**：模式提炼
-- 3-5 个命名模式，每个有五层结构（模式名→解决的问题→核心做法→前置条件→源码证据）
-- 接"你能做什么"（5-8条行动建议）
+**章末结构**：模式提炼（3-5 个命名模式，五层结构）+ 你能做什么（5-8 条行动建议）。
 
 **风格专属必须**：
-- 展示至少 2 处不同位置的源码实例，证明模式的普遍性（QueryEngine.ts + AgentTool/runAgent.ts）
-- 每个实例说明与第一个实例的关键区别（主 Agent vs 子 Agent）
-- 包含适用范围表（✓ 适用场景 + ✗ 不适用场景，每行附理由和替代方案）
-- 包含权衡与局限分析（适用边界、潜在风险、性能影响、替代方案）
-- 与业界已知模式对话：与 EIP「事件驱动消费者」模式、GoF「命令模式」比较
-- 关键结论前有设问句（如"为什么不用…？"），复杂逻辑前有预告性文字
+- 展示至少 2 处源码实例，证明模式的普遍性
+- 有适用范围表
+- 包含与已知业界模式的对话（对比 IPC、LSP、Bridge 模式）
+- 模式有中文+英文命名
+- 章节总长 2000-3000 字
 
 **风格专属禁止**：
-- 不跳过模式命名框，不用笼统描述代替五层结构
-- 不跳过多实例证明（只展示一个实例不够）
-- 不假设读者了解 Anthropic API 的 stop_reason 含义
+- 不只展示一个例子
+- 不忽略 Bridge 通信的缺陷（延迟、双向同步）
+- 不出现纯架构描述而没有源码佐证
 
 **通用写作铁律**：
-- ⛔ 源码第一：每个关于代码行为的断言必须附 `路径:行号` 证据
-- ⛔ 代码无裸露：每个代码块必须有引入段+解读段（至少 2 句/行代码）
-- ⛔ 数据驱动：不用"很多"/"通常"等模糊词，用具体数字或源码常量名
-- ⛔ 术语标准化：首次出现技术术语时标注原文（中文（English Full Name, ABBR））
-- ⛔ 开篇铁律：开篇在全章初稿完成后最后补写，禁止在开篇直接引用源码
-
----
+- ⛔ 源码第一：每个断言附 `路径:行号` 证据
+- ⛔ 代码无裸露：每个代码块有引入段+解读段
+- ⛔ 数据驱动：具体文件数（32个bridge文件，7个lsp文件）
+- ⛔ 开篇铁律：开篇在初稿完成后最后补写
 
 ## 前置阅读清单
-（按阅读顺序排列，≤6 个文件）
 
 | # | 文件路径 | 重点关注 | 预计阅读行数 |
 |---|---------|---------|------------|
-| 1 | src/QueryEngine.ts | class QueryEngine(184行)、submitMessage(209行)、主循环 for await query(675行)、maxTurns 错误(870行)、重试(946行)、interrupt(1158行) | 184-215, 488-560, 670-690, 860-900, 940-960, 1155-1165 |
-| 2 | src/query.ts | queryLoop while(true)(307行)、needsFollowUp 逻辑(558-564, 1062行) | 190-315, 550-570, 1055-1075 |
-| 3 | src/tools/AgentTool/runAgent.ts | 子 Agent 循环(748行)、max_turns_reached(779行) | 740-800 |
-| 4 | src/utils/abortController.ts | createAbortController 实现 | 全文（估计 50 行内）|
+| 1 | src/bridge/bridgeMain.ts | runBridgeLoop() 函数，行141起 | 141-200 |
+| 2 | src/bridge/bridgeMain.ts | BackoffConfig 类型，行59 | 59-100 |
+| 3 | src/bridge/bridgeEnabled.ts | Bridge 是否启用的判断逻辑 | 1-50 |
+| 4 | src/bridge/bridgeMessaging.ts | 消息格式与通信协议 | 1-60 |
+| 5 | src/services/lsp/LSPServerManager.ts | LSP 服务器管理 | 1-60 |
+| 6 | src/services/lsp/LSPClient.ts | LSP 客户端封装 | 1-50 |
 
 验证文件存在：
 ```bash
-ls src/QueryEngine.ts src/query.ts src/tools/AgentTool/runAgent.ts src/utils/abortController.ts
+ls src/bridge/bridgeMain.ts src/bridge/bridgeEnabled.ts src/services/lsp/LSPServerManager.ts
 ```
-
----
 
 ## Spec 验收场景清单
 
-**验收优先级**：E（风格符合性）> A（源码锚点）> B（语言精确性）= C（结构完整性）> D（图表与代码）
+**验收优先级**：E > A > B = C > D
 
-### A. 源码锚点组（铁律）
+### A. 源码锚点组
 
-| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
-|---|--------|----------------------|-------------|------|
-| A1 | 源码引用有效性 | 每处 `路径:行号` 引用都实际存在于对应文件 | 所有节的源码锚点（已验证） | ☑ |
-| A2 | 推断有标注 | 每处推断有"（推断）"或"源码中未直接说明"标注 | 模式剖析、权衡与局限节 | ☑ |
-| A3 | 不引用排除范围 | 没有任何引用落在排除范围 stub 中 | 排除范围已列出，写作时严格遵守 | ☑ |
-| A4 | 不重复其他章内容 | 用"详见第 X 章"代替重复 | 流式响应→第9章，Tool契约→第10章 | ☑ |
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用存在于实际文件 | 节 8.1-8.4 | ☐ |
+| A2 | 推断有标注 | 推断标注「（推断）」 | 所有节 | ☐ |
+| A3 | 不引用排除范围 | 无排除范围路径 | 写作前 checklist | ☐ |
+| A4 | 不重复其他章内容 | 详见第 X 章 | 所有节 | ☐ |
 
-### B. 语言精确性组（铁律）
+### B. 语言精确性组
 
-| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
-|---|--------|----------------------|-------------|------|
-| B1 | 禁止空洞表述 | 不存在"介绍了"/"描述了"等空洞动词 | 全章审查 | ☑ |
-| B2 | 数据驱动 | "很多"/"通常"等模糊词已替换为具体数字 | 重试机制、maxTurns 限制节 | ☑ |
-| B3 | 术语标准化 | 首次出现时有原文标注 | 所有首次出现的英文术语 | ☑ |
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无"介绍了"等空洞动词 | 全章 | ☐ |
+| B2 | 数据驱动 | 具体文件数/函数名 | 全章 | ☐ |
+| B3 | 术语标准化 | 首次出现标注原文 | 全章 | ☐ |
 
-### C. 结构完整性组（铁律）
+### C. 结构完整性组
 
-| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
-|---|--------|----------------------|-------------|------|
-| C1 | 概念递进层次 | 按 hunter 风格：问题识别→模式命名→实例证明→规律提炼 | 节8.1→8.2→8.3→章末模式提炼 | ☑ |
-| C2 | ⛔ hunter 专属结构 | 模式预告开篇→问题→源码实例1→源码实例2（变体）→模式剖析→适用范围→权衡局限→与已知模式对话→你能做什么 | 全章骨架 | ☑ |
-| C3 | 核心主张可提炼 | `## 为什么这很重要` 可提炼出 1-2 句答案 | 模式剖析节 | ☑ |
-| C4 | 设计权衡有说明 | 有"选 A 不选 B 的原因" | 权衡与局限节 | ☑ |
-| C5 | 章末行动建议 | 5-8 条行动动词开头的可操作建议 | 你能做什么节 | ☑ |
-| C6 | 章节间链接 | 章末向后链接 + 章节内向前链接 | 开篇引用第4章，章末链接第9/10章 | ☑ |
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | 每概念至少两层递进 | 节 8.1-8.4 | ☐ |
+| C2 | ⛔ hunter 结构 | ≥2实例+适用范围表+与已知模式对话+中英文命名 | 节 8.2-8.3 | ☐ |
+| C3 | 核心主张可提炼 | 可从开篇提炼1-2句答案 | 开篇节 | ☐ |
+| C4 | 设计权衡有说明 | 有"选A不选B"说明 | 权衡与局限节 | ☐ |
+| C5 | 章末行动建议 | 5-8条行动建议 | 你能做什么节 | ☐ |
+| C6 | 章节间链接 | 章末向后链接+向前链接 | 全章 | ☐ |
 
-### D. 图表与代码组（铁律）
+### D. 图表与代码组
 
-| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
-|---|--------|----------------------|-------------|------|
-| D1 | 图表可渲染且达标 | 包含 Mermaid 流程图展示主循环；字数约 4000-5000，需 ≥2 个图 | 节8.2（主循环流程图）、节8.5（适用范围表） | ☑ |
-| D2 | 图表标注格式 | 上方有 `**图 N-X：标题**`，下方有说明文字 | 所有图表 | ☑ |
-| D3 | 代码片段长度 | ≤25 行，前后有说明 | 所有代码块 | ☑ |
-| D4 | 源码注释引用 | 先引原注释+路径:行号，再展开工程逻辑 | 节8.2、8.3 | ☑ |
-| D5 | ⛔ hunter 专属图表 | 适用范围表（✓/✗）+ 模式命名框（五层结构）+ Mermaid 流程图 | 节8.5适用范围表 + 章末模式命名框 | ☑ |
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染且达标 | ≥3个图表 | 图表清单 | ☐ |
+| D2 | 图表标注格式 | **图8-X：标题** | 所有图表 | ☐ |
+| D3 | 代码片段长度 | ≤25行，前后有说明 | 所有代码块 | ☐ |
+| D4 | 源码注释引用 | 先引原注释+路径:行号 | 节 8.1 | ☐ |
+| D5 | ⛔ hunter 图表 | 架构关系图+适用场景决策图 | 图8-1, 8-3 | ☐ |
 
-### E. 风格符合性组（⛔ 最高优先级）
+### E. 风格符合性组
 
-| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
-|---|--------|----------------------|-------------|------|
-| E1 | ⛔ hunter 风格符合性 | 开篇为模式预告（150-200字，含N处实例+模式名+价值承诺），分节按 hunter 结构，章末有模式命名框；⛔ 开篇不引源码路径；全章不混用其他风格 | 开篇 + 全章骨架 + 章末模式提炼 | ☑ |
-| E2 | 读者对话感 | "我们"而非"用户"，有预告和设问 | 全章 | ☑ |
-| E3 | 关键信息突出 | 加粗标注，表格展示对比 | 所有关键结论、对比信息 | ☑ |
-
----
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | ⛔ hunter 开篇格式 | 150-200字，不引源码 | 开篇节 | ☐ |
+| E2 | 读者对话感 | "我们"，有预告和设问 | 全章 | ☐ |
+| E3 | 关键信息突出 | 加粗+表格 | 全章 | ☐ |
 
 ## 章节骨架
-（每节必须有源码锚点，写前先确认锚点存在。⛔ 骨架结构与 spec `## 已定决策→章节结构` 一致）
 
-### 开篇（hunter 风格：模式预告，最后补写）
-> ⛔ 开篇禁止直接引用任何源码路径或行号，在全章初稿完成后最后补写
+### 开篇（最后补写）
+> ⛔ hunter 模式预告：150-200字，问题场景+模式预告+价值承诺，不引源码
 
-**模式预告公式**：
-- 触发句：在这个代码库中，至少 3 处地方（QueryEngine.ts、AgentTool/runAgent.ts、hooks/execAgentHook.ts）用同样方式解决同一个问题：如何在 AI 模型返回"还没完"的信号时，自动继续对话直到任务真正结束
-- 模式名预告：「可中断多轮工具调用循环」（Interruptible Multi-Turn Tool-Call Loop）
-- 价值承诺：识别这个模式，你就能用 20 行代码实现一个可以调用任意工具、随时停止、不怕 API 超时的 AI 主循环
-
-- 可选题词：源码注释精选（待阅读源码后选择）
-
-### 节 8.1：问题
-- 核心主张：**AI 工具调用不是一次请求，而是一个有出口条件的状态机循环**
-- 源码锚点：`src/query.ts:558`（`let needsFollowUp = false`）— 出口条件旗标的初始化
-- 概念层次：
-  - 定义：单轮请求 vs 多轮对话的本质区别（stop_reason: end_turn vs tool_use）
-  - 设计意图：为什么需要循环？AI 的"tool_use" stop_reason 是明确的"继续"信号
-  - 实际案例：一次"ls 某目录再 grep 关键词"的用户请求会触发几轮循环？（通常 2-3 轮）
-- 权衡分析：为什么不用递归而用 while(true)？— 避免栈溢出，支持异步生成器中的流式 yield
-- 包含元素：Mermaid 流程图（问题空间：单轮 vs 多轮的对比）
+### 节 8.1：Bridge 主循环——Agent 与 IDE 的通信基础
+- 核心主张：runBridgeLoop() 是一个带指数退避的持久连接循环，通过 UDS/WebSocket 桥接 IDE 和 Agent
+- 源码锚点：`src/bridge/bridgeMain.ts:141` — runBridgeLoop 函数；`src/bridge/bridgeMain.ts:59` — BackoffConfig 类型
+- 概念层次：① Bridge 的连接模型 ② 消息格式 ③ 指数退避重连策略
+- 权衡分析：为什么用 UDS（Unix Domain Socket）而非 HTTP？→ 本机通信延迟更低，无跨网络鉴权开销
+- 包含元素：ASCII 架构图（终端 + IDE 双通道，图8-1）+ 代码片段（bridgeMain.ts:141-165，≤25行）
 - **⛔ 内容密度规划**：
-  - 引入段要点：描述用户一次"查找并修改"任务中 AI 至少需要两轮对话的场景
-  - 解读段要点：解释 stop_reason 机制——AI 不是说"我要调用工具了"，而是通过返回含 tool_use blocks 的消息暗示"还有未完成的事情"
-  - 散文与代码比例目标：至少 3 句散文/行代码
-- 估计字数：600-900 字（散文 ≥ 60%）
-- 对应 spec 场景：C1、C4
+  - 引入段：同一个进程如何同时响应终端用户的 Ink 界面和 VS Code 的 Bridge 消息？
+  - 解读段：bridgeMain.ts 的注释说明了 Bridge 与 REPL 的关系——Bridge 不是替代 REPL，而是并行运行
+- 估计字数：600-800字（散文≥65%）
+- 对应 spec 场景：A1、C1、D3、D4
 
-### 节 8.2：源码实例 1——QueryEngine.ts 主循环
-- 核心主张：**`submitMessage()` 是一个"委托给 queryLoop"的薄壳，真正的循环在 `src/query.ts` 的 `while(true)` 中**
-- 源码锚点：
-  - `src/QueryEngine.ts:209`（`async *submitMessage()`）— 生成器入口
-  - `src/QueryEngine.ts:675`（`for await (const message of query({...})`）— 委托调用
-  - `src/query.ts:307`（`while (true) {`）— 真正的主循环
-  - `src/query.ts:1062`（`if (!needsFollowUp) {`）— 出口判断
-- 概念层次：
-  - 定义：submitMessage 是 SDK 门面，queryLoop 是实际循环体
-  - 设计意图：为什么 QueryEngine 是"薄壳"？分离状态管理（QueryEngine 负责 AbortController 和消息历史）与循环逻辑（query.ts 负责驱动循环）
-  - 实际案例：一次完整工具调用的消息流图（assistant[tool_use] → user[tool_result] → assistant[end_turn]）
-- 权衡分析：为什么用 `for await` 消费一个 `while(true)` 生成器？—  背压（backpressure）控制，外层可以随时 break
-- 包含元素：
-  - **图8-1**：Mermaid 流程图，展示 submitMessage→query→queryLoop→while(true)→needsFollowUp 的完整路径
-  - 核心代码片段（QueryEngine.ts:675 附近，≤15 行）带引入+解读
-  - 核心代码片段（query.ts:307+1062，≤15 行）带引入+解读
+### 节 8.2：模式实例 1 — Bridge 权限回调
+- 核心主张：bridgePermissionCallbacks.ts 把 IDE 端的权限决策路由到 Agent 的权限系统，形成跨进程权限代理
+- 源码锚点：`src/bridge/bridgePermissionCallbacks.ts` — 权限回调实现
+- 概念层次：① 权限请求从 Agent 流向 IDE ② IDE 用户决策 ③ 结果回传 Agent
+- 权衡分析：为什么不在 Bridge 端直接处理权限？→ 权限决策必须在 Agent 进程内执行，IDE 只是展示层
+- 包含元素：Mermaid sequenceDiagram（Bridge 权限代理时序，图8-2）
 - **⛔ 内容密度规划**：
-  - 引入段要点：先用一句话说"submitMessage 只是门面，主循环在 query.ts"，再解释为什么要这样分层
-  - 解读段要点：重点说明 needsFollowUp 旗标如何精确控制循环出口——不靠 stop_reason（不可靠），靠 toolUseBlocks 数组是否非空
-  - 散文与代码比例目标：至少 3 句散文/行代码
-- 估计字数：900-1200 字（散文 ≥ 60%）
-- 对应 spec 场景：A1、E1、C1
+  - 引入段：在 IDE 中，用户确认权限的 UI 在 VS Code 端，但真正的权限检查在 Agent 端——这两个进程如何协同？
+  - 解读段：这与第 15 章的 PermissionMode 形成完整闭环——详见第 15 章（写作时添加交叉引用）
+- 估计字数：500-600字（散文≥60%）
+- 对应 spec 场景：A1、C2、D3
 
-### 节 8.3：源码实例 2——AgentTool/runAgent.ts（子 Agent 变体）
-- 核心主张：**同一个 `query()` 函数在子 Agent 场景中被重用，但处理 max_turns 的方式不同——主 Agent 返回错误，子 Agent 主动 break**
-- 源码锚点：
-  - `src/tools/AgentTool/runAgent.ts:748`（`for await (const message of query({...})`）— 子 Agent 循环
-  - `src/tools/AgentTool/runAgent.ts:779`（`max_turns_reached` 处理）— break 而非 return
-- 概念层次：
-  - 定义：子 Agent 与主 Agent 共享 query() 核心循环，但有不同的生命周期语义
-  - 设计意图：子 Agent 超轮次应该"优雅降级"（break 并返回已有结果），而不是"抛出错误"
-  - 实际案例：对比主 Agent 的 `Reached maximum number of turns (${maxTurns})` 错误（QueryEngine.ts:870）与子 Agent 的 `break`
-- 权衡分析：为什么主 Agent 用 return（中止）而子 Agent 用 break（继续调用方）？—  子 Agent 的调用者（AgentTool）还需要收集结果并返回给主循环
-- 包含元素：并排对比表（主 Agent vs 子 Agent 的循环差异）
+### 节 8.3：模式实例 2 — LSP 服务集成
+- 核心主张：LSPServerManager 管理语言服务器的生命周期，LSPClient 通过标准 JSON-RPC 协议与编辑器通信
+- 源码锚点：`src/services/lsp/LSPServerManager.ts:1` — 服务器管理；`src/services/lsp/LSPClient.ts:1` — 客户端封装
+- 概念层次：① LSP 协议简介（JSON-RPC over stdio）② Claude Code 如何复用 LSP 获取诊断信息 ③ 与 Bridge 的关系
+- 权衡分析：为什么使用标准 LSP 而非自定义协议？→ 复用所有支持 LSP 的编辑器
+- 包含元素：flowchart（LSP 集成数据流，图8-3）
 - **⛔ 内容密度规划**：
-  - 引入段要点：先说"我们找到了模式的第二个实例，它在同一 query() 基础上做了什么改动"
-  - 解读段要点：解读 break vs return 的语义差异，说明这体现了"调用者决定失败语义"的设计原则（推断）
-  - 散文与代码比例目标：至少 3 句散文/行代码
-- 估计字数：700-900 字（散文 ≥ 60%）
-- 对应 spec 场景：A1、E1（多实例证明）
+  - 引入段（与实例1的区别）：实例1是 Agent→IDE 的自定义 Bridge 协议，实例2是 Agent→Language Server 的标准 LSP 协议——两种不同的双向通信机制
+  - 解读段：LSP 给 Claude Code 带来了什么？主要是代码诊断（错误/警告）和文件跳转能力，让 Agent 能感知代码质量
+- 估计字数：400-600字（散文≥65%）
+- 对应 spec 场景：A1、C2、D3
 
-### 节 8.4：重试与中断——循环的两个安全阀
-- 核心主张：**重试是循环对 API 失败的自愈能力，中断是循环对外部信号的响应能力；二者合一才构成"稳定循环"**
-- 源码锚点：
-  - `src/QueryEngine.ts:946`（`subtype: 'api_retry'`）— 重试事件发出
-  - `src/QueryEngine.ts:1158`（`interrupt(): void { this.abortController.abort() }`）— 中断实现
-  - `src/QueryEngine.ts:203`（`this.abortController = config.abortController ?? createAbortController()`）— AbortController 初始化
-- 概念层次：
-  - 定义：重试（API 层面，由 withRetry 触发，QueryEngine 接收事件）vs 中断（AbortController 信号，立即生效）
-  - 设计意图：重试是透明的（调用者无需知道），中断是显式的（调用者主动调用 interrupt()）
-  - 实际案例：Ctrl+C 按下→interrupt()→abortController.abort()→queryLoop 中 AbortSignal 失效→循环自然退出
-- 权衡分析：为什么不用 Promise.race()？—  AsyncGenerator 的 abort 通过 AbortSignal 传入，支持跨层级取消，比 race 更干净（推断）
-- 包含元素：
-  - 重试消息流代码片段（QueryEngine.ts:946 附近，≤10 行）带引入+解读
-  - interrupt() 代码片段（QueryEngine.ts:1158-1161，≤5 行）带引入+解读
-- **⛔ 内容密度规划**：
-  - 引入段要点：先设问"如果 API 返回 429 怎么办？如果用户点 Stop 怎么办？"，再说本节回答这两个问题
-  - 解读段要点：重点说明 interrupt() 只有一行但影响深远——通过 AbortSignal 链条，这个中止信号会传到 queryLoop 内部的所有 API 调用
-  - 散文与代码比例目标：至少 3 句散文/行代码
-- 估计字数：700-900 字（散文 ≥ 60%）
-- 对应 spec 场景：A1（重试 B2：数据驱动）、C4
+### 节 8.4：模式剖析——双界面桥接
+- 核心主张：Bridge + LSP 形成"双界面桥接"模式：同一 Agent 进程同时暴露 TUI 和 IDE 两个界面
+- 包含元素：模式命名框（双界面桥接 Dual-Interface Bridge）+ 适用范围表
+- 估计字数：400-500字
+- 对应 spec 场景：C2、C3
 
-### 节 8.5：模式剖析——可中断多轮工具调用循环
-- 核心主张：**这个模式的本质是"以工具调用信号为循环继续条件，以外部中止信号为循环退出条件"**
-- 源码锚点：`src/query.ts:558+1062`（needsFollowUp 控制出口）
-- 概念层次：
-  - 定义：五层结构完整展示（见章末模式命名框）
-  - 设计意图：为什么要把"继续信号"和"退出信号"分开维护？—  继续信号由 AI 决定，退出信号由外部决定；职责分离
-  - 实际案例：边缘情况——如果 AI 一直返回 tool_use 怎么办？maxTurns 限制是第三道防线
-- 权衡分析：三道防线设计（needsFollowUp 出口 → maxTurns 限制 → AbortSignal 中断）的必要性
-- 包含元素：**图8-2** — 模式结构图（Mermaid），展示三道防线
-- **⛔ 内容密度规划**：
-  - 引入段要点：先说"现在我们看到了这个模式在三个地方出现，可以开始命名和提炼了"
-  - 解读段要点：解读三道防线的设计逻辑——needsFollowUp 是业务出口，maxTurns 是资源保护，AbortController 是紧急停止
-  - 散文与代码比例目标：2:1（重在概念，少量代码）
-- 估计字数：500-700 字（散文 ≥ 70%）
-- 对应 spec 场景：C2（hunter 专属结构：模式剖析节）
+### 节 8.5：权衡与局限
+- 权衡：Bridge 增加了进程复杂度，调试时需要追踪两条消息路径
+- 估计字数：200-300字
+- 对应 spec 场景：C4
 
-### 节 8.6：适用范围
-- 核心主张：**这个模式适合"AI 调用外部资源"场景，不适合"纯流式输出"场景**
-- 源码锚点：`src/QueryEngine.ts:146`（maxTurns 参数定义）
-- 概念层次：适用/不适用矩阵
-- 包含元素：适用范围表（✓/✗，每行附理由和替代方案）
+### 节 8.6：与已知模式的对话
+- 对比：GoF Bridge 模式（抽象与实现分离）；IPC（进程间通信）的多种方案
+- 估计字数：200-300字
+- 对应 spec 场景：C2
 
-**适用范围表**：
-| 场景 | 适用性 | 理由 | 替代方案 |
-|------|--------|------|---------|
-| AI 多步工具调用（文件读写、代码执行） | ✓ | 需要多轮对话驱动工具 | 无（这正是本模式的设计目标） |
-| 子 Agent 递归调用 | ✓ | query() 可复用，AgentTool 已验证 | 无 |
-| 需要随时中断的交互场景 | ✓ | interrupt() 支持外部信号 | Promise.race()（但不支持流式） |
-| 纯文本流式输出（无工具） | ✗ | 不需要循环，单次请求即可 | 直接 for await 消费流 |
-| 需要精确 token 计费 | ✗（谨慎）| 重试时 token 计费可能重复（推断）| 在调用层做幂等保护 |
+### 模式提炼
+- 模式 1：双界面桥接（Dual-Interface Bridge）
+- 模式 2：协议中立代理（Protocol-Neutral Proxy）——LSP 标准协议复用
 
-- **⛔ 内容密度规划**：
-  - 引入段要点：先说"适用范围帮我们判断什么时候该用这个模式，什么时候用它反而增加复杂度"
-  - 解读段要点：重点解读"纯文本流式输出"不需要本模式——区分"工具调用循环"和"流式接收"
-  - 散文与代码比例目标：80% 散文（主要是表格和文字）
-- 估计字数：500-700 字（散文 ≥ 70%）
-- 对应 spec 场景：D5（hunter 适用范围表）
-
-### 节 8.7：权衡与局限
-- 核心主张：**主循环的最大隐患不是功能缺失，而是"无限循环"风险——maxTurns 是唯一的硬性保护**
-- 源码锚点：`src/QueryEngine.ts:870`（`Reached maximum number of turns (${message.attachment.maxTurns})`）
-- 概念层次：
-  - 潜在失败：maxTurns 默认值不够低时，恶意/错误工具可以让循环空转数十轮
-  - 性能影响：每次工具调用 + API 请求都是网络延迟，主循环每轮至少一次网络调用
-  - 替代方案：token budget 控制（taskBudget 参数，src/QueryEngine.ts:224）作为辅助保护
-- 权衡分析：maxTurns 为什么是"软限制"（可配置）而不是硬编码？—  不同场景需要不同轮次
-- **⛔ 内容密度规划**：
-  - 引入段要点：先说"任何循环都有失控风险，我们来看这个模式的失控路径"
-  - 解读段要点：解读 maxTurns → taskBudget → abortController 三道防线的先后顺序和各自保护的维度
-  - 散文与代码比例目标：至少 3 句散文/行代码
-- 估计字数：600-800 字（散文 ≥ 65%）
-- 对应 spec 场景：C4（权衡分析）
-
-### 节 8.8：与已知模式的对话
-- 核心主张：**这个模式与 GoF 命令模式有"表面相似、本质不同"——命令模式是"执行后丢弃"，而本模式是"执行后再对话"**
-- 包含元素：对比表（本模式 vs GoF 命令模式 vs EIP 事件驱动消费者）
-- 概念层次：
-  - 与 GoF 命令模式（Command Pattern）：相同——把操作封装为对象（Tool）；不同——命令模式执行结果不会反馈给命令发起者，本模式的工具结果会被 AI 读取并决定下一步
-  - 与 EIP 事件驱动消费者（Event-Driven Consumer）：相同——持续从消息源消费消息；不同——本模式的消费者（AI）会根据消费结果产生新消息，形成反馈环
-  - 与 Reactor 模式（POSA）：相同——中央事件循环分发事件；不同——事件类型由 AI 动态生成，不是预定义的
-- **⛔ 内容密度规划**：
-  - 引入段要点：先说"识别一个模式的最终标准，是能够说清楚它和已知模式的区别"
-  - 解读段要点：重点区分"工具调用后有反馈给 AI"这一核心差异——这是传统设计模式中没有的
-  - 散文与代码比例目标：85% 散文（概念对比为主）
-- 估计字数：500-700 字（散文 ≥ 80%）
-- 对应 spec 场景：与已知模式的对话
-
-### 章末：模式提炼（hunter 风格）
-
-**模式命名框 1**：
-```
-模式名称：可中断多轮工具调用循环（Interruptible Multi-Turn Tool Loop）
-问题：AI 工具调用不能在单次 API 请求内完成，需要在收到工具使用信号后继续对话
-解决方案：用 while(true) + needsFollowUp 旗标驱动循环，用 AbortController 支持外部中断
-前置条件：AI API 支持 tool_use stop_reason 或等效的"继续"信号
-源码锚点：src/query.ts:307 (while循环), src/query.ts:1062 (出口判断)
-```
-
-**模式命名框 2**：
-```
-模式名称：三道防线循环保护（Three-Gate Loop Guard）
-问题：多轮循环如果缺乏出口保护，可能因 AI 错误或恶意工具导致无限运行
-解决方案：业务出口（needsFollowUp）+ 轮次限制（maxTurns）+ 紧急中止（AbortSignal）三道防线并行
-前置条件：调用方能传入 maxTurns 配置和 AbortController 引用
-源码锚点：src/QueryEngine.ts:946 (重试), src/QueryEngine.ts:870 (maxTurns), src/QueryEngine.ts:1158 (interrupt)
-```
-
-**模式命名框 3**：
-```
-模式名称：生成器委托薄壳（Generator Delegation Thin Shell）
-问题：SDK 接口（QueryEngine）需要封装复杂循环逻辑，同时保持可测试性
-解决方案：SDK 层（submitMessage）作为薄壳，仅管理状态（AbortController、mutableMessages）；循环逻辑下沉到独立的 query.ts
-前置条件：语言支持异步生成器和 yield* 委托语法
-源码锚点：src/QueryEngine.ts:209 (薄壳), src/query.ts:230 (queryLoop)
-```
-
-### 章末：你能做什么
-预规划 5-8 条行动建议（写作前列出方向）：
-1. 在自己的 AI 应用中，用 `while(true) + needsFollowUp` 替换递归调用，避免栈溢出
-2. 为主循环添加 `maxTurns` 参数，设置合理的默认值（建议 ≤20 轮）
-3. 始终传入 `AbortController` 支持随时中断，避免"停不下来"的 AI 循环
-4. 实现"三道防线"保护：业务出口 + 轮次限制 + 紧急中止
-5. 参考 `AgentTool/runAgent.ts` 区分主 Agent（return 错误）和子 Agent（break 降级）的不同退出策略
-6. 用异步生成器（AsyncGenerator）而非 Promise.all 实现流式工具调用，支持背压控制
-7. 参考 `src/QueryEngine.ts:946` 的 `api_retry` 事件模式，向调用方透明传递重试状态
-
----
+### 你能做什么（5-8 条）
+1. 为 Agent CLI 设计 Bridge 接口，让 IDE 和终端共享同一个 Agent 后端
+2. 用 UDS 替代 HTTP 实现本机进程间通信，降低延迟
+3. 集成 LSP 协议让 Agent 感知代码诊断信息，而无需自己解析源码
+4. 在 Bridge 层实现指数退避重连，让 IDE 扩展在 Agent 重启后自动恢复
+5. 将权限决策保留在 Agent 进程内，Bridge 只负责 UI 展示和消息转发
+6. 为 Bridge 消息定义结构化格式（JSON Schema），便于多语言 IDE 插件接入
 
 ## 图表清单
 
 | # | 图表标题 | 类型 | 内容描述 | 对应节 |
 |---|---------|------|---------|--------|
-| 图8-1 | QueryEngine 主循环调用链 | Mermaid flowchart | submitMessage → query → queryLoop(while true) → needsFollowUp → break/continue | 8.2 |
-| 图8-2 | 三道防线保护机制 | Mermaid flowchart | needsFollowUp出口 → maxTurns限制 → AbortSignal中断 三道防线 | 8.5 |
-
----
+| 图8-1 | Bridge 双通道架构 | ASCII box-arrow | 终端(Ink REPL) + IDE(VS Code) 通过 Bridge 连接同一 Agent 进程 | 8.1 |
+| 图8-2 | Bridge 权限代理时序 | Mermaid sequenceDiagram | IDE→Bridge→Agent→权限系统→决策→回传 | 8.2 |
+| 图8-3 | LSP 集成数据流 | Mermaid flowchart | Agent→LSPClient→LSPServerManager→Language Server→诊断结果 | 8.3 |
 
 ## 写作顺序
 
-1. ⛔ **确认完整 spec 与风格规则**：重新读取 `specs/ch08.spec` 和 DESIGN.md 的 STYLE_ID=hunter，确认 16 项要素已在 plan 中反映
-2. 先读取所有前置文件（按前置阅读清单），确认所有锚点存在
-3. 写节 8.1（问题节——建立"多轮循环必要性"认知）
-4. 写节 8.2（实例 1——QueryEngine.ts 主循环，含图8-1）
-5. 写节 8.3（实例 2——AgentTool 子 Agent 变体）
-6. 写节 8.4（重试与中断）
-7. 写节 8.5（模式剖析，含图8-2）
-8. 写节 8.6（适用范围表）
-9. 写节 8.7（权衡与局限）
-10. 写节 8.8（与已知模式的对话）
-11. 写章末模式命名框（3个）
-12. 写"你能做什么"（7条）
-13. 最后补写开篇（此时知道全章讲了什么，才能写出150-200字模式预告）
-
----
+1. ⛔ 读取完整 spec（specs/ch08.spec）和 DESIGN.md STYLE_ID=hunter
+2. 先写节 8.1（Bridge 主循环）
+3. 再写节 8.2（Bridge 权限回调）
+4. 写节 8.3（LSP 集成，明确说明与8.2的区别）
+5. 写图表（先 ASCII 草图，再转 Mermaid）
+6. 写节 8.4（模式剖析）+ 8.5（权衡）+ 8.6（对话）
+7. 写模式提炼 + 你能做什么
+8. 最后补写开篇
 
 ## 写作前 checklist
 
-执行以下命令确认所有源码锚点存在：
 ```bash
-# 验证所有关键锚点
-sed -n '184p' src/QueryEngine.ts    # class QueryEngine
-sed -n '209p' src/QueryEngine.ts    # async *submitMessage
-sed -n '675p' src/QueryEngine.ts    # for await query
-sed -n '870p' src/QueryEngine.ts    # maxTurns 错误
-sed -n '946p' src/QueryEngine.ts    # api_retry
-sed -n '1158p' src/QueryEngine.ts   # interrupt()
-sed -n '307p' src/query.ts          # while (true)
-sed -n '558p' src/query.ts          # needsFollowUp = false
-sed -n '1062p' src/query.ts         # if (!needsFollowUp)
-sed -n '748p' src/tools/AgentTool/runAgent.ts  # 子 Agent for await
+sed -n '59,65p' src/bridge/bridgeMain.ts      # BackoffConfig 类型
+sed -n '141,165p' src/bridge/bridgeMain.ts    # runBridgeLoop 入口
+ls src/bridge/bridgePermissionCallbacks.ts    # 权限回调文件
+ls src/services/lsp/LSPServerManager.ts src/services/lsp/LSPClient.ts
 ```
-
-如果任何锚点不存在，重新搜索正确行号：
-```bash
-grep -n "interrupt\|api_retry\|needsFollowUp\|maxTurns\|while (true)" src/QueryEngine.ts src/query.ts
-```
-
----
 
 ## ⛔ Spec 一致性声明
 
-**完整 spec 文件**：`specs/ch08.spec`
-
-### 对齐检查清单
+**完整 spec 文件**：specs/ch08.spec
 
 | # | 提取项 | 是否已写入 plan | 对应 plan 节 |
 |---|--------|---------------|-------------|
 | 1 | 意图 | ✓ | 章节意图 |
-| 2 | 通用约束·必须 | ✓ | 通用约束→通用必须 |
-| 3 | 通用约束·禁止 | ✓ | 通用约束→通用禁止 |
-| 4 | 风格专属必须 | ✓ | 风格专属写作要求→风格专属必须 |
-| 5 | 风格专属禁止 | ✓ | 风格专属写作要求→风格专属禁止 |
-| 6 | 章节结构 | ✓ | 章节骨架（与 spec 已定决策一致） |
-| 7 | 源码引用格式 | ✓ | 所有节的锚点使用 `src/相对路径:行号` |
-| 8 | 图表格式 | ✓ | 图表清单（Mermaid flowchart）|
-| 9 | 边界路径 | ✓ | 排除范围已列出 |
-| 10 | 验收优先级 | ✓ | Spec 验收场景清单（E>A>B=C>D）|
-| 11 | 验收场景·A 源码锚点组 | ✓ | Spec 验收场景清单 A |
-| 12 | 验收场景·B 语言精确性组 | ✓ | Spec 验收场景清单 B |
-| 13 | 验收场景·C 结构完整性组 | ✓ | Spec 验收场景清单 C |
-| 14 | 验收场景·D 图表与代码组 | ✓ | Spec 验收场景清单 D |
-| 15 | 验收场景·E 风格符合性组 | ✓ | Spec 验收场景清单 E |
-| 16 | 排除范围 | ✓ | 通用约束→排除范围 |
+| 2 | 通用约束·必须 | ✓ | 通用约束·通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用约束·通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属·必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属·禁止 |
+| 6 | 章节结构 | ✓ | 章节骨架 |
+| 7 | 源码引用格式 | ✓ | 各节·源码锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 通用约束·排除范围 |
+| 10 | 验收优先级 | ✓ | Spec 验收场景清单 |
+| 11 | 验收场景·A | ✓ | Spec 验收场景清单 A |
+| 12 | 验收场景·B | ✓ | Spec 验收场景清单 B |
+| 13 | 验收场景·C | ✓ | Spec 验收场景清单 C |
+| 14 | 验收场景·D | ✓ | Spec 验收场景清单 D |
+| 15 | 验收场景·E | ✓ | Spec 验收场景清单 E |
+| 16 | 排除范围 | ✓ | 通用约束·排除范围 |
 
-**验收场景覆盖统计**：A 组 [4/4] + B 组 [3/3] + C 组 [6/6] + D 组 [5/5] + E 组 [3/3] = **[21/21]**
-（已覆盖 spec 中全部 16 个命名场景）
-
-**⛔ 所有项目均已勾选 ✓，plan 审查通过。**
+**验收场景覆盖统计**：A(4/4) + B(3/3) + C(6/6) + D(5/5) + E(3/3) = **21/21**

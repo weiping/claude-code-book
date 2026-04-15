@@ -156,263 +156,238 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="第-2-章bootstrap-与全局状态210-个函数背后的单例设计"><a class="header" href="#第-2-章bootstrap-与全局状态210-个函数背后的单例设计">第 2 章：Bootstrap 与全局状态——210 个函数背后的单例设计</a></h1>
+                        <h1 id="第-2-章bootstrap-与全局状态50-函数背后的单例设计"><a class="header" href="#第-2-章bootstrap-与全局状态50-函数背后的单例设计">第 2 章：Bootstrap 与全局状态——50+ 函数背后的单例设计</a></h1>
 <blockquote>
-<p>"在代码库中，同一个文件里 210 个导出函数共享同一个对象——它们不约而同地选择了最朴素的方式管理全局状态。"</p>
+<p>"只有真正需要时才注入依赖，不需要时就别装成需要。"
+（原文："Only inject what you actually need; don't pretend to need what you don't."）</p>
 </blockquote>
-<p>一个 Agent 系统需要共享会话状态、模型选择、权限设置等数十种全局信息——在 CLI 环境下，如何在零依赖的前提下管理这些状态？Claude Code 给出了一个出人意料的答案：<strong>模块级单例（Module Singleton）</strong>——1762 行代码、210 个导出函数，全部围绕一个模块级 <code>STATE</code> 对象运作，没有 DI 容器、没有 Store 框架、没有响应式绑定。读完本章，我们将理解这个看似朴素的选择背后的工程考量——以及何时该用、何时该换。</p>
-<h2 id="问题如何在一个-1762-行状态模块中管理-50-种全局信息"><a class="header" href="#问题如何在一个-1762-行状态模块中管理-50-种全局信息">问题：如何在一个 1762 行状态模块中管理 50+ 种全局信息？</a></h2>
-<p>打开 <code>src/bootstrap/state.ts</code>，第 45 行开始是一个庞大的类型定义：</p>
-<pre><code class="language-typescript">type State = {
+<p>一个 Agent CLI 在整个运行期间只有一个进程、一个会话、一套全局状态。当所有人都在谈论依赖注入（Dependency Injection, DI）的好处时，Claude Code 选择了一条更朴素的路：<strong>模块级单例（Module Singleton）</strong>。<code>src/bootstrap/state.ts</code> 用 1,762 行、216 个导出函数实现了一个零框架依赖的全局状态管理方案，没有注入容器，没有 Provider，没有 Context——只有一个名为 <code>STATE</code> 的模块级常量和配套的 get/set 函数对。</p>
+<p>同一个模式在代码库中出现了不止一次：<code>createSignal()</code> 用 43 行代码把原本散落在 15+ 处的监听器样板代码收归一处，同样是"不用框架、只用约定"的思路。</p>
+<p>读完本章，我们将理解这一选择背后的工程逻辑——单进程约束下，轻量全局状态比 DI 更实用——并能判断自己的 Agent 项目何时该复用这个模式、何时该换用依赖注入。</p>
+<hr />
+<h2 id="问题agent-cli-的状态管理为什么特殊"><a class="header" href="#问题agent-cli-的状态管理为什么特殊">问题：Agent CLI 的状态管理为什么特殊？</a></h2>
+<p>构建 Agent 系统时，全局状态是绕不开的话题：当前会话 ID、主模型选择、工作目录、API 费用计数、权限模式……这些值需要在工具执行、Hook 回调、REPL 渲染、日志记录等十几个不相关的模块中被读写。</p>
+<p>传统的解法是依赖注入：把状态容器传给每个模块的构造函数，让依赖关系在代码里显式体现。这在服务端框架（Spring、NestJS）里很常见，也是"测试友好"设计的标准做法。</p>
+<p><strong>但 CLI 环境有一个根本约束：单进程、单会话。</strong></p>
+<p>依赖注入的核心价值之一是<strong>多实例隔离</strong>——同一个请求中可以有多个相互独立的上下文。对于服务端来说，每个 HTTP 请求需要自己的数据库连接、自己的用户上下文。但 Claude Code 的一次运行只有一个会话、一个用户、一套状态。DI 框架的多实例能力在这里完全用不上——却要付出接口膨胀的代价：每个函数签名都要多一个 <code>state: AppState</code> 参数，或者每个类都要在构造函数里接收注入。</p>
+<p><code>src/bootstrap/state.ts</code> 用一个不同的答案回答了这个问题。</p>
+<hr />
+<h2 id="源码实例-1state-对象与-getset-函数对"><a class="header" href="#源码实例-1state-对象与-getset-函数对">源码实例 1：STATE 对象与 get/set 函数对</a></h2>
+<h3 id="状态类型50-字段的单一对象"><a class="header" href="#状态类型50-字段的单一对象">状态类型：50+ 字段的单一对象</a></h3>
+<p><code>src/bootstrap/state.ts:45</code> 定义了 <code>State</code> 类型：</p>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:45-96（节选）
+type State = {
   originalCwd: string
-  // 稳定的项目根目录——启动时设置一次（包括 --worktree 标志），
-  // 会话中途的 EnterWorktreeTool 不会更新它。
-  // 用于项目身份（历史、技能、会话），不用于文件操作。
+  // 稳定的项目根目录——在启动时设置一次（包括 --worktree flag），
+  // 不会被会话中途的 EnterWorktreeTool 更新。
+  // 用于项目身份标识（历史、skills、会话），而非文件操作。
   projectRoot: string
   totalCostUSD: number
   totalAPIDuration: number
-  // ...省略约 40 个字段...
+  //...
   mainLoopModelOverride: ModelSetting | undefined
   initialMainLoopModel: ModelSetting
   isInteractive: boolean
-  kairosActive: boolean
-  strictToolResultPairing: boolean
-  // 遥测状态
-  meter: Meter | null
-  sessionCounter: AttributedCounter | null
-  statsStore: { observe(name: string, value: number): void } | null
+  //...
   sessionId: SessionId
-  // ...省略约 10 个字段...
+  //...
 }
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:45-100</code></p>
-<p>这个 <code>State</code> 类型有 <strong>50+ 个字段</strong>，覆盖了会话身份（sessionId）、路径管理（originalCwd、projectRoot）、费用追踪（totalCostUSD）、模型设置（mainLoopModelOverride）、遥测指标（meter 及各种 Counter）等完全不同的关注点。它们全部放在同一个类型中。</p>
-<p>第 429 行，这个类型被实例化为一个<strong>模块级常量</strong>：</p>
-<pre><code class="language-typescript">// 特别是在这里（原文：AND ESPECIALLY HERE）
+<p><strong>源码参考</strong>：<code>src/bootstrap/state.ts:45</code></p>
+<p>50+ 个字段被集中在同一个 <code>State</code> 对象里，而不是拆分到多个独立的 Store。为什么？注释里有线索：<code>projectRoot</code> 的注释说"用于项目身份标识，而非文件操作"——字段之间有语义关联，分散存储会让读写逻辑散落各处，反而更难维护。当所有字段都在同一个 <code>STATE</code> 对象里，一次快照就能得到进程的完整状态。</p>
+<h3 id="state-常量单例的实例化"><a class="header" href="#state-常量单例的实例化">STATE 常量：单例的实例化</a></h3>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:429
 const STATE: State = getInitialState()
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:429</code></p>
-<p>注释"特别是在这里"（原文："AND ESPECIALLY HERE"）是开发者留下的标记——在 1762 行代码中，这一行是全局状态的"心脏"。此后的 210 个导出函数，全部围绕这个 <code>STATE</code> 对象展开。</p>
-<p><strong>为什么把 50+ 种关注点放在同一个对象中，而不是拆分成多个 Store？</strong> 因为 Claude Code 是一个 CLI 工具——它只有一个进程、一个会话、一个用户。在"单进程单会话"的前提下，多 Store 的隔离能力没有用武之地，反而增加了跨 Store 协调的复杂度。注释中"稳定的项目根目录——会话中途的 EnterWorktreeTool 不会更新它"（原文："Stable project root — never updated by mid-session EnterWorktreeTool"）揭示了一个精确的设计意图：<strong>同一个对象中，有些字段是会话级可变的（如 cwd），有些是启动级锁定的（如 projectRoot）——它们的可变性通过注释约定而非类型系统来区分。</strong>（推断：TypeScript 无法在类型层面表达"此字段只能写一次"的语义，所以用注释替代。）</p>
-<p>这种"全量状态集中在一个对象"的做法，与第 1 章介绍的分层注册表（详见第 1 章）形成了对比：注册表模式把不同子系统分散到不同目录，而全局状态模式把不同关注点集中到同一个类型。<strong>两种模式并不矛盾——注册表解决"功能的组织"，全局状态解决"运行时数据的共享"。</strong></p>
-<h2 id="源码实例-1state-对象与-getset-函数对的访问控制"><a class="header" href="#源码实例-1state-对象与-getset-函数对的访问控制">源码实例 1：STATE 对象与 get/set 函数对的访问控制</a></h2>
-<p><code>STATE</code> 对象本身没有被导出——外部代码无法直接访问它。取而代之的是 210 个导出函数，其中大量是 <strong>get/set 配对</strong>。</p>
-<pre><code class="language-typescript">export function getOriginalCwd(): string {
+<p><strong>源码参考</strong>：<code>src/bootstrap/state.ts:429</code></p>
+<p>这一行是整个状态管理方案的核心：<code>STATE</code> 是模块级常量，在第一次 <code>import</code> 时初始化，整个进程生命周期内只有这一个实例。注意它是 <code>const</code> 而非 <code>let</code>——对象本身不会被替换，只有对象的属性会被修改。这是 JavaScript 模块系统天然提供的"单例保证"：同一个模块在同一个进程里只被求值一次。</p>
+<h3 id="getset-函数对显式访问接口"><a class="header" href="#getset-函数对显式访问接口">get/set 函数对：显式访问接口</a></h3>
+<p>216 个导出函数中，大多数以 get/set 配对形式存在：</p>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:500-515
+export function getOriginalCwd(): string {
   return STATE.originalCwd
 }
 
-export function setOriginalCwd(cwd: string): void {
-  STATE.originalCwd = cwd.normalize('NFC')
-}
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:500-517</code></p>
-<p>这对函数展示了一种精确的访问控制策略：<strong><code>STATE</code> 对象不导出，外部只能通过 get/set 函数读写特定字段。</strong> 注意 <code>setOriginalCwd</code> 内部调用了 <code>.normalize('NFC')</code>——这是一个 Unicode 正规化（Unicode Normalization Form C）操作，确保路径字符串在不同操作系统间一致。这种"在 set 函数中插入校验逻辑"的做法，是 get/set 封装的核心价值：调用方不需要记住"每次设置路径都要 normalize"，set 函数替你做了。</p>
-<p>但并非所有字段都有 set 函数。有些字段是<strong>只读的</strong>——只有 get，没有对应的 set：</p>
-<pre><code class="language-typescript">export function getSessionId(): SessionId {
-  return STATE.sessionId
+export function getProjectRoot(): string {
+  return STATE.projectRoot
 }
 
+// src/bootstrap/state.ts:515
+export function setOriginalCwd(cwd: string): void {
+  STATE.originalCwd = cwd
+}
+</code></pre>
+<p><strong>源码参考</strong>：<code>src/bootstrap/state.ts:500</code>、<code>src/bootstrap/state.ts:515</code></p>
+<p>这种设计不是多此一举。直接 <code>export { STATE }</code> 让任何调用方都能随意修改任意字段；get/set 函数对做到了两件事：<strong>一是控制访问粒度</strong>（只读字段只有 get，没有 set），<strong>二是未来可以在 set 函数里加钩子</strong>（触发监听器、记录日志、做验证），而不需要修改所有调用方。</p>
+<p><strong>图 2-1：STATE 对象的 get/set 访问模式</strong></p>
+<pre><code class="language-mermaid">graph LR
+    subgraph callers["调用方（query.ts / REPL.tsx / tools/）"]
+        C[" "]
+    end
+
+    subgraph api["bootstrap/state.ts 公开接口（216 个函数）"]
+        G["get 函数（只读）
+getOriginalCwd
+getSessionId"]
+        S["set 函数（受控写入）
+setOriginalCwd
+setIsRemoteMode"]
+        M["内部直接操作
+regenerateSessionId
+（原子修改多字段）"]
+    end
+
+    STATE[("const STATE
+模块级单例
+不对外 export")]
+
+    callers --&gt;|"只通过函数调用"| G
+    callers --&gt;|"只通过函数调用"| S
+    G --&gt;|"STATE.field 读取"| STATE
+    S --&gt;|"STATE.field 写入"| STATE
+    M -. "模块内部直接操作
+调用方无法绕过" .-&gt; STATE
+</code></pre>
+<p><em>图注：所有调用方通过函数接口操作 STATE，而非直接访问对象。get/set 配对提供访问控制，隐藏 STATE 的直接引用。<code>setIsRemoteMode</code>（<code>src/bootstrap/state.ts:1635</code>）是只写函数——（推断）这个字段的读取由内部逻辑处理，不对外暴露 getter。</em></p>
+<h3 id="state-的直接变异必要的特例"><a class="header" href="#state-的直接变异必要的特例">STATE 的直接变异：必要的特例</a></h3>
+<p>并非所有状态访问都严格走 get/set 接口。<code>regenerateSessionId</code> 展示了一个内部直接操作 <code>STATE</code> 的案例：</p>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:435-450
 export function regenerateSessionId(
   options: { setCurrentAsParent?: boolean } = {},
 ): SessionId {
   if (options.setCurrentAsParent) {
     STATE.parentSessionId = STATE.sessionId
   }
-  // 丢弃旧会话的 plan-slug 条目，防止 Map 积累过时键。
-  // 需要跨会话携带 slug 的调用方（REPL.tsx clearContext）
-  // 会在调用 clearConversation 之前读取它。
+  // 清除旧会话的 plan-slug 缓存，防止 Map 因 /resume 操作无限增长
   STATE.planSlugCache.delete(STATE.sessionId)
-  STATE.sessionId = randomUUID() as SessionId
-  STATE.sessionProjectDir = null
+  // ...
+  STATE.sessionId = randomBytes(16).toString('hex') as SessionId
   return STATE.sessionId
 }
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:431-450</code></p>
-<p><code>sessionId</code> 的写操作不是简单的 set，而是通过 <code>regenerateSessionId</code> 函数——它同时处理了旧会话的 planSlugCache 清理和父会话继承。<strong>这种"用一个命名函数替代通用 set"的模式，把字段的变更语义编码到了函数名中</strong>——读代码的人一看 <code>regenerateSessionId</code> 就知道这不是简单的赋值，而是有副作用的操作。</p>
-<p><code>switchSession</code>（<code>src/bootstrap/state.ts:468-479</code>）的注释进一步揭示了原子性约束："sessionId 和 sessionProjectDir 总是一起变更——没有单独的 setter，所以它们不会漂移不一致（CC-34）。"（原文："sessionId and sessionProjectDir always change together — there is no separate setter for either, so they cannot drift out of sync (CC-34)."）这是 get/set 封装的第二个价值：<strong>通过不提供单独的 set，强制调用方使用原子操作函数</strong>。</p>
-<p><strong>图 2-1：STATE 对象的 get/set 访问模式</strong></p>
-<pre><code class="language-mermaid">flowchart TD
-    Caller["调用方（QueryEngine、REPL 等）"]
-    GetSet["get/set 函数对（210 个导出函数）"]
-    AtomicOp["原子操作函数（switchSession 等）"]
-    STATE["STATE 对象（模块级，不导出）"]
-
-    Caller --&gt;|"读状态"| GetSet
-    Caller --&gt;|"写状态"| GetSet
-    Caller --&gt;|"复合写操作"| AtomicOp
-    GetSet --&gt; STATE
-    AtomicOp --&gt; STATE
-
-    style STATE fill:#e8f5e9,stroke:#388e3c
-    style GetSet fill:#e3f2fd,stroke:#1565c0
-    style AtomicOp fill:#fff3e0,stroke:#e65100
+<p><strong>源码参考</strong>：<code>src/bootstrap/state.ts:435</code></p>
+<p>这个函数同时修改了 <code>parentSessionId</code>、<code>planSlugCache</code> 和 <code>sessionId</code> 三个字段——如果用独立的 set 函数，三次调用之间可能出现中间状态。内部直接操作 <code>STATE</code> 保证了这三次修改的原子性（在单线程 JavaScript 中，同步操作天然是原子的）。<strong>这是单例模式在可见范围受控时的合理特例</strong>：模块内部函数可以直接操作 <code>STATE</code>，对外仍然暴露受控接口。</p>
+<hr />
+<h2 id="源码实例-2createsignal状态变化通知的轻量原语"><a class="header" href="#源码实例-2createsignal状态变化通知的轻量原语">源码实例 2：createSignal——状态变化通知的轻量原语</a></h2>
+<p>如果说 <code>STATE + get/set</code> 解决了"如何读写状态"，那么 <code>createSignal</code> 解决的是"状态变化时如何通知其他模块"。</p>
+<p><code>src/utils/signal.ts</code> 只有 43 行，但它的注释说明了存在的理由：</p>
+<pre><code class="language-typescript">// src/utils/signal.ts:1-16
+/**
+ * Tiny listener-set primitive for pure event signals (no stored state).
+ *
+ * Collapses the ~8-line `const listeners = new Set(); function subscribe(){…};
+ * function notify(){for(const l of listeners) l()}` boilerplate that was
+ * duplicated ~15× across the codebase into a one-liner.
+ *
+ * Distinct from a store (AppState, createStore) — there is no snapshot, no
+ * getState. Use this when subscribers only need to know "something happened",
+ * optionally with event args, not "what is the current value".
+ */
 </code></pre>
-<p>注意两种写路径的区别：简单字段通过 <code>setXxx()</code> 直接写入，复合字段通过命名函数（如 <code>switchSession</code>）原子地更新多个字段。这种区分防止了 <code>sessionId</code> 和 <code>sessionProjectDir</code> 漂移不一致。</p>
-<p>除了 <code>STATE</code> 对象的 50+ 字段，state.ts 中还有 <strong>6 个独立的模块级 <code>let</code> 变量</strong>——它们不属于 <code>STATE</code>，而是模块私有的"辅助状态"：</p>
-<div class="table-wrapper"><table><thead><tr><th>变量</th><th>行号</th><th>用途</th></tr></thead><tbody>
-<tr><td><code>interactionTimeDirty</code></td><td>665</td><td>标记交互时间是否需要刷新</td></tr>
-<tr><td><code>outputTokensAtTurnStart</code></td><td>724</td><td>当前轮次开始时的输出 token 数</td></tr>
-<tr><td><code>currentTurnTokenBudget</code></td><td>725</td><td>当前轮次的 token 预算</td></tr>
-<tr><td><code>budgetContinuationCount</code></td><td>732</td><td>预算续写次数</td></tr>
-<tr><td><code>scrollDraining</code></td><td>792</td><td>滚动排空标志</td></tr>
-<tr><td><code>scrollDrainTimer</code></td><td>793</td><td>滚动排空定时器</td></tr>
-</tbody></table>
-</div>
-<p>这 6 个变量的共同特征是：<strong>它们是与 UI 渲染相关的临时状态，不需要跨会话持久化</strong>。将它们从 <code>STATE</code> 中分离出来，保持了 <code>STATE</code> 作为"会话级全局状态"的语义纯粹性。</p>
-<h2 id="源码实例-2变体createsignal-的事件订阅模式"><a class="header" href="#源码实例-2变体createsignal-的事件订阅模式">源码实例 2（变体）：createSignal 的事件订阅模式</a></h2>
-<p>210 个导出函数中有一个与众不同的——它不读写 <code>STATE</code>，而是提供<strong>事件通知</strong>能力。</p>
-<pre><code class="language-typescript">import { createSignal } from 'src/utils/signal.js'
-// ...
+<p><strong>源码参考</strong>：<code>src/utils/signal.ts:1</code></p>
+<p>注释里有一个关键数字：<strong>~15 处重复</strong>。在引入 <code>createSignal</code> 之前，"创建一个事件监听器集合"的 8 行样板代码在代码库里出现了 15 次以上。<code>createSignal</code> 的价值不是功能创新——Observable、EventEmitter 早就存在——而是把这个重复消除掉。</p>
+<h3 id="switchsession-中的-signal-使用"><a class="header" href="#switchsession-中的-signal-使用">switchSession 中的 Signal 使用</a></h3>
+<pre><code class="language-typescript">// src/bootstrap/state.ts:468-489
+export function switchSession(
+  sessionId: SessionId,
+  projectDir: string | null = null,
+): void {
+  STATE.planSlugCache.delete(STATE.sessionId)
+  STATE.sessionId = sessionId
+  STATE.sessionProjectDir = projectDir
+  sessionSwitched.emit(sessionId)   // ← 发出信号，通知所有订阅者
+}
+
 const sessionSwitched = createSignal&lt;[id: SessionId]&gt;()
 
 /**
- * 注册一个回调，当 switchSession 改变活跃 sessionId 时触发。
- * bootstrap 不能直接导入监听者（DAG 叶子节点），所以
- * 调用方自行注册。concurrentSessions.ts 用它保持 PID 文件的
- * sessionId 与 --resume 同步。
+ * Register a callback that fires when switchSession changes the active
+ * sessionId. bootstrap can't import listeners directly (DAG leaf), so
+ * callers register themselves.
  */
-export const onSessionSwitch = sessionSwitched.subscribe
+export const onSessionSwitch = sessionSwitched.subscribe   // ← 对外暴露订阅接口
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/bootstrap/state.ts:481-489</code></p>
-<p><code>createSignal</code> 的完整实现只有 <strong>43 行</strong>，但注释信息量极大：</p>
-<pre><code class="language-typescript">/**
- * 微型监听器集合原语，用于纯事件信号（无存储状态）。
- *
- * 将约 8 行的 `const listeners = new Set(); function subscribe(){…};
- * function notify(){for(const l of listeners) l()}` 样板代码
- * （在代码库中重复了约 15 次）压缩为一行。
- *
- * 与 store（AppState、createStore）不同——没有快照，没有
- * getState。当订阅者只需要知道"某事发生了"，可选地附带事件参数，
- * 而不需要"当前值是什么"时，使用此原语。
- */
-export type Signal&lt;Args extends unknown[] = []&gt; = {
-  subscribe: (listener: (...args: Args) =&gt; void) =&gt; () =&gt; void
-  emit: (...args: Args) =&gt; void
-  clear: () =&gt; void
-}
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/utils/signal.ts:1-25</code></p>
-<p><strong>这段注释揭示了一个精确的设计判断</strong>：<code>createSignal</code> 刻意不存储状态——没有 <code>getState()</code>、没有快照。注释"与 store（AppState、createStore）不同"（原文："Distinct from a store (AppState, createStore)"）直接对比了两种模式：<strong>Store 存储"当前值是什么"，Signal 只传递"某事发生了"</strong>。</p>
-<p>在 state.ts 中，<code>sessionSwitched</code> 信号的使用方式展示了这一区别：</p>
-<ol>
-<li><code>switchSession</code> 函数在更新 <code>STATE.sessionId</code> 后，调用 <code>sessionSwitched.emit(sessionId)</code> 通知所有订阅者</li>
-<li><code>concurrentSessions.ts</code> 通过 <code>onSessionSwitch</code> 注册回调，保持 PID 文件的 sessionId 与实际同步</li>
-<li>订阅者不需要知道旧的 sessionId 是什么——它们只关心"会话切换了，新的 ID 是 X"</li>
-</ol>
-<p><strong>与实例 1 的关键区别</strong>：实例 1（STATE + get/set）解决的是"如何共享当前值"——调用方随时可以 <code>getOriginalCwd()</code> 获取最新值。实例 2（createSignal）解决的是"如何通知变更事件"——调用方在事件发生时收到通知，但无法通过信号查询当前值。<strong>两种模式互补，不是替代关系</strong>。</p>
-<p><strong>图 2-2：模块级单例的两个变体</strong></p>
-<pre><code class="language-mermaid">flowchart LR
-    subgraph 有状态单例
-        direction TB
-        STATE2["STATE 对象"]
-        Get2["get 函数"]
-        Set2["set 函数"]
-        STATE2 --- Get2
-        Set2 --- STATE2
-    end
+<p><strong>源码参考</strong>：<code>src/bootstrap/state.ts:468</code>、<code>src/bootstrap/state.ts:481</code>、<code>src/bootstrap/state.ts:489</code></p>
+<p>注释里有一个关键词：<strong>"DAG leaf"</strong>（有向无环图叶节点）。<code>bootstrap/state.ts</code> 在模块依赖图中处于叶节点位置——它不能 import 任何业务模块（否则会形成循环依赖）。因此，它选择<strong>反向注册</strong>：<code>onSessionSwitch</code> 向外暴露订阅接口，让需要感知会话切换的模块自行注册，而不是由 state.ts 主动调用它们。</p>
+<p>这是依赖倒置原则（Dependency Inversion Principle, DIP）在单例模式中的实际应用：高层模块（业务逻辑）依赖低层模块（state.ts）的抽象接口（<code>onSessionSwitch</code>），而非低层模块调用高层模块。</p>
+<p><strong>图 2-2：createSignal 的订阅-发布模式</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant Caller as 调用方&lt;br/&gt;（REPL.tsx 等）
+    participant State as bootstrap/state.ts
+    participant Sub1 as 订阅者 1&lt;br/&gt;（concurrentSessions.ts）
+    participant Sub2 as 订阅者 N&lt;br/&gt;（其他模块）
 
-    subgraph 无状态信号
-        direction TB
-        Signal2["createSignal"]
-        Emit2["emit()"]
-        Sub2["subscribe()"]
-        Signal2 --- Emit2
-        Signal2 --- Sub2
-    end
+    Note over State: import 时&lt;br/&gt;const sessionSwitched = createSignal()
+    Sub1-&gt;&gt;State: onSessionSwitch(callback1)（注册订阅）
+    Sub2-&gt;&gt;State: onSessionSwitch(callbackN)（注册订阅）
 
-    QE["QueryEngine"] --&gt;|"读状态"| Get2
-    QE --&gt;|"写状态"| Set2
-    CS["concurrentSessions"] --&gt;|"注册回调"| Sub2
-    SS["switchSession()"] --&gt;|"触发事件"| Emit2
+    Caller-&gt;&gt;State: switchSession(newId)
+    Note over State: STATE.sessionId = newId
+    State-&gt;&gt;Sub1: sessionSwitched.emit(newId) → callback1(newId)
+    State-&gt;&gt;Sub2: sessionSwitched.emit(newId) → callbackN(newId)
 </code></pre>
-<p>左侧（有状态单例）通过 <code>get/set</code> 函数链接到 <code>STATE</code> 对象——调用方可以随时主动查询当前值；右侧（无状态信号）通过 <code>subscribe/emit</code> 流程传递事件——调用方只在事件发生时被动接收通知。两条路径互不交叉，解决不同的状态共享问题。</p>
-<h2 id="模式剖析模块级单例的两个变体"><a class="header" href="#模式剖析模块级单例的两个变体">模式剖析：模块级单例的两个变体</a></h2>
-<p>Claude Code 的全局状态管理可以归纳为两个变体：</p>
-<div class="table-wrapper"><table><thead><tr><th>变体</th><th>存储状态</th><th>访问方式</th><th>通知能力</th><th>实例</th></tr></thead><tbody>
-<tr><td><strong>有状态单例</strong></td><td><code>STATE</code> 对象（50+ 字段）</td><td>get/set 函数对（210 个导出）</td><td>无（调用方主动轮询）</td><td><code>getOriginalCwd()</code> / <code>setOriginalCwd()</code></td></tr>
-<tr><td><strong>无状态信号</strong></td><td>无（<code>createSignal</code> 不存储值）</td><td>subscribe 注册回调</td><td>有（emit 通知所有订阅者）</td><td><code>sessionSwitched</code> / <code>onSessionSwitch</code></td></tr>
-</tbody></table>
-</div>
-<p>两个变体共享同一个核心做法：<strong>模块作用域即容器</strong>。不需要 DI 容器、不需要全局注册表——模块加载一次，内部变量天然唯一。差异在于解决的问题不同：有状态单例解决"多个模块如何共享当前值"，无状态信号解决"一个模块如何通知其他模块某事发生了"。</p>
+<p><em>图注：state.ts 不知道谁是订阅者——它只发出信号。订阅者主动注册自己，这保证了 state.ts 作为 DAG 叶节点不引入任何业务模块的反向依赖。</em></p>
+<hr />
+<h2 id="模式剖析轻量全局状态的五个要素"><a class="header" href="#模式剖析轻量全局状态的五个要素">模式剖析：轻量全局状态的五个要素</a></h2>
+<p>两个源码实例揭示了同一个模式的不同侧面。"<strong>轻量全局状态（Lightweight Global State）</strong>"模式由五个要素构成：</p>
+<p><strong>① 单一状态对象</strong>：所有全局状态集中在一个类型定义（<code>State</code>）里，方便快照和序列化。</p>
+<p><strong>② 模块级初始化</strong>：用 <code>const STATE = getInitialState()</code> 在模块求值时初始化，JavaScript 模块系统保证单例。无需 IoC 容器、无需 <code>getInstance()</code> 方法。</p>
+<p><strong>③ 受控访问接口</strong>：不 export <code>STATE</code> 本身，只 export 受控的 get/set 函数对，保留未来加钩子的能力。</p>
+<p><strong>④ 内部直接操作</strong>：模块内部函数可以直接操作 <code>STATE</code> 以保证原子性（如 <code>regenerateSessionId</code>），这是受控特例，不是设计缺陷。</p>
+<p><strong>⑤ 信号解耦通知</strong>：状态变化通知通过 <code>createSignal</code> + 反向订阅实现，让 state.ts 保持 DAG 叶节点身份，不引入业务模块依赖。</p>
+<hr />
 <h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
-<tr><td>单进程 CLI 工具</td><td>✓</td><td>一个进程 = 一个全局实例，DI 的多实例隔离无用武之地</td><td>DI 容器（过度设计）</td></tr>
-<tr><td>高频读 / 低频写</td><td>✓</td><td>get 函数直接读 <code>STATE</code> 字段，零开销</td><td>响应式 Store（读写都有通知开销）</td></tr>
-<tr><td>需要精确的写入控制</td><td>✓</td><td>不提供 set = 只读；命名函数 = 原子操作</td><td>直接导出对象（无法控制写入粒度）</td></tr>
-<tr><td>多进程服务端</td><td>✗</td><td>模块级变量在进程间不共享</td><td>Redis / 共享内存 / 消息队列</td></tr>
-<tr><td>需要运行时替换依赖</td><td>✗</td><td>模块加载后无法替换 STATE 对象</td><td>依赖注入容器</td></tr>
-<tr><td>需要精确的变更追踪</td><td>✗</td><td>set 函数没有自动变更通知（需要手动 emit）</td><td>响应式 Store（MobX、Zustand）</td></tr>
-<tr><td>多实例隔离（如多租户）</td><td>✗</td><td>所有代码共享同一个 STATE</td><td>请求级 Context（如 AsyncLocalStorage）</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用</th><th>原因</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>单进程 CLI，只有一个会话</td><td>✓</td><td>无多实例隔离需求，DI 价值为零</td><td>—</td></tr>
+<tr><td>需要跨不相关模块共享的配置/会话状态</td><td>✓</td><td>模块级单例比逐层传参简洁</td><td>依赖注入</td></tr>
+<tr><td>状态字段数量 &gt; 20，需要语义分组</td><td>✓</td><td>单一 State 对象便于整体快照</td><td>多个独立 Store</td></tr>
+<tr><td>服务端应用，需要请求隔离</td><td>✗</td><td>单例在并发请求间共享状态会出问题</td><td>依赖注入 + 请求 Context</td></tr>
+<tr><td>需要做单元测试且状态复杂</td><td>△</td><td>可以，但需要额外提供 <code>resetState()</code> 函数</td><td>依赖注入（测试更简单）</td></tr>
+<tr><td>状态字段 &lt; 5 个</td><td>△</td><td>可以，但直接传参也够用</td><td>函数参数传递</td></tr>
 </tbody></table>
 </div>
+<hr />
 <h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
-<p>模块级单例的核心代价有三个。</p>
-<p><strong>第一，单线程假设。</strong> 整个 <code>state.ts</code> 没有任何锁、互斥量或原子操作——它隐含的前提是"Bun 主线程是唯一的写入者"。在单事件循环（Event Loop）的 Node.js/Bun 模型中，这个假设成立：没有真正的并发写入，只有异步交错。但如果未来引入 Web Worker 或多进程（如 Swarm 的 Teammate，详见第 29 章），模块级变量的共享语义将失效——每个 Worker 有自己的模块副本，<code>STATE</code> 不再是"全局唯一"。</p>
-<p><strong>第二，测试隔离困境。</strong> 因为 <code>STATE</code> 是模块级变量且不导出，测试之间无法"新建一个 STATE"。state.ts 提供了 <code>regenerateSessionId</code>（<code>src/bootstrap/state.ts:435</code>）和 <code>resetCostState</code>（<code>src/bootstrap/state.ts:864</code>）等重置函数作为补偿——但它们只重置部分字段，不是完整的重置。<strong>如果测试修改了 <code>STATE.originalCwd</code> 但忘记恢复，后续测试可能拿到脏数据。</strong>（推断：这是模块级单例的固有测试成本，Claude Code 选择接受这个成本而非引入 DI，因为测试场景有限。）</p>
-<p><strong>第三，50+ 字段的"上帝对象"倾向。</strong> 当 <code>State</code> 类型持续膨胀——从最初的路由状态扩展到遥测、模型选择、权限设置——它可能变成一个无所不包的"上帝对象"（God Object）。目前的 6 个独立 <code>let</code> 变量（<code>src/bootstrap/state.ts:665-793</code>）是拆分的开始：UI 临时状态已经被分离出 <code>STATE</code>，但遥测状态、会话状态、配置状态仍然混在一起。</p>
+<p><strong>模块级单例的测试挑战</strong>：单元测试时，如果两个测试用例共享同一个模块实例，状态会相互污染。Claude Code 没有测试套件（这是重建版本的局限），但如果有，需要在每个测试前调用类似 <code>resetToInitialState()</code> 的函数。依赖注入在这里更友好——每个测试用例可以注入独立的状态实例。</p>
+<p><strong>216 个导出函数的维护成本</strong>：每增加一个状态字段，通常需要同时写 get 和 set——这是"显式比隐式好"的代价。当字段数量增长到 50+ 时，这个文件本身就成了一个需要理解的系统。</p>
+<p><strong>模块求值顺序依赖</strong>：<code>STATE</code> 在模块被第一次 import 时初始化。如果有模块在 <code>STATE</code> 初始化之前就读取了某个字段，会得到 <code>getInitialState()</code> 的默认值而非最终值。<code>src/main.tsx</code> 的注释（<code>src/main.tsx:1</code>）提示了这一点：MDM 和 Keychain 预读取在 import 求值期间就开始，需要精心管理初始化顺序（详见第 4 章）。</p>
+<hr />
 <h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
-<p><strong>图 2-3：三种全局状态管理模式的唯一性保证机制</strong></p>
-<pre><code class="language-mermaid">flowchart TD
-    subgraph ModuleSingleton["模块级单例（Module Singleton）"]
-        direction LR
-        Import2["import {getXxx} from './state'"]
-        Module2["模块首次加载 → STATE 初始化"]
-        Unique2["唯一性保证：模块系统加载一次"]
-        Import2 --&gt; Module2 --&gt; Unique2
-    end
-
-    subgraph GoFSingleton["GoF Singleton"]
-        direction LR
-        Call1["getInstance()"]
-        Check1{"_instance
-已存在?"}
-        Create1["new State()"]
-        Return1["返回 _instance"]
-        Call1 --&gt; Check1
-        Check1 --&gt;|否| Create1 --&gt; Return1
-        Check1 --&gt;|是| Return1
-    end
-
-    subgraph ServiceLocator["Service Locator (Fowler)"]
-        direction LR
-        Locate["locate('state')"]
-        Registry["注册表查询"]
-        Result["返回注册的实例"]
-        Locate --&gt; Registry --&gt; Result
-    end
-
-    style Unique2 fill:#e8f5e9,stroke:#388e3c
-    style Create1 fill:#fff3e0,stroke:#e65100
-    style Registry fill:#e3f2fd,stroke:#1565c0
-</code></pre>
-<p>三种模式的唯一性保证机制完全不同：模块级单例依赖运行时的模块加载机制（绿色，无额外代码）；GoF Singleton 用私有构造函数+运行时检查实现（橙色，需要自己写锁）；Service Locator 通过注册表查询实现（蓝色，灵活但弱类型）。</p>
-<div class="table-wrapper"><table><thead><tr><th>维度</th><th>模块级单例</th><th>GoF Singleton</th><th>Service Locator (Fowler)</th></tr></thead><tbody>
-<tr><td>唯一性保证</td><td>模块系统加载机制</td><td>运行时锁 + 私有构造函数</td><td>注册表查询</td></tr>
-<tr><td>访问方式</td><td>import 具名函数</td><td><code>getInstance()</code></td><td><code>locate(name)</code></td></tr>
-<tr><td>测试隔离</td><td>困难（需要 reset 函数）</td><td>困难（需要破坏单例）</td><td>容易（替换注册表）</td></tr>
-<tr><td>类型安全</td><td>强（TypeScript 函数签名）</td><td>弱（返回 any 或基类）</td><td>弱（字符串键查找）</td></tr>
-<tr><td>Claude Code 实例</td><td>210 个 get/set 函数</td><td>—</td><td>—</td></tr>
-</tbody></table>
-</div>
-<p><strong>共同祖先</strong>：三种模式都在解决"全局唯一的访问点"问题。<strong>关键区别</strong>在于"唯一性如何保证"：GoF Singleton 用运行时锁（多线程安全），Service Locator 用注册表（灵活但弱类型），模块级单例用<strong>模块系统的加载机制</strong>——模块只加载一次，内部变量天然唯一，不需要额外的保证代码。</p>
-<p>这种"借用语言/运行时机制而非自己实现"的做法，在 Go 社区有成熟的先例：Go 的包级变量就是 Go 式单例的标准写法。Claude Code 用 TypeScript 的模块系统做了同样的事。</p>
+<p><strong>GoF 单例模式（Singleton Pattern）</strong>：经典 GoF 单例用 <code>getInstance()</code> 方法保证只有一个实例，通常用 <code>private</code> 构造函数防止外部直接构造。Claude Code 的做法更简单——JavaScript 的 ES module 系统本身就保证每个模块只被求值一次，不需要显式的 <code>getInstance()</code>。这是利用了语言/运行时特性而非设计模式来实现单例，更轻量，代价是与模块系统深度耦合。</p>
+<p><strong>服务定位器模式（Service Locator Pattern）</strong>：与 DI 容器相比，<code>bootstrap/state.ts</code> 更像一个服务定位器——调用方主动拉取（<code>getOriginalCwd()</code>），而非由外部推送（构造函数注入）。GoF 认为服务定位器是"反模式"，因为它隐藏了依赖关系。但在 Claude Code 的 CLI 场景里，这些全局依赖关系是显而易见的——所有模块都知道需要"当前会话状态"，把它显式注入反而增加了噪音。</p>
+<p><strong>响应式 Store（MobX/Zustand）</strong>：<code>createSignal</code> 与响应式 Store 的区别在于：Signal 是无状态的"只通知"，Store 是有状态的"持有 + 通知"。<code>signal.ts:1</code> 的注释明确说明了这一设计意图：当订阅者只需要知道"发生了什么"而不需要知道"当前值是什么"时，用 Signal。这避免了 MobX 式的细粒度追踪所带来的运行时开销。</p>
+<hr />
 <h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
 <h3 id="模块级单例module-singleton"><a class="header" href="#模块级单例module-singleton">模块级单例（Module Singleton）</a></h3>
-<p><strong>解决的问题</strong>：在单进程 CLI 中如何用零依赖管理全局状态？</p>
-<p><strong>核心做法</strong>：利用模块系统加载保证唯一性，get/set 函数对封装访问，createSignal 提供事件通知。</p>
-<p><strong>源码证据</strong>：src/bootstrap/state.ts:429（STATE）、src/utils/signal.ts:27（createSignal）</p>
-<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
-<ul>
-<li><strong>用 <code>grep -c "export function" src/bootstrap/state.ts</code> 验证 210 个导出函数的数量</strong>。这个数字是否比你的预期多或少？多意味着状态管理可能过度集中，少意味着分散到了其他模块。</li>
-<li><strong>阅读 <code>src/bootstrap/state.ts:45-100</code> 的 State 类型定义</strong>，数一数有多少字段与你项目的全局状态需求重叠。Claude Code 有 50+ 字段——你的项目需要几个？</li>
-<li><strong>在自己的 CLI 项目中，对比 DI 容器和模块级变量的启动性能</strong>。模块级变量在首次 import 时初始化，DI 容器需要构建对象图——在 CLI 的"快速启动"场景下，差异可能很显著。</li>
-<li><strong>用 <code>grep -rn "createSignal" src/ | wc -l</code> 感受信号模式的渗透程度</strong>。如果数字超过 10，说明"无状态事件通知"在你的代码库中也是一个反复出现的需求。</li>
-<li><strong>追踪 <code>getOriginalCwd()</code> 的一个调用方</strong>（如 <code>src/QueryEngine.ts</code>），理解模块级函数如何替代 DI 注入——调用方只需要 <code>import { getOriginalCwd }</code>，不需要知道 STATE 的存在。</li>
-<li><strong>思考你的 Agent 项目是否满足"单进程、单会话"前提</strong>。如果不满足——比如需要 Web Worker 并行推理——模块级单例是否仍然适用？可能需要 <code>AsyncLocalStorage</code> 或消息传递替代。</li>
-</ul>
+<p><strong>解决的问题</strong>：CLI工具需跨模块共享状态，但DI的多实例能力在单进程场景下毫无用武之地。</p>
+<p><strong>核心做法</strong>：利用ES module每个模块只求值一次的特性，用const STATE = getInitialState()在模块顶层初始化全局对象，运行时天然保证单例。</p>
+<p><strong>前置条件</strong>：单进程环境，运行期间不需要多实例隔离，状态在进程生命周期内保持稳定。</p>
+<p><strong>源码证据</strong>：src/bootstrap/state.ts:429</p>
 <hr />
-<p>下一章（第 3 章）将理解构建时 DCE 如何与模块级单例配合——当 <code>feature('KAIROS')</code> 为 false 时，Assistant 模块根本不存在，STATE 中的 <code>kairosActive</code> 字段也因此失去了意义。</p>
+<h3 id="显式访问接口explicit-access-interface"><a class="header" href="#显式访问接口explicit-access-interface">显式访问接口（Explicit Access Interface）</a></h3>
+<p><strong>解决的问题</strong>：直接export单例对象让任意调用方修改任意字段，失去封装控制且无法加钩子。</p>
+<p><strong>核心做法</strong>：只export get/set函数对，不export STATE本身。get控制可读字段，set预留扩展点。</p>
+<p><strong>前置条件</strong>：单例字段数量超过 10，或存在只读字段，或预期需要在读写时注入副作用。</p>
+<p><strong>源码证据</strong>：src/bootstrap/state.ts:500，src/bootstrap/state.ts:515</p>
+<hr />
+<h3 id="dag-叶节点信号dag-leaf-signal"><a class="header" href="#dag-叶节点信号dag-leaf-signal">DAG 叶节点信号（DAG Leaf Signal）</a></h3>
+<p><strong>解决的问题</strong>：状态模块作为DAG叶节点不能import业务模块（避免循环依赖），却需要通知业务模块状态变化。</p>
+<p><strong>核心做法</strong>：用createSignal暴露订阅接口（onSessionSwitch），让业务模块主动注册回调，反转通知方向保持叶节点身份。</p>
+<p><strong>前置条件</strong>：模块位于 DAG 叶节点，不能引入上游依赖，但需要向上游广播状态变化事件。</p>
+<p><strong>源码证据</strong>：src/bootstrap/state.ts:481，src/bootstrap/state.ts:489</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ol>
+<li><strong>用 ES module 特性替代 IoC 容器</strong>：在单进程 CLI 项目里，<code>const STATE = getInitialState()</code> 加上 get/set 函数对就是完整的状态管理——不需要引入 DI 框架</li>
+<li><strong>把全局状态字段集中在单一 <code>State</code> 类型里</strong>：50+ 字段放在一起时，语义关联清晰，整体快照方便调试</li>
+<li><strong>对外只 export get/set，不 export STATE 本身</strong>：保留未来在 set 函数里加验证、触发事件的能力，而不需要修改所有调用方</li>
+<li><strong>识别 DAG 叶节点场景</strong>：当一个模块被所有人依赖但自己不能依赖任何人时，用信号（Signal）暴露订阅接口，让调用方反向注册</li>
+<li><strong>用 <code>createSignal</code> 消灭重复监听器样板</strong>：<code>signal.ts</code> 的 43 行消除了 15+ 处重复——在自己的项目里找到类似的重复，用同样的方法收归</li>
+<li><strong>区分 Signal 和 Store 的使用场景</strong>：订阅者只需要"发生了什么"就用 Signal，需要"当前值是什么"就用 Store（如 <code>src/state/AppStateStore.ts</code>，详见第 10 章）</li>
+<li><strong>为单例状态提供 <code>resetToInitialState()</code> 函数</strong>：如果项目有测试需求，预留一个重置函数，让每个测试用例都能从干净状态开始</li>
+</ol>
+<hr />
+<p><em>下一章继续探索 Harness 的基础设施层：<code>bun:bundle feature()</code> 如何在构建时消除死代码，实现零运行时成本的特性开关——这是 Claude Code 同时维护 Ant 内部版本和 External 公开版本的工程秘密（详见第 3 章）。</em></p>
 
                     </main>
 

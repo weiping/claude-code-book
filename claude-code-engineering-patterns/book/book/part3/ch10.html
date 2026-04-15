@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>第 10 章：Tool 接口契约——buildTool() 工厂与 Zod 输入验证 - Claude Code 工程模式</title>
+        <title>第 10 章：流式响应管道——异步生成器的工程应用 - Claude Code 工程模式</title>
 
 
         <!-- Custom HTML head -->
@@ -156,387 +156,374 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="第-10-章工具注册契约buildtool-工厂与-zod-运行时边界"><a class="header" href="#第-10-章工具注册契约buildtool-工厂与-zod-运行时边界">第 10 章：工具注册契约——buildTool() 工厂与 Zod 运行时边界</a></h1>
+                        <h1 id="第-10-章流式响应管道异步生成器的工程应用"><a class="header" href="#第-10-章流式响应管道异步生成器的工程应用">第 10 章：流式响应管道——异步生成器的工程应用</a></h1>
 <blockquote>
-<p>"工厂函数不是创建对象的地方，而是实施契约的地方。"</p>
+<p>"数据在抵达之前，价值就已经存在了。"</p>
 </blockquote>
-<p>在 Claude Code 的工具系统中，58 种工具都通过同一个工厂函数注册——这个模式至少出现了 3 次：<strong><code>buildTool()</code></strong> 在编译时把"你声明的 <code>ToolDef</code>"和"安全的 <code>TOOL_DEFAULTS</code>"合并为完整契约；<strong><code>FileWriteTool</code></strong> 接受所有默认值，因为文件写入本就不该并发；<strong><code>FileReadTool</code></strong> 显式覆盖两个字段，因为读取操作确实是只读且并发安全的。我们把这两个协同工作的机制命名为<strong>工厂契约（Factory Contract）<strong>和</strong>Schema 即运行时边界（Schema as Runtime Boundary）</strong>。</p>
-<p>这两个模式解决了两件不同的事：工厂契约让接口一致性从"开发者自律"变成"编译器强制"；Schema 边界让 TypeScript 的类型检查从编译时延伸到运行时，拦截 AI 生成的格式错误。</p>
-<p>为什么不让所有工具直接实现 <code>Tool</code> 接口？为什么用 <code>z.strictObject</code> 而非 <code>z.object</code>？答案不在设计偏好里，而在 <code>TOOL_DEFAULTS</code> 那条注释里。</p>
+<p>当用户在终端看到 Claude Code 逐字输出——每个词语几乎在 AI 生成的瞬间就出现在屏幕上——背后不是"魔法"，而是一个在代码库里反复出现的工程模式：<strong>用异步生成器把不可预测的 IO 流转化为结构化事件序列</strong>，生产者和消费者互不等待，错误自然穿透层层调用栈。</p>
+<p>这个模式至少出现了 3 次：<code>queryModel()</code> 把 SSE 字节流转化为 <code>AssistantMessage</code> 事件序列；<code>ask()</code> 把同一个 generator 以"批量收集"方式消费；<code>execAgentHook()</code> 把它用作第三方扩展点的执行引擎。我们将把这个模式命名为<strong>异步生成器流式适配器（Async Generator Streaming Adapter）</strong>。</p>
+<p>为什么 Claude Code 没有选择 EventEmitter？为什么不用 RxJS Observable？答案不在哲学偏好里，而在源码里。</p>
 <hr />
-<h2 id="问题工具注册的三重困难"><a class="header" href="#问题工具注册的三重困难">问题：工具注册的三重困难</a></h2>
-<p>我们先设想一下，如果不做任何架构设计，58 种工具的注册代码会是什么样的。</p>
-<p>Claude Code 的工具要求实现一个包含 <code>call</code>、<code>description</code>、<code>inputSchema</code>、<code>isReadOnly</code>、<code>isConcurrencySafe</code>、<code>isDestructive</code>、<code>checkPermissions</code>、<code>toAutoClassifierInput</code>、<code>userFacingName</code> 等字段的 <code>Tool</code> 接口。如果让每个工具直接实现这个接口，<strong>58 种工具需要 58 次"填写这 9+ 个字段"的决定</strong>，其中多个字段涉及安全性——遗漏一次或填错一次，就是安全漏洞。</p>
-<p><strong>第一重困难：接口一致性无法强制保证</strong>。"让工具开发者实现接口"是 OOP 的经典做法，但在 TypeScript 中，开发者可以用类型断言绕过接口检查，也可以忘记实现某个可选方法，让调用方在运行时碰到 <code>undefined is not a function</code>。<strong>接口是文档，工厂是合同</strong>——工厂函数在编译时强制要求所有必填字段存在，省略就是编译错误，无法绕过。</p>
-<p><strong>第二重困难：安全默认值需要开发者主动正确填写</strong>。<code>isConcurrencySafe</code> 该填 <code>true</code> 还是 <code>false</code>？开发者看到一个不确定的工具，很可能倾向于填 <code>true</code>（"我觉得可以并发"）。但错误的后果是并发写冲突、数据损坏——比性能损失严重得多。<strong>安全字段应该默认关闭，需要开发者显式声明安全，而非显式声明不安全</strong>。每次让开发者手动填写安全字段，就是一次依赖"记忆"的脆弱决策。</p>
-<p><strong>第三重困难：AI 参数的类型安全在运行时消失</strong>。工具的 <code>call</code> 方法接受 <code>z.infer&lt;InputSchema&gt;</code> 类型的参数——这个类型保证只在编译时有效。当 AI 生成一段 JSON 字符串并被反序列化时，TypeScript 已经消失，运行时拿到的是 <code>unknown</code>。如果 AI 在 <code>file_path</code> 字段里传了 <code>null</code>，或者带了一个不在 schema 里的 <code>debug: true</code> 字段，TypeScript 无能为力——需要一套运行时验证机制在 <code>call()</code> 触发前拦截格式错误。</p>
-<p>源码中 <code>src/Tool.ts:749</code> 有一段很有代表性的注释：</p>
-<pre><code class="language-typescript">// src/Tool.ts:749
-/**
- * Defaults (fail-closed where it matters):
- * - `isEnabled` → `true`
- * - `isConcurrencySafe` → `false` (assume not safe)
- * - `isReadOnly` → `false` (assume writes)
- * - `isDestructive` → `false`
- * - `checkPermissions` → `{ behavior: 'allow', updatedInput }`（委托给通用权限系统处理）
- * - `toAutoClassifierInput` → `''`（跳过分类器——安全相关工具必须覆盖此字段）
- * - `userFacingName` → `name`
- */
+<h2 id="问题sse-流的三重消费困境"><a class="header" href="#问题sse-流的三重消费困境">问题：SSE 流的三重消费困境</a></h2>
+<p>我们先设想一下，如果不用 async generator，AI 流式响应的消费逻辑会是什么样的。</p>
+<p>典型的 AI API 调用延迟在 <strong>2 到 30 秒</strong>之间——这是从发出请求到收到第一个字节的时间窗口。如果用 <code>await response.json()</code> 等待完整响应，用户在这段时间内看到的是空白光标，既无法感知进度，也无法中断。对于交互式 CLI，这是不可接受的。</p>
+<p><strong>第一重困境：中间状态不可见</strong>。AI 响应不是一个单一的原子值，而是一个持续增长的流——先出现文本，再出现工具调用，再出现工具结果，最后结束。每个中间状态对消费方都有价值：UI 可以据此更新渲染，日志系统可以据此记录进度，限流机制可以据此调整节奏。<code>await response.body()</code> 吞掉了所有中间状态，消费方拿到的是"死"的最终结果，而非"活"的事件流。</p>
+<p><strong>第二重困境：背压控制（Backpressure）失效</strong>。背压（Backpressure）是流式系统中的经典问题：如果生产者（API 流入字节）比消费者（UI 渲染）快，缓冲区会无限积压。传统 EventEmitter 的 <code>emit</code> 是同步的——如果渲染跟不上，事件要么丢失、要么堆积在内存中。</p>
+<p>Async generator 用 <code>for await</code> 的**协作式调度（Cooperative Scheduling）**优雅地解决了这个问题：消费者处理完一个 <code>yield</code> 值后，才会让出控制权给生产者产出下一个值。生产者不会"超跑"，不需要显式的背压信号，不需要 RxJS 的 <code>throttle</code> 算子——控制流就是背压机制本身。</p>
+<p><strong>第三重困境：错误传播失控</strong>。在回调链中，深层 API 错误需要逐层手动传递：</p>
+<pre><code>// 回调地狱中的错误传播：每层都要手动转发 err
+fetchStream((err, chunk) =&gt; {
+  if (err) return topCallback(err)  // 手动转发
+  parseChunk(chunk, (err2, parsed) =&gt; {
+    if (err2) return topCallback(err2)  // 再次手动转发
+    processResult(parsed, (err3, result) =&gt; {
+      if (err3) return topCallback(err3)  // 还要转发
+      topCallback(null, result)
+    })
+  })
+})
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/Tool.ts:749</code></p>
-<p><strong>这段注释揭示了设计意图</strong>：注释标题是 <code>Defaults (fail-closed where it matters)</code>。"fail-closed"意味着：<strong>不确定时，选择更保守的选项</strong>。<code>isConcurrencySafe: false</code> 假设不安全（宁可串行）；<code>isReadOnly: false</code> 假设会写（宁可触发权限检查）；<code>toAutoClassifierInput: ''</code> 跳过分类器（安全工具必须显式参与分类，不能靠默认混入）。每一个默认值都是"保守优先"的体现。<strong>安全不是例外，是默认</strong>。</p>
-<p><strong>图 10-1：三重困难与工厂契约的解法对应</strong></p>
+<p>Async generator 中，<code>throw</code> 穿透 <code>for await</code> 边界，直接被上层的 <code>try/catch</code> 捕获——不需要任何手动转发。这是 JavaScript 生成器协议的内建保证。</p>
+<p>源码中 <code>src/query.ts:337</code> 有一行很有代表性的 yield：</p>
+<pre><code class="language-typescript">// src/query.ts:337
+// 每轮 API 请求开始时向消费方推送的生命周期信号
+yield { type: 'stream_request_start' }
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:337</code></p>
+<p><strong>这一行揭示了设计意图</strong>：<code>stream_request_start</code> 不是 AI 输出的内容，而是"主循环即将发起一次 API 请求"的通知。消费方收到这个信号，可以更新 UI 状态、启动计时器、或者记录日志。<strong>中间状态是一等公民</strong>——它和最终的 <code>AssistantMessage</code> 一样，被 <code>yield</code> 推送给消费方，而非通过副作用泄漏出去。</p>
+<p><strong>图 10-1：三重困境与 Async Generator 的解法对应</strong></p>
 <pre><code class="language-mermaid">flowchart LR
-    subgraph 三重困难
-        P1["① 接口一致性无法强制\n开发者可绕过类型检查"]
-        P2["② 安全默认值依赖记忆\nisConcurrencySafe 填错就是 bug"]
-        P3["③ AI 参数运行时类型消失\nTypeScript 不保护 JSON 输入"]
+    subgraph 三重困境
+        P1["① 中间状态不可见\n await 吞掉进度"]
+        P2["② 背压失控\n emit 超跑消费者"]
+        P3["③ 错误传播\n 每层手动转发 err"]
     end
 
-    subgraph 工厂契约解法
-        S1["buildTool()\n编译时强制必填字段\n省略=编译错误"]
-        S2["TOOL_DEFAULTS fail-closed\n不安全能力默认关闭\n显式声明才能开启"]
-        S3["z.strictObject\n运行时验证 AI 参数\n额外字段直接拒绝"]
+    subgraph Async Generator 解法
+        S1["yield 推送每个中间状态\n（包括 stream_request_start）"]
+        S2["for await 协作式调度\n消费完才请求下一个"]
+        S3["throw 穿透 for await\n上层 try/catch 直接捕获"]
     end
 
     P1 --&gt;|解决| S1
     P2 --&gt;|解决| S2
     P3 --&gt;|解决| S3
 </code></pre>
-<p>三种困难一一对应三种解法——这不是偶然，而是"工厂契约 + Schema 运行时边界"模式的完整设计意图：<strong>把接口一致性、安全默认值、运行时类型安全三个关注点都纳入基础设施，而非应用代码的职责</strong>。</p>
+<p>三种困境一一对应三种语言机制——这不是偶然，而是 async generator 协议的设计意图：<strong>把 IO 流的中间状态、节奏控制、错误传播都纳入语言原语，而非应用代码的职责</strong>。</p>
 <hr />
-<h2 id="源码实例-1buildtool-工厂函数的契约实施"><a class="header" href="#源码实例-1buildtool-工厂函数的契约实施">源码实例 1：buildTool() ——工厂函数的契约实施</a></h2>
-<p>我们来看工厂契约的核心。<code>buildTool()</code>（<code>src/Tool.ts:783</code>）的函数签名就已经告诉我们它的设计意图：</p>
-<pre><code class="language-typescript">// src/Tool.ts:783
-export function buildTool&lt;D extends AnyToolDef&gt;(def: D): BuiltTool&lt;D&gt; {
-  // 运行时的展开操作本身很直接；`as` 类型断言弥合了
-  // 结构化 any 约束和精确的 BuiltTool&lt;D&gt; 返回类型之间的差距。
-  // 类型语义的正确性由对 60+ 个工具的 0 错误类型检查所证明。
-  return {
-    ...TOOL_DEFAULTS,
-    userFacingName: () =&gt; def.name,
-    ...def,
-  } as BuiltTool&lt;D&gt;
+<h2 id="源码实例-1querymodel-从-sse-字节流到结构化消息"><a class="header" href="#源码实例-1querymodel-从-sse-字节流到结构化消息">源码实例 1：queryModel() ——从 SSE 字节流到结构化消息</a></h2>
+<p>我们来看流式管道的第一层。<code>queryModel()</code>（<code>src/services/api/claude.ts:1017</code>）是 SSE 协议到 Claude Code 业务层的适配器，它的函数签名就已经告诉我们它做什么：</p>
+<pre><code class="language-typescript">// src/services/api/claude.ts:1017-1027（函数签名精简版）
+async function* queryModel(
+  messages: Message[],
+  systemPrompt: SystemPrompt,
+  thinkingConfig: ThinkingConfig,
+  tools: Tools,
+  signal: AbortSignal,
+  options: Options,
+): AsyncGenerator&lt;
+  StreamEvent | AssistantMessage | SystemAPIErrorMessage,
+  void
+&gt;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/services/api/claude.ts:1017</code></p>
+<p>三个类型的联合返回值揭示了这个函数的全部职责：</p>
+<ul>
+<li><code>StreamEvent</code>——SSE 协议层的原始事件（文本增量、工具调用块等流式片段）</li>
+<li><code>AssistantMessage</code>——完整组装好的 AI 消息（一次 API 往返的最终结果）</li>
+<li><code>SystemAPIErrorMessage</code>——将 API 层错误封装为可 yield 的事件（而非 throw）</li>
+</ul>
+<p><strong>为什么把错误也 yield 出去，而不是 throw？</strong> 因为流式场景中，"错误"有时是一种中间状态——例如 API 返回 429（频率限制）触发重试，这个错误需要被消费方感知（用于显示"重试中"进度），同时流式处理不能中断。用 <code>yield SystemAPIErrorMessage</code> 让错误成为可观察的事件，调用方可以选择处理（显示重试提示）、忽略（继续等待）或中断（调用 <code>interrupt()</code>）。</p>
+<p>函数内部的核心是一个 <code>switch(part.type)</code> 状态机（<code>src/services/api/claude.ts:1980</code>）：</p>
+<pre><code class="language-typescript">// src/services/api/claude.ts:1980-2010（switch 状态机，精简版）
+switch (part.type) {
+  case 'message_start': {
+    // SSE 流开始——初始化 partialMessage 对象，记录首字节时间（TTFT）
+    partialMessage = part.message
+    ttftMs = Date.now() - start
+    usage = updateUsage(usage, part.message?.usage)
+    break
+  }
+  case 'content_block_start':
+    switch (part.content_block.type) {
+      case 'tool_use':
+        // 工具调用块开始——分配一个槽位，等待后续 delta 填充 input
+        contentBlocks[part.index] = { ...part.content_block, input: '' }
+        break
+      case 'text':
+        contentBlocks[part.index] = { ...part.content_block }
+        break
+    }
+    break
+  case 'content_block_delta':
+    // 内容增量——文本追加或 tool_use input 累积
+    // ...delta 应用逻辑...
+    break
+  case 'message_stop':
+    // SSE 流结束——组装完整的 AssistantMessage 并 yield 出去
+    yield assembleAssistantMessage(partialMessage, contentBlocks, ...)
+    break
 }
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/Tool.ts:783</code></p>
-<p>5 行代码。<code>D extends AnyToolDef</code> 约束确保输入必须满足 <code>ToolDef</code> 类型；返回类型 <code>BuiltTool&lt;D&gt;</code> 保留了 <code>D</code> 的完整泛型信息——调用方仍然知道具体的工具类型，而不是退化为通用的 <code>Tool</code>。</p>
-<p>函数体是三行 spread：先铺 <code>TOOL_DEFAULTS</code>（7 个安全默认值），再用 <code>userFacingName: () =&gt; def.name</code> 注入工具名，最后用 <code>...def</code> 覆盖——<strong>工具开发者的显式声明优先级高于默认值</strong>。这意味着开发者可以选择接受所有默认值（最简单），也可以精确覆盖其中某几个（按需定制）。</p>
-<p><strong>为什么用 spread 而非继承？</strong> 因为 TypeScript 的类继承会引入原型链、<code>this</code> 绑定、<code>super()</code> 调用等复杂性；spread 是纯粹的对象组合，没有副作用，没有动态绑定——工具定义就是一个普通对象字面量，整个创建过程是同步的、可预测的。</p>
-<p><code>TOOL_DEFAULTS</code> 的完整内容（<code>src/Tool.ts:758</code>）是 fail-closed 哲学的物理实体：</p>
-<pre><code class="language-typescript">// src/Tool.ts:758
-const TOOL_DEFAULTS = {
-  isEnabled: () =&gt; true,
-  isConcurrencySafe: (_input?: unknown) =&gt; false,   // 假设不并发安全
-  isReadOnly: (_input?: unknown) =&gt; false,           // 假设会写
-  isDestructive: (_input?: unknown) =&gt; false,
-  checkPermissions: (
-    input: { [key: string]: unknown },
-    _ctx?: ToolUseContext,
-  ): Promise&lt;PermissionResult&gt; =&gt;
-    Promise.resolve({ behavior: 'allow', updatedInput: input }),
-  toAutoClassifierInput: (_input?: unknown) =&gt; '',   // 跳过分类器
-  userFacingName: (_input?: unknown) =&gt; '',
-}
+<p><strong>源码参考：</strong> <code>src/services/api/claude.ts:1980</code></p>
+<p><strong>这个状态机解决了 SSE 协议的根本问题</strong>：SSE 把一次 AI 响应切成了 7 种不同类型的事件（<code>message_start</code>、<code>content_block_start</code>、<code>content_block_delta</code>、<code>content_block_stop</code>、<code>message_delta</code>、<code>message_stop</code>等），每一种都只携带部分信息。<code>switch</code> 状态机把这 7 种碎片事件<strong>聚合</strong>成一个完整的 <code>AssistantMessage</code> 对象——上层调用方不需要知道 SSE 协议的存在，它只需要消费 <code>AssistantMessage</code>。</p>
+<p><strong>图 10-2：SSE 事件的状态转换序列</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; Idle
+    Idle --&gt; MessageStarted : message_start
+    MessageStarted --&gt; BlockStarted : content_block_start
+    BlockStarted --&gt; BlockDelta : content_block_delta
+    BlockDelta --&gt; BlockDelta : content_block_delta（累积）
+    BlockDelta --&gt; BlockStarted : content_block_stop → 下一个 block
+    BlockStarted --&gt; MessageDelta : message_delta（usage 更新）
+    MessageDelta --&gt; Done : message_stop
+    Done --&gt; [*] : yield AssistantMessage
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/Tool.ts:758</code></p>
-<p>注意 <code>toAutoClassifierInput: ''</code> 的默认值：安全相关的自动分类器遇到空字符串会<strong>跳过分类</strong>。如果工具不覆盖此字段，它不会被 AI 分类器看到——这是对"安全相关工具必须显式参与分类"原则的强制执行。相比"默认参与分类，开发者选择退出"，"默认不参与，开发者选择加入"更安全，因为遗漏退出是安全漏洞，遗漏加入只是功能不可用。</p>
-<p><strong><code>ToolDef</code> 和 <code>BuiltTool</code> 的类型关系</strong>（<code>src/Tool.ts:721</code>）揭示了工厂的类型层面工作原理：</p>
-<pre><code class="language-typescript">// src/Tool.ts:721
-export type ToolDef&lt;Input, Output, P&gt; =
-  Omit&lt;Tool&lt;Input, Output, P&gt;, DefaultableToolKeys&gt; &amp;
-  Partial&lt;Pick&lt;Tool&lt;Input, Output, P&gt;, DefaultableToolKeys&gt;&gt;
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/Tool.ts:721</code></p>
-<p><code>ToolDef</code> 是 <code>Tool</code> 的子集：<strong>省略</strong>了 <code>DefaultableToolKeys</code> 中的 7 个字段（强制不填），<strong>可选</strong>了这 7 个字段（允许覆盖）。这个类型系统设计确保了：开发者无法在 <code>ToolDef</code> 中省略 <code>call</code>、<code>description</code>、<code>inputSchema</code>（必填），但可以省略任何可默认字段（它们会被工厂自动补齐）。<strong>省略必填字段 = 编译错误；省略可选字段 = 工厂补充默认值</strong>。这正是"接口文档变成代码合同"的含义。</p>
-<p><strong>图 10-2：buildTool() 工厂的数据流</strong></p>
+<p>状态转换的顺序是 SSE 协议层的约束——<code>message_start</code> 必然先于 <code>content_block_start</code>，<code>message_stop</code> 必然最后到达。<code>switch</code> 语句的 <code>case</code> 分支正是这个状态机的直接映射：每个 case 对应一个状态转换，<code>break</code> 确保转换是显式的而非穿透的。</p>
+<p><strong>为什么用状态机而不是函数分派表？</strong> 状态机的 <code>case</code> 分支有<strong>顺序保证</strong>——<code>message_start</code> 必然先于 <code>content_block_start</code> 到达，<code>message_stop</code> 必然在最后。函数分派表（<code>{ 'message_start': handleStart, ... }</code>）可读性类似，但 <code>case</code> 语句的<strong>穿透控制流</strong>（<code>break</code> 的存在）让顺序依赖更容易表达，也更符合 SSE 协议的状态转换语义。</p>
+<p><strong>图 10-3：SSE 原始事件 → queryModel → 结构化消息的三段管道</strong></p>
 <pre><code class="language-mermaid">flowchart LR
-    tooldef["ToolDef&amp;lt;D&amp;gt;\n你声明的意图\ncall + description + inputSchema"]
-    defaults["TOOL_DEFAULTS\nfail-closed 默认值\n7个安全字段"]
-    factory["buildTool()"]
-    built["BuiltTool&amp;lt;D&amp;gt;\n完整契约对象\n必填 + 默认 + 覆盖"]
-
-    tooldef --&gt; factory
-    defaults --&gt; factory
-    factory --&gt; built
-
-    subgraph mandatory["必填字段（省略=编译错误）"]
-        m1[call]
-        m2[description]
-        m3[inputSchema]
+    subgraph SSE["Anthropic API SSE 流"]
+        e1["message_start"]
+        e2["content_block_start\n(text/tool_use)"]
+        e3["content_block_delta\n(增量内容)"]
+        e4["message_stop"]
     end
 
-    subgraph defaultable["可默认字段（省略=自动补齐）"]
-        d1["isConcurrencySafe: false"]
-        d2["isReadOnly: false"]
-        d3["toAutoClassifierInput: ''"]
+    subgraph QM["queryModel()\nsrc/services/api/claude.ts:1017"]
+        sm["switch(part.type)\n状态机"]
+        acc["累积构建\npartialMessage"]
+        asm["assembleAssistantMessage"]
     end
 
-    mandatory --&gt; tooldef
-    defaultable --&gt; defaults
+    subgraph Consumer["上层消费者"]
+        stream["StreamEvent\n(逐片处理)"]
+        final["AssistantMessage\n(完整消息)"]
+    end
+
+    e1 --&gt; sm
+    e2 --&gt; sm
+    e3 --&gt; sm
+    e4 --&gt; sm
+    sm --&gt; acc
+    acc --&gt; asm
+    asm --&gt;|"yield 流式片段"| stream
+    asm --&gt;|"yield 完整消息"| final
 </code></pre>
-<p>图 10-2 展示了工厂的双输入结构：必填字段来自工具开发者的 <code>ToolDef</code>，可默认字段来自 <code>TOOL_DEFAULTS</code>，两者在工厂中合并。注意 spread 的优先级：<code>...def</code> 在 <code>...TOOL_DEFAULTS</code> 之后，确保开发者的显式声明总能覆盖默认值——想让一个工具并发安全，只需在 <code>def</code> 中提供 <code>isConcurrencySafe: () =&gt; true</code>。</p>
+<p>注意管道的两种输出：<code>StreamEvent</code>（流式片段，供 UI 实时渲染）和 <code>AssistantMessage</code>（完整消息，供主循环逻辑判断）并行产出——消费方可以选择性地处理其中一种或两种。<strong>这正是异步生成器流式适配器模式的信号</strong>：一个函数，一条调用路径，却能同时服务于不同粒度的消费需求。</p>
 <hr />
-<h2 id="源码实例-2变体三种工具注册策略"><a class="header" href="#源码实例-2变体三种工具注册策略">源码实例 2（变体）：三种工具注册策略</a></h2>
-<p>同一个 <code>buildTool()</code> 工厂，58 种工具可以采用截然不同的注册策略。代码库里有 3 个典型变体。</p>
-<p><strong>变体 A：<code>FileWriteTool</code> ——接受所有安全默认值</strong></p>
-<p><code>FileWriteTool</code> 的注册调用（<code>src/tools/FileWriteTool/FileWriteTool.ts:94</code>）：</p>
-<pre><code class="language-typescript">// src/tools/FileWriteTool/FileWriteTool.ts:94
-export const FileWriteTool = buildTool({
-  name: FILE_WRITE_TOOL_NAME,
-  searchHint: 'create or overwrite files',
-  maxResultSizeChars: 100_000,
-  strict: true,
-  async description() {
-    return 'Write a file to the local filesystem.'
-  },
-  get inputSchema(): InputSchema { return inputSchema() },
-  get outputSchema(): OutputSchema { return outputSchema() },
-  toAutoClassifierInput(input) {
-    return `${input.file_path}: ${input.content}`  // 覆盖：参与 AI 分类
-  },
-  // ... call() 等其余字段
-})
+<h2 id="源码实例-2变体两种消费同一-generator-的方式"><a class="header" href="#源码实例-2变体两种消费同一-generator-的方式">源码实例 2（变体）：两种消费同一 Generator 的方式</a></h2>
+<p>同一个 async generator（<code>queryModel</code>）可以用截然不同的方式消费。代码库里有两个经典变体。</p>
+<p><strong>变体 A：<code>queryModelWithStreaming()</code>——保持流式，扩展能力</strong></p>
+<pre><code class="language-typescript">// src/services/api/claude.ts:752-776（queryModelWithStreaming，精简版）
+export async function* queryModelWithStreaming({
+  messages, systemPrompt, thinkingConfig, tools, signal, options,
+}: { /* ...类型定义... */ }
+): AsyncGenerator&lt;StreamEvent | AssistantMessage | SystemAPIErrorMessage, void&gt; {
+  // withStreamingVCR：透明包装一层录制/回放能力（VCR = Video Cassette Recorder）
+  return yield* withStreamingVCR(messages, async function* () {
+    // 直接委托给 queryModel——自身不添加任何逻辑，只增加 VCR 能力
+    yield* queryModel(messages, systemPrompt, thinkingConfig, tools, signal, options)
+  })
+}
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/tools/FileWriteTool/FileWriteTool.ts:94</code></p>
-<p>注意 <code>FileWriteTool</code> 的 <code>def</code> 中<strong>没有</strong> <code>isReadOnly</code> 和 <code>isConcurrencySafe</code>——它接受了 <code>TOOL_DEFAULTS</code> 的保守默认值：<code>isReadOnly: false</code>（写文件确实会修改文件系统），<code>isConcurrencySafe: false</code>（写操作不应并发执行，避免写冲突）。<strong>两个默认值都是正确的</strong>，无需覆盖。</p>
-<p>但它覆盖了 <code>toAutoClassifierInput</code>，因为文件写入是一个需要 AI 分类器关注的操作——返回 <code>file_path + content</code> 让分类器能看到具体内容，做出更准确的权限判断。这是"默认不参与分类，安全相关工具显式加入"原则的正面案例。</p>
-<p><strong>变体 B：<code>FileReadTool</code> ——精确覆盖两个关键字段</strong></p>
-<p><code>FileReadTool</code> 的注册（<code>src/tools/FileReadTool/FileReadTool.ts:337</code>）：</p>
-<pre><code class="language-typescript">// src/tools/FileReadTool/FileReadTool.ts:373（isConcurrencySafe 和 isReadOnly 覆盖）
-  isConcurrencySafe() {
-    return true   // 覆盖默认的 false：读取操作并发安全
-  },
-  isReadOnly() {
-    return true   // 覆盖默认的 false：读取操作不修改文件系统
-  },
+<p><strong>源码参考：</strong> <code>src/services/api/claude.ts:752</code></p>
+<p><strong><code>yield*</code> 的语义是"接管控制流"，而非"调用并等待结果"</strong>。<code>yield* queryModel(...)</code> 把 <code>queryModel</code> 产出的所有值直接透传给 <code>queryModelWithStreaming</code> 的调用者——调用者看不到任何中间包装的存在。<code>withStreamingVCR</code> 用同样方式包装整个 generator：在开发/测试环境可以录制 API 响应，之后重放而无需真正请求 API。<strong>包装不改变接口，只扩展能力</strong>——这是 <code>yield*</code> 委托的核心价值。</p>
+<p><strong>变体 B：<code>ask()</code>——批量收集，一次性返回</strong></p>
+<p><code>ask()</code> 是 <code>QueryEngine</code> 的一个便利函数（<code>src/QueryEngine.ts:1186</code>），它用不同的策略消费同一 generator 栈：</p>
+<pre><code class="language-typescript">// src/QueryEngine.ts:1186（ask 函数入口）
+export async function* ask({
+  prompt, commands, cwd, tools, /* ...配置参数... */
+}: { /* 类型定义 */ }): AsyncGenerator&lt;SDKMessage, void, unknown&gt; {
+  // ask() 本身也是 async generator——它创建 QueryEngine 实例后
+  // 用 for await 消费 submitMessage 的输出，再 yield 给上层调用者
+  const engine = new QueryEngine({ /* 配置 */ })
+  for await (const message of engine.submitMessage(prompt)) {
+    yield message
+  }
+}
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/tools/FileReadTool/FileReadTool.ts:373</code></p>
-<p>这两行是整个"工厂契约"模式的最直接证据——显式覆盖默认值，精确声明工具的安全属性。<strong><code>isConcurrencySafe: true</code> 使 <code>QueryEngine</code> 能够并发执行多个文件读取操作</strong>（详见第 8 章的工具调度逻辑）。如果不覆盖这个字段，多个并发代码搜索请求会被降级为串行，性能损失可能达到数倍。<strong>"知道自己是安全的，显式声明"</strong> 比"默认安全，出错再改"成本低得多。</p>
-<p><strong>变体 C：<code>z.strictObject</code> ——Schema 即运行时边界</strong></p>
-<p><code>FileWriteTool</code> 的 <code>inputSchema</code> 定义（<code>src/tools/FileWriteTool/FileWriteTool.ts:56</code>）展示了第三个模式：</p>
-<pre><code class="language-typescript">// src/tools/FileWriteTool/FileWriteTool.ts:56
-const inputSchema = lazySchema(() =&gt;
-  z.strictObject({
-    file_path: z
-      .string()
-      .describe(
-        'The absolute path to the file to write (must be absolute, not relative)',
-      ),
-    content: z.string().describe('The content to write to the file'),
-  }),
-)
+<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:1186</code></p>
+<p><code>ask()</code> 是 SDK 场景下的"便利封装"——调用方不需要手动创建 <code>QueryEngine</code> 实例，直接 <code>for await (const msg of ask({...}))</code> 即可消费流式响应。它的内部依然是 <code>for await</code> 消费 generator，而非批量等待——<strong>这证明了流式适配器模式的层层传递性</strong>：<code>ask</code> 是流式的，<code>submitMessage</code> 是流式的，<code>queryLoop</code> 是流式的，<code>queryModel</code> 是流式的——从 SSE 字节到 SDK 调用方，整条链路没有任何"等待全量"的阻塞点。</p>
+<p><strong>第三种消费模式：<code>execAgentHook()</code>——扩展点隔离</strong></p>
+<p>Hook 系统（<code>src/utils/hooks/execAgentHook.ts:167</code>）用第三种方式消费同一 generator：</p>
+<pre><code class="language-typescript">// src/utils/hooks/execAgentHook.ts:167（hooks 场景中消费 query()）
+// 第三方 hook agent 在独立的 generator 循环中执行
+for await (const message of query({
+  messages: agentMessages,
+  systemPrompt,
+  userContext: {},
+  systemContext: {},
+  canUseTool: hasPermissionsToUseTool,
+  /* ...其他参数... */
+})) {
+  // 处理 hook agent 的每条消息
+}
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/tools/FileWriteTool/FileWriteTool.ts:56</code></p>
-<p><strong><code>z.strictObject</code> 而非 <code>z.object</code> 是一个精确的安全决策</strong>。<code>z.object</code> 静默忽略 schema 中未声明的额外字段；<code>z.strictObject</code> 拒绝任何额外字段并返回 <code>ZodError</code>。为什么这很重要？因为额外字段可能是<strong>提示词注入</strong>的载体——如果攻击者诱导 AI 在工具调用中附上 <code>overwrite_protection: false</code>，<code>z.strictObject</code> 会在 <code>call()</code> 触发前就拦截它，而 <code>z.object</code> 会让它无声地通过。</p>
-<p><code>lazySchema(() =&gt; z.strictObject(...))</code> 中的 <code>lazySchema</code> 是另一个微妙设计：schema 的初始化被<strong>延迟到第一次调用时</strong>。Claude Code 启动时会同时加载所有 58 个工具模块；如果每个工具的 schema 都在模块加载时立即构建，启动时间会线性增加。延迟初始化让每个 schema 只在实际需要时（第一次工具调用时）才初始化。</p>
-<p><strong>图 10-3：三种变体的字段来源对比</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>字段</th><th>FileWriteTool</th><th>FileReadTool</th><th>来源</th></tr></thead><tbody>
-<tr><td><code>name</code></td><td><code>FILE_WRITE_TOOL_NAME</code></td><td><code>FILE_READ_TOOL_NAME</code></td><td>ToolDef 必填</td></tr>
-<tr><td><code>call</code></td><td><code>async call(...)</code></td><td><code>async call(...)</code></td><td>ToolDef 必填</td></tr>
-<tr><td><code>inputSchema</code></td><td><code>z.strictObject(...)</code></td><td><code>z.strictObject(...)</code></td><td>ToolDef 必填</td></tr>
-<tr><td><code>isEnabled</code></td><td><code>() =&gt; true</code>（默认）</td><td><code>() =&gt; true</code>（默认）</td><td>TOOL_DEFAULTS</td></tr>
-<tr><td><code>isReadOnly</code></td><td><code>() =&gt; false</code>（<strong>默认</strong>）</td><td><code>() =&gt; true</code>（<strong>覆盖</strong>）</td><td>FileReadTool 显式覆盖</td></tr>
-<tr><td><code>isConcurrencySafe</code></td><td><code>() =&gt; false</code>（<strong>默认</strong>）</td><td><code>() =&gt; true</code>（<strong>覆盖</strong>）</td><td>FileReadTool 显式覆盖</td></tr>
-<tr><td><code>toAutoClassifierInput</code></td><td><code>file_path + content</code>（覆盖）</td><td><code>file_path</code>（覆盖）</td><td>两者均覆盖</td></tr>
-<tr><td><code>isDestructive</code></td><td><code>() =&gt; false</code>（默认）</td><td><code>() =&gt; false</code>（默认）</td><td>TOOL_DEFAULTS</td></tr>
-</tbody></table>
-</div>
-<p>图 10-3 揭示了契约弹性的核心机制：<strong>必填字段保证接口一致性；可默认字段允许行为差异</strong>。工厂函数连接两者——确保所有必填字段存在，同时允许工具开发者通过覆盖可选字段声明工具的精确行为特性。</p>
-<p><strong>图 10-4：Zod 运行时验证的位置</strong></p>
+<p><strong>源码参考：</strong> <code>src/utils/hooks/execAgentHook.ts:167</code></p>
+<p>Hook agent 的消费逻辑完全隔离在 <code>execAgentHook</code> 内部，既不影响主循环的状态，也不需要主循环知道 hook 的存在。<code>query()</code> 就像一个可以被任何人"插管"的水龙头：谁需要执行 AI 工具调用循环，谁就接上一个 <code>for await</code> 消费它。<strong>这里有一个信号</strong>——generator 让消费者成为节奏的主人，生产者（<code>query()</code>）对消费者的身份一无所知。</p>
+<p><strong>图 10-4：三种消费模式对比</strong></p>
 <pre><code class="language-mermaid">sequenceDiagram
-    participant AI as AI 模型
-    participant QE as QueryEngine
-    participant Schema as inputSchema.safeParse()
-    participant Call as tool.call()
+    participant QM as queryModel()&lt;br/&gt;生产者
 
-    AI-&gt;&gt;QE: 工具调用 JSON（unknown 类型）
-    QE-&gt;&gt;Schema: 验证参数格式
-    alt 验证通过
-        Schema--&gt;&gt;QE: z.infer&amp;lt;Input&amp;gt;（类型安全）
-        QE-&gt;&gt;Call: call(verified_args)
-        Call--&gt;&gt;QE: ToolResult
-    else 验证失败（额外字段/类型错误）
-        Schema--&gt;&gt;QE: ZodError（字段路径 + 原因）
-        QE--&gt;&gt;AI: 错误反馈，请重新生成参数
-    end
+    participant QMS as queryModelWithStreaming()&lt;br/&gt;流式+VCR包装
+    participant A as ask()&lt;br/&gt;便利封装
+    participant H as execAgentHook()&lt;br/&gt;hooks隔离执行
+
+    QM-&gt;&gt;QMS: yield* 透传所有事件
+    Note over QMS: withStreamingVCR 透明包装
+    QMS--&gt;&gt;QMS: 实时处理每个事件
+
+    QM-&gt;&gt;A: yield SDKMessage
+    Note over A: for await 逐条转发
+    A--&gt;&gt;A: yield 给 SDK 调用方
+
+    QM-&gt;&gt;H: yield message
+    Note over H: for await 独立消费
+    H--&gt;&gt;H: hook 逻辑完全隔离
 </code></pre>
-<p><code>inputSchema.safeParse()</code> 是 TypeScript 类型系统与 AI 动态输出之间的分水岭。只有通过这道门的输入，才能进入类型安全的 <code>call()</code> 方法。<code>ZodError</code> 包含精确的字段路径和错误描述，AI 可以据此修正参数重试——这是 Agent 容错循环的一部分。</p>
+<p>三种消费模式的核心差异不在于"消费了什么"，而在于"消费者与生产者的耦合程度"：<code>queryModelWithStreaming</code> 通过 <code>yield*</code> 委托实现零侵入包装；<code>ask()</code> 通过创建新的 <code>QueryEngine</code> 实现会话隔离；<code>execAgentHook</code> 通过独立的 <code>for await</code> 循环实现执行隔离。同一个 <code>query()</code> 接口，三种生命周期语义。</p>
 <hr />
-<h2 id="模式剖析两层注册契约"><a class="header" href="#模式剖析两层注册契约">模式剖析：两层注册契约</a></h2>
-<p>把三个变体放在一起，一个清晰的层次结构浮现出来：</p>
-<pre><code>Claude Code 的工具注册是一个两层契约体系：
+<h2 id="模式剖析三层-async-generator-管道"><a class="header" href="#模式剖析三层-async-generator-管道">模式剖析：三层 Async Generator 管道</a></h2>
+<p>把三个源码实例放在一起，一个清晰的结构浮现出来：</p>
+<pre><code>Claude Code 的流式响应是一个三层 async generator 栈：
 
-  [消费层] QueryEngine / 工具调用 / 权限系统
-      ↕  Tool 接口（统一调用入口）
-  [注册层] buildTool()                       ← src/Tool.ts:783
-      ↕  ToolDef（必填） + TOOL_DEFAULTS（可默认）
-  [类型层] Tool / ToolDef / DefaultableToolKeys  ← src/Tool.ts:362, 707, 721
-      ↕  TypeScript 编译时类型约束
-  [验证层] z.strictObject()                  ← 每个工具的 inputSchema
-      ↕  Zod 运行时 JSON 验证
-  [调用方] AI 生成的 JSON 参数
+  [消费者] ask() / submitMessage() / execAgentHook()
+      ↕  for await / yield*
+  [循环层] query() → queryLoop()          ← src/query.ts:219, 241
+      ↕  yield* / for await
+  [适配层] queryModel()                   ← src/services/api/claude.ts:1017
+      ↕  AsyncGenerator protocol
+  [协议层] Anthropic SDK SSE 流
 </code></pre>
 <p>每层职责单一：</p>
 <ul>
-<li><strong>类型层</strong>（<code>Tool</code>/<code>ToolDef</code>）：在编译时定义"合法的工具是什么形状"，强制必填字段</li>
-<li><strong>注册层</strong>（<code>buildTool</code>/<code>TOOL_DEFAULTS</code>）：在模块加载时将工具定义合并为完整契约，注入安全默认值</li>
-<li><strong>验证层</strong>（<code>z.strictObject</code>）：在运行时验证 AI 传入的 JSON 参数，拦截格式错误</li>
-<li><strong>消费层</strong>（<code>QueryEngine</code>）：以统一接口遍历 58 种工具，对接口差异一无所知</li>
+<li><strong>适配层</strong>（<code>queryModel</code>）：SSE 协议 → 结构化事件，屏蔽 HTTP 细节</li>
+<li><strong>循环层</strong>（<code>queryLoop</code>）：多轮工具调用编排，背压自然控制（详见第 9 章）</li>
+<li><strong>消费层</strong>（<code>ask</code>/<code>submitMessage</code>等）：面向业务场景的接口暴露，隔离调用者</li>
 </ul>
-<p><strong>编译时与运行时的接力保护</strong>是这个模式的核心机制。<code>ToolDef</code> 类型保护开发者编写的代码（编译时）；<code>z.strictObject</code> 保护运行时来自 AI 的 JSON 输入。两者覆盖的时间点不同，但防线连续——类型系统在编译时结束的地方，Zod 在运行时接管。</p>
-<p>这就是**工厂契约（Factory Contract）<strong>和</strong>Schema 即运行时边界（Schema as Runtime Boundary）**两个模式协同工作的完整面貌：</p>
+<p><strong><code>yield*</code> 是层间连接的关键</strong>。不同于普通函数调用（<code>return result</code>），<code>yield*</code> 把被委托 generator 的<strong>控制流所有权</strong>转移给上层——上层的每次 <code>next()</code> 请求直接驱动下层 generator 产出下一个值，中间层完全透明。这意味着背压天然传播：如果 <code>ask()</code> 的消费者停止调用 <code>next()</code>，整条链路都暂停——包括底层的 SSE 字节接收。</p>
+<p><strong>协作式背压（Cooperative Backpressure）的工作原理</strong>：JavaScript 的 <code>for await</code> 是基于微任务（microtask）的协作式调度——每次 <code>await</code> 让出主线程，其他微任务（包括 UI 更新）可以插入执行。当消费方的渲染逻辑慢于 API 流入速度时，生产者（<code>queryModel</code>）的 <code>yield</code> 会等待消费方处理完成后才继续——这是语言机制保证的，不需要显式的 <code>pause()</code> 调用或 <code>highWaterMark</code> 配置。</p>
+<p>这就是**异步生成器流式适配器（Async Generator Streaming Adapter）**模式的完整面貌：</p>
 <blockquote>
-<p>工厂函数不仅创建对象，更是接口契约的强制实施者：它通过类型系统在编译时确保必填字段存在，通过 fail-closed 默认值注入安全基线，通过 <code>z.strictObject</code> schema 将类型约束延伸到运行时边界——三个机制覆盖工具从注册到调用的全生命周期。</p>
+<p>用 async generator 作为 IO 流与业务逻辑之间的适配层，通过 <code>yield</code> 推送中间状态，通过 <code>yield*</code> 实现层间委托，通过 <code>for await</code> 的协作式调度实现零配置背压控制。</p>
 </blockquote>
-<p><strong>图 10-5：两层契约的时间轴</strong></p>
-<pre><code class="language-mermaid">timeline
-    title 工具生命周期的两层保护
+<p><strong>图 10-5：三层 Generator 管道的数据流向</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    API["Anthropic API\nSSE 字节流"] --&gt; adapt["适配层\nqueryModel()\nclaude.ts:1017"]
+    adapt --&gt;|"yield StreamEvent\nyield AssistantMessage"| loop["循环层\nquery() → queryLoop()\nquery.ts:219, 241"]
+    loop --&gt;|"yield* 或 yield SDKMessage"| consume["消费层\nask() / submitMessage()\nexecAgentHook()"]
+    consume --&gt;|"for await"| user["调用方\nREPL / SDK / Hook"]
 
-    section 编译时（开发阶段）
-        ToolDef 类型检查 : 省略必填字段 → 编译错误
-        buildTool 泛型约束 : D extends AnyToolDef
-        BuiltTool 类型推断 : 保留 D 的具体类型
-
-    section 模块加载时（启动阶段）
-        buildTool 执行 : spread TOOL_DEFAULTS + def
-        lazySchema 注册 : 延迟 Zod schema 初始化
-
-    section 运行时（调用阶段）
-        AI 生成 JSON : unknown 类型
-        safeParse 验证 : z.strictObject 拒绝额外字段
-        call 执行 : z.infer 类型安全的参数
+    backpressure["⬇ 背压方向（消费者控制节奏）"] -.-&gt;|"next() 驱动"| loop
+    backpressure -.-&gt;|"next() 驱动"| adapt
 </code></pre>
-<p>图 10-5 展示了三个不同时间点的保护机制：编译时的 TypeScript 类型系统、模块加载时的工厂 spread、运行时的 Zod 验证。<strong>没有任何一个时间点是盲区</strong>——类型系统、工厂默认值、运行时验证共同构成了一个无缝的保护链。</p>
-<hr />
-<p><strong>图 10-6：ToolDef、TOOL_DEFAULTS、Tool 的关系</strong></p>
-<pre><code class="language-mermaid">classDiagram
-    class ToolDef {
-        +call() 必填
-        +description() 必填
-        +inputSchema 必填
-        +name 必填
-        isConcurrencySafe()? 可选覆盖
-        isReadOnly()? 可选覆盖
-        isDestructive()? 可选覆盖
-        checkPermissions()? 可选覆盖
-    }
-
-    class TOOL_DEFAULTS {
-        +isEnabled() true
-        +isConcurrencySafe() false
-        +isReadOnly() false
-        +isDestructive() false
-        +checkPermissions() allow
-        +toAutoClassifierInput() 空字符串
-        +userFacingName() 空字符串
-    }
-
-    class BuiltTool {
-        全部 ToolDef 字段
-        全部 TOOL_DEFAULTS 字段
-        覆盖规则 def 优先于 defaults
-    }
-
-    ToolDef --&gt; BuiltTool : buildTool() spread
-    TOOL_DEFAULTS --&gt; BuiltTool : buildTool() spread
-</code></pre>
-<p><code>ToolDef</code> 中的可选字段和 <code>TOOL_DEFAULTS</code> 中的同名字段，最终由 <code>...def</code>（优先）合并——开发者的显式声明总能覆盖框架的默认值。未在 <code>ToolDef</code> 中出现的可选字段，则自动使用 <code>TOOL_DEFAULTS</code> 的保守值。</p>
+<p>箭头的双向性很重要：数据向上流（yield），控制权向下流（next()）。每一层既是下层的消费者（发出 <code>next()</code>），又是上层的生产者（调用 <code>yield</code>）。</p>
 <hr />
 <h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用？</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
-<tr><td>Agent 工具系统（本例，&gt;5 种工具）</td><td>✓</td><td>工具数量增加时，工厂契约的收益超过学习成本</td><td>直接实现接口（工具≤5时）</td></tr>
-<tr><td>插件系统（宿主-插件架构）</td><td>✓</td><td>第三方插件开发者不熟悉系统内部，工厂函数是最低摩擦的正确路径</td><td>—</td></tr>
-<tr><td>API 网关（多后端统一对外）</td><td>✓</td><td>后端接口差异大，工厂统一注册确保对外一致性</td><td>GraphQL schema</td></tr>
-<tr><td>处理来自外部的动态输入（AI、用户表单）</td><td>✓</td><td>Zod <code>strictObject</code> 拦截额外字段，防止注入</td><td>手写验证函数</td></tr>
-<tr><td>需要序列化配置到 JSON（工具元数据）</td><td>✓</td><td>Zod schema 可以导出 JSON Schema，双向使用</td><td>手写 JSON Schema</td></tr>
-<tr><td>工具数量 ≤ 5 的小系统</td><td>✗（可能过度）</td><td>工厂的收益在工具数量增加时才体现</td><td>直接实现接口</td></tr>
-<tr><td>工具链（A 的输出是 B 的输入）</td><td>✗（不覆盖）</td><td><code>buildTool</code> 管理单个工具，不管理工具间数据流</td><td>Pipeline 模式</td></tr>
-<tr><td>运行时动态注册新字段类型（插件扩展 schema）</td><td>✗（受限）</td><td>TOOL_DEFAULTS 是编译时常量，不支持运行时扩展</td><td>工具注册表 + 接口</td></tr>
+<tr><td>高延迟 AI/LLM API 调用（2-30 秒延迟）</td><td>✓</td><td>生产速度不可预测，需要中间状态</td><td>无（本模式的核心应用场景）</td></tr>
+<tr><td>HTTP SSE / WebSocket 流式接收</td><td>✓</td><td>天然适配协议的推送模型</td><td>Node.js Transform Stream（更复杂）</td></tr>
+<tr><td>文件系统大文件逐行处理</td><td>✓</td><td>背压自动控制，内存友好</td><td><code>readline</code> 模块（更底层）</td></tr>
+<tr><td>数据库游标/分页查询</td><td>✓</td><td>延迟加载，避免全量加载内存</td><td>Promise.all（全量加载，内存压力大）</td></tr>
+<tr><td>多播（一个 producer，多个 consumer）</td><td>✗</td><td>Generator 是单次使用，消费后无法重放</td><td>Subject / BroadcastChannel</td></tr>
+<tr><td>需要历史重放（time travel）的流</td><td>✗</td><td>Generator 消费后状态不可逆</td><td>RxJS ReplaySubject</td></tr>
+<tr><td>CPU 密集型同步计算</td><td>✗（谨慎）</td><td><code>for await</code> 的微任务调度有额外开销</td><td>普通 <code>for</code> 循环</td></tr>
+<tr><td>组合多个流（zip/merge/race）</td><td>✗（需扩展）</td><td>原生 generator 无组合算子</td><td><code>Promise.race</code> 或 async-iterator 库</td></tr>
 </tbody></table>
 </div>
-<p>Claude Code 的实践印证了表中第一行：58 种工具通过同一个 <code>buildTool()</code> 注册，<code>QueryEngine</code> 无需了解任何具体工具类型，统一遍历 <code>Tools</code> 数组，0 个"某工具的特殊逻辑"分支。</p>
+<p>Claude Code 的实践印证了表中第一行：整条流式链路（SSE → queryModel → queryLoop → ask → SDK 调用方）零等待、零缓冲，平均响应首字节时间（TTFT）直接等于 API 延迟，没有任何框架层面的额外损耗。</p>
 <hr />
 <h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
-<p><strong>① <code>TOOL_DEFAULTS</code> 是全局固化的，无法按类别差异化</strong></p>
-<p>7 个默认字段对所有 58 种工具都使用相同的值。如果你想为"网络请求类工具"设置默认 <code>timeout: 5000</code>，为"文件操作类工具"设置默认 <code>timeout: 1000</code>，当前的 <code>buildTool()</code> 模式无法支持——<code>TOOL_DEFAULTS</code> 是一个编译时常量，不能动态区分工具类别。解决方案是设计一套"分类工厂"系统（<code>buildNetworkTool()</code>、<code>buildFileTool()</code> 等），每类工厂有自己的默认值，代价是多维护几个工厂函数。</p>
-<p><strong>② Zod 只管格式，不管语义</strong></p>
-<p><code>z.strictObject({ file_path: z.string() })</code> 验证 <code>file_path</code> 是字符串类型，但不能验证"字符串是否是合法的文件路径"、"路径是否在沙箱范围内"、"文件是否存在"。这些<strong>语义约束</strong>需要在 <code>call()</code> 方法的业务逻辑中验证，Zod 无法替代它们。实践原则：<strong>格式归 Zod，语义归业务层</strong>——不要用 <code>.refine()</code> 把复杂业务规则塞进 schema，那会让 schema 难以维护。</p>
-<p><strong>③ <code>BuiltTool&lt;D&gt;</code> 的类型复杂性</strong></p>
-<p><code>BuiltTool&lt;D&gt;</code> 的类型定义（<code>src/Tool.ts:735</code>）是一个条件类型（conditional type）——对于每个 <code>DefaultableToolKeys</code>，它需要推断"工具是否提供了该字段"来决定类型。这在大型工具定义（包含多个可选字段）时可能导致 TypeScript 的类型推断变慢，在 IDE 中出现短暂的"类型计算中"延迟。这是 TypeScript 高级类型特性的固有代价，当前 58 种工具的规模下可以接受，但如果工具数量增长到数百种，可能需要考虑简化类型层设计。</p>
+<p><strong>① Generator 调试困难</strong></p>
+<p>为什么……调试 async generator 时，调用栈常常让人困惑？<code>yield</code> 是一个暂停点，当断点命中时，当前帧是 generator 函数自身，而真实调用者（通过 <code>for await</code> 消费的代码）可能已经不在栈上了——它在等待下一个 <code>next()</code> 调用，而 <code>next()</code> 还没被发出。</p>
+<p>Claude Code 的应对策略是<strong>结构化生命周期事件</strong>：<code>src/query.ts:337</code> 的 <code>yield { type: 'stream_request_start' }</code> 并不携带业务数据，它的存在意义就是"打一个可观测的桩"。类似的还有 <code>stream_request_end</code>、<code>compact_boundary</code> 等——它们是手工的 trace 点，在调试工具链跟不上 generator 协议时，作为日志追踪的锚点。</p>
+<p><strong>② 中间状态类型爆炸</strong></p>
+<p><code>queryModel</code> yield 的事件类型是一个三元联合：<code>StreamEvent | AssistantMessage | SystemAPIErrorMessage</code>。随着功能增长，<code>StreamEvent</code> 本身又是一个多元联合（包含 <code>stream_event</code>、<code>tool_use_summary</code>、<code>system</code> 等子类型）。<strong>消费方必须处理所有事件类型，否则容易漏掉错误事件</strong>。</p>
+<p>这是 generator 的固有成本：不像 Promise 的两状态（resolve/reject），generator 可以 yield 任意多种类型的值，消费者需要逐一处理。TypeScript 的 discriminated union 是缓解手段——当所有 case 都有 <code>type</code> 字段时，<code>switch(msg.type)</code> 配合 <code>never</code> 检查可以强制穷举。</p>
+<p><strong>③ 内存压力（批量消费场景）</strong></p>
+<p><code>ask()</code> 虽然本身是流式的，但如果调用方用 <code>for await</code> 收集所有输出到数组，一次 Claude 响应可能产出 <strong>50 到 200 个事件</strong>（文本 delta + 工具调用块 + 系统消息）。每个事件是一个 JavaScript 对象，全部保存在内存中的代价不小。</p>
+<p>实践建议：在 SDK 调用场景中，优先逐事件处理（<code>for await (const msg of ask()) { handleImmediate(msg) }</code>），而非先收集再批量处理（<code>const msgs = []; for await (const msg of ask()) msgs.push(msg); batchHandle(msgs)</code>）。</p>
 <hr />
 <h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
-<p><strong>① 与 GoF 抽象工厂（Abstract Factory）的比较</strong></p>
-<p>GoF 抽象工厂：<strong>"提供一个创建一族相关对象的接口，而不指定具体类。"</strong> 抽象工厂的核心价值是让调用方与具体类解耦——调用方只知道工厂接口，不知道生产了哪种具体对象。</p>
-<p>Claude Code 的 <code>buildTool()</code> 出发点完全不同：它<strong>不隐藏具体类型</strong>——<code>BuiltTool&lt;D&gt;</code> 的泛型参数 <code>D</code> 保留了工具的精确类型信息。它的核心价值不是"解耦具体类"，而是"强制契约落地"——确保每个工具都正确实现了接口的必填部分，并注入了安全的默认值。<strong>抽象工厂解决"创建哪种产品"的决策问题；工厂契约解决"确保产品合格"的质量问题</strong>。</p>
-<p><strong>② 与 GoF 模板方法（Template Method）的比较</strong></p>
-<p>GoF 模板方法：<strong>"在父类定义算法骨架，将某些步骤的实现延迟到子类。"</strong> 模板方法依赖继承，父类提供"默认步骤"，子类覆盖具体实现——这和 <code>TOOL_DEFAULTS</code> + <code>...def</code> 的结构看起来非常相似。</p>
-<p>关键差异：<code>buildTool()</code> 通过<strong>组合（spread）<strong>而非</strong>继承</strong>实现"默认值 + 覆盖"效果。这是 TypeScript 函数式风格的典型选择——避免了 class 继承的原型链、<code>this</code> 绑定、<code>super()</code> 复杂性，工具定义是一个普通对象字面量，不需要 <code>class extends BaseTool</code>。<strong>在需要"默认行为 + 局部覆盖"时，组合比继承更轻量，也更容易测试</strong>。</p>
-<div class="table-wrapper"><table><thead><tr><th>维度</th><th>工厂契约（buildTool）</th><th>GoF 抽象工厂</th><th>GoF 模板方法</th></tr></thead><tbody>
-<tr><td>核心价值</td><td>强制契约 + 安全默认</td><td>解耦具体类</td><td>算法骨架 + 钩子</td></tr>
-<tr><td>扩展机制</td><td>对象 spread 组合</td><td>工厂类继承</td><td>类继承覆盖</td></tr>
-<tr><td>类型信息</td><td>保留具体类型（泛型）</td><td>退化为抽象类型</td><td>保留（子类化）</td></tr>
-<tr><td>默认值来源</td><td>常量（<code>TOOL_DEFAULTS</code>）</td><td>工厂方法</td><td>父类实现</td></tr>
-<tr><td>测试方式</td><td>直接构造对象字面量</td><td>需要 mock 工厂</td><td>需要实例化子类</td></tr>
-<tr><td>Claude Code 使用</td><td>✅ 完整实现</td><td>架构概念参考</td><td>架构概念参考</td></tr>
+<p><strong>① 与 EIP 管道-过滤器（Pipe-and-Filter）的比较</strong></p>
+<p>EIP（企业集成模式）的管道-过滤器（Pipe-and-Filter）模式把数据处理分解为独立的过滤器（Filter），通过管道（Pipe）连接。<code>queryModel → queryLoop → submitMessage</code> 就是这个模式的 JavaScript 实现：</p>
+<ul>
+<li>相同点：每一层是独立的 Filter（<code>queryModel</code> 做 SSE 适配，<code>queryLoop</code> 做多轮编排），层间通过 Pipe（<code>yield*</code>）连接，数据单向流动</li>
+<li>不同点：EIP 原版基于线程模型，每个 Filter 有独立的线程；Claude Code 的实现是单线程协作式调度，微任务切换代替线程上下文切换，<strong>零线程创建开销</strong></li>
+</ul>
+<p><strong>② 与 Reactive Streams 背压规范（RxJS）的比较</strong></p>
+<p>Reactive Streams 规范（RxJS、Project Reactor）定义了一套标准的背压协议：消费者通过 <code>request(n)</code> 向生产者声明它能接受多少元素。Async generator 的 <code>for await</code> 是一个天然的"每次 request(1)"实现——消费者处理完一个元素后，才请求下一个，生产者不会主动推送超出处理能力的数据。</p>
+<ul>
+<li>相同点：都解决了背压问题（慢消费者不会被快生产者淹没）</li>
+<li>不同点：RxJS 支持多播、操作符组合（<code>map/filter/zip/merge</code>）、历史重放；async generator 不支持这些特性，但也不需要引入约 <strong>40KB gzip</strong> 的依赖</li>
+</ul>
+<p><strong>Claude Code 的选择</strong>：不引入 RxJS，接受功能子集（单播、无重放、无内置操作符），换取零依赖和代码简洁性。如果未来需要多播或流合并，可以在 async generator 之上封装一层轻量工具函数，无需迁移整个 pipeline 到 RxJS。</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>异步生成器流式适配器</th><th>EIP 管道-过滤器</th><th>RxJS Observable</th></tr></thead><tbody>
+<tr><td>背压控制</td><td>协作式（for await）</td><td>无内置（线程阻塞）</td><td>请求式（request(n)）</td></tr>
+<tr><td>多播</td><td>✗（单消费者）</td><td>✓</td><td>✓</td></tr>
+<tr><td>组合算子</td><td>✗（需手写）</td><td>✓（各种适配器）</td><td>✓（丰富算子库）</td></tr>
+<tr><td>错误传播</td><td>throw 穿透 try/catch</td><td>消息协议</td><td>onError 回调</td></tr>
+<tr><td>依赖</td><td>零（语言原语）</td><td>框架依赖</td><td>~40KB</td></tr>
+<tr><td>Claude Code 使用</td><td>✅ 全链路</td><td>架构概念参考</td><td>未引入</td></tr>
 </tbody></table>
 </div>
 <hr />
 <h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
-<h3 id="模式-1工厂契约factory-contract"><a class="header" href="#模式-1工厂契约factory-contract">模式 1：工厂契约（Factory Contract）</a></h3>
-<p><strong>解决的问题</strong>：当工具数量增大（≥10 种），如何确保所有工具正确实现统一接口，同时允许行为差异，且不依赖开发者自律？</p>
-<p><strong>核心做法</strong>：工厂函数不仅创建工具对象，更通过类型系统强制接口规范（省略必填字段 = 编译错误），通过 fail-closed 常量注入安全基线，允许工具开发者显式覆盖可默认字段（覆盖 <code>...def</code> 优先于 <code>...TOOL_DEFAULTS</code>）。</p>
-<p><strong>前置条件</strong>：工具数量 ≥10，工具接口有"必填字段 + 可选字段"的明确分层，有安全相关的字段需要保守默认值。</p>
-<p><strong>源码证据</strong>：<code>src/Tool.ts:783</code>（<code>buildTool()</code>）；<code>src/Tool.ts:758</code>（<code>TOOL_DEFAULTS</code>，注释："fail-closed where it matters"）</p>
+<h3 id="模式-1异步生成器流式适配器async-generator-streaming-adapter"><a class="header" href="#模式-1异步生成器流式适配器async-generator-streaming-adapter">模式 1：异步生成器流式适配器（Async Generator Streaming Adapter）</a></h3>
+<p><strong>解决的问题</strong>：高延迟 IO 流（SSE/WebSocket/文件流）无法用单一 <code>await</code> 表达，消费者需要处理中间状态且错误需从深层传播。</p>
+<p><strong>核心做法</strong>：用 <code>async function*</code> 封装 IO 流消费逻辑，通过 <code>yield</code> 推送中间状态，通过 <code>try/catch</code> + <code>throw</code> 传播错误，通过 <code>for await</code> 的协作式调度实现零配置背压。</p>
+<p><strong>前置条件</strong>：IO 流有多种中间状态值（非原子结果）；单消费者（不需要多播）；语言运行时支持 async generator（Node.js 10+、Bun、Deno）。</p>
+<p><strong>源码证据</strong>：<code>src/services/api/claude.ts:1017</code>（<code>queryModel</code>，SSE 适配层）；<code>src/query.ts:219</code>（<code>query</code>，循环层入口）；<code>src/QueryEngine.ts:1186</code>（<code>ask</code>，消费层封装）</p>
 <hr />
-<h3 id="模式-2失败关闭默认值fail-closed-defaults"><a class="header" href="#模式-2失败关闭默认值fail-closed-defaults">模式 2：失败关闭默认值（Fail-Closed Defaults）</a></h3>
-<p><strong>解决的问题</strong>：安全相关字段（是否并发安全、是否只读、是否需要权限检查）的默认值，是"开放（true）"还是"关闭（false）"更安全？当开发者不确定时，框架应该怎么选？</p>
-<p><strong>核心做法</strong>：所有安全相关字段默认为保守值（<code>isConcurrencySafe: false</code>、<code>isReadOnly: false</code>），需要开放的能力由工具开发者显式声明。遗漏显式声明的后果是性能损失（串行执行），而非安全漏洞（并发写冲突）。</p>
-<p><strong>前置条件</strong>：框架需要为大量开发者提供默认行为；安全字段的"错误开放"后果比"错误关闭"严重。</p>
-<p><strong>源码证据</strong>：<code>src/Tool.ts:749</code>（注释："Defaults (fail-closed where it matters)"）；<code>src/tools/FileReadTool/FileReadTool.ts:373</code>（<code>FileReadTool</code> 显式覆盖 <code>isConcurrencySafe: true</code>）</p>
+<h3 id="模式-2生命周期信号注入lifecycle-signal-injection"><a class="header" href="#模式-2生命周期信号注入lifecycle-signal-injection">模式 2：生命周期信号注入（Lifecycle Signal Injection）</a></h3>
+<p><strong>解决的问题</strong>：Async generator 的执行过程难以从外部观测，日志和调试工具难以追踪 generator 的内部进度。</p>
+<p><strong>核心做法</strong>：在 generator 函数的关键节点主动 <code>yield { type: 'lifecycle_event_name' }</code> ——这类不携带业务数据的事件仅用于追踪目的，消费者可以选择处理（日志）或忽略（<code>continue</code>）。</p>
+<p><strong>前置条件</strong>：Generator 有多个内部阶段需要追踪；调试工具链对 generator 支持有限；消费者能以低成本过滤非业务事件。</p>
+<p><strong>源码证据</strong>：<code>src/query.ts:337</code>（<code>yield { type: 'stream_request_start' }</code> 轮次开始信号）</p>
 <hr />
-<h3 id="模式-3schema-即运行时边界schema-as-runtime-boundary"><a class="header" href="#模式-3schema-即运行时边界schema-as-runtime-boundary">模式 3：Schema 即运行时边界（Schema as Runtime Boundary）</a></h3>
-<p><strong>解决的问题</strong>：TypeScript 类型系统在 AI 生成的动态 JSON 面前失效——运行时拿到的是 <code>unknown</code>，不是编译时声明的类型。如何确保 <code>call()</code> 方法收到的参数是类型安全的？</p>
-<p><strong>核心做法</strong>：每个工具的 <code>inputSchema</code> 使用 <code>z.strictObject</code>，在 <code>call()</code> 触发前验证 AI 传入的 JSON。<code>strictObject</code> 拒绝额外字段（防注入），<code>safeParse</code> 失败时返回 <code>ZodError</code>（含字段路径和原因），AI 可以根据错误信息重新生成参数。</p>
-<p><strong>前置条件</strong>：工具输入来自外部动态来源（AI、用户表单、API）；需要防止额外字段注入；需要精确的错误反馈（而非通用的"参数无效"）。</p>
-<p><strong>源码证据</strong>：<code>src/tools/FileWriteTool/FileWriteTool.ts:56</code>（<code>z.strictObject({ file_path, content })</code>）；<code>src/Tool.ts:380</code>（<code>call</code> 方法的参数类型 <code>z.infer&lt;Input&gt;</code>，强制调用方先验证）</p>
+<h3 id="模式-3yield-委托薄壳yield-star-delegation-thin-shell"><a class="header" href="#模式-3yield-委托薄壳yield-star-delegation-thin-shell">模式 3：<code>yield*</code> 委托薄壳（Yield-Star Delegation Thin Shell）</a></h3>
+<p><strong>解决的问题</strong>：需要在不改变 generator 接口的前提下，为现有 generator 扩展新能力（录制/回放、监控、限流等）。</p>
+<p><strong>核心做法</strong>：用 <code>yield* wrappedGenerator()</code> 创建透明包装层——外层 generator 不添加任何业务逻辑，仅在调用 <code>yield*</code> 前后插入横切关注点（VCR 录制、metrics 记录等）。调用方看不到包装层的存在。</p>
+<p><strong>前置条件</strong>：新能力是横切关注点（与核心逻辑正交）；接口稳定，不需要修改已有消费方；语言支持 <code>yield*</code> 委托语法。</p>
+<p><strong>源码证据</strong>：<code>src/services/api/claude.ts:752</code>（<code>queryModelWithStreaming</code>，用 <code>yield* withStreamingVCR(...)</code> 添加 VCR 能力）</p>
 <hr />
 <h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
 <ul>
 <li>
-<p><strong>用工厂函数替代"让工具实现接口"的要求</strong>，在有 10 种以上工具的系统中。工厂函数把"你应该提供这些字段"的文档要求变成编译时强制——省略必填字段直接报错，而不是等到运行时崩溃。参考 <code>buildTool()</code> 的 <code>ToolDef</code> 约束设计。</p>
+<p><strong>将你现有的 <code>await response.json()</code> 替换为 async generator</strong>，让 UI 在首字节到达时就开始渲染，而非等待完整响应。参考 <code>queryModel()</code> 的三元 yield 设计，用 <code>StreamEvent | FinalResult | ErrorMessage</code> 描述流的三种输出类型。</p>
 </li>
 <li>
-<p><strong>为你的工具集定义 <code>TOOL_DEFAULTS</code>，并写注释说明每个默认值的设计理由</strong>。学习 <code>src/Tool.ts:749</code> 的注释风格：不只写"默认值是 false"，还要写"为什么选 false 而非 true"（fail-closed where it matters）。这让未来的维护者理解意图，而不是盲目修改默认值。</p>
+<p><strong>给你的 async generator 函数命名</strong>（不要用匿名箭头函数）。调试时具名函数会在调用栈中显示，而 <code>async () =&gt; { yield ... }</code> 只显示为 <code>anonymous</code>。</p>
 </li>
 <li>
-<p><strong>用 <code>z.strictObject</code> 代替 <code>z.object</code> 处理来自外部的参数</strong>（AI 输出、用户表单、第三方 API 回调）。严格 schema 拒绝额外字段，是防御参数注入的第一道防线。合法调用方通常不会带额外字段；带额外字段的调用通常是异常或攻击。</p>
+<p><strong>为 generator yield 的事件类型定义 TypeScript discriminated union</strong>，在 switch-case 末尾加 <code>default: const _: never = event</code> 检查——TypeScript 会在漏掉任何事件类型时报错，防止遗漏错误事件处理。</p>
 </li>
 <li>
-<p><strong>拆分 <code>ToolDef</code>（输入）和 <code>Tool</code>（输出）两个类型</strong>，用 TypeScript 区分"你声明的"和"框架补全的"。这让编译器在你试图构造缺少必填字段的工具时立即报错，而不是在运行时出现 <code>undefined is not a function</code>。</p>
+<p><strong>用生命周期信号模式在关键节点插入追踪</strong>：<code>yield { type: 'request_start', timestamp: Date.now() }</code> 和 <code>yield { type: 'request_end', durationMs }</code> 。消费者可以在处理这些信号时记录日志，不影响正常业务流程。参考 <code>src/query.ts:337</code> 的 <code>stream_request_start</code> 模式。</p>
 </li>
 <li>
-<p><strong>在工具的 <code>toAutoClassifierInput</code> 字段中显式加入或排除分类器</strong>。默认值 <code>''</code> 让工具不参与 AI 自动分类——如果你的工具有安全敏感操作（写文件、执行命令），显式覆盖此字段让分类器能做出更准确的权限决策。</p>
+<p><strong>用 <code>yield*</code> 委托为现有 generator 添加横切能力</strong>，而非修改 generator 内部逻辑。需要添加监控？<code>yield* withMetrics(yourGenerator())</code>；需要添加限流？<code>yield* withRateLimit(yourGenerator(), { rps: 10 })</code>——接口不变，能力可插拔。参考 <code>queryModelWithStreaming</code> 的 <code>withStreamingVCR</code> 封装。</p>
 </li>
 <li>
-<p><strong>把 schema 初始化用 <code>lazySchema</code> 延迟</strong>，避免所有工具在模块加载时就构建 Zod schema。特别是在有大量工具的系统里，延迟初始化能显著降低应用启动时间——用户只为"实际调用的工具"付出 schema 构建成本。</p>
+<p><strong>在子 Agent 或 hook 执行场景中，用 <code>for await</code> 消费独立的 <code>query()</code> 实例</strong>，而非在主循环内嵌套循环。独立 <code>for await</code> 保证了完全隔离——子 Agent 的 generator 状态（错误、中止）不会传播到父级循环。参考 <code>execAgentHook.ts:167</code>。</p>
 </li>
 <li>
-<p><strong>用 <code>override: true/false</code> 的思路审查你的每一个默认值覆盖</strong>。覆盖 <code>isConcurrencySafe: true</code> 前，先问自己：如果两个 AI 请求同时触发这个工具，最坏的情况是什么？如果答案是"数据损坏"，不要覆盖；如果答案是"两个独立读取操作"，可以安全覆盖。参考 <code>FileReadTool</code> vs <code>FileWriteTool</code> 的对比。</p>
+<p><strong>深入探索 TC39 的 AsyncIterator Helpers 提案（Stage 3）</strong>：原生的 <code>iterator.map()</code>、<code>iterator.filter()</code>、<code>iterator.take(N)</code> 算子即将进入浏览器和 Node.js，届时 async generator 的组合能力将大幅提升，不再需要手写 for-await 循环来实现过滤和转换。</p>
 </li>
 </ul>
 <hr />
-<p>工具的注册契约定义了"工具是什么"，而"工具是否被允许执行"由下一层决定。当 <code>QueryEngine</code> 准备调用某个工具时，会检查当前的 <code>PermissionMode</code>（详见第 11 章）以及工具自身的 <code>checkPermissions</code> 方法——两者共同构成工具调用前的权限决策链。</p>
+<p>流式响应管道将 SSE 字节流转化为结构化事件序列，最终这些事件以工具调用的形式驱动 <code>queryLoop</code> 继续迭代（详见第 9 章）。而工具的接口契约——每个工具必须实现什么接口、工具调用如何被编排执行——将在第 14 章展开。</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../part3/part.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../part3/ch09.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../part3/ch11.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../part4/part.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -546,11 +533,11 @@ const inputSchema = lazySchema(() =&gt;
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../part3/part.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../part3/ch09.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../part3/ch11.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../part4/part.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

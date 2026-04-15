@@ -1,12 +1,19 @@
-stateDiagram-v2
-    [*] --> running: registerAgentForeground\n（创建任务 + 注册到 AppState）
-    running --> backgrounded: backgroundAgentTask\n（isBackgrounded=true，Background Signal 触发）
-    running --> completed: 正常完成
-    running --> failed: 执行错误
-    running --> killed: killAsyncAgent\n（AbortController.abort）
-    backgrounded --> completed: 后台正常完成
-    backgrounded --> failed: 后台执行错误
-    backgrounded --> killed: killAllRunningAgentTasks
-    completed --> [*]: evictAfter 到期 + retain=false
-    failed --> [*]: evictAfter 到期 + retain=false
-    killed --> [*]: evictAfter 到期 + retain=false
+sequenceDiagram
+    participant App as 应用启动
+    participant Snap as hooksConfigSnapshot
+    participant Settings as settings.json
+    participant Session as 会话执行中
+
+    App->>Snap: captureHooksConfigSnapshot()
+    Snap->>Settings: 读取当前配置（含策略过滤）
+    Settings-->>Snap: HooksSettings（快照）
+    Note over Snap: initialHooksConfig = 快照
+    Session->>Snap: getHooksConfigFromSnapshot()
+    Snap-->>Session: 返回快照（不读磁盘）
+    Note over Settings: 用户修改 settings.json
+    Session->>Snap: getHooksConfigFromSnapshot()
+    Snap-->>Session: 仍返回原快照（隔离）
+    App->>Snap: updateHooksConfigSnapshot()
+    Snap->>Settings: resetSettingsCache() + 重新读取
+    Settings-->>Snap: 新的 HooksSettings
+    Note over Snap: initialHooksConfig = 新快照

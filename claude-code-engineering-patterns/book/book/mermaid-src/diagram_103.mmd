@@ -1,13 +1,16 @@
-flowchart TD
-    Start["工具调用请求"] --> Hook{"PreToolUse Hook\n（ch20-24）"}
-    Hook -->|"block"| Denied1["❌ 拒绝"]
-    Hook -->|"allow（bypass）"| Safety{"1g. 安全路径检查\n（bypass-immune）"}
-    Hook -->|"无 hook 或未拦截"| Rules{"checkRuleBasedPermissions\n1a-1f 步骤"}
-    Safety -->|"命中 .git/.claude 等"| Ask1["⚠️ 强制询问用户"]
-    Safety -->|"未命中"| Allow0["✅ 允许执行"]
-    Rules -->|"deny（1a/1d）"| Denied2["❌ 拒绝"]
-    Rules -->|"ask（1b/1f）"| Confirm{"用户确认层\n（交互式 or 无头）"}
-    Rules -->|"null（无规则命中）"| Confirm
-    Confirm -->|"用户批准"| Allow1["✅ 允许执行"]
-    Confirm -->|"用户拒绝"| Denied3["❌ 拒绝"]
-    Confirm -->|"无头模式"| AutoDeny["❌ 默认自动拒绝"]
+flowchart LR
+    subgraph 本地
+        UI[任务面板 UI]
+        State["RemoteAgentTaskState\n（镜像状态）"]
+        Poller["startRemoteSessionPolling\n1s 轮询"]
+    end
+    subgraph 远程
+        API["Claude.ai API\n/v1/sessions/{id}/events"]
+        Agent["远程 Agent 进程\n（云端执行）"]
+    end
+
+    UI -->|"读取"| State
+    Poller -->|"更新"| State
+    Poller -->|"pollRemoteSessionEvents\n(sessionId, lastEventId)"| API
+    API -->|"newEvents + sessionStatus"| Poller
+    Agent -->|"产生事件"| API

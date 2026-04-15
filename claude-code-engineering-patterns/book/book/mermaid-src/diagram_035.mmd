@@ -1,27 +1,18 @@
-flowchart LR
-    subgraph SSE["Anthropic API SSE 流"]
-        e1["message_start"]
-        e2["content_block_start\n(text/tool_use)"]
-        e3["content_block_delta\n(增量内容)"]
-        e4["message_stop"]
-    end
-
-    subgraph QM["queryModel()\nsrc/services/api/claude.ts:1017"]
-        sm["switch(part.type)\n状态机"]
-        acc["累积构建\npartialMessage"]
-        asm["assembleAssistantMessage"]
-    end
-
-    subgraph Consumer["上层消费者"]
-        stream["StreamEvent\n(逐片处理)"]
-        final["AssistantMessage\n(完整消息)"]
-    end
-
-    e1 --> sm
-    e2 --> sm
-    e3 --> sm
-    e4 --> sm
-    sm --> acc
-    acc --> asm
-    asm -->|"yield 流式片段"| stream
-    asm -->|"yield 完整消息"| final
+mindmap
+    root(模型路由三层设计)
+        分层模型路由
+            getSmallFastModel
+            getMainLoopModel
+            getBestModel
+            语义接口隔离调用方
+        优先级覆盖链
+            会话/启动覆盖最高
+            环境变量次之
+            用户设置第三
+            内置默认兜底
+            白名单过滤无效值
+        全局状态运行时覆盖
+            STATE.mainLoopModelOverride
+            会话生命周期
+            不持久化
+            路由函数主动拉取

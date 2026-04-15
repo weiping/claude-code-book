@@ -1,8 +1,15 @@
-<div class="part-page">
-  <div class="part-label">PART V</div>
-  <div class="part-number">第五篇</div>
-  <div class="part-title">Hooks 引擎：Harness 的核心</div>
-  <div class="part-rule"></div>
-  <div class="part-desc">27 个命名事件构成 Agent 行为的可观测层。四种执行器、AsyncHookRegistry 的超时控制、配置快照隔离——Hook 引擎是整套 Harness 架构的神经系统。</div>
-  <div class="part-chapters">第 20—24 章</div>
-</div>
+# 第五篇：Tool 系统——可扩展的工具协议
+
+> *目的：理解 Harness·工具编排子系统——工具如何被定义、注册、权限校验、执行*
+
+本篇从 Tool 接口契约出发，经过权限决策链和 AI 分类器，到达 MCP 协议和 Skill 系统两种扩展机制。
+
+---
+
+## 本章导航
+
+- [第 14 章：Tool 接口契约——`buildTool()` 工厂与 Zod 输入验证](ch14.md)
+- [第 15 章：权限决策树——PermissionMode 的四层设计](ch15.md)
+- [第 16 章：AI 分类器替代规则引擎——yolo-classifier 的设计哲学](ch16.md)
+- [第 17 章：MCP 工具协议——把第三方工具变成一等公民](ch17.md)
+- [第 18 章：Skill 系统——声明式能力包的加载与执行](ch18.md)

@@ -1,16 +1,28 @@
-flowchart LR
-    subgraph 三重困难
-        P1["① 展示与逻辑分离维护\n两个 map 容易不同步"]
-        P2["② 副作用混入计算\n测试需 mock 整个上下文"]
-        P3["③ auto 模式对外可见\n每个端点手动过滤"]
-    end
+sequenceDiagram
+    participant Caller as 调用方
+    participant QWM as queryWithModel
+    participant VCR as "withVCR（测试录放）"
+    participant QMS as queryModelWithoutStreaming
+    participant QM as "queryModel（生成器）"
+    participant WR as "withRetry（生成器）"
+    participant API as Anthropic API
 
-    subgraph 可组合决策链解法
-        S1["PermissionModeConfig\n展示+external 合并一个结构体"]
-        S2["getNextPermissionMode 纯函数\n计算与副作用完全分离"]
-        S3["external: default\nauto 在映射层消失"]
+    Caller->>QWM: systemPrompt + userPrompt
+    QWM->>VCR: messages[]
+    Note over VCR: 测试模式下读写 VCR 快照
+    VCR->>QMS: messages + options
+    QMS->>QM: 非流式路径
+    QM->>WR: API 调用闭包
+    loop 最多 maxRetries+1 次
+        WR->>API: messages.create（非流式）
+        alt 成功
+            API-->>WR: AssistantMessage
+            WR-->>QM: return result
+        else 429/529/认证失败
+            WR-->>QM: yield SystemAPIErrorMessage
+        end
     end
-
-    P1 -->|解决| S1
-    P2 -->|解决| S2
-    P3 -->|解决| S3
+    QM-->>QMS: AssistantMessage
+    QMS-->>VCR: AssistantMessage
+    VCR-->>QWM: AssistantMessage[]
+    QWM-->>Caller: AssistantMessage

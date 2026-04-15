@@ -1,10 +1,12 @@
 flowchart LR
-    A["① 显式模式参数
-mode: PromptInputMode"] --> D["前置路由
-Pre-dispatch Router"]
-    B["② 优先级链
-if-chain 顺序语义"] --> D
-    C["③ 懒加载隔离
-dynamic import"] --> D
-    D --> E["路由决策
-先于所有副作用"]
+    subgraph PERM["权限弹窗：阻断等待"]
+        P1["query loop\n发起工具调用"] -->|"创建 ToolUseConfirm\n含 resolve 回调"| P2["REPL 渲染弹窗\n用户看到确认框"]
+        P2 -->|"用户点击 Allow"| P3["resolve 回调触发\nquery loop 继续"]
+        P2 -->|"用户点击 Deny"| P4["reject 回调触发\n工具被中止"]
+    end
+
+    subgraph SPEC["推测执行：预跑等待"]
+        S1["用户开始输入\nREPL 后台触发"] -->|"startSpeculation\n状态→active"| S2["后台执行工具调用\nspeculation 并行跑"]
+        S2 -->|"用户提交（内容匹配）"| S3["acceptSpeculation\n复用推测结果"]
+        S2 -->|"用户提交（内容不符）"| S4["abortSpeculation\n状态→idle，重新跑"]
+    end

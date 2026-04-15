@@ -1,28 +1,14 @@
-flowchart TD
-    F1["形态1：模块级条件 require
-（最激进）
-src/main.tsx:76"]
-    F3["形态3：条件对象初始化
-（中间地带）
-src/main.tsx:548"]
-    F2["形态2：函数内条件分支
-（最灵活）
-src/main.tsx:337"]
-    F4["形态4：条件行为控制
-（延迟导入）
-src/main.tsx:647"]
-    F5["形态5：条件环境检测
-（混合门控）
-src/main.tsx:1571"]
+sequenceDiagram
+    participant JS as JavaScript 主线程
+    participant MDM as MDM 子进程
+    participant KC as Keychain 读取
+    participant M as 模块求值
 
-    F1 -->|"DCE消除：整个模块"| R1["零体积 + 零依赖"]
-    F3 -->|"DCE消除：初始值"| R3["变量存在，值为 undefined"]
-    F2 -->|"DCE消除：代码块"| R2["函数存在，块被消除"]
-    F4 -->|"DCE消除：分支+延迟加载"| R4["动态import按需加载"]
-    F5 -->|"DCE + 运行时检测"| R5["构建时短路 + 运行时检查"]
-
-    style R1 fill:#e8f5e9,stroke:#388e3c
-    style R3 fill:#e3f2fd,stroke:#1565c0
-    style R2 fill:#fff3e0,stroke:#e65100
-    style R4 fill:#f3e5f5,stroke:#6a1b9a
-    style R5 fill:#fce4ec,stroke:#c62828
+    Note over JS: profileCheckpoint('main_tsx_entry')
+    JS->>MDM: startMdmRawRead()（launch subprocess）
+    JS->>KC: startKeychainPrefetch()（async I/O）
+    JS->>M: import 求值（~135ms 阻塞）
+    MDM-->>JS: MDM 配置就绪（并行完成）
+    KC-->>JS: Keychain 就绪（并行完成）
+    M-->>JS: 所有模块加载完毕
+    Note over JS: 三路结果均已就绪，无需额外等待

@@ -1,0 +1,561 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 9 章：QueryEngine 主循环——工具调用的编排逻辑 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-9-章queryengine-主循环工具调用的编排逻辑"><a class="header" href="#第-9-章queryengine-主循环工具调用的编排逻辑">第 9 章：QueryEngine 主循环——工具调用的编排逻辑</a></h1>
+<blockquote>
+<p>"循环的出口不是计时器，而是 AI 自己说'我做完了'。"</p>
+</blockquote>
+<p>在这个代码库里，至少 3 处地方用完全相同的方式解决同一个工程难题：如何驱动一个 AI 模型反复调用工具，直到任务真正完成。<code>query.ts</code> 是主 Agent 的循环引擎，<code>AgentTool/runAgent.ts</code> 是子 Agent 的循环引擎，它们共用同一个核心函数 <code>query()</code>，却在"任务结束时该怎么办"这个问题上做出了截然不同的选择。</p>
+<p>这个反复出现的结构叫做<strong>可中断多轮工具调用循环（Interruptible Multi-Turn Tool Loop）</strong>——以工具调用信号为继续条件，以外部中止信号为退出条件，中间配备三道防线防止失控。</p>
+<p>识别这个模式，你就能用不到 30 行代码实现一个可调用任意工具、随时停止、不怕 API 超时的 AI 主循环。</p>
+<hr />
+<h2 id="问题一次用户请求几轮对话"><a class="header" href="#问题一次用户请求几轮对话">问题：一次用户请求，几轮对话？</a></h2>
+<p>我们先从一个具体的用户指令出发：「找到项目里所有 TODO 注释，统计每个文件有几个」。</p>
+<p>对 AI 来说，这个任务至少需要两步：先用 bash 工具执行 <code>grep -rn "TODO" src/</code>，再分析输出统计数量。如果 AI 第一次调用工具的结果显示目录太多、输出超长，它可能还需要第三步——重新设计搜索策略，缩小范围再来一次。</p>
+<p><strong>这就是多轮对话不可避免的根本原因</strong>：AI 不能在一次 API 请求里执行工具并读到结果。每次工具调用都需要：① 向 API 发送"用户消息 + 工具定义"；② API 返回包含 tool_use 块的 assistant 消息；③ 本地执行工具；④ 把工具结果作为 user 消息再次发送给 API。每一轮都是一个完整的 HTTP 往返。</p>
+<p>更棘手的是，<strong>API 的 <code>stop_reason</code> 字段不可靠</strong>。源码注释 <code>src/query.ts:554</code> 直接说明：</p>
+<pre><code class="language-typescript">// 参见 https://docs.claude.com/en/docs/build-with-claude/tool-use
+// 注意：stop_reason === 'tool_use' 是不可靠的——它并不总是被正确设置。
+// （原文："Note: stop_reason === 'tool_use' is unreliable -- it's not always set correctly."）
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:554</code></p>
+<p>这句注释揭示了一个设计约束：系统不能依赖 <code>stop_reason</code> 来决定是否继续循环。如果 API 忘记设置 <code>stop_reason = 'tool_use'</code>，仅靠 stop_reason 的循环就会提前终止，丢失还未执行的工具调用。系统需要一个更可靠的出口信号——而这个信号就是响应消息中<strong>是否包含 tool_use 块</strong>。</p>
+<p>这个设计选择直接催生了 <code>needsFollowUp</code> 旗标，以及围绕它构建的整个主循环架构。</p>
+<p><strong>图 9-1：单轮请求 vs 多轮工具调用循环的对比</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    subgraph 单轮请求
+        direction TB
+        A1[发送消息] --&gt; B1[收到回复] --&gt; C1[结束]
+    end
+
+    subgraph 多轮工具调用循环
+        direction TB
+        A2[发送消息] --&gt; B2{tool_use 块?}
+        B2 --&gt;|否| C2[结束]
+        B2 --&gt;|是| D2[执行工具]
+        D2 --&gt; E2[附带结果再次发送]
+        E2 --&gt; B2
+    end
+</code></pre>
+<p>单轮请求以收到回复为终点；多轮工具调用循环以"AI 不再返回 tool_use 块"为终点——这个出口完全由 AI 的行为决定，而非调用方预设。</p>
+<hr />
+<h2 id="源码实例-1queryenginets薄壳委托与主循环"><a class="header" href="#源码实例-1queryenginets薄壳委托与主循环">源码实例 1：QueryEngine.ts——薄壳委托与主循环</a></h2>
+<p><code>QueryEngine</code>（<code>src/QueryEngine.ts:184</code>）是对外暴露给 SDK 调用者的门面类。我们先看它的入口方法：</p>
+<pre><code class="language-typescript">// src/QueryEngine.ts:209-215（精简版）
+async *submitMessage(
+  prompt: string | ContentBlockParam[],
+  options?: { uuid?: string; isMeta?: boolean },
+): AsyncGenerator&lt;SDKMessage, void, unknown&gt; {
+  // ...构建 messages、systemPrompt、toolUseContext...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:209</code></p>
+<p><code>submitMessage</code> 是一个异步生成器（<code>async *</code>）——调用方通过 <code>for await</code> 消费它产出的消息流。它的内部结构是典型的"薄壳"：主要工作是收集参数（<code>cwd</code>、<code>commands</code>、<code>maxTurns</code>、<code>taskBudget</code>），然后在第 675 行把工作全部委托给 <code>query()</code>：</p>
+<pre><code class="language-typescript">// src/QueryEngine.ts:675-687（精简版）
+for await (const message of query({
+  messages,
+  systemPrompt,
+  userContext,
+  systemContext,
+  canUseTool,
+  toolUseContext: processUserInputContext,
+  querySource: 'sdk',
+  maxTurns,
+  taskBudget,
+})) {
+  // ...将消息转换为 SDK 格式并 yield...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:675</code></p>
+<p><strong>为什么 <code>QueryEngine</code> 是薄壳？</strong> 因为循环逻辑本身并不属于"对象状态管理"的职责范畴。<code>QueryEngine</code> 负责的是<strong>跨轮次持久的状态</strong>：<code>this.mutableMessages</code>（消息历史）、<code>this.abortController</code>（中断控制器，第 203 行）、<code>this.permissionDenials</code>（权限拒绝记录）。真正的"循环驱动"是无状态的纯逻辑——它可以被主 Agent 用，也可以被子 Agent 用，所以被提取到独立的 <code>query.ts</code>。</p>
+<hr />
+<p>真正的主循环在 <code>query.ts</code>。<code>query()</code> 函数（<code>src/query.ts:219</code>）本身也是一个薄壳，它在第 230 行通过 <code>yield*</code> 委托给 <code>queryLoop()</code>：</p>
+<pre><code class="language-typescript">// src/query.ts:230（委托调用）
+const terminal = yield* queryLoop(params, consumedCommandUuids)
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:230</code></p>
+<p><code>yield*</code> 语法将 <code>queryLoop</code> 的所有 yield 值直接透传给上层——调用方完全感知不到这层包装的存在。这种<strong>生成器委托</strong>（Generator Delegation）使得 <code>query()</code> 对外承诺"我会持续产出消息"，而内部实现可以自由重构。</p>
+<p><code>queryLoop</code> 内部是这样的（<code>src/query.ts:307</code>）：</p>
+<pre><code class="language-typescript">// src/query.ts:307-320（while true 主循环入口，精简版）
+// eslint-disable-next-line no-constant-condition
+while (true) {
+  // 每次迭代开头解构状态
+  let { toolUseContext } = state
+  const {
+    messages,
+    turnCount,
+    // ...其他状态字段...
+  } = state
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:307</code></p>
+<p>注释 <code>eslint-disable-next-line no-constant-condition</code> 有意抑制了 ESLint 对 <code>while(true)</code> 的警告——这不是遗忘，而是明确声明"这个循环的退出由内部逻辑控制，而非循环条件"。</p>
+<p><strong>为什么用 <code>while(true)</code> 而不是递归？</strong> 两个原因：第一，异步生成器中的 <code>yield</code> 天然支持外层的 <code>break</code>（<code>for await</code> 的调用方可以随时停止消费），递归则无法在中间打断；第二，Node.js/Bun 的调用栈是有限的，工具调用次数可能达到 20-50 轮，递归面临栈溢出风险，<code>while(true)</code> 则零风险。</p>
+<p><strong>图 9-2：QueryEngine 主循环调用链</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    caller[SDK 调用者] --&gt;|"for await"| submitMessage["QueryEngine.submitMessage()\n src/QueryEngine.ts:209"]
+    submitMessage --&gt;|"for await"| query["query()\nsrc/query.ts:219"]
+    query --&gt;|"yield*"| queryLoop["queryLoop()\nsrc/query.ts:241"]
+    queryLoop --&gt; whileTrue["while(true)\nsrc/query.ts:307"]
+    whileTrue --&gt; apiCall[发送 API 请求]
+    apiCall --&gt; streaming[流式接收响应]
+    streaming --&gt; needsFollowUp{needsFollowUp?}
+    needsFollowUp --&gt;|true: 有 tool_use 块| execTool[执行工具]
+    execTool --&gt; whileTrue
+    needsFollowUp --&gt;|"false: 无 tool_use"| exit[退出 while]
+    exit --&gt; terminal[返回 Terminal]
+</code></pre>
+<p>注意调用链最深处是 <code>queryLoop</code> 内的 <code>while(true)</code>——上层三层函数（<code>submitMessage</code>、<code>query</code>、<code>queryLoop</code>）都是包装和委托，真正决定"是否继续循环"的逻辑全部在 <code>while(true)</code> 内部。</p>
+<p>循环的出口旗标在每次迭代开始时重置（<code>src/query.ts:558</code>）：</p>
+<pre><code class="language-typescript">// src/query.ts:555-560（循环出口旗标初始化）
+// 注意：stop_reason === 'tool_use' 是不可靠的——不总是被正确设置。
+// 在流式响应期间，只要出现 tool_use 块就设置此旗标——这是唯一可靠的循环继续信号。
+// 如果流式结束后为 false，说明本轮对话已完成（除非 stop-hook 触发重试）。
+// （原文："Set during streaming whenever a tool_use block arrives — the sole
+// loop-exit signal. If false after streaming, we're done (modulo stop-hook retry)."）
+const toolUseBlocks: ToolUseBlock[] = []
+let needsFollowUp = false
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:558</code></p>
+<p><strong>这个旗标的命名很有讲究</strong>：<code>needsFollowUp</code> 的语义是"这一轮结束后还需要继续对话吗？"——它不关心 <code>stop_reason</code> 的值，只关心响应中是否出现了 <code>ToolUseBlock</code>。流式接收过程中，每收到一个 tool_use 类型的内容块，就把该块加入 <code>toolUseBlocks</code> 数组，同时将 <code>needsFollowUp</code> 置为 <code>true</code>。流式结束后，检查旗标：</p>
+<pre><code class="language-typescript">// src/query.ts:1062-1065（出口判断）
+if (!needsFollowUp) {
+  // 没有工具调用——对话完成，退出循环
+  // ...处理各类终止情况（紧急停止、PTL 错误恢复等）...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/query.ts:1062</code></p>
+<p><strong><code>if (!needsFollowUp)</code> 是循环的正常出口。</strong> 这里处理的不是"如何退出循环"（直接 break 或 return），而是"退出前还有什么清理工作"——例如检查是否有 prompt-too-long 错误需要恢复，是否触发了停止 Hook 的重试。设计上的精妙在于：<strong>循环退出的条件由 AI 的行为（是否返回工具调用）决定，而非调用方预设的判断逻辑。</strong></p>
+<hr />
+<h2 id="源码实例-2变体agenttoolrunagentts子-agent-的不同退出语义"><a class="header" href="#源码实例-2变体agenttoolrunagentts子-agent-的不同退出语义">源码实例 2（变体）：AgentTool/runAgent.ts——子 Agent 的不同退出语义</a></h2>
+<p>主循环的第二个实例出现在子 Agent 的执行器中。<code>AgentTool/runAgent.ts:748</code> 同样使用 <code>query()</code> 驱动循环：</p>
+<pre><code class="language-typescript">// src/tools/AgentTool/runAgent.ts:748-756（子 Agent 循环入口，精简版）
+for await (const message of query({
+  messages: initialMessages,
+  systemPrompt: agentSystemPrompt,
+  userContext: resolvedUserContext,
+  systemContext: resolvedSystemContext,
+  canUseTool,
+  toolUseContext: agentToolUseContext,
+  querySource,
+  maxTurns: maxTurns ?? agentDefinition.maxTurns,
+})) {
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/AgentTool/runAgent.ts:748</code></p>
+<p>表面上看，子 Agent 的循环和主 Agent 几乎相同——都用 <code>for await</code> 消费 <code>query()</code> 的输出。<strong>关键区别在于 max_turns_reached 的处理方式</strong>：</p>
+<pre><code class="language-typescript">// src/tools/AgentTool/runAgent.ts:773-786（超轮次处理）
+if (message.attachment.type === 'max_turns_reached') {
+  logForDebugging(
+    `[Agent: ${agentDefinition.agentType}] 达到最大轮次限制 (${message.attachment.maxTurns})`,
+  )
+  break  // ← 子 Agent：break，优雅降级
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/tools/AgentTool/runAgent.ts:786</code></p>
+<p>再对比主 Agent 在同一情况下的处理（<code>src/QueryEngine.ts:870</code>）：</p>
+<pre><code class="language-typescript">// src/QueryEngine.ts:868-872（主 Agent 超轮次处理）
+errors: [
+  `Reached maximum number of turns (${message.attachment.maxTurns})`,
+],
+// ...
+return  // ← 主 Agent：return，终止生成器
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:870</code></p>
+<p><strong>为什么主 Agent 用 <code>return</code>（终止）而子 Agent 用 <code>break</code>（退出循环但继续执行后续代码）？</strong></p>
+<p>这个差异体现了两个不同的"调用方期望"：</p>
+<ul>
+<li>主 Agent 是 SDK 的顶层入口——超过轮次意味着任务彻底失败，调用方应该收到错误信息并停止等待。<code>return</code> 终止生成器，向 SDK 调用者发出"任务结束，带错误"的信号。</li>
+<li>子 Agent 是一个工具的内部实现——超过轮次不一定意味着完全失败，子 Agent 可能已经完成了大部分工作。<code>break</code> 退出循环后，代码还会继续执行"整理已收集的结果、向父 Agent 汇报"等收尾逻辑。<strong>调用者（<code>AgentTool</code>）而非被调用者决定"超轮次是否等于失败"。</strong></li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>主 Agent（QueryEngine）</th><th>子 Agent（runAgent）</th></tr></thead><tbody>
+<tr><td>超轮次处理</td><td><code>return</code>（终止生成器）</td><td><code>break</code>（退出循环）</td></tr>
+<tr><td>对调用方的语义</td><td>任务彻底失败，带错误消息</td><td>优雅降级，收集已有结果</td></tr>
+<tr><td>谁决定失败语义</td><td>QueryEngine 自身</td><td>AgentTool（子 Agent 的调用者）</td></tr>
+<tr><td>源码位置</td><td><code>QueryEngine.ts:870</code></td><td><code>runAgent.ts:786</code></td></tr>
+</tbody></table>
+</div>
+<p>这个对比揭示了复用 <code>query()</code> 的设计意图：<strong>核心循环逻辑（while(true) + needsFollowUp）被共享，但生命周期语义（超轮次时该怎么办）由各自的调用层决定。</strong></p>
+<p><strong>图 9-3：主 Agent 与子 Agent 超轮次的不同生命周期</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    subgraph 主 Agent（QueryEngine）
+        direction TB
+        QE1["for await query()"] --&gt; QE2{max_turns_reached?}
+        QE2 --&gt;|否| QE3[继续消费消息]
+        QE2 --&gt;|是| QE4["return（终止生成器）"]
+        QE4 --&gt; QE5["SDK 调用者收到 errors 字段\n（任务彻底失败）"]
+    end
+
+    subgraph 子 Agent（runAgent）
+        direction TB
+        RA1["for await query()"] --&gt; RA2{max_turns_reached?}
+        RA2 --&gt;|否| RA3[继续消费消息]
+        RA2 --&gt;|是| RA4["break（退出循环）"]
+        RA4 --&gt; RA5[继续执行收尾逻辑]
+        RA5 --&gt; RA6["AgentTool 决定\n是否视为失败"]
+    end
+</code></pre>
+<p>主 Agent（左）超轮次后直接 <code>return</code>，生成器终止，SDK 调用者立即收到错误；子 Agent（右）超轮次后 <code>break</code>，循环退出但函数继续执行，收尾逻辑由父调用者（<code>AgentTool</code>）负责——<strong>相同的 <code>query()</code> 核心，不同的调用层决定生命周期结局。</strong></p>
+<hr />
+<h2 id="源码实例-3重试与中断循环的两个安全阀"><a class="header" href="#源码实例-3重试与中断循环的两个安全阀">源码实例 3：重试与中断——循环的两个安全阀</a></h2>
+<p>为什么不用……？如果 API 返回 429（超出频率限制）或 500（服务器错误），循环该怎么办？如果用户在第 10 轮工具调用时按下 Ctrl+C，系统又该怎么停止？</p>
+<p>主循环有两个互补的安全阀——它们从不同方向保护循环的稳定性。</p>
+<p><strong>安全阀一：API 重试（对内透明）</strong></p>
+<p>当底层 API 请求失败并触发重试时，<code>queryLoop</code> 会产出一个 <code>api_retry</code> 类型的系统消息（<code>src/QueryEngine.ts:946</code>）：</p>
+<pre><code class="language-typescript">// src/QueryEngine.ts:943-951（API 重试事件，精简版）
+if (message.subtype === 'api_error') {
+  yield {
+    type: 'system',
+    subtype: 'api_retry' as const,
+    attempt: message.retryAttempt,
+    max_retries: message.maxRetries,
+    retry_delay_ms: message.retryInMs,
+    error_status: message.error.status ?? null,
+    error: categorizeRetryableAPIError(message.error),
+    session_id: getSessionId(),
+    uuid: message.uuid,
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:946</code></p>
+<p>注意这段代码的设计：<strong>重试本身由底层处理，<code>QueryEngine</code> 只是将重试事件透传给 SDK 调用者</strong>。<code>attempt</code>、<code>max_retries</code>、<code>retry_delay_ms</code> 字段让 UI 层可以显示"正在重试（第 2 次，共 3 次）"的进度提示，而不需要 SDK 调用者自己实现重试逻辑。重试对循环来说是透明的——它不影响 <code>needsFollowUp</code> 的值，循环在重试成功后继续正常执行。</p>
+<p><strong>安全阀二：外部中断（对外显式）</strong></p>
+<p>中断机制则相反——它是显式的，由外部主动触发（<code>src/QueryEngine.ts:1158</code>）：</p>
+<pre><code class="language-typescript">// src/QueryEngine.ts:1158-1160
+interrupt(): void {
+  this.abortController.abort()
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:1158</code></p>
+<p>一行代码，却有深远影响。<code>QueryEngine</code> 在构造时初始化 <code>AbortController</code>（<code>src/QueryEngine.ts:203</code>）：</p>
+<pre><code class="language-typescript">// src/QueryEngine.ts:203
+this.abortController = config.abortController ?? createAbortController()
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:203</code></p>
+<p>这个 <code>AbortController</code> 通过参数链路传入 <code>query()</code> → <code>queryLoop()</code> → API 调用层。当 <code>interrupt()</code> 被调用时，<code>this.abortController.abort()</code> 会触发 <code>AbortSignal</code>，所有正在等待的网络请求立即取消，<code>queryLoop</code> 内的 <code>for await</code> 循环收到取消信号后退出，主循环自然终止。</p>
+<p>整个中断路径是：用户按 Ctrl+C → REPL 调用 <code>queryEngine.interrupt()</code> → <code>abortController.abort()</code> → <code>AbortSignal</code> 传播到所有网络请求 → 流式响应中断 → <code>while(true)</code> 退出。</p>
+<p><strong>图 9-4：两个安全阀的工作方向</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    apiError["API 错误（429/500）"] --&gt;|触发重试| retry["底层重试机制"]
+    retry --&gt;|透明| loop["while(true) 主循环"]
+    retry --&gt;|产出事件| sdkCaller["SDK 调用者\n（可显示重试进度）"]
+
+    userStop["用户 Ctrl+C / Stop 按钮"] --&gt;|调用| interrupt["interrupt()"]
+    interrupt --&gt;|abort()| abortController["AbortController.abort()"]
+    abortController --&gt;|AbortSignal 传播| loop
+    loop --&gt;|收到中断信号| exit["循环退出"]
+</code></pre>
+<p>两个安全阀的方向相反：重试向内保护（对循环透明，让它在短暂失败后恢复）；中断向外响应（接收外部停止信号，立即停止循环）。</p>
+<hr />
+<h2 id="模式剖析可中断多轮工具调用循环"><a class="header" href="#模式剖析可中断多轮工具调用循环">模式剖析：可中断多轮工具调用循环</a></h2>
+<p>现在我们可以提炼这个在代码库中至少出现 3 次的模式了。</p>
+<p>把三个源码实例放在一起，核心结构清晰可见：</p>
+<ol>
+<li><strong>以 <code>while(true)</code> 驱动循环</strong>，循环条件不在循环头，而在循环体内部</li>
+<li><strong>以 <code>needsFollowUp</code> 旗标作为业务出口信号</strong>，由 AI 的行为决定，而非调用方预设</li>
+<li><strong>以 <code>AbortController</code> 作为外部中断通道</strong>，支持任意时刻的强制停止</li>
+<li><strong>以 <code>maxTurns</code> 作为轮次保护</strong>（<code>src/QueryEngine.ts:146</code>），防止无限循环</li>
+</ol>
+<p>这三道防线并不是各自独立的——<strong>业务出口（<code>needsFollowUp</code>）是正常路径，轮次限制（<code>maxTurns</code>）是资源保护，中断信号（<code>AbortController</code>）是紧急停止</strong>。三者共同确保循环的稳定性：正常情况走业务出口，资源超限走轮次限制，用户主动停止走中断信号。</p>
+<p><strong>图 9-5：三道防线保护机制</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    start[开始一轮 while 迭代] --&gt; api[发送 API 请求]
+    api --&gt;|"AbortSignal 触发"| abort["⚡ 紧急停止\n（interrupt() 触发）"]
+    api --&gt;|"API 响应成功"| stream[流式接收响应]
+    stream --&gt; check{needsFollowUp?}
+    check --&gt;|"false: AI 无工具调用"| normal["✅ 正常出口\n任务完成"]
+    check --&gt;|"true: AI 有工具调用"| execTool[执行工具，继续下一轮]
+    execTool --&gt; turnCheck{超过 maxTurns?}
+    turnCheck --&gt;|是| maxStop["🛡️ 轮次保护\n(maxTurns 限制)"]
+    turnCheck --&gt;|否| start
+
+    style normal fill:#e8f5e9,stroke:#388e3c
+    style abort fill:#ffebee,stroke:#c62828
+    style maxStop fill:#fff3e0,stroke:#e65100
+</code></pre>
+<p><strong>绿色路径</strong>（正常出口）是预期的大多数情况；<strong>红色路径</strong>（紧急停止）处理用户主动中断；<strong>橙色路径</strong>（轮次保护）处理 AI 陷入无限工具调用的边缘情况。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>AI 多步工具调用（文件读写、代码执行、搜索）</td><td>✓</td><td>需要多轮对话驱动工具，出口由 AI 决定</td><td>N/A（本模式的核心应用场景）</td></tr>
+<tr><td>子 Agent 递归调用</td><td>✓</td><td><code>query()</code> 可复用，<code>runAgent.ts</code> 已验证</td><td>N/A</td></tr>
+<tr><td>需要随时中断的交互场景（REPL、CLI）</td><td>✓</td><td><code>interrupt()</code> 支持立即外部中止</td><td><code>Promise.race()</code>，但不支持流式生成器</td></tr>
+<tr><td>纯文本流式输出（无工具调用）</td><td>✗</td><td>不需要循环，一次 API 调用即可完成</td><td>直接 <code>for await</code> 消费流式响应</td></tr>
+<tr><td>需要精确 token 计费（避免重复计费）</td><td>✗（谨慎）</td><td>重试时 token 可能被重复计费（推断）</td><td>在调用层做幂等保护</td></tr>
+<tr><td>要求每轮结果持久化到数据库的场景</td><td>✗（需改造）</td><td>默认实现不含持久化钩子</td><td>在 <code>submitMessage</code> 消费循环中扩展</td></tr>
+</tbody></table>
+</div>
+<p>值得注意的一个边界：<strong>纯流式输出场景（如生成一篇文章）不需要这个模式</strong>。如果 AI 不调用任何工具，<code>needsFollowUp</code> 始终为 <code>false</code>，循环只执行一轮就正常退出——这时的"循环"退化为单次请求，带来的是不必要的状态维护开销。</p>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p>为什么不用……？主循环最大的隐患不是功能缺失，而是<strong>无限循环风险</strong>。</p>
+<p>考虑一个边缘场景：AI 写了一个工具调用，工具执行失败，AI 再次调用同一个工具……如果没有保护，这个循环可以永远运行下去。<code>maxTurns</code> 是唯一的硬性保护（<code>src/QueryEngine.ts:146</code>），它的默认值在不同调用场景下不同（推断：主循环默认约 10-50 轮，子 Agent 由 <code>agentDefinition.maxTurns</code> 定义）。<strong>如果 <code>maxTurns</code> 设置过大，恶意或错误的工具响应可以让系统空转数十轮，耗尽 token 预算。</strong></p>
+<p><strong><code>while(true)</code> 与 ESLint 的紧张关系</strong>。源码中的 <code>// eslint-disable-next-line no-constant-condition</code> 注释是一个信号——团队知道这是一个需要解释的选择。如果项目有严格的 lint 规则，每处 <code>while(true)</code> 都需要这行抑制注释，增加认知噪音。替代方案是改用 <code>while (needsFollowUp || isFirstTurn)</code>，但这样又把循环条件从循环体内转移到循环头，而循环头在首次进入时无法判断 <code>needsFollowUp</code> 的初始语义。<code>while(true)</code> 加内部出口，是两害取其轻的选择。</p>
+<p><strong>异步生成器的调试体验</strong>。<code>while(true)</code> 内嵌套 <code>yield*</code> 嵌套 <code>yield</code> 的三层生成器结构，在调试时需要理解生成器的暂停/恢复语义。当工具执行异常时，调用栈会跨越三层生成器，堆栈信息可读性差。这是把循环逻辑提取到独立函数（<code>queryLoop</code>）的代价——可测试性提升，但单步调试复杂度随之提升。</p>
+<p><strong><code>taskBudget</code>（token 预算）作为辅助保护</strong>（<code>src/QueryEngine.ts:148</code>）。除了 <code>maxTurns</code>，系统还支持 <code>taskBudget: { total: number }</code> 参数——按 token 使用量限制总消耗，而非按轮次计数。这是第四道防线，专门应对"每轮工具调用很少，但单次 AI 响应消耗大量 token"的场景。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p>这个模式与三个经典设计模式有表面的相似之处，但本质不同。</p>
+<p><strong>与 GoF 命令模式（Command Pattern）的比较</strong>。命令模式把操作封装为对象，由调用方决定何时执行。<code>Tool</code> 接口（详见第 14 章）确实是一种命令封装——工具就是一个可执行的命令对象。<strong>但命令模式中，执行结果不会反馈给命令发起者并影响下一个命令的选择。</strong> 在多轮工具调用循环中，每次工具执行结果都会被 AI 读取，AI 据此决定下一步调用什么——<strong>执行结果形成了一个反馈环（feedback loop）</strong>，这是传统命令模式中不存在的结构。</p>
+<p><strong>与 EIP 事件驱动消费者（Event-Driven Consumer）的比较</strong>。事件驱动消费者持续从消息源拉取消息并处理。<code>while(true)</code> 主循环外观上与之相似——它也在持续"消费"API 的响应。<strong>关键区别是消费者的角色</strong>：在 EIP 模式中，消费者被动处理消息；在本模式中，消费者（AI）不仅处理消息，还主动<strong>产出新的请求</strong>（工具调用结果 → 新 API 请求），形成了生产-消费的双向流动。</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>可中断多轮工具调用循环</th><th>GoF 命令模式</th><th>EIP 事件驱动消费者</th></tr></thead><tbody>
+<tr><td>循环驱动者</td><td>AI（通过 tool_use 信号）</td><td>调用方（显式 execute）</td><td>外部事件源</td></tr>
+<tr><td>执行反馈</td><td>有（工具结果 → 影响下一步）</td><td>无（执行后丢弃）</td><td>有（但消费者不产出新消息）</td></tr>
+<tr><td>退出条件</td><td>AI 行为（无 tool_use）</td><td>调用方决定</td><td>消息队列为空</td></tr>
+<tr><td>外部中断</td><td>AbortController（显式）</td><td>不调用 execute（隐式）</td><td>停止消费者进程</td></tr>
+</tbody></table>
+</div>
+<p><strong>Claude Code 的选择——<code>while(true)</code> + <code>needsFollowUp</code>——本质上是一个专门为"AI 工具调用"语义设计的新模式</strong>：让 AI 的输出（是否包含 tool_use）成为循环继续的唯一判断依据，同时保留外部中断通道。这个设计很难从已有模式名称推导出来，但一旦理解，就会觉得它"就该是这样的"。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="模式-1可中断多轮工具调用循环interruptible-multi-turn-tool-loop"><a class="header" href="#模式-1可中断多轮工具调用循环interruptible-multi-turn-tool-loop">模式 1：可中断多轮工具调用循环（Interruptible Multi-Turn Tool Loop）</a></h3>
+<p><strong>解决的问题</strong>：AI 工具调用不能在单次 API 请求内完成，需要在收到工具使用信号后自动继续对话，直到 AI 主动结束。</p>
+<p><strong>核心做法</strong>：用 <code>while(true)</code> + <code>needsFollowUp</code> 旗标驱动循环——每轮检测 AI 响应中是否包含 <code>ToolUseBlock</code>，有则继续（执行工具后再次请求），无则退出。以 <code>AbortController</code> 支持外部中断。</p>
+<p><strong>前置条件</strong>：AI API 支持 <code>tool_use</code> 类型的响应块（或等效的"继续"信号）；运行时支持异步生成器（<code>async *</code>）；调用方能传入 <code>AbortController</code> 引用。</p>
+<p><strong>源码证据</strong>：<code>src/query.ts:307</code>（<code>while(true)</code> 主循环）；<code>src/query.ts:558</code>（<code>needsFollowUp</code> 旗标初始化）；<code>src/query.ts:1062</code>（循环出口判断）</p>
+<hr />
+<h3 id="模式-2三道防线循环保护three-gate-loop-guard"><a class="header" href="#模式-2三道防线循环保护three-gate-loop-guard">模式 2：三道防线循环保护（Three-Gate Loop Guard）</a></h3>
+<p><strong>解决的问题</strong>：多轮循环如果缺乏出口保护，可能因 AI 错误或恶意工具响应导致无限运行，耗尽 token 和时间。</p>
+<p><strong>核心做法</strong>：三道防线并行：① 业务出口（<code>needsFollowUp</code>，AI 行为驱动）；② 轮次限制（<code>maxTurns</code>，资源保护）；③ 外部中止（<code>AbortSignal</code>，紧急停止）。三者处理的场景互不重叠，共同覆盖所有退出路径。</p>
+<p><strong>前置条件</strong>：调用方能传入 <code>maxTurns</code> 配置和 <code>AbortController</code> 引用；系统能区分"正常结束"（无工具调用）和"超限结束"（maxTurns）以发出不同的下游信号。</p>
+<p><strong>源码证据</strong>：<code>src/QueryEngine.ts:870</code>（超轮次错误消息）；<code>src/QueryEngine.ts:1158</code>（<code>interrupt()</code> 方法）；<code>src/QueryEngine.ts:146</code>（<code>maxTurns</code> 配置项）</p>
+<hr />
+<h3 id="模式-3生成器委托薄壳generator-delegation-thin-shell"><a class="header" href="#模式-3生成器委托薄壳generator-delegation-thin-shell">模式 3：生成器委托薄壳（Generator Delegation Thin Shell）</a></h3>
+<p><strong>解决的问题</strong>：SDK 门面类（<code>QueryEngine</code>）需要管理跨轮次状态（消息历史、AbortController），又不想将循环逻辑与状态管理耦合在同一个函数中。</p>
+<p><strong>核心做法</strong>：SDK 层（<code>submitMessage</code>）作为薄壳，仅负责状态组装和格式转换；循环逻辑下沉到独立的 <code>queryLoop()</code>，通过 <code>yield*</code> 委托——调用方感知不到委托的存在，两层的职责却被清晰分离。</p>
+<p><strong>前置条件</strong>：语言支持异步生成器和 <code>yield*</code> 委托语法（TypeScript/JavaScript 均支持）；状态与循环逻辑的边界清晰可分。</p>
+<p><strong>源码证据</strong>：<code>src/QueryEngine.ts:209</code>（<code>submitMessage</code> 薄壳）；<code>src/QueryEngine.ts:675</code>（委托 <code>query()</code>）；<code>src/query.ts:230</code>（<code>yield* queryLoop()</code>）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>用 <code>while(true) + needsFollowUp</code> 替代递归调用</strong>，在自己的 AI 工具调用系统中实现主循环。递归在 20+ 轮工具调用时面临栈溢出风险，<code>while(true)</code> 零风险且支持流式 yield。</p>
+</li>
+<li>
+<p><strong>始终为主循环传入 <code>AbortController</code></strong>。即使当前不需要中断功能，提前设计好中断通道——比在需要时再接入容易得多。参考 <code>src/QueryEngine.ts:203</code> 的初始化方式。</p>
+</li>
+<li>
+<p><strong>实现三道防线</strong>，设置合理的 <code>maxTurns</code> 默认值（建议 ≤ 20 轮）。业务出口处理正常情况，轮次限制兜底无限循环，AbortController 响应用户停止。三道防线缺一不可。</p>
+</li>
+<li>
+<p><strong>区分主 Agent 和子 Agent 的退出语义</strong>：超轮次时，主 Agent 应返回带错误信息的结果（调用方已无法继续），子 Agent 应 <code>break</code> 并返回已收集的结果（调用方可以选择如何处理降级结果）。参考 <code>QueryEngine.ts:870</code> vs <code>runAgent.ts:786</code>。</p>
+</li>
+<li>
+<p><strong>把循环逻辑与状态管理分离</strong>：循环驱动（<code>while(true)</code> + 工具执行）提取为独立函数（参考 <code>query.ts:queryLoop</code>），状态管理（消息历史、AbortController）留在外层对象（参考 <code>QueryEngine</code>）。这让循环逻辑可以被多个场景复用（主 Agent、子 Agent 都能用同一个 <code>query()</code>）。</p>
+</li>
+<li>
+<p><strong>用异步生成器（<code>async *</code>）实现主循环</strong>。<code>for await</code> 的外层调用方可以随时 <code>break</code> 停止消费，内层循环感知到消费者停止后自然退出——这是 <code>while(true)</code> + <code>yield</code> 组合的关键优势，不需要额外的"停止标志位"。</p>
+</li>
+<li>
+<p><strong>如果你在构建需要监控循环状态的系统</strong>，参考 <code>src/QueryEngine.ts:946</code> 的 <code>api_retry</code> 事件设计——把重试次数、延迟时间、错误类型封装为可观测的事件，而非让调用方猜测内部状态。透明的重试事件让 UI 层可以显示"正在重试"进度，而不影响循环本身的逻辑。</p>
+</li>
+</ul>
+<hr />
+<p>主循环的工具调用结果如何流式传输给调用方、每个 <code>yield</code> 产出的消息结构是什么——这是第 9 章的主题。工具接口的定义契约（<code>Tool</code> 类型如何约束每个工具的输入输出）将在第 10 章展开。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part3/part.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part3/ch10.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part3/part.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part3/ch10.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

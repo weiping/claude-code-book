@@ -1,15 +1,28 @@
-graph LR
-    subgraph manifest [PluginManifestSchema = 合并所有能力]
-        meta[PluginManifestMetadataSchema\nname/version/description]
-        hooks[PluginManifestHooksSchema\nhooks 配置]
-        cmds[PluginManifestCommandsSchema\ncommands 覆盖路径]
-        agents[PluginManifestAgentsSchema\nagents 覆盖路径]
-        skills[PluginManifestSkillsSchema\nskills 覆盖路径]
-        mcp[PluginManifestMcpServerSchema\nMCP 服务器定义]
-        lsp[PluginManifestLspServerSchema\nLSP 服务器定义]
-        etc["...其他能力 sub-schema"]
+flowchart LR
+    subgraph declared [声明层]
+        official["官方（隐式注入）\nofficialMarketplace.ts"]
+        user["用户声明（第三方）\nextraKnownMarketplaces"]
     end
 
-    manifest -->|".partial() 合并"| all[plugin.json\n全部字段可选]
-    all -->|"清单声明覆盖"| loader[createPluginFromPath\n加载器]
-    fs["文件系统探测\ncommands/ agents/ skills/"] -->|"目录存在 = 能力声明"| loader
+    subgraph protocol [协议层 MarketplaceSource]
+        github["github\n克隆 GitHub 仓库"]
+        git["git\n克隆任意 Git"]
+        url["url\nHTTP 下载 JSON"]
+        file["file\n本地文件"]
+        dir["directory\n本地目录"]
+        npm["npm\n（计划中）"]
+    end
+
+    official -->|sourceIsFallback=true| github
+    user --> github
+    user --> git
+    user --> url
+    user --> file
+    user --> dir
+    user -->|TODO| npm
+
+    github --> cache["~/.claude/plugins/marketplaces/\n缓存目录"]
+    git --> cache
+    url --> cache
+    file -->|"直接读取"| cache
+    dir -->|"直接读取"| cache

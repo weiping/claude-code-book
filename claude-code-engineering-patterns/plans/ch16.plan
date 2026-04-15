@@ -1,125 +1,172 @@
 # 第 16 章写作计划
 
-**批次**：批次 5b（来自 plans/batch.md）
-**章节**：ch16 — 第16章：CLAUDE.md 注入——层级化指令的加载与优先级
+**批次**：批次 10b（来自 plans/batch.md）
+**章节**：ch16 — AI 分类器替代规则引擎——yolo-classifier 的设计哲学
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/utils/claudemd.ts`（1479行）如何从当前目录向上扫描 CLAUDE.md 文件、合并多层级指令，以及层级优先级规则如何在团队协作场景中防止指令冲突。读者读完后能理解"层级化配置扫描"模式，并能在自己的工具中实现类似的多层级配置合并机制。
+揭示 Claude Code 为何用 AI 模型（`src/utils/permissions/autoModeState.ts`、`bashClassifier.ts`）而非规则集来判断"这个操作是否安全"，以及 `toAutoClassifierInput()` 接口（Tool.ts:556）如何让每个工具自定义安全判断的输入。读者读完后能分析"AI 分类器 vs 规则引擎"的工程成本与收益，并能在自己的系统中做有依据的选型决策。
 
 ## 通用约束
-**必须**：源码引用；含图；跨章"详见第X章"；使用"我们"
-**禁止**：不引 stub；不空洞；无依据猜测标"（推断）"；不重复其他章
-**排除范围**：记忆系统三层架构（第19章）、提示词组装完整流程（第15章）、stubs
+**必须**：每个核心概念有源码引用；含Mermaid/ASCII图；跨章引用"详见第X章"；使用"我们"
+
+**禁止**：不引 stub 模块；不空洞表述；无依据猜测标"（推断）"；不重复其他章
+
+**排除范围**：PermissionMode 完整四层描述（第 15 章）、第 37 章全局安全架构、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「层级化配置扫描」（Hierarchical Config Scan）
-**章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（目录扫描 + 多层合并），适用范围表，与已知模式对话
+**开篇**：模式预告150-200字，⛔不引源码。触发句：在 Claude Code 中，AI 自己判断"这个 bash 命令危不危险"——不是用 if/else 规则集，而是用一个 AI 分类器调用另一个 AI 模型
+**核心模式**：「模型即规则引擎」（Model-as-Rule-Engine）
+**章末**：模式提炼（2-3个命名模式）+ 你能做什么（5-8条）
+**必须**：≥2处实例；适用范围表；与业界模式对话（规则引擎模式、策略模式）
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
 
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/utils/claudemd.ts | 4层内存结构注释(1-16行)、getMemoryFiles(790行)、processMemoryFile(618行)、isClaudeMdExcluded(540行) | 1-20, 540-570, 618-650, 790-950 |
-| 2 | src/memdir/paths.ts | isAutoMemoryEnabled(30行)、getMemoryBaseDir(85行) | 全文 |
+| 1 | src/utils/permissions/bashClassifier.ts | ClassifierResult(5行)、ClassifierBehavior(12行)、classifyBashCommand(40行) | 全文(61行) |
+| 2 | src/utils/permissions/autoModeState.ts | isAutoModeActive(15行)、isAutoModeCircuitBroken(31行) | 全文(39行) |
+| 3 | src/utils/permissions/classifierDecision.ts | isAutoModeAllowlistedTool(96行) | 全文(98行) |
+| 4 | src/Tool.ts | toAutoClassifierInput 注释(556行) | 552-570 |
 
 ```bash
-ls src/utils/claudemd.ts src/memdir/paths.ts
+ls src/utils/permissions/bashClassifier.ts src/utils/permissions/autoModeState.ts src/utils/permissions/classifierDecision.ts
 ```
 
-## Spec 验收场景清单（E > A > B = C > D）
-所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已在骨架中覆盖 ☑
+## Spec 验收场景清单
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+| # | 场景名 | 核心要求 | plan节 | 覆盖 |
+|---|--------|---------|--------|------|
+| A1 | 引用有效性 | 每处实际存在 | 所有节 | ☑ |
+| A2 | 推断标注 | "（推断）" | 模式剖析、权衡 | ☑ |
+| A3 | 不引排除范围 | 不引第11/33章 | 排除范围列出 | ☑ |
+| A4 | 不重复 | 详见第X章 | PermissionMode→11章 | ☑ |
+
+### B. 语言精确性组
+| # | 场景名 | 要求 | plan节 | 覆盖 |
+|---|--------|------|--------|------|
+| B1 | 禁空洞表述 | 无"介绍了" | 全章 | ☑ |
+| B2 | 数据驱动 | 具体数字 | 节16.3 | ☑ |
+| B3 | 术语标注 | 首次标注原文 | 所有术语 | ☑ |
+
+### C. 结构完整性组
+| # | 场景名 | 要求 | plan节 | 覆盖 |
+|---|--------|------|--------|------|
+| C1 | 递进层次 | hunter递进 | 全章骨架 | ☑ |
+| C2 | hunter专属结构 | 按spec | 全章骨架 | ☑ |
+| C3 | 核心主张 | "模型即规则引擎" | 模式剖析 | ☑ |
+| C4 | 权衡说明 | AI分类器vs规则引擎 | 节16.5 | ☑ |
+| C5 | 行动建议 | 5-8条 | 你能做什么 | ☑ |
+| C6 | 章节链接 | 前→11章，后→33章 | 开篇、章末 | ☑ |
+
+### D. 图表与代码组
+| # | 场景名 | 要求 | plan节 | 覆盖 |
+|---|--------|------|--------|------|
+| D1 | 图表达标 | ≥2图 | 节16.1流程图+12.5对比表 | ☑ |
+| D2 | 图表标注 | 上标下说 | 所有图 | ☑ |
+| D3 | 代码≤25行 | 前后说明 | 所有代码 | ☑ |
+| D4 | 源码注释 | 先引注释 | 节16.3 | ☑ |
+| D5 | hunter专属 | 适用范围表+模式框 | 节16.5+章末 | ☑ |
+
+### E. 风格符合性组（⛔最高优先级）
+| # | 场景名 | 要求 | plan节 | 覆盖 |
+|---|--------|------|--------|------|
+| E1 | hunter开篇 | 150-200字不引源码 | 开篇 | ☑ |
+| E2 | 对话感 | "我们"，有设问 | 全章 | ☑ |
+| E3 | 信息突出 | 加粗，表格对比 | 关键结论 | ☑ |
 
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：当你在 `/home/user/project/src/` 下运行 Claude Code，它会向上扫描 4 个目录层级的 CLAUDE.md 文件——托管级、用户级、项目级、子目录级——每一层都可以覆盖上一层的指令。
+触发句：当 AI 被要求执行 `rm -rf /tmp/project` 时，谁来判断这是危险操作？Claude Code 的答案是：另一个 AI 模型——这就是"模型即规则引擎"模式。
 
 ### 节 16.1：问题
-- 核心主张：**团队协作中，不同层级的参与者需要不同粒度的 AI 指令控制——全局管理员/用户/项目/子目录各有权威范围**
-- 源码锚点：`src/utils/claudemd.ts:4`（注释说明4层结构：Managed/User/Project/子目录）
-- 概念层次：4层定义（Managed=/etc/claude-code/CLAUDE.md，User=~/.claude/CLAUDE.md，Project=CLAUDE.md，子目录）、设计意图（层级权威分离）、实际场景
-- 包含元素：**图16-1** — 4层目录结构示意图
+- 核心主张：**规则引擎的核心问题是"枚举不完"——bash 命令的危险性取决于上下文，任何规则集都会有漏洞**
+- 源码锚点：`src/utils/permissions/bashClassifier.ts:12`（ClassifierBehavior：'deny'|'ask'|'allow'，只有三个输出值）
+- 概念层次：定义（规则引擎vs AI分类器）、设计意图（AI理解语义而非规则匹配）、实际案例（同一命令在不同上下文下的危险性差异）
+- 包含元素：**图16-1** — 规则引擎 vs AI 分类器决策流对比
 - 估计字数：600-800字
 
-### 节 16.2：源码实例1 — getMemoryFiles 的扫描逻辑
-- 核心主张：**getMemoryFiles 是 memoize 缓存的——会话内只扫描一次，避免每次 API 请求都读文件系统**
+### 节 16.2：源码实例1 — bashClassifier.ts 的结构
+- 核心主张：**`classifyBashCommand` 是 stub 实现（返回 matches:false）——说明这是功能开关，AI 分类器默认关闭，只有特定环境启用**
 - 源码锚点：
-  - `src/utils/claudemd.ts:790`（`export const getMemoryFiles = memoize(`）
-  - `src/utils/claudemd.ts:804`（managedClaudeMd — 第一层扫描）
-  - `src/utils/claudemd.ts:827`（userClaudeMd — 第二层扫描）
-  - `src/utils/claudemd.ts:886`（projectPath = join(dir, 'CLAUDE.md') — 项目级扫描）
-  - `src/utils/claudemd.ts:899`（dotClaudePath = join(dir, '.claude', 'CLAUDE.md') — .claude 子目录）
-- 概念层次：memoize 缓存设计、4层扫描顺序、.claude/rules/*.md 的额外扫描
-- 估计字数：800-1000字
+  - `src/utils/permissions/bashClassifier.ts:5`（type ClassifierResult = { matches, confidence, reason }）
+  - `src/utils/permissions/bashClassifier.ts:40`（classifyBashCommand 实现——返回 'This feature is disabled'）
+  - `src/utils/permissions/bashClassifier.ts:24`（isClassifierPermissionsEnabled()）
+- 概念层次：ClassifierResult 三字段意义、confidence 字段（high/medium/low）、feature flag 控制
+- 估计字数：700-900字
 
-### 节 16.3：源码实例2 — isClaudeMdExcluded + processMemoryFile（过滤与处理）
-- 核心主张：**isClaudeMdExcluded 让用户可以在配置文件中声明"跳过哪些 CLAUDE.md"——这是安全边界机制，防止恶意目录注入指令**
+### 节 16.3：源码实例2 — toAutoClassifierInput 接口（工具如何自定义分类器输入）
+- 核心主张：**`toAutoClassifierInput()` 是工具的"分类器视角"接口——每个工具自己决定暴露给分类器什么信息，返回空字符串表示不参与安全审查**
 - 源码锚点：
-  - `src/utils/claudemd.ts:540`（isClaudeMdExcluded — 检查 claudeMdExcludes 配置）
-  - `src/utils/claudemd.ts:618`（processMemoryFile — 读取并解析单个 CLAUDE.md 文件）
-  - `src/utils/claudemd.ts:634`（`if (isClaudeMdExcluded(filePath)) return null`）
-- 概念层次：排除机制语义、processMemoryFile 的 truncation 逻辑、安全考量
+  - `src/Tool.ts:556`（toAutoClassifierInput 注释，含设计意图："Return '' to skip this tool in the classifier transcript"）
+  - `src/utils/permissions/classifierDecision.ts:96`（isAutoModeAllowlistedTool — 工具白名单）
+  - `src/utils/permissions/autoModeState.ts:15`（isAutoModeActive — 全局 auto mode 状态）
+- 概念层次：接口职责、默认返回值语义、工具自主性
 - 估计字数：700-900字
 
 ### 节 16.4：模式剖析
-- 核心主张：**层级化配置扫描的本质是"距离决定优先级"——子目录比父目录更了解当前上下文，应该有更高的覆盖权**
+- 核心主张：**"模型即规则引擎"的核心是将"规则"从代码移入模型——用自然语言描述"什么是危险的"比写 if/else 规则集更灵活也更容易维护**
 - 估计字数：500-700字
 
-### 节 16.5：适用范围
+### 节 16.5：适用范围（含表格）
 | 场景 | 适用性 | 理由 | 替代方案 |
 |------|--------|------|---------|
-| 多层级权威（管理员/用户/项目）| ✓ | 层级结构自然表达权威范围 | 单一配置文件（但无法分层）|
-| 配置需要就近覆盖 | ✓ | 子目录覆盖父目录 = 就近原则 | 环境变量（但不可版本控制）|
-| 配置需要随代码版本控制 | ✓ | CLAUDE.md 可以 git commit | 数据库存储（但不跟代码走）|
-| 高频读取（每次请求都要）| ✗（谨慎）| 文件系统读取有 IO 成本，需要 memoize | 内存配置（但不持久）|
+| 操作危险性取决于上下文语义 | ✓ | AI 理解语义，规则引擎不懂上下文 | 复杂规则集（难维护）|
+| 需要覆盖"长尾"边缘案例 | ✓ | AI 泛化能力优于枚举规则 | 机器学习分类器 |
+| 延迟敏感场景（<100ms决策）| ✗ | AI 模型调用有网络延迟 | 规则引擎（本地判断）|
+| 需要可审计/可解释的决策 | ✗（谨慎）| AI 推理不透明（推断）| 规则引擎（每条规则可查）|
 
 ### 节 16.6：权衡与局限
-- memoize 导致会话内更新 CLAUDE.md 不生效、层级过多导致优先级难以推断
+- 延迟（网络调用）、费用（token消耗）、不确定性（同一命令可能得到不同判断）
 - 估计字数：500-700字
 
 ### 节 16.7：与已知模式的对话
-- 与 Maven/npm 配置合并（就近原则）：相同——子目录配置优先；不同——Maven 是 override，本模式是 append（多层内容都保留，只是顺序不同）
-- 与 Git 配置（system/global/local 三层）：相同——层级权威和就近覆盖；几乎完全一致，本模式是这一思想在 AI 指令上的应用
+- 与 GoF 策略模式：相同——可替换的判断算法；不同——策略模式的算法是确定性的，AI 分类器是概率性的
+- 与规则引擎（如 Drools）：相同——外部化判断逻辑；不同——规则引擎是声明式规则，AI 分类器是隐式神经网络权重
+- 估计字数：500-700字
 
 ### 章末：模式提炼
 ```
-模式名称：层级化配置扫描（Hierarchical Config Scan）
-问题：不同层级的用户（管理员/用户/项目）需要有不同粒度的 AI 指令控制权
-解决方案：按 Managed→User→Project→子目录 顺序扫描，子目录内容追加在父目录之后（就近优先）
-前置条件：配置文件有统一的命名约定（CLAUDE.md）和明确的目录层级语义
-源码锚点：src/utils/claudemd.ts:790 (getMemoryFiles), src/utils/claudemd.ts:4 (4层注释)
+模式名称：模型即规则引擎（Model-as-Rule-Engine）
+问题：安全判断需要理解自然语言上下文，规则集无法枚举所有危险场景
+解决方案：将判断任务委托给 AI 模型，通过 toAutoClassifierInput() 定义工具的安全语境输入
+前置条件：判断逻辑可以用自然语言表达，延迟和成本可接受
+源码锚点：src/utils/permissions/bashClassifier.ts:40, src/Tool.ts:556
 ```
 
 ### 章末：你能做什么
-1. 为工具的配置文件设计4层结构（系统级/用户级/项目级/子目录级），层间权威范围明确
-2. 用 memoize 缓存配置文件扫描结果，避免每次请求都读文件系统
-3. 实现 claudeMdExcludes 类型的排除机制，防止恶意目录注入配置
-4. 用目录层级而非用户角色决定优先级——距离当前工作目录越近，优先级越高
-5. 保持配置文件扫描结果为追加模式（不覆盖），让父目录指令仍然生效
+1. 用 toAutoClassifierInput() 接口让工具声明"安全相关输入"，而非在框架层推断
+2. 为 AI 分类器实现 feature flag（isClassifierPermissionsEnabled），默认关闭确保性能
+3. 将 ClassifierResult 设计为三字段（matches/confidence/reason），reason 用于解释给用户
+4. 为 AI 分类器实现白名单（isAutoModeAllowlistedTool），减少对无需检查工具的调用
+5. 用电路断路器（isAutoModeCircuitBroken）防止分类器故障导致主功能中断
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图16-1 | CLAUDE.md 4层扫描结构 | Mermaid flowchart | Managed→User→Project→子目录的扫描路径 | 16.1 |
+| 图16-1 | 规则引擎 vs AI分类器决策流 | Mermaid flowchart | 两种判断路径对比 | 12.1 |
 
 ## 写作顺序
-1.读spec+DESIGN.md；2.读前置文件；3.写16.1含图；4.写16.2；5.写16.3；6.写16.4；7.写16.5；8.写16.6；9.写16.7；10.章末；11.开篇
+1. ⛔读spec + DESIGN.md；2.读前置文件；3.写12.1；4.写12.2；5.写12.3；6.写12.4；7.写12.5适用范围表；8.写12.6权衡；9.写12.7与已知模式；10.写章末+你能做什么；11.最后补写开篇
 
 ## 写作前 checklist
 ```bash
-sed -n '4p' src/utils/claudemd.ts    # 4层注释
-sed -n '540p' src/utils/claudemd.ts  # isClaudeMdExcluded
-sed -n '618p' src/utils/claudemd.ts  # processMemoryFile
-sed -n '634p' src/utils/claudemd.ts  # 排除检查
-sed -n '790p' src/utils/claudemd.ts  # getMemoryFiles = memoize
-sed -n '804p' src/utils/claudemd.ts  # managedClaudeMd
-sed -n '886p' src/utils/claudemd.ts  # projectPath
+sed -n '5p' src/utils/permissions/bashClassifier.ts    # ClassifierResult
+sed -n '12p' src/utils/permissions/bashClassifier.ts   # ClassifierBehavior
+sed -n '24p' src/utils/permissions/bashClassifier.ts   # isClassifierPermissionsEnabled
+sed -n '40p' src/utils/permissions/bashClassifier.ts   # classifyBashCommand
+sed -n '15p' src/utils/permissions/autoModeState.ts    # isAutoModeActive
+sed -n '96p' src/utils/permissions/classifierDecision.ts  # isAutoModeAllowlistedTool
+sed -n '556p' src/Tool.ts                              # toAutoClassifierInput 注释
 ```
 
 ## ⛔ Spec 一致性声明
+| # | 提取项 | 写入plan | 对应节 |
+|---|--------|---------|--------|
 | 1-16 | 全部16项 | 均 ✓ | 各对应节 |
 
 **⛔ 所有项目均已勾选 ✓，plan 审查通过。**

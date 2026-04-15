@@ -1,20 +1,9 @@
-graph LR
-    subgraph Claude_Code["Claude Code 进程"]
-        QE["QueryEngine\n(工具调用方)"]
-        ADAPTER["fetchToolsForClient()\n(工具适配器)"]
-        TOOL_OBJ["Tool 对象\n{ ...MCPTool, name, call }"]
-        QE --> TOOL_OBJ --> ADAPTER
-    end
-
-    subgraph MCP_Server["MCP 服务器进程（独立）"]
-        LIST["tools/list\n返回工具描述列表"]
-        CALL["tools/call\n执行工具并返回结果"]
-    end
-
-    ADAPTER -->|"JSON-RPC over stdio/SSE/WS"| LIST
-    TOOL_OBJ -->|"JSON-RPC tools/call"| CALL
-
-    subgraph 进程边界
-        style Claude_Code fill:#e8f4f8
-        style MCP_Server fill:#f8e8e8
-    end
+flowchart TD
+    typelayer["类型层\nPermissionMode\ntypes/permissions.ts:22"] --> config["配置层\nPERMISSION_MODE_CONFIG\nPermissionMode.ts:43"]
+    typelayer --> calc["计算层\ngetNextPermissionMode()\ngetNextPermissionMode.ts:34"]
+    config --> display["UI 展示\ntitle / symbol / color"]
+    config --> external["API 映射\nexternal 字段\nauto→default"]
+    calc --> gate["canCycleToAuto()\n双重检查门禁"]
+    calc --> consume["消费层\ncyclePermissionMode()\ngetNextPermissionMode.ts:88"]
+    consume --> apply["transitionPermissionMode()\n副作用执行"]
+    consume --> result["{ nextMode, context }\n调用方获得"]

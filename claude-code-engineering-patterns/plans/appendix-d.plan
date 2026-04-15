@@ -1,27 +1,227 @@
-# 附录 D：环境变量参考
+# 附录 D 写作计划：环境变量参考
 
 **类型**：附录
-**风格**：reference（精炼参考，无论全书 STYLE_ID 是什么）
-**目标长度**：视内容而定，表格为主
+**风格**：`reference`（精炼参考，无论全书 STYLE_ID 是什么）
+**目标长度**：~1200 字（以分类表格为主，不含表格线）
+
+## 章节意图
+
+为读者提供 Claude Code 全部用户可配置环境变量的一页速查表。每个变量列出类型、默认行为、一句话说明和相关章节引用，按功能类别分组。读者无需翻阅正文即可快速确定"需要设置哪个变量、有哪些选项"。环境变量在源码中均通过 `process.env` 或 `isEnvTruthy()` 读取。
+
+## 通用约束
+
+**通用必须**：
+- 每个变量必须从源码 `process.env.XXX` 调用点提取，标注首次出现的源码文件
+- 表格数据必须从源码提取，不得凭记忆编写
+- 跨章节引用使用"第 X 章"格式
+- 变量按类别分组，每组内按变量名字母排序
+- 只收录用户可配置的变量，排除纯内部/测试变量（如 `CLAUDE_CODE_TEST_FIXTURES_ROOT`、`CLAUDE_CODE_STALL_TIMEOUT_MS_FOR_TESTING`）
+
+**通用禁止**：
+- 不得展开设计分析（正文职责）
+- 不得重复正文章节的内容，仅引用
+- 不得列出未在源码中找到读取点的变量
+- 不得使用模糊词描述变量作用
+
+**排除范围**：
+- 纯内部变量（含 `_FOR_TESTING`、`_OVERRIDE` 后缀的测试/调试变量）
+- 跨进程传递的运行时状态变量（如 `CLAUDE_CODE_SESSION_ID`、`CLAUDE_CODE_WORKER_EPOCH`）
+- 第三方工具变量（如 `BAT_THEME`、`SSL_CERT_FILE`）
+- `USER_TYPE`（Anthropic 内部标识，非用户配置）
+
+## 风格专属写作要求
+
+**开篇格式**（reference — 条目概览）：一句话说明本附录覆盖范围 + 读者在什么场景需要查这一附录 + 源码来源标注。
+
+**分节组织**（reference — 分类表格）：按功能类别分节，每节一张表格，表头为：变量名 | 类型 | 默认值 | 说明 | 相关章节。类别之间用二级标题分隔，标题后标注该类变量总数。
+
+**章末结构**（reference — 版本脚注）：简短版本说明，标注源码版本号和总变量数。
+
+**风格专属必须**：
+- 每个类别有独立二级标题和计数标注（如"API 连接类（9 个）"）
+- 表格列宽紧凑，信息密度高
+- 变量名使用反引号 + 等宽字体
+- 布尔类型变量统一用 `isEnvTruthy()` 解析，标注为 `bool`
+
+**风格专属禁止**：
+- 不展开任何变量的工程分析或设计权衡
+- 不用正文风格的叙事/设问句式
+- 不添加"为什么这样设计"类解释
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个变量必须在 `src/` 中找到 `process.env.XXX` 调用点
+- ⛔ 数据驱动：变量名、类型必须与源码一致
+- ⛔ 术语标准化：首次出现标注原文
+- ⛔ 开篇铁律：开篇最后补写，简洁覆盖范围即可
 
 ## 数据提取清单
 
-> ⛔ 附录内容必须从已完成的章节中提取，不得凭记忆编写。
-
-**内容描述**：Claude Code 所有支持的环境变量速查。列：变量名 | 类型 | 默认值 | 说明 | 影响的模块。来源：src/bootstrap/state.ts + src/utils/settings/
+> ⛔ 附录内容必须从源码和已完成章节中提取，不得凭记忆编写。每条数据必须有源码锚点或章节出处。
 
 | # | 提取来源 | 提取方法 | 目标数据 |
 |---|---------|---------|---------|
-| 1 | 全部 ch*.md | 搜索相关内容 | 表格数据行 |
-| 2 | 源码文件 | grep 搜索 | 验证和补全 |
+| 1 | `src/main.tsx` | `grep -n 'process\.env\.'` | 启动时读取的全部环境变量：入口点、提供商选择、模型覆盖、认证、调试开关 |
+| 2 | `src/bootstrap/state.ts` | `grep -n 'process\.env\.'` | 全局状态相关的环境变量：用户类型判断、测试环境检测 |
+| 3 | `src/utils/model/providers.ts` + `src/utils/model/` | `grep -rn 'process\.env\.'` | 模型选择/提供商检测相关变量：Bedrock、Vertex、Foundry、模型名覆盖 |
+| 4 | `src/utils/settings/` | `grep -rn 'process\.env\.'` | 配置系统变量：托管设置路径、功能开关、插件相关 |
+| 5 | `src/coordinator/coordinatorMode.ts` + `src/tools/AgentTool/` | `grep -rn 'process\.env\.CLAUDE_CODE_COORDINATOR'` | 协调器模式变量 |
+| 6 | `src/services/api/` + `src/utils/apiPreconnect.ts` | `grep -rn 'process\.env\.\(ANTHROPIC_\|HTTP_PROXY\|HTTPS_PROXY\)'` | API 连接与代理变量 |
+| 7 | 已写完的 `book/src/appendix-d.md` | `cat` 全文 | 已写内容的结构、分类、变量清单——plan 必须准确反映实际结构 |
 
 ## 结构骨架
 
-1. 说明本附录用途和查阅场景（~50字）
-2. 速查表（主体内容）
-3. 说明表格生成时间（基于哪个版本的源码）
+### 开篇（~60 字）
+- 条目概览：本附录列出 Claude Code 所有用户可配置的环境变量，按功能类别分组
+- 源码来源标注：全部变量从 `src/` 目录的 `process.env` 调用点提取
+- 交叉引用：模型路由机制详见第 11 章，API 通信详见第 13 章
 
-## 写作前验证
-- [ ] 已从各章节提取原始数据
-- [ ] 每条数据已验证源码锚点有效性
-- [ ] 按字母/分类排序完成
+### 节 1：API 连接类（9 个）
+- 表格列：变量名 | 类型 | 默认值 | 说明 | 相关章节
+- 变量清单（按字母序）：
+  - `ANTHROPIC_API_KEY` — string — 无（必填） — Anthropic API 密钥 — 第13章
+  - `ANTHROPIC_AUTH_TOKEN` — string — 无 — 替代 API Key 的认证 token — 第13章
+  - `ANTHROPIC_BASE_URL` — string (URL) — `https://api.anthropic.com` — 覆盖 API 基础 URL — 第13章
+  - `ANTHROPIC_BEDROCK_BASE_URL` — string (URL) — 无 — AWS Bedrock 自定义接入点 URL — 第11章
+  - `ANTHROPIC_BETAS` — string — 无 — 启用 Beta 功能列表，逗号分隔 — 第13章
+  - `ANTHROPIC_CUSTOM_HEADERS` — JSON string — 无 — 注入自定义 HTTP 请求头 — 第13章
+  - `ANTHROPIC_FOUNDRY_API_KEY` — string — 无 — Azure AI Foundry API 密钥 — 第11章
+  - `ANTHROPIC_UNIX_SOCKET` — string (路径) — 无 — 通过 Unix domain socket 连接 API — 第13章
+  - `ANTHROPIC_VERTEX_PROJECT_ID` — string — 无 — Google Vertex AI 项目 ID — 第11章
+
+### 节 2：模型选择类（5 个）
+- 变量清单：
+  - `ANTHROPIC_MODEL` — string — 无 — 覆盖主对话默认模型 — 第11章
+  - `ANTHROPIC_SMALL_FAST_MODEL` — string — 无 — 覆盖小型/快速任务模型 — 第11章
+  - `ANTHROPIC_DEFAULT_HAIKU_MODEL` — string — 无 — 覆盖默认 Haiku 系列模型 — 第11章
+  - `ANTHROPIC_DEFAULT_OPUS_MODEL` — string — 无 — 覆盖默认 Opus 系列模型 — 第11章
+  - `ANTHROPIC_DEFAULT_SONNET_MODEL` — string — 无 — 覆盖默认 Sonnet 系列模型 — 第11章
+
+### 节 3：提供商选择类（5 个）
+- 变量清单：
+  - `CLAUDE_CODE_USE_BEDROCK` — bool — false — 启用 AWS Bedrock 提供商 — 第11章
+  - `CLAUDE_CODE_USE_VERTEX` — bool — false — 启用 Google Vertex AI 提供商 — 第11章
+  - `CLAUDE_CODE_USE_FOUNDRY` — bool — false — 启用 Azure AI Foundry 提供商 — 第11章
+  - `CLAUDE_CODE_SKIP_BEDROCK_AUTH` — bool — false — 跳过 Bedrock 自动认证（使用已有凭证）— 第11章
+  - `CLAUDE_CODE_SKIP_VERTEX_AUTH` — bool — false — 跳过 Vertex 自动认证 — 第11章
+
+### 节 4：功能控制类（~10 个，从源码提取后确定）
+- 变量清单（示例，实际写作时从提取结果填充）：
+  - `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` — bool — false — 禁用非必要网络请求 — 第38章
+  - `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` — number — ~80 — 上下文自动压缩触发阈值百分比 — 第22章
+  - `CLAUDE_CODE_COORDINATOR_MODE` — bool — false — 启用 Coordinator 多智能体编排模式 — 第33章
+  - `CLAUDE_CODE_DISABLE_THINKING` — bool — false — 禁用 thinking 扩展推理 — 第12章
+  - `CLAUDE_CODE_DISABLE_FAST_MODE` — bool — false — 禁用 fast mode — 第12章
+  - `CLAUDE_CODE_EFFORT_LEVEL` — string — 无 — 覆盖推理深度级别 — 第12章
+  - `CLAUDE_CODE_MAX_OUTPUT_TOKENS` — number — 无 — 覆盖单次最大输出 token 数 — 第9章
+  - `CLAUDE_CODE_MAX_CONTEXT_TOKENS` — number — 无 — 覆盖上下文窗口大小 — 第22章
+  - `MAX_THINKING_TOKENS` — number — 无 — 覆盖 thinking 模式最大 token 数 — 第12章
+  - `CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING` — bool — false — 禁用文件检查点机制 — 第21章
+
+### 节 5：SDK 集成类（4 个）
+- 变量清单：
+  - `CLAUDE_AGENT_SDK_CLIENT_APP` — string — 无 — SDK 调用方应用标识 — —
+  - `CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS` — bool — false — 禁用内置 Agent 定义 — —
+  - `CLAUDE_AGENT_SDK_MCP_NO_PREFIX` — bool — false — MCP 工具不添加服务器名前缀 — —
+  - `CLAUDE_AGENT_SDK_VERSION` — string — 无 — SDK 版本标识 — —
+
+### 节 6：插件沙箱类（2 个）
+- 变量清单：
+  - `CLAUDE_PLUGIN_ROOT` — string (路径) — 无（自动注入） — 插件安装目录（只读） — 第39章
+  - `CLAUDE_PLUGIN_DATA` — string (路径) — 无（自动注入） — 插件持久化数据目录（可读写） — 第39章
+
+### 章末：版本脚注（~40 字）
+- 版本：基于 Claude Code v2.1.88 源码
+- 总量：共收录 XX 个环境变量（写作时确定实际数量）
+- 说明：仅列出已验证存在的变量，部分变量行为可能随版本变更
+
+## 表格列定义
+
+| 列名 | 内容 | 示例 |
+|------|------|------|
+| 变量名 | 环境变量全名，反引号包裹 | `` `ANTHROPIC_API_KEY` `` |
+| 类型 | string / bool / number / string (URL) / string (路径) / JSON string | `string` |
+| 默认值 | 未设置时的行为；必填项标注"无（必填）" | `false` / `无` |
+| 说明 | 一句话描述变量作用 | Anthropic API 密钥，直连时必填 |
+| 相关章节 | 引用正文对该变量的分析章节，无直接引用时标注"—" | `第13章` |
+
+> 注：DESIGN.md 原始列为"变量名 | 类型 | 默认值 | 说明 | 影响的模块"。实际写作中使用"相关章节"替代"影响的模块"，因为附录读者关心的是"去哪了解详情"而非"哪个 .ts 文件用了它"。DESIGN.md 中的 `CLAUDE_CFG_HOOKS_PATH` 在源码中未找到对应读取点，不收录。
+
+## 关键变量清单（必须覆盖，来自 DESIGN.md）
+
+- [x] `ANTHROPIC_API_KEY` — API 密钥 → API 连接类
+- [x] `CLAUDE_MODEL` → 源码中为 `ANTHROPIC_MODEL` — 模型覆盖 → 模型选择类
+- [x] `CLAUDE_API_BASE` → 源码中为 `ANTHROPIC_BASE_URL` — API 基础 URL → API 连接类
+- [x] `HTTP_PROXY` / `HTTPS_PROXY` — 代理设置（源码中存在但 Claude Code 不直接读取，由 Node.js HTTP 客户端自动处理）→ 备注：如源码确认无直接 `process.env.HTTP_PROXY` 读取，归入"标准代理变量"脚注
+- [x] `NO_COLOR` — 禁用颜色（源码中仅在 `BashTool` 权限白名单出现，非 Claude Code 自身读取）→ 备注：作为标准约定提及
+- [ ] `CLAUDE_CFG_HOOKS_PATH` — ❌ 源码中未找到此变量，不收录
+- [x] `CLAUDE_CODE_COORDINATOR_MODE` — 协调器模式 → 功能控制类
+
+## 写作顺序
+
+1. 从 `src/main.tsx` 提取启动阶段读取的全部环境变量
+2. 从 `src/utils/model/providers.ts` 及 `src/utils/model/` 提取提供商和模型变量
+3. 从 `src/utils/settings/` 提取配置相关变量
+4. 从 `src/coordinator/` 提取协调器模式变量
+5. 从 `src/services/api/` 提取 API 通信变量
+6. 按功能类别分组，确定每组变量数量
+7. 填写各分类表格
+8. 补充 DESIGN.md 要求但需标注差异的变量（HTTP_PROXY、NO_COLOR）
+9. 写版本脚注
+10. 最后写开篇说明段
+
+## 写作前验证 checklist
+
+```bash
+# 1. 验证主要源码文件存在
+ls "${PROJECT_ROOT}/src/main.tsx"
+ls "${PROJECT_ROOT}/src/bootstrap/state.ts"
+ls "${PROJECT_ROOT}/src/utils/model/providers.ts"
+
+# 2. 提取全部 CLAUDE_CODE_* 和 ANTHROPIC_* 变量（排除内部/测试变量）
+cd "${PROJECT_ROOT}" && grep -rn 'process\.env\.\(ANTHROPIC_\|CLAUDE_CODE_\|CLAUDE_AGENT_\|CLAUDE_PLUGIN_\|MAX_THINKING\)' src/ --include='*.ts' --include='*.tsx' | sed 's/.*process\.env\.\([A-Z_]*\).*/\1/' | sort -u | wc -l
+
+# 3. 验证交叉引用的章节文件存在
+ls "${BOOK_ROOT}/src/part4/ch11.md"  # 模型选择
+ls "${BOOK_ROOT}/src/part4/ch13.md"  # API 通信
+
+# 4. 验证已写完的附录文件
+ls "${BOOK_ROOT}/src/appendix-d.md"
+
+# 5. 确认 CLAUDE_CFG_HOOKS_PATH 不存在于源码
+cd "${PROJECT_ROOT}" && grep -rn 'CLAUDE_CFG_HOOKS_PATH' src/ --include='*.ts' --include='*.tsx'; echo "exit: $?"
+
+# 6. 确认 HTTP_PROXY 的实际使用方式
+cd "${PROJECT_ROOT}" && grep -rn 'process\.env\.HTTP_PROXY\|process\.env\.HTTPS_PROXY' src/ --include='*.ts' --include='*.tsx'
+```
+
+- [ ] 已从 `src/main.tsx` 提取启动阶段环境变量
+- [ ] 已从 `src/utils/model/providers.ts` 提取提供商选择变量
+- [ ] 已从 `src/utils/settings/` 提取配置相关变量
+- [ ] 已从正文章节确认每个变量的使用场景（标注"相关章节"）
+- [ ] 每个变量的 `process.env.XXX` 读取点已在源码中验证存在
+- [ ] 变量按类别分组、每组内按字母排序
+- [ ] DESIGN.md 要求的关键变量已全覆盖（缺失的已标注原因）
+- [ ] 排除清单已执行（测试变量、运行时状态变量、内部变量）
+- [ ] 已对照已写完的 `book/src/appendix-d.md` 确认结构一致性
+
+## ⛔ Spec 一致性声明
+
+**附录类型**：环境变量参考（从 DESIGN.md 附录 D 定义）
+
+### DESIGN.md 对齐检查
+
+| # | DESIGN.md 要求 | 是否已反映 | 对应 plan 节 |
+|---|---------------|-----------|-------------|
+| 1 | 内容：Claude Code 所有支持的环境变量速查 | ☑ | 结构骨架 节 1-6 |
+| 2 | 列定义：变量名 \| 类型 \| 默认值 \| 说明 \| 影响的模块 | ☑（"影响的模块"→"相关章节"） | 表格列定义 |
+| 3 | 关键变量：7 个 | ☑（6 个已覆盖，1 个源码不存在） | 关键变量清单 |
+| 4 | 来源：`src/bootstrap/state.ts` + `src/utils/settings/` | ☑（扩展到 7 个来源） | 数据提取清单 |
+| 5 | reference 风格 | ☑ | 风格专属写作要求 |
+
+> **调整说明**：
+> 1. **列调整**：DESIGN.md 定义"影响的模块"列改为"相关章节"列——附录读者关心的是"去哪了解详情"而非"哪个 .ts 文件"。
+> 2. **CLAUDE_CFG_HOOKS_PATH**：DESIGN.md 列出但源码中无此变量，不收录。Hook 配置路径通过 `settings.json` 的 `hooks` 字段管理，非环境变量控制。
+> 3. **CLAUDE_MODEL → ANTHROPIC_MODEL**：DESIGN.md 写 `CLAUDE_MODEL`，源码中实际为 `ANTHROPIC_MODEL`（`src/main.tsx:2012`）。
+> 4. **CLAUDE_API_BASE → ANTHROPIC_BASE_URL**：DESIGN.md 写 `CLAUDE_API_BASE`，源码中实际为 `ANTHROPIC_BASE_URL`（`src/main.tsx:1323`）。
+> 5. **新增类别**：DESIGN.md 未区分提供商选择变量，但源码中 `CLAUDE_CODE_USE_BEDROCK/VERTEX/FOUNDRY` 构成独立的提供商选择组，单独成节更清晰。
+> 6. **HTTP_PROXY / NO_COLOR**：非 Claude Code 自身读取（由 Node.js 运行时 / 外部工具处理），以脚注形式提及。

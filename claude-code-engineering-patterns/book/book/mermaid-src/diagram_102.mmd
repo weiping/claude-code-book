@@ -1,7 +1,16 @@
-stateDiagram-v2
-    [*] --> pending: createPermissionRequest\n（Worker 创建）
-    pending --> approved: Leader UI 批准\n（resolvedBy=leader）
-    pending --> rejected: Leader UI 拒绝\n（resolvedBy=leader）
-    pending --> approved: Worker 自行批准\n（resolvedBy=worker, YOLO/rules）
-    approved --> [*]: 文件移入 resolved/\nWorker 继续执行
-    rejected --> [*]: 文件移入 resolved/\nWorker 终止工具
+sequenceDiagram
+    participant UI as 用户界面
+    participant Task as LocalAgentTask
+    participant Loop as Agent 执行循环
+
+    UI->>Task: registerAgentForeground()
+    Task->>Task: new Promise(resolve => resolvers.set(agentId, resolve))
+    Task-->>Loop: backgroundSignal (Promise)
+    Loop->>Loop: await Promise.race([completion, backgroundSignal])
+    Note over Loop: 运行中...
+    UI->>Task: backgroundAgentTask(taskId)
+    Task->>Task: setAppState(isBackgrounded=true)
+    Task->>Task: resolvers.get(taskId)()  // resolve
+    Task-->>Loop: backgroundSignal resolved
+    Loop->>Loop: 切换为后台模式
+    Loop->>Task: 完成时 updateTaskState(status=completed)

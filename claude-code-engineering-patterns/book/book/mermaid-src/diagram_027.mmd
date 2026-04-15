@@ -1,23 +1,16 @@
-graph LR
-    subgraph models["主要模型（1P 示例）"]
-        opus46["Opus 4.6"]
-        sonnet46["Sonnet 4.6"]
-        haiku45["Haiku 4.5"]
-    end
-    subgraph effort_axis["Effort 轴"]
-        e_max["max effort"]
-        e_high["high effort"]
-        e_low["low/medium effort"]
-    end
-    subgraph think_axis["Thinking 轴"]
-        t_adaptive["adaptive thinking"]
-        t_enabled["enabled thinking"]
-        t_disabled["disabled"]
+flowchart LR
+    subgraph 三重困境
+        P1["① 中间状态不可见\n await 吞掉进度"]
+        P2["② 背压失控\n emit 超跑消费者"]
+        P3["③ 错误传播\n 每层手动转发 err"]
     end
 
-    opus46 --> e_max
-    opus46 --> t_adaptive
-    sonnet46 --> e_high
-    sonnet46 --> t_adaptive
-    haiku45 --> e_low
-    haiku45 --> t_disabled
+    subgraph Async Generator 解法
+        S1["yield 推送每个中间状态\n（包括 stream_request_start）"]
+        S2["for await 协作式调度\n消费完才请求下一个"]
+        S3["throw 穿透 for await\n上层 try/catch 直接捕获"]
+    end
+
+    P1 -->|解决| S1
+    P2 -->|解决| S2
+    P3 -->|解决| S3

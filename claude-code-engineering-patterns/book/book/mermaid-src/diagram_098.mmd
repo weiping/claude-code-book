@@ -1,22 +1,23 @@
-flowchart LR
-    subgraph team-lead 进程
-        L[Leader Agent]
-        LMB["Leader Mailbox\n（inbox 文件）"]
+graph LR
+    subgraph 交叉类型（TypeScript 选择）
+        BASE2["TaskStateBase
+{id, type, status, ...}"]
+        SPECIFIC2["{ type: 'local_bash'
+command: string }"]
+        RESULT2["LocalShellTaskState
+（扁平展开）"]
+        BASE2 -->|"&amp;"| RESULT2
+        SPECIFIC2 -->|"&amp;"| RESULT2
     end
-    subgraph teammate-1 进程
-        T1[Teammate 1]
-        T1S["Stop Hook\n（任务完成触发）"]
+    subgraph 继承链（OOP 方案）
+        BASE1["TaskBase
+{id, type, status, ...}"]
+        CHILD1["LocalShellTask
+extends TaskBase
+{command: string}"]
+        BASE1 -->|extends| CHILD1
     end
-    subgraph teammate-2 进程
-        T2[Teammate 2]
-        T2S["Stop Hook\n（任务完成触发）"]
-    end
-    subgraph 文件系统
-        TF["TeamFile\n（leadAgentId/members）"]
-    end
-
-    T1 -->|"启动时读取"| TF
-    T2 -->|"启动时读取"| TF
-    T1S -->|"writeToMailbox\n(idle notification)"| LMB
-    T2S -->|"writeToMailbox\n(idle notification)"| LMB
-    L -->|"读取 mailbox\n等待 idle 通知"| LMB
+    RESULT2 -->|"支持 {...prevTask, status: 'x'}
+不可变更新"| OK["✓ 适合 React 状态管理"]
+    CHILD1 -->|"需考虑 prototype chain
+运行时 instanceof"| WARN["⚠ 序列化后失效"]

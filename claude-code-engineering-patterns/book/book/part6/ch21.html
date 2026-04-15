@@ -1,0 +1,529 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 21 章：会话持久化——转录、快照与断点续写 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-21-章会话持久化转录快照与断点续写"><a class="header" href="#第-21-章会话持久化转录快照与断点续写">第 21 章：会话持久化——转录、快照与断点续写</a></h1>
+<blockquote>
+<p>"先记下来，再去执行。这不是习惯，是协议。"</p>
+</blockquote>
+<hr />
+<p>Agent 系统面临一个它无法控制的敌人：进程随时可能被终止。用户按下 Stop、系统发出 SIGKILL、网络断开——AI 的 API 调用可能在飞行中被拦截，而在此之前，用户刚刚发出的消息可能还没有被任何地方记录。</p>
+<p>当进程重启后，如何判断"上一轮对话到底发生了什么"？如果什么都没写入磁盘，答案是：什么都不知道。</p>
+<p>Claude Code 用一个看似简单、实则充满工程考量的模式回答了这个问题：<strong>在发出 API 请求之前，先把用户的消息写入磁盘</strong>。这就是"写入先于执行"（Write-Before-Execute）模式——先有记录，后有操作，任何崩溃点都能找到足够的信息恢复。</p>
+<p>读完这章，我们将理解这一持久化模式的完整实现：从消息如何在 API 调用前落盘，到进程重启后如何从 JSONL 文件中重建会话链——以及每一个设计决策背后的工程权衡。</p>
+<hr />
+<h2 id="问题进程崩溃是设计约束不是边界条件"><a class="header" href="#问题进程崩溃是设计约束不是边界条件">问题：进程崩溃是设计约束，不是边界条件</a></h2>
+<p>一个长时间运行的 Agent 系统必须把"进程会崩溃"当作一等公民对待，而不是一个需要单独处理的异常情况。</p>
+<p>想象最坏的时序：用户在 Claude Code 中输入了一段详细的需求，按下回车，此时 <code>QueryEngine</code> 开始把用户消息发往 Claude API。但在 API 响应返回之前——也许只差几毫秒——用户点击了 Stop 按钮。进程被终止。消息在哪里？如果没有持久化机制，这条消息永远消失了。</p>
+<p>更有趣的是：即使进程没有崩溃，Claude Code 也必须支持 <code>--resume</code> 命令行标志——让用户在新会话中从上一次的对话断点继续。这要求会话历史必须是可靠的、可重建的。</p>
+<p>这两个需求共同指向同一个设计决策：<strong>写入时机必须早于执行时机</strong>。</p>
+<p><strong>图 21-1：写入先于执行的时序</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant User as 用户
+    participant QE as QueryEngine
+    participant Disk as JSONL 磁盘文件
+    participant API as Claude API
+
+    User-&gt;&gt;QE: 发送消息
+    QE-&gt;&gt;Disk: 1. 写入 transcript（await）
+    Note over QE,Disk: 写入完成后才继续
+    QE-&gt;&gt;API: 2. 发起 API 请求
+    
+    alt 进程在等待响应时崩溃
+        API--xQE: 进程被终止
+        Note over Disk: JSONL 文件仍完整保存用户消息
+    else 正常响应
+        API--&gt;&gt;QE: 返回 AI 响应
+        QE-&gt;&gt;Disk: 3. 写入 AI 响应
+        QE--&gt;&gt;User: 4. 渲染输出
+    end
+</code></pre>
+<p>注意时序的关键点：写入磁盘（步骤 1）发生在 API 请求（步骤 2）之前。即使进程在等待响应时崩溃，磁盘上已经有了用户的消息，<code>--resume</code> 就能从这里重建会话。</p>
+<p><strong>这个问题为什么难以简单解决？</strong></p>
+<p>直觉上的做法是在 AI 响应返回后再写入，把整个对话轮次一起保存。但这样做在"进程崩溃"场景下完全失效——如果 API 调用没有完成，就没有响应，也就没有东西可以写入。更糟糕的是，下一次启动时系统甚至不知道用户发过这条消息，<code>--resume</code> 会告诉用户"没有找到会话"。</p>
+<p>另一种想法是用内存缓冲区，等到一定数量再批量写入。这降低了 IO 频率，但在崩溃时丢失的数据量更多。</p>
+<p>Claude Code 选择了最简单也最可靠的方案：<strong>每次用户消息到来，立即同步写入，再发 API 请求</strong>。</p>
+<hr />
+<h2 id="源码实例-1recordtranscript-的写入策略"><a class="header" href="#源码实例-1recordtranscript-的写入策略">源码实例 1：recordTranscript 的写入策略</a></h2>
+<p><code>QueryEngine.ts</code> 中的核心写入逻辑位于第 434 行附近。在进入查询主循环之前，有一段明确注释了设计意图的代码：</p>
+<p>在进入 <code>for await</code> 查询循环之前，系统首先对用户消息发起持久化：</p>
+<pre><code class="language-typescript">// src/QueryEngine.ts:436-462
+// 在进入查询循环前，将用户的消息持久化到 transcript。
+// 下面的 for-await 只在 ask() 产出 assistant/user/compact_boundary 消息时
+// 调用 recordTranscript——而这要等到 API 响应才会发生。如果在那之前进程被杀死
+//（比如用户在发送后几秒内点击 Stop），transcript 里只剩下 queue-operation 条目；
+// getLastSessionLog 会过滤掉这些，返回 null，--resume 会报告"未找到会话"。
+// 现在提前写入，使得 transcript 从用户消息被接受的时间点就具备可恢复性，
+// 即使后续 API 响应永远没有到达。
+//
+// --bare / SIMPLE 模式：fire-and-forget（fire-and-forget）。脚本调用不会在
+// kill-mid-request 后执行 --resume。await 大约是 SSD 上 4ms，磁盘竞争时 30ms——
+// 这是模块求值之后，单一最大的可控关键路径成本。
+// Transcript 仍然会写入（供事后调试），只是不阻塞。
+if (persistSession &amp;&amp; messagesFromUserInput.length &gt; 0) {
+  const transcriptPromise = recordTranscript(messages)
+  if (isBareMode()) {
+    void transcriptPromise
+  } else {
+    await transcriptPromise
+    if (
+      isEnvTruthy(process.env.CLAUDE_CODE_EAGER_FLUSH) ||
+      isEnvTruthy(process.env.CLAUDE_CODE_IS_COWORK)
+    ) {
+      await flushSessionStorage()
+    }
+  }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:436-462</code></p>
+<p>这段注释是整个 <code>sessionStorage.ts</code> 设计意图的最浓缩表达，值得逐句解读。</p>
+<p>首先是"提前写入"的理由。注释精确描述了不提前写入时的失败路径：<code>getLastSessionLog</code> 会过滤掉 <code>queue-operation</code> 条目（这些是内部状态跟踪，不属于对话内容），最终返回 <code>null</code>，<code>--resume</code> 以失败告终。这不是一个偶发 bug，而是设计上的必然——如果只在 API 响应后写入，"响应没有到达"的场景根本没有可写的东西。</p>
+<p>其次是两种写入模式的分叉。<code>isBareMode()</code> 决定了关键路径上的性能开销：</p>
+<div class="table-wrapper"><table><thead><tr><th>模式</th><th>写入方式</th><th>阻塞调用者</th><th>使用场景</th></tr></thead><tbody>
+<tr><td>交互式（默认）</td><td><code>await transcriptPromise</code></td><td>✓</td><td>用户通过终端交互</td></tr>
+<tr><td>Bare 模式（<code>--bare</code>）</td><td><code>void transcriptPromise</code></td><td>✗</td><td>脚本调用、自动化流水线</td></tr>
+</tbody></table>
+</div>
+<p><strong>核心权衡</strong>：<code>await</code> 写入在 SSD 上的开销约为 4ms，在磁盘竞争时最高 30ms。注释称其为"模块求值之后，单一最大的可控关键路径成本"——这意味着这是已知的、可量化的性能代价，不是意外。Claude Code 选择在交互式场景中承受这个代价，换取"崩溃后必然可以恢复"的可靠性保证。</p>
+<p>为什么 Bare 模式使用 fire-and-forget？注释解释得很直接："脚本调用不会在 kill-mid-request 后执行 --resume。"——在自动化场景中，进程崩溃后通常会重新运行整个流程，而不是尝试从断点续写，因此同步等待 4-30ms 的 IO 没有必要。但 transcript 仍然会异步写入，保留事后调试的能力。</p>
+<p>另一个细节是 <code>CLAUDE_CODE_EAGER_FLUSH</code> 和 <code>CLAUDE_CODE_IS_COWORK</code> 环境变量触发的额外 <code>flushSessionStorage()</code> 调用（第 460 行）。这是针对协作模式（cowork）的优化——在团队共享会话场景中，需要确保数据尽快刷新到底层存储，而不是留在内存缓冲区。</p>
+<p>现在我们来看 <code>recordTranscript</code> 本身是如何工作的。</p>
+<p><code>recordTranscript</code> 定义在 <code>src/utils/sessionStorage.ts:1408</code>，其核心机制是<strong>增量写入 + UUID 去重</strong>：</p>
+<pre><code class="language-typescript">// src/utils/sessionStorage.ts:1408-1443（简化）
+export async function recordTranscript(
+  messages: Message[],
+  teamInfo?: TeamInfo,
+  startingParentUuidHint?: UUID,
+  allMessages?: readonly Message[],
+): Promise&lt;UUID | null&gt; {
+  const cleanedMessages = cleanMessagesForLogging(messages, allMessages)
+  const sessionId = getSessionId() as UUID
+  const messageSet = await getSessionMessages(sessionId)
+  const newMessages: typeof cleanedMessages = []
+  let startingParentUuid: UUID | undefined = startingParentUuidHint
+  let seenNewMessage = false
+  for (const m of cleanedMessages) {
+    if (messageSet.has(m.uuid as UUID)) {
+      // 只追踪形成前缀的已见消息。压缩后 messagesToKeep 出现在
+      // 新 CB/summary 之后，所以这里跳过它们。
+      if (!seenNewMessage &amp;&amp; isChainParticipant(m)) {
+        startingParentUuid = m.uuid as UUID
+      }
+    } else {
+      newMessages.push(m)
+      seenNewMessage = true
+    }
+  }
+  if (newMessages.length &gt; 0) {
+    await getProject().insertMessageChain(
+      newMessages, false, undefined, startingParentUuid, teamInfo,
+    )
+  }
+  // ...
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/sessionStorage.ts:1408-1443</code></p>
+<p><code>recordTranscript</code> 不是简单地把所有消息追加到文件。它先通过 <code>getSessionMessages</code> 获取当前会话已记录的 UUID 集合，然后逐条比对，只把 <code>messageSet</code> 中没有的新消息写入。这个去重机制解决了一个实际问题：<code>recordTranscript</code> 会被多处调用（包括压缩后的 <code>useLogMessages</code>），同一条消息可能被传入多次。基于 UUID 的去重确保了幂等性——无论调用多少次，每条消息只会在 JSONL 文件中出现一次。</p>
+<p><code>startingParentUuid</code> 的维护则保证了消息链的连续性。在压缩（compact）场景下，旧消息在新的 compact boundary 之后重新出现，去重逻辑需要正确地追踪链的头部，而不是在中间制造分叉。这个细节在 <code>isChainParticipant()</code> 的配合下完成，<code>progress</code> 类型消息被排除在链参与者之外——这是另一个踩过坑的设计（见 Bug #14373 和 #23537）。</p>
+<hr />
+<h2 id="源码实例-2getlastsessionlog-与断点续写路径"><a class="header" href="#源码实例-2getlastsessionlog-与断点续写路径">源码实例 2：getLastSessionLog 与断点续写路径</a></h2>
+<p>写入是"写入先于执行"的前半段，读取是后半段。当用户执行 <code>claude --resume</code> 时，系统需要从磁盘重建上一次的会话状态。入口函数是 <code>getLastSessionLog</code>。</p>
+<p>我们先理解文件格式。转录文件（transcript）的路径由 <code>getTranscriptPath()</code> 决定：</p>
+<pre><code class="language-typescript">// src/utils/sessionStorage.ts:202-205
+export function getTranscriptPath(): string {
+  const projectDir = getSessionProjectDir() ?? getProjectDir(getOriginalCwd())
+  return join(projectDir, `${getSessionId()}.jsonl`)
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/sessionStorage.ts:202</code></p>
+<p>文件是 <strong>JSONL 格式</strong>（每行一个 JSON 对象），文件名为 <code>${sessionId}.jsonl</code>，存放在项目目录下。JSONL 格式支持 append-only 写入——每次写入只需在文件末尾追加一行，不需要读取或重写已有内容。这对高频、小批量的持久化场景非常合适。</p>
+<p>注意到 <code>MAX_TRANSCRIPT_READ_BYTES = 50 * 1024 * 1024</code>（50MB）的限制（<code>src/utils/sessionStorage.ts:229</code>）：注释指出 "session JSONL can grow to multiple GB (inc-3930)"（会话 JSONL 文件可能增长到数 GB）。这告诉我们对于活跃使用的长期会话，transcript 文件可以增长到几 GB，读取时必须有大小限制以防 OOM。</p>
+<p>现在来看 <code>getLastSessionLog</code> 的实现：</p>
+<pre><code class="language-typescript">// src/utils/sessionStorage.ts:3872-3932（简化）
+export async function getLastSessionLog(
+  sessionId: UUID,
+): Promise&lt;LogOption | null&gt; {
+  // 单次读取：一次性加载所有会话数据，而不是读两次文件
+  const { messages, summaries, ... } = await loadSessionFile(sessionId)
+  if (messages.size === 0) return null
+  
+  // 预热 getSessionMessages 缓存，避免 recordTranscript 在 --resume 时
+  // 进行第二次完整文件加载。-170~227ms（大会话实测）
+  // 守卫：只在缓存为空时预热。会话中途的调用者不能用过时的磁盘快照
+  // 覆盖活跃缓存——那会丢失未刷新的 UUID 并破坏去重
+  if (!getSessionMessages.cache.has(sessionId)) {
+    getSessionMessages.cache.set(
+      sessionId,
+      Promise.resolve(new Set(messages.keys())),
+    )
+  }
+
+  // 找到最新的非 sidechain 消息
+  const lastMessage = findLatestMessage(messages.values(), m =&gt; !m.isSidechain)
+  if (!lastMessage) return null
+
+  // 从最后一条消息向上重建对话链
+  const transcript = buildConversationChain(messages, lastMessage)
+  // ...
+  return { /* LogOption */ }
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/sessionStorage.ts:3872-3932</code></p>
+<p>这个函数有三个值得注意的设计点。</p>
+<p><strong>第一：单次读取</strong>。注释明确写道"一次性加载所有会话数据，而不是读两次文件"。早期实现可能读取了文件两次——一次获取消息，一次获取元数据——这在大文件上产生了可观的 IO 开销。合并为单次读取是一个直接的性能优化。</p>
+<p><strong>第二：缓存预热</strong>。这是一个精巧的优化。<code>--resume</code> 触发 <code>getLastSessionLog</code> 时，会把消息 UUID 集合预先注入 <code>getSessionMessages.cache</code>。这样，接下来在 REPL 挂载后立即发生的 <code>recordTranscript</code> 调用——用于追踪恢复后的第一条消息——就可以直接命中缓存，避免再次从磁盘读取整个 JSONL 文件。实测节省了 170-227ms（大会话场景）。</p>
+<p>但守卫条件（<code>if (!getSessionMessages.cache.has(sessionId))</code>）同样关键：如果某个调用者（比如 <code>IssueFeedback</code>）在会话进行中调用了 <code>getLastSessionLog</code>，不能用磁盘上的旧快照覆盖内存中的活跃缓存。那会丢失"已分配但尚未刷新到磁盘的 UUID"，导致去重逻辑误判，进而在 transcript 中产生重复条目。</p>
+<p><strong>第三：消息类型过滤</strong>。<code>isTranscriptMessage</code> 函数（<code>src/utils/sessionStorage.ts:139</code>）是这里的守门人：</p>
+<pre><code class="language-typescript">// src/utils/sessionStorage.ts:139-145
+// 重要：这是定义"什么是 transcript 消息"的唯一真相来源。
+//
+// Progress 消息不是 transcript 消息。它们是短暂的 UI 状态，
+// 不得持久化到 JSONL 或参与 parentUuid 链。包含它们导致了链分叉，
+// 在恢复时让真实的对话消息成为孤儿（见 #14373、#23537）。
+export function isTranscriptMessage(entry: Entry): entry is TranscriptMessage {
+  return (
+    entry.type === 'user' ||
+    entry.type === 'assistant' ||
+    entry.type === 'attachment' ||
+    entry.type === 'system'
+  )
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/sessionStorage.ts:139-145</code></p>
+<p><code>progress</code> 类型的消息——渲染进度条、工具调用状态等——被明确排除在 transcript 之外。注释引用了两个 bug 编号 (#14373、#23537)，说明这个排除规则来自真实踩坑：历史上曾有过把 progress 消息写入 JSONL 的做法，结果在 <code>--resume</code> 时这些 UI 状态消息破坏了 <code>parentUuid</code> 链，导致真实的对话消息找不到自己的父节点，变成孤儿节点，无法被正确恢复。</p>
+<p><strong>图 21-2：消息类型过滤——isTranscriptMessage 的守门逻辑</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    entry[Entry 条目] --&gt; type_check{entry.type}
+    type_check --&gt;|user| keep[写入 JSONL 链]
+    type_check --&gt;|assistant| keep
+    type_check --&gt;|attachment| keep
+    type_check --&gt;|system| keep
+    type_check --&gt;|progress| discard[丢弃\n不写入链]
+    type_check --&gt;|其他类型| discard
+    keep --&gt; chain[parentUuid 链完整]
+    discard --&gt; ui_state[仅存 UI 状态\n不参与恢复]
+</code></pre>
+<p><code>progress</code> 类型是进度条、工具调用状态等短暂 UI 状态，历史上曾被错误写入链中，导致恢复时出现孤儿节点（Bug #14373、#23537）。<code>isTranscriptMessage</code> 是这道类型守卫的单一实现点。</p>
+<p><strong>图 21-3：断点续写的重建流程</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    resume["claude --resume"] --&gt; load["loadSessionFile\n读取 sessionId.jsonl"]
+    load --&gt; check_empty{"messages.size == 0?"}
+    check_empty --&gt;|是| return_null["返回 null\n（无会话可恢复）"]
+    check_empty --&gt;|否| prime_cache["预热 getSessionMessages 缓存\n（避免第二次文件读取）"]
+    prime_cache --&gt; find_last["findLatestMessage\n过滤 sidechain，找最新消息"]
+    find_last --&gt; build_chain["buildConversationChain\n从最后一条消息向上重建链"]
+    build_chain --&gt; return_log["返回 LogOption\n（包含完整对话历史）"]
+    return_log --&gt; repl["REPL 挂载，\n恢复上一次会话状态"]
+</code></pre>
+<p>断点续写的恢复路径从 JSONL 文件的顺序读取开始，经过 UUID 去重过滤，找到最近一次非 sidechain 消息，然后沿着 <code>parentUuid</code> 链向上重建完整的对话历史。整个过程完全依赖磁盘上的 JSONL 文件——没有外部状态服务，没有数据库，只有一个 append-only 的平铺文本文件。</p>
+<hr />
+<p><strong>图 21-4：写入先于执行在系统中的两种模式</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    subgraph interactive["交互式模式（默认）"]
+        A1[用户消息] --&gt; B1["await recordTranscript\n(阻塞 4-30ms)"] --&gt; C1[API 请求]
+    end
+    subgraph bare["Bare 模式（--bare / SIMPLE）"]
+        A2[用户消息] --&gt; B2["void recordTranscript\n(fire-and-forget)"] --&gt; C2[API 请求]
+        B2 -.-&gt;|异步写入| D2[JSONL 文件]
+    end
+    B1 --&gt;|同步写入| D1[JSONL 文件]
+</code></pre>
+<p>两种模式的分叉点：交互式模式下 <code>await</code> 保证写入成功再发 API 请求；Bare 模式下 <code>void</code> 让写入异步进行，不阻塞关键路径，但文件仍然会被写入（用于事后调试）。</p>
+<hr />
+<h2 id="模式剖析写入先于执行write-before-execute"><a class="header" href="#模式剖析写入先于执行write-before-execute">模式剖析：写入先于执行（Write-Before-Execute）</a></h2>
+<p>这个模式有三个关键组成部分，缺一不可：</p>
+<p><strong>组成 1：写入先于操作</strong>。写入操作必须在"操作意图"层面而非"操作结果"层面触发。Claude Code 在用户消息被接受的那一刻写入，不等待 AI 响应。这区别于"事后日志"——事后日志在崩溃时没有东西可写。</p>
+<p><strong>组成 2：去重保证幂等性</strong>。持久化层必须处理"同一条消息被传入多次"的情况。Claude Code 用 UUID 集合实现了 O(1) 的去重检查。没有去重，多次 <code>recordTranscript</code> 调用会产生重复条目，<code>--resume</code> 时对话历史会失真。</p>
+<p><strong>组成 3：类型过滤防止链污染</strong>。不是所有消息都应该持久化。UI 状态消息（<code>progress</code>）是短暂的渲染辅助，一旦进入 <code>parentUuid</code> 链，就会在恢复时制造分叉和孤儿节点。类型守卫（<code>isTranscriptMessage</code>）是持久化层的质量门禁。</p>
+<p><strong>图 21-5：写入先于执行的三层结构</strong></p>
+<pre><code class="language-mermaid">graph TD
+    subgraph 写入层
+        A["用户消息到达"] --&gt; B["isTranscriptMessage 过滤\n排除 progress 等 UI 状态"]
+        B --&gt; C["UUID 去重\n检查 messageSet.has(uuid)"]
+        C --&gt; D["insertMessageChain\n追加到 sessionId.jsonl"]
+    end
+    subgraph 执行层
+        D --&gt; E["API 请求\n（写入完成后才发出）"]
+        E --&gt; F["AI 响应"]
+        F --&gt; G["再次写入 AI 消息"]
+    end
+    subgraph 恢复层
+        H["--resume"] --&gt; I["loadSessionFile\n读取 JSONL"]
+        I --&gt; J["buildConversationChain\n重建对话链"]
+        J --&gt; K["REPL 恢复"]
+    end
+</code></pre>
+<p>注意三层的独立性：写入层的质量（去重、过滤）决定了恢复层能否成功。如果写入层有缺陷，恢复层的错误发生在离 bug 最远的地方，最难调试。Claude Code 选择在写入层加重约束（同步 await、UUID 去重、类型过滤），正是为了让恢复层的逻辑保持简单。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>长时间运行的 Agent（可能被中断）</td><td>✓</td><td>进程随时可能崩溃，需要断点恢复</td><td>无持久化（但无法恢复）</td></tr>
+<tr><td>用户操作需要审计记录</td><td>✓</td><td>写入先于执行保证"发送即记录"</td><td>事后写入（但崩溃时丢数据）</td></tr>
+<tr><td>支持 <code>--resume</code> 类断点续写功能</td><td>✓</td><td>恢复路径完全依赖提前写入的 transcript</td><td>重新执行（成本高，且不总是可行）</td></tr>
+<tr><td>支持团队协作（多人共享会话）</td><td>✓（配合 eager flush）</td><td><code>CLAUDE_CODE_IS_COWORK</code> 触发额外 <code>flushSessionStorage</code> 确保及时同步</td><td>实时数据库（成本高，引入外部依赖）</td></tr>
+<tr><td>短时间（&lt;100ms）无状态任务</td><td>✗</td><td>写入开销（4-30ms/次）得不偿失</td><td>内存状态 + 最终一次性写入</td></tr>
+<tr><td>高频写入（每秒 &gt;100 次操作）</td><td>✗（谨慎）</td><td>磁盘 IO 成为瓶颈，需要批量写入或写缓冲</td><td>WAL + 批量刷新</td></tr>
+<tr><td>脚本/自动化流水线（不需要 --resume）</td><td>⚠️（fire-and-forget）</td><td>Bare 模式下写入异步进行，不阻塞关键路径，但保留事后调试能力</td><td>不写入（适合完全无状态场景）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p><strong>已知代价 1：写入延迟进入关键路径</strong>。每次用户消息发出，交互式模式下的 <code>await recordTranscript</code> 增加了 4ms（SSD）到 30ms（磁盘竞争）的不可避免延迟。对于大多数 AI 应用场景，这个延迟几乎不可感知——Claude API 的网络往返时间通常在数百毫秒量级。但注释特意量化了这个开销并称其为"关键路径上的最大可控成本"，说明这是一个被意识到并主动接受的 trade-off，而非疏忽。</p>
+<p><strong>已知代价 2：memoize 缓存导致会话内更新不可见</strong>。<code>getSessionMessages</code> 使用了 <code>memoize</code> 缓存（<code>src/utils/sessionStorage.ts:3845</code>），这意味着在同一会话内，对 transcript 文件的修改（如通过外部工具直接编辑 JSONL）不会反映到内存缓存中。这通常不是问题——正常使用场景下 transcript 只由 <code>recordTranscript</code> 写入——但如果需要在会话中途强制刷新，必须调用 <code>clearSessionMessagesCache()</code>（<code>src/utils/sessionStorage.ts:3854</code>）。</p>
+<p><strong>已知代价 3：JSONL 文件顺序读取的线性复杂度</strong>。<code>loadSessionFile</code> 需要读取整个 JSONL 文件来重建消息 UUID 集合（用于去重）。对于活跃的长期会话，这个文件可能增长到几 GB，读取时间显著增加。<code>MAX_TRANSCRIPT_READ_BYTES = 50 * 1024 * 1024</code>（50MB）限制了单次读取上限，但这也意味着超过 50MB 的历史会话可能无法被完整读取。</p>
+<p><strong>潜在失败风险</strong>：<code>recordTranscript</code> 的 <code>await</code> 意味着如果磁盘写入本身失败（磁盘满、权限错误），会抛出异常并中断整个消息处理流程——用户会看到错误，而不是静默丢失数据。这是"失败关闭"（fail-closed）语义，符合 Agent 系统对可靠性的要求（详见第 19 章对权限系统失败关闭设计的分析）。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与 WAL（Write-Ahead Log，预写日志）</strong>：WAL 是数据库系统中的经典持久化模式——在执行任何数据修改之前，先把修改意图写入日志文件。Claude Code 的写入先于执行与 WAL 在结构上几乎完全一致：先写日志（transcript），再执行操作（API 调用），崩溃后从日志恢复。</p>
+<p>核心差异在于恢复语义：<strong>WAL 支持事务回滚</strong>（undo log），重播日志可以把系统还原到一致状态；Claude Code 的 transcript 是单向的，只记录"已发生的消息"，不支持回滚。这个差异来自问题域的不同——数据库需要原子性，Agent 对话需要可恢复性，两者的恢复目标不同。</p>
+<p><strong>与 Event Sourcing（事件溯源）</strong>：Event Sourcing 把所有状态变化记录为不可变事件序列，"当前状态"永远通过重播事件计算得出。Claude Code 的 JSONL transcript 确实类似事件日志——每条消息是一个事件，<code>buildConversationChain</code> 通过遍历 JSONL 重建"当前会话状态"。</p>
+<p>但 Claude Code 没有采用完整的 Event Sourcing 模式。它在恢复时不是从头重播所有事件，而是定位"最后一条非 sidechain 消息"并向上重建链——这更接近<strong>检查点恢复</strong>（checkpoint restore），读取 O(1) 个起始点，而非 O(n) 个事件的全量重播。这个选择在文件增长到 GB 级时显出优势：<code>getLastSessionLog</code> 的恢复时间是 O(文件大小)，而不是 O(所有历史消息数)。</p>
+<p><strong>结论</strong>：写入先于执行是 WAL 思想在"AI 对话持久化"场景的特化——保留了"先写后执行、崩溃可恢复"的核心结构，剪裁掉了数据库场景的事务复杂度，加入了对话场景特有的链完整性保证（UUID 去重、progress 过滤）。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="写入先于执行write-before-execute"><a class="header" href="#写入先于执行write-before-execute">写入先于执行（Write-Before-Execute）</a></h3>
+<p><strong>解决的问题</strong>：Agent 进程随时可能被 SIGKILL、网络中断、用户取消等外部事件终止，任何执行中的操作都可能永久丢失，导致断点续写失败。</p>
+<p><strong>核心做法</strong>：在发出任何外部调用（AI API、工具执行）之前，先将操作意图同步写入 JSONL 持久化文件。写入成功才发出请求；崩溃后从 JSONL 文件重建状态链。</p>
+<p><strong>前置条件</strong>：持久化写入比外部调用快（磁盘 IO &lt;&lt; 网络 IO）；消息有唯一标识符（UUID）支持去重；消息类型有明确区分，避免 UI 状态污染对话链。</p>
+<p><strong>源码证据</strong>：<code>src/QueryEngine.ts:436</code>（设计意图注释），<code>src/QueryEngine.ts:451</code>（写入调用早于 API 请求），<code>src/utils/sessionStorage.ts:1408</code>（<code>recordTranscript</code> 的去重实现）</p>
+<hr />
+<h3 id="缓存预热降载cache-prime-on-load"><a class="header" href="#缓存预热降载cache-prime-on-load">缓存预热降载（Cache Prime on Load）</a></h3>
+<p><strong>解决的问题</strong>：恢复路径（<code>--resume</code>）需要读取大型 JSONL 文件；接下来的第一次写入（<code>recordTranscript</code>）又需要同样的数据。两次读取带来不必要的 IO 重复。</p>
+<p><strong>核心做法</strong>：在 <code>getLastSessionLog</code> 读取文件时，顺手把消息 UUID 集合注入 <code>getSessionMessages</code> 的 memoize 缓存。写入时命中缓存，避免第二次文件读取。</p>
+<p><strong>前置条件</strong>：缓存尚未被活跃写入路径填充（守卫条件防止覆盖活跃缓存）；消息 UUID 集合在 load 时已完整可用。</p>
+<p><strong>源码证据</strong>：<code>src/utils/sessionStorage.ts:3887</code>（缓存预热逻辑），<code>src/utils/sessionStorage.ts:3892</code>（守卫条件）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>在每次 AI API 调用前，先写入用户消息</strong>。不要等待响应再写——"先写后执行"是断点续写可靠性的根本前提，而不是可选的优化。</p>
+</li>
+<li>
+<p><strong>区分交互式（await）和脚本式（fire-and-forget）的写入模式</strong>。用户面对终端时，同步等待 4-30ms 换取崩溃可恢复性是合理的代价；脚本化场景中，异步写入 + 不等待可以避免不必要的关键路径开销。</p>
+</li>
+<li>
+<p><strong>用 JSONL 格式（每行一个 JSON）实现 append-only 写入</strong>。JSONL 不需要读取或重写已有内容，天然支持增量追加，在崩溃中间态不会产生半写文件损坏。</p>
+</li>
+<li>
+<p><strong>为持久化层实现基于 UUID 的去重</strong>。写入函数可能被多处调用，幂等性不是自然具备的——必须在写入路径上检查"是否已写过"，而不是依赖调用方的自律。</p>
+</li>
+<li>
+<p><strong>在恢复时预热写入去重缓存</strong>。如果恢复路径和写入去重使用同一份数据（消息 UUID 集合），在恢复时就把数据注入缓存，避免接下来的第一次写入再次读取整个文件。这是一个低成本、高收益的预热优化。</p>
+</li>
+<li>
+<p><strong>明确区分"应该持久化的消息"和"短暂 UI 状态"</strong>。用类型守卫（如 <code>isTranscriptMessage</code>）在写入入口统一过滤，不要依赖各个调用方的手动过滤——类型守卫是"持久化层的单一真相来源"，一处修改覆盖所有路径。</p>
+</li>
+<li>
+<p><strong>如果你在设计支持多人协作的 Agent 系统</strong>，考虑在写入后增加强制 flush 步骤（类似 <code>CLAUDE_CODE_IS_COWORK</code> 的 <code>flushSessionStorage</code>），确保其他参与者能及时看到最新消息，而不是等待缓冲区自然刷新。</p>
+</li>
+</ul>
+<hr />
+<p>会话持久化的下一层是<strong>上下文折叠</strong>（AutoCompact）：当 transcript 增长到接近上下文窗口上限时，Claude Code 如何在保持语义连续性的同时压缩历史？这个触发机制建立在本章介绍的 <code>sessionStorage</code> 之上，详见第 22 章。记忆系统的三层架构（本地记忆、跨会话提取、团队共享）则构成了更高层的持久化语义，详见第 23 章。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part6/ch20.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part6/ch22.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part6/ch20.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part6/ch22.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

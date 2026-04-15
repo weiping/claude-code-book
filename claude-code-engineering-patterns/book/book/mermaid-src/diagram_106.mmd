@@ -1,31 +1,19 @@
-classDiagram
-    class InteractiveHandler {
-        +handleInteractivePermission(params, resolve) void
-        -pushToQueue(callbacks)
-        -runHooks_background()
-        -runClassifier_background()
-        -createResolveOnce(resolve)
-    }
+sequenceDiagram
+    participant REPL as REPL 组件\n（React）
+    participant Bridge as leaderPermissionBridge\n（模块级注册表）
+    participant Runner as inProcessRunner\n（非 React）
 
-    class CoordinatorHandler {
-        +handleCoordinatorPermission(params) Promise~Decision|null~
-        -await runHooks()
-        -await tryClassifier()
-    }
-
-    class SwarmWorkerHandler {
-        +handleSwarmWorkerPermission(params) Promise~Decision|null~
-        -await tryClassifier()
-        -registerPermissionCallback()
-        -sendPermissionRequestViaMailbox()
-    }
-
-    class Caller {
-        +route(agentRole) Decision
-    }
-
-    Caller --> SwarmWorkerHandler : isSwarmWorker
-    Caller --> CoordinatorHandler : isCoordinator
-    Caller --> InteractiveHandler : fallback
-    SwarmWorkerHandler ..> InteractiveHandler : null → fallback
-    CoordinatorHandler ..> InteractiveHandler : null → fallback
+    REPL->>Bridge: registerLeaderToolUseConfirmQueue(setter)
+    REPL->>Bridge: registerLeaderSetToolPermissionContext(setter)
+    Note over Bridge: registeredSetter = setter\nregisteredPermissionContextSetter = setter
+    Runner->>Bridge: getLeaderToolUseConfirmQueue()
+    Bridge-->>Runner: SetToolUseConfirmQueueFn
+    Runner->>REPL: 调用 setter → 推入权限对话框
+    REPL-->>Runner: 用户决定（Promise resolve）
+    Runner->>Bridge: getLeaderSetToolPermissionContext()
+    Bridge-->>Runner: SetToolPermissionContextFn
+    Runner->>REPL: 调用 setter → 写回权限上下文
+    Note over REPL: 组件卸载时 useEffect cleanup
+    REPL->>Bridge: unregisterLeaderToolUseConfirmQueue()
+    REPL->>Bridge: unregisterLeaderSetToolPermissionContext()
+    Note over Bridge: 两个变量重置为 null

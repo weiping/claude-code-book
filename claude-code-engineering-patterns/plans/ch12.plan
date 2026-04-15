@@ -1,172 +1,267 @@
 # 第 12 章写作计划
 
-**批次**：批次 10b（来自 plans/batch.md）
-**章节**：ch12 — 第12章：AI 分类器替代规则引擎——yolo-classifier 的设计哲学
-**风格**：hunter（模式猎人）
+**批次**：批次 3b（来自 plans/batch.md）
+**章节**：ch12 — Effort、Fast Mode 与 Thinking——推理深度控制的三轴
+**风格**：hunter
 
-## 章节意图
-揭示 Claude Code 为何用 AI 模型（`src/utils/permissions/autoModeState.ts`、`bashClassifier.ts`）而非规则集来判断"这个操作是否安全"，以及 `toAutoClassifierInput()` 接口（Tool.ts:556）如何让每个工具自定义安全判断的输入。读者读完后能分析"AI 分类器 vs 规则引擎"的工程成本与收益，并能在自己的系统中做有依据的选型决策。
+## 章节意图（从 spec `## 意图` 提取）
 
-## 通用约束
-**必须**：每个核心概念有源码引用；含Mermaid/ASCII图；跨章引用"详见第X章"；使用"我们"
+揭示 Claude Code 如何通过三个正交维度控制 AI 推理深度：effort 级别（`src/utils/effort.ts`，329行）、fast mode（低延迟优先，`fastMode` 字段）、thinking 模式（`src/utils/thinking.ts`，162行）。读者读完后能理解三轴如何与模型选择交叉作用，并能在自己的 Agent 系统中设计类似的推理深度控制机制。
 
-**禁止**：不引 stub 模块；不空洞表述；无依据猜测标"（推断）"；不重复其他章
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
 
-**排除范围**：PermissionMode 完整四层描述（第11章）、第33章全局安全架构、stubs
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个可渲染的 Mermaid 流程图或 ASCII 架构图
+- 跨章节引用使用"详见第 X 章"格式，不重复解释
+- 使用"我们"而非"用户"/"读者"建立对话感
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现"介绍了…"、"描述了…"、"讲解了…"等空洞表述
+- 不得对源码中没有依据的设计意图做无标注的猜测（必须标注「（推断）」）
+- 不得重复已在其他章节详细讲解的内容（用交叉引用代替）
+
+**排除范围**（从 spec `## 排除范围` 提取）：
+- 第 11 章的模型路由逻辑（引用但不重复）
+- QueryEngine 主循环（第 9 章）
+- src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。触发句：在 Claude Code 中，AI 自己判断"这个 bash 命令危不危险"——不是用 if/else 规则集，而是用一个 AI 分类器调用另一个 AI 模型
-**核心模式**：「模型即规则引擎」（Model-as-Rule-Engine）
-**章末**：模式提炼（2-3个命名模式）+ 你能做什么（5-8条）
-**必须**：≥2处实例；适用范围表；与业界模式对话（规则引擎模式、策略模式）
-**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+**开篇格式**：hunter — 模式预告（150-200字，问题场景+模式预告+价值承诺），⛔ 开篇禁止直接引用源码
+
+**分节组织**：hunter — `## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
+
+**章末结构**：hunter — 模式提炼（3-5 个命名模式，五层结构）
+
+**风格专属必须**：
+- ⛔ 展示至少 2 处源码实例，证明模式的普遍性
+- 包含适用范围表（✓/✗ 格式）
+- 包含权衡与局限分析
+- 包含与 GoF/POSA/EIP 模式的对话
+
+**风格专属禁止**：
+- ⛔ 开篇不得直接引用源码路径或行号
+
+**通用写作铁律**：
+- ⛔ 源码第一：每个断言必须附 `路径:行号` 证据
+- ⛔ 代码无裸露：每个代码块有引入段+解读段
+- ⛔ 数据驱动：用具体数字（effort.ts 329行，thinking.ts 162行）
+- ⛔ 开篇铁律：开篇在全章完成后最后补写
 
 ## 前置阅读清单
 
-| # | 文件路径 | 重点关注 | 行数 |
-|---|---------|---------|------|
-| 1 | src/utils/permissions/bashClassifier.ts | ClassifierResult(5行)、ClassifierBehavior(12行)、classifyBashCommand(40行) | 全文(61行) |
-| 2 | src/utils/permissions/autoModeState.ts | isAutoModeActive(15行)、isAutoModeCircuitBroken(31行) | 全文(39行) |
-| 3 | src/utils/permissions/classifierDecision.ts | isAutoModeAllowlistedTool(96行) | 全文(98行) |
-| 4 | src/Tool.ts | toAutoClassifierInput 注释(556行) | 552-570 |
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/utils/effort.ts | EFFORT_LEVELS、resolveAppliedEffort、getEffortEnvOverride | 行 13-20, 107-180 |
+| 2 | src/utils/thinking.ts | ThinkingConfig 类型、isUltrathinkEnabled、shouldEnableThinkingByDefault | 行 10-35, 146-165 |
+| 3 | src/utils/thinking.ts | modelSupportsThinking、modelSupportsAdaptiveThinking | 行 90-145 |
+| 4 | src/commands/effort/ | effort 命令实现 | 行 1-50 |
 
+验证文件存在：
 ```bash
-ls src/utils/permissions/bashClassifier.ts src/utils/permissions/autoModeState.ts src/utils/permissions/classifierDecision.ts
+ls src/utils/effort.ts src/utils/thinking.ts
 ```
 
 ## Spec 验收场景清单
-**验收优先级**：E > A > B = C > D
+
+**验收优先级**：E > A > B=C > D
 
 ### A. 源码锚点组
-| # | 场景名 | 核心要求 | plan节 | 覆盖 |
-|---|--------|---------|--------|------|
-| A1 | 引用有效性 | 每处实际存在 | 所有节 | ☑ |
-| A2 | 推断标注 | "（推断）" | 模式剖析、权衡 | ☑ |
-| A3 | 不引排除范围 | 不引第11/33章 | 排除范围列出 | ☑ |
-| A4 | 不重复 | 详见第X章 | PermissionMode→11章 | ☑ |
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| A1 | 源码引用有效性 | 每处引用实际存在 | 章节骨架各节 | ☐ |
+| A2 | 推断有标注 | 推断标"（推断）" | 全章 | ☐ |
+| A3 | 不引用排除范围 | 无 stub/第6/8章内容 | 排除范围 | ☐ |
+| A4 | 不重复其他章 | 用"详见第 6/8 章" | 交叉引用处 | ☐ |
 
 ### B. 语言精确性组
-| # | 场景名 | 要求 | plan节 | 覆盖 |
-|---|--------|------|--------|------|
-| B1 | 禁空洞表述 | 无"介绍了" | 全章 | ☑ |
-| B2 | 数据驱动 | 具体数字 | 节12.3 | ☑ |
-| B3 | 术语标注 | 首次标注原文 | 所有术语 | ☑ |
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| B1 | 禁止空洞表述 | 无"介绍了"等 | 全章 | ☐ |
+| B2 | 数据驱动 | 用具体参数（budgetTokens）和行数 | 全章 | ☐ |
+| B3 | 术语标准化 | 首次标注原文 | 全章 | ☐ |
 
 ### C. 结构完整性组
-| # | 场景名 | 要求 | plan节 | 覆盖 |
-|---|--------|------|--------|------|
-| C1 | 递进层次 | hunter递进 | 全章骨架 | ☑ |
-| C2 | hunter专属结构 | 按spec | 全章骨架 | ☑ |
-| C3 | 核心主张 | "模型即规则引擎" | 模式剖析 | ☑ |
-| C4 | 权衡说明 | AI分类器vs规则引擎 | 节12.5 | ☑ |
-| C5 | 行动建议 | 5-8条 | 你能做什么 | ☑ |
-| C6 | 章节链接 | 前→11章，后→33章 | 开篇、章末 | ☑ |
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| C1 | 概念递进层次 | hunter: 问题→实例→模式 | 节 12.1→7.2→7.3 | ☐ |
+| C2 | hunter 专属结构 | 模式命名框存在 | 节 12.4 | ☐ |
+| C3 | 核心主张可提炼 | 可提炼"正交推理深度控制"模式 | 章末 | ☐ |
+| C4 | 设计权衡有说明 | 三轴正交的代价分析 | 节 12.6 | ☐ |
+| C5 | 章末行动建议 | 5-8 条 | 章末 | ☐ |
+| C6 | 章节间链接 | 链接第 6/8 章 | 各节 | ☐ |
 
 ### D. 图表与代码组
-| # | 场景名 | 要求 | plan节 | 覆盖 |
-|---|--------|------|--------|------|
-| D1 | 图表达标 | ≥2图 | 节12.1流程图+12.5对比表 | ☑ |
-| D2 | 图表标注 | 上标下说 | 所有图 | ☑ |
-| D3 | 代码≤25行 | 前后说明 | 所有代码 | ☑ |
-| D4 | 源码注释 | 先引注释 | 节12.3 | ☑ |
-| D5 | hunter专属 | 适用范围表+模式框 | 节12.5+章末 | ☑ |
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| D1 | 图表可渲染 | ≥2 个图表 | 图表清单 | ☐ |
+| D2 | 图表标注格式 | 上方有 `**图 N-X：标题**` | 图表清单 | ☐ |
+| D3 | 代码片段长度 | ≤25 行，前后有说明 | 源码实例节 | ☐ |
+| D4 | 源码注释引用 | 先引注释+行号，再展开 | 节 12.2 | ☐ |
+| D5 | hunter 专属图表 | 适用范围表（✓/✗） | 节 12.5 | ☐ |
 
-### E. 风格符合性组（⛔最高优先级）
-| # | 场景名 | 要求 | plan节 | 覆盖 |
-|---|--------|------|--------|------|
-| E1 | hunter开篇 | 150-200字不引源码 | 开篇 | ☑ |
-| E2 | 对话感 | "我们"，有设问 | 全章 | ☑ |
-| E3 | 信息突出 | 加粗，表格对比 | 关键结论 | ☑ |
+### E. 风格符合性组（最高优先级）
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| E1 | hunter 开篇格式 | 150-200字，三要素，不引源码 | 开篇节 | ☐ |
+| E2 | 读者对话感 | "我们"，设问句 | 全章 | ☐ |
+| E3 | 关键信息突出 | 三轴对比表格 | 节 12.1 | ☐ |
 
 ## 章节骨架
 
-### 开篇（最后补写，⛔不引源码）
-触发句：当 AI 被要求执行 `rm -rf /tmp/project` 时，谁来判断这是危险操作？Claude Code 的答案是：另一个 AI 模型——这就是"模型即规则引擎"模式。
+### 开篇（hunter，最后补写）
+- 问题场景：AI Agent 的"思考深度"不只一个维度——有时要快（fast mode），有时要精（effort level），有时要深度推理（thinking）。如果这三个维度互相耦合，改一个就会破坏其他两个。
+- 模式预告：我们在代码库中发现了**正交推理深度控制**（Orthogonal Reasoning Depth Control）——三轴独立可调，互不干扰
+- 价值承诺：读完本章，你能为自己的 Agent 系统设计独立的速度/成本/深度控制轴
 
-### 节 12.1：问题
-- 核心主张：**规则引擎的核心问题是"枚举不完"——bash 命令的危险性取决于上下文，任何规则集都会有漏洞**
-- 源码锚点：`src/utils/permissions/bashClassifier.ts:12`（ClassifierBehavior：'deny'|'ask'|'allow'，只有三个输出值）
-- 概念层次：定义（规则引擎vs AI分类器）、设计意图（AI理解语义而非规则匹配）、实际案例（同一命令在不同上下文下的危险性差异）
-- 包含元素：**图12-1** — 规则引擎 vs AI 分类器决策流对比
-- 估计字数：600-800字
+### 节 12.1：问题——推理深度的多维困境
+- 核心主张：Agent 推理深度有三个独立维度：速度（fast mode）、成本（effort level）、深度（thinking budget）——混为一谈会导致无法精细控制
+- 源码锚点：`src/utils/effort.ts:13` — `EFFORT_LEVELS = ['low', 'medium', 'high', 'max']`
+- 概念层次：
+  - **层次1 定义**：三轴的含义和控制范围
+  - **层次2 设计意图**：三轴正交意味着可以独立组合（低 effort + thinking，高 effort + fast 等）
+- 包含元素：三轴对比表格（**图 7-1**）
 
-### 节 12.2：源码实例1 — bashClassifier.ts 的结构
-- 核心主张：**`classifyBashCommand` 是 stub 实现（返回 matches:false）——说明这是功能开关，AI 分类器默认关闭，只有特定环境启用**
+| 控制轴 | 文件 | 主要参数 | 影响范围 | 源码锚点 |
+|-------|------|---------|---------|---------|
+| Effort 级别 | effort.ts | EFFORT_LEVELS: low/medium/high/max | API 请求 effort 参数 | effort.ts:13 |
+| Fast Mode | 各处 fastMode 字段 | boolean | 模型选择/超时 | （运行时注入）|
+| Thinking | thinking.ts | budgetTokens | 思考 token 预算 | thinking.ts:10 |
+
+- 估计字数：800-1000 字
+
+### 节 12.2：源码实例 1——resolveAppliedEffort 的优先级链
+- 核心主张：`resolveAppliedEffort` 实现了 effort 的三层优先级：env 覆盖 > appState 值 > 模型默认
 - 源码锚点：
-  - `src/utils/permissions/bashClassifier.ts:5`（type ClassifierResult = { matches, confidence, reason }）
-  - `src/utils/permissions/bashClassifier.ts:40`（classifyBashCommand 实现——返回 'This feature is disabled'）
-  - `src/utils/permissions/bashClassifier.ts:24`（isClassifierPermissionsEnabled()）
-- 概念层次：ClassifierResult 三字段意义、confidence 字段（high/medium/low）、feature flag 控制
-- 估计字数：700-900字
+  - `src/utils/effort.ts:136` — getEffortEnvOverride（注释："env CLAUDE_CODE_EFFORT_LEVEL → appState → model default"）
+  - `src/utils/effort.ts:152` — resolveAppliedEffort 函数
+- 概念层次：
+  - **层次1 实例**：resolveAppliedEffort 的 cascade 逻辑
+  - **层次2 模式特征**：与 model.ts 的优先级链同构（同一 hunter 模式的另一实例）
+- 权衡分析：env 作为最高优先级——允许 CI/CD 环境无需修改代码就强制低 effort
+- 包含元素：resolveAppliedEffort 代码片段（≤20行）
+- 估计字数：900-1100 字
 
-### 节 12.3：源码实例2 — toAutoClassifierInput 接口（工具如何自定义分类器输入）
-- 核心主张：**`toAutoClassifierInput()` 是工具的"分类器视角"接口——每个工具自己决定暴露给分类器什么信息，返回空字符串表示不参与安全审查**
+### 节 12.3：源码实例 2（变体）——thinking 的类型化配置
+- 核心主张：`ThinkingConfig` 用 union type 表达三种状态（disabled/enabled/adaptive），比布尔值更精确
 - 源码锚点：
-  - `src/Tool.ts:556`（toAutoClassifierInput 注释，含设计意图："Return '' to skip this tool in the classifier transcript"）
-  - `src/utils/permissions/classifierDecision.ts:96`（isAutoModeAllowlistedTool — 工具白名单）
-  - `src/utils/permissions/autoModeState.ts:15`（isAutoModeActive — 全局 auto mode 状态）
-- 概念层次：接口职责、默认返回值语义、工具自主性
-- 估计字数：700-900字
+  - `src/utils/thinking.ts:10` — ThinkingConfig type（union of disabled | {type: enabled, budgetTokens} | ...）
+  - `src/utils/thinking.ts:146` — shouldEnableThinkingByDefault
+  - `src/utils/thinking.ts:90` — modelSupportsThinking（模型能力检查）
+- 概念层次：
+  - **层次1 实例**：ThinkingConfig union type 定义
+  - **层次2 对比**：boolean vs union type——union 类型可以携带参数（budgetTokens），boolean 不能
+- 权衡分析：adaptive thinking 需要额外的模型支持检查（modelSupportsAdaptiveThinking），增加了路由复杂度
+- 估计字数：800-1000 字
 
-### 节 12.4：模式剖析
-- 核心主张：**"模型即规则引擎"的核心是将"规则"从代码移入模型——用自然语言描述"什么是危险的"比写 if/else 规则集更灵活也更容易维护**
-- 估计字数：500-700字
+### 节 12.4：模式剖析——正交推理深度控制
+- 模式命名框：
+  ```
+  模式名称：正交推理深度控制（Orthogonal Reasoning Depth Control）
+  问题：Agent 推理的速度、成本、深度需要独立控制，混为一谈会限制灵活性
+  解决方案：三轴独立定义（effort/fast/thinking），各有优先级链，组合时互不干扰
+  前置条件：底层模型 API 支持分别控制这三个维度
+  源码锚点：src/utils/effort.ts:152 + src/utils/thinking.ts:10
+  ```
+- 估计字数：600-800 字
 
-### 节 12.5：适用范围（含表格）
-| 场景 | 适用性 | 理由 | 替代方案 |
-|------|--------|------|---------|
-| 操作危险性取决于上下文语义 | ✓ | AI 理解语义，规则引擎不懂上下文 | 复杂规则集（难维护）|
-| 需要覆盖"长尾"边缘案例 | ✓ | AI 泛化能力优于枚举规则 | 机器学习分类器 |
-| 延迟敏感场景（<100ms决策）| ✗ | AI 模型调用有网络延迟 | 规则引擎（本地判断）|
-| 需要可审计/可解释的决策 | ✗（谨慎）| AI 推理不透明（推断）| 规则引擎（每条规则可查）|
+### 节 12.5：适用范围
+
+| 场景 | 适用 | 理由 |
+|------|------|------|
+| Agent 有多种任务复杂度 | ✓ | 轻任务低 effort，复杂任务高 thinking budget |
+| 需要 CI/CD 环境强制低成本 | ✓ | env override 机制 |
+| 只有单一模型且无参数控制 | ✗ | 三轴无意义，直接硬编码参数 |
+| 实时交互场景 | ✓ | fast mode 降低延迟，effort 设为 low |
+| 批处理/离线场景 | ✓ | effort 设为 max，关闭 fast mode |
+
+- 估计字数：400-600 字
 
 ### 节 12.6：权衡与局限
-- 延迟（网络调用）、费用（token消耗）、不确定性（同一命令可能得到不同判断）
-- 估计字数：500-700字
+- 三轴正交的代价：需要维护 3 套优先级链，测试用例数量是单轴的 N^3 倍
+- fast mode 与 thinking 的隐式约束：fast mode 通常隐含禁用 thinking（推断，需标注）
+- 潜在风险：三轴组合产生 NaN 个参数组合，需要边界检查
+- 估计字数：500-700 字
 
 ### 节 12.7：与已知模式的对话
-- 与 GoF 策略模式：相同——可替换的判断算法；不同——策略模式的算法是确定性的，AI 分类器是概率性的
-- 与规则引擎（如 Drools）：相同——外部化判断逻辑；不同——规则引擎是声明式规则，AI 分类器是隐式神经网络权重
-- 估计字数：500-700字
+- 对比：EIP Routing Slip（路由单）——预定义一组处理步骤，运行时按顺序执行
+- Claude Code 的选择：三轴不是顺序步骤而是独立参数——更接近"多维度配置对象"而非"路由单"
+- 另一对比：GoF Strategy——每轴可以看作一个 Strategy，但三轴是同级组合而非替换
+- 估计字数：400-600 字
 
-### 章末：模式提炼
-```
-模式名称：模型即规则引擎（Model-as-Rule-Engine）
-问题：安全判断需要理解自然语言上下文，规则集无法枚举所有危险场景
-解决方案：将判断任务委托给 AI 模型，通过 toAutoClassifierInput() 定义工具的安全语境输入
-前置条件：判断逻辑可以用自然语言表达，延迟和成本可接受
-源码锚点：src/utils/permissions/bashClassifier.ts:40, src/Tool.ts:556
-```
+### 章末结构：模式提炼
+
+**模式 1：正交推理深度控制（Orthogonal Reasoning Depth Control）**
+- 解决问题：Agent 推理的多维度需要独立控制
+- 核心做法：三轴各自有独立的类型定义（EFFORT_LEVELS、ThinkingConfig）和优先级链
+- 源码证据：`src/utils/effort.ts:13` + `src/utils/thinking.ts:10`
+
+**模式 2：环境变量作为最高优先级覆盖（Env-as-Top-Override）**
+- 解决问题：CI/CD 环境需要在不修改代码的情况下强制特定参数
+- 核心做法：每个配置函数的第一步检查对应的 env 变量，找到即返回
+- 源码证据：`src/utils/effort.ts:136`（CLAUDE_CODE_EFFORT_LEVEL env 检查）
+
+**模式 3：类型化联合状态（Typed Union State）**
+- 解决问题：布尔标志无法携带额外参数（如 thinking 的 budgetTokens）
+- 核心做法：用 union type 表达状态集合，每个状态可携带不同字段
+- 源码证据：`src/utils/thinking.ts:10`（ThinkingConfig union type）
 
 ### 章末：你能做什么
-1. 用 toAutoClassifierInput() 接口让工具声明"安全相关输入"，而非在框架层推断
-2. 为 AI 分类器实现 feature flag（isClassifierPermissionsEnabled），默认关闭确保性能
-3. 将 ClassifierResult 设计为三字段（matches/confidence/reason），reason 用于解释给用户
-4. 为 AI 分类器实现白名单（isAutoModeAllowlistedTool），减少对无需检查工具的调用
-5. 用电路断路器（isAutoModeCircuitBroken）防止分类器故障导致主功能中断
+
+1. 将 Agent 推理控制拆分为 3 个正交维度：速度/成本/深度，各自独立定义枚举和优先级链
+2. 为每个控制维度添加 env 变量覆盖（最高优先级），方便 CI 环境无侵入调优
+3. 用 union type 而非 boolean 表达多态状态（如 thinking 的三种模式），让参数在类型层面自描述
+4. 设计优先级链时，在函数注释中明确写出优先级顺序（参考 effort.ts:136 的注释格式）
+5. 在添加新控制维度之前，先验证底层 API 是否支持对应参数
+6. 为三轴组合写边界测试：确认 fast mode + max effort 等极端组合不会产生冲突行为
 
 ## 图表清单
-| # | 标题 | 类型 | 描述 | 对应节 |
-|---|------|------|------|--------|
-| 图12-1 | 规则引擎 vs AI分类器决策流 | Mermaid flowchart | 两种判断路径对比 | 12.1 |
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图 7-1 | 三轴推理控制对比表 | Markdown 表格 | 三轴（effort/fast/thinking）的文件/参数/影响范围对比 | 7.1 |
+| 图 7-2 | resolveAppliedEffort 三层优先级 | Mermaid flowchart | env → appState → model default 的 cascade 决策树 | 7.2 |
 
 ## 写作顺序
-1. ⛔读spec + DESIGN.md；2.读前置文件；3.写12.1；4.写12.2；5.写12.3；6.写12.4；7.写12.5适用范围表；8.写12.6权衡；9.写12.7与已知模式；10.写章末+你能做什么；11.最后补写开篇
+
+1. 确认 STYLE_ID=hunter + 读取完整 spec（specs/ch12.spec）
+2. 先写节 12.2（resolveAppliedEffort 优先级链实例）
+3. 再写节 12.3（ThinkingConfig union type 变体）
+4. 写节 12.1（问题节 + 三轴对比表）
+5. 写节 12.4-7.7
+6. 画图表
+7. 章末模式提炼
+8. "你能做什么"
+9. 最后补写开篇
 
 ## 写作前 checklist
+
 ```bash
-sed -n '5p' src/utils/permissions/bashClassifier.ts    # ClassifierResult
-sed -n '12p' src/utils/permissions/bashClassifier.ts   # ClassifierBehavior
-sed -n '24p' src/utils/permissions/bashClassifier.ts   # isClassifierPermissionsEnabled
-sed -n '40p' src/utils/permissions/bashClassifier.ts   # classifyBashCommand
-sed -n '15p' src/utils/permissions/autoModeState.ts    # isAutoModeActive
-sed -n '96p' src/utils/permissions/classifierDecision.ts  # isAutoModeAllowlistedTool
-sed -n '556p' src/Tool.ts                              # toAutoClassifierInput 注释
+sed -n '13p' src/utils/effort.ts      # EFFORT_LEVELS
+sed -n '136p' src/utils/effort.ts     # getEffortEnvOverride
+sed -n '152p' src/utils/effort.ts     # resolveAppliedEffort
+sed -n '10p' src/utils/thinking.ts    # ThinkingConfig
+sed -n '146p' src/utils/thinking.ts   # shouldEnableThinkingByDefault
+sed -n '90p' src/utils/thinking.ts    # modelSupportsThinking
 ```
 
 ## ⛔ Spec 一致性声明
-| # | 提取项 | 写入plan | 对应节 |
-|---|--------|---------|--------|
-| 1-16 | 全部16项 | 均 ✓ | 各对应节 |
 
-**⛔ 所有项目均已勾选 ✓，plan 审查通过。**
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用约束 |
+| 3 | 通用约束·禁止 | ✓ | 通用约束 |
+| 4 | 风格专属必须 | ✓ | 风格专属写作要求 |
+| 5 | 风格专属禁止 | ✓ | 风格专属写作要求 |
+| 6 | 章节结构 | ✓ | 章节骨架 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | Spec 验收场景清单头部 |
+| 11-15 | 验收场景 A/B/C/D/E | ✓ | 各组表格 |
+| 16 | 排除范围 | ✓ | 通用约束→排除范围 |
+
+**验收场景覆盖统计**：A 组 4/4 + B 组 3/3 + C 组 6/6 + D 组 5/5 + E 组 3/3 = **21/21**

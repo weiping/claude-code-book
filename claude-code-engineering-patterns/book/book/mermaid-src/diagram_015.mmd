@@ -1,24 +1,12 @@
-classDiagram
-    class CommandBase {
-        +name: string
-        +description: string
-        +availability?: CommandAvailability[]
-        +isEnabled?() boolean
-        +isHidden?: boolean
-    }
-    class LocalCommand {
-        +type: local
-        +supportsNonInteractive: boolean
-        +load() Promise
-    }
-    class PromptCommand {
-        +type: prompt
-        +getPromptForCommand() Promise
-    }
-    class LocalJSXCommand {
-        +type: local-jsx
-        +load() Promise
-    }
-    CommandBase <|-- LocalCommand
-    CommandBase <|-- PromptCommand
-    CommandBase <|-- LocalJSXCommand
+flowchart TD
+    build_time["构建时: feature()"]
+    avail["运行时: availability 检查\nmeetsAvailabilityRequirement()"]
+    enabled["运行时: isEnabled() 检查"]
+    visible["命令对用户可见"]
+
+    build_time -->|"flag=false: 代码被 DCE 删除"| gone["命令不存在于二进制"]
+    build_time -->|"flag=true: 代码保留"| avail
+    avail -->|"用户类型不匹配: 隐藏"| hidden["命令存在但不可见"]
+    avail -->|"用户类型匹配"| enabled
+    enabled -->|"条件不满足: 隐藏"| hidden
+    enabled -->|"条件满足"| visible

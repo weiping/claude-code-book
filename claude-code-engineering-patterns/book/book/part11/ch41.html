@@ -1,0 +1,491 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 41 章：Plugin 生命周期——发现、安装、更新与卸载 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-41-章plugin-生命周期安装更新卸载与状态分层"><a class="header" href="#第-41-章plugin-生命周期安装更新卸载与状态分层">第 41 章：Plugin 生命周期——安装、更新、卸载与状态分层</a></h1>
+<hr />
+<p>运行中的工具升级自己的插件，会遭遇一个经典悖论：后台更新必须修改磁盘状态，而当前会话必须保持稳定。如果安装完成后立即切换到新版本，正在执行的工具调用会指向一个突然消失的目录；如果永远不切换，更新就没有意义。更棘手的是，卸载还需要分辨「这个插件在某个项目里安装了，在另一个项目里也装了」——移除一个项目的安装不该动另一个项目的文件。</p>
+<p>Claude Code 用<strong>会话-磁盘双缓冲</strong>（Session-Disk Dual Buffer）模式解决了这个悖论：会话快照在启动时冻结，后台更新只写磁盘，两层状态各司其职，<code>hasPendingUpdates()</code> 检测到分叉时通知用户重启。读完本章，你将理解 <code>installedPluginsManager.ts</code> 的 1268 行代码如何用两个模块级变量和三种读取路径，实现插件从发现、安装、后台更新到卸载的完整生命周期，并能在自己的可扩展系统中设计类似的双缓冲状态管理器。</p>
+<hr />
+<h2 id="问题三种读者一份状态"><a class="header" href="#问题三种读者一份状态">问题：三种读者，一份状态</a></h2>
+<p>插件安装系统需要同时服务三种读取场景：</p>
+<p><strong>场景一：当前会话</strong>的工具加载器要找「现在运行的插件在哪个目录」——它需要一个启动时冻结的快照，后台更新不能干扰它。</p>
+<p><strong>场景二：后台自动更新器</strong>要检查磁盘上是否已经写入了新版本——它需要绕过所有缓存直接读磁盘，因为快照正是它要「超过」的那层。</p>
+<p><strong>场景三：UI 和版本检查器</strong>要知道「磁盘和内存是否发生了分叉」——它需要同时读两层，然后对比。</p>
+<p>三种读者，三种需求，但底层只有一份 <code>installed_plugins.json</code>。</p>
+<p><strong>图 41-1：插件生命周期全景——从初始化到卸载</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; init: 启动
+    init --&gt; snapshot: initializeVersionedPlugins\n（V1→V2迁移 + 快照）
+    snapshot --&gt; installed: addInstalledPlugin\n（安装写入磁盘）
+    installed --&gt; diverged: updateInstallationPathOnDisk\n（后台更新仅写磁盘）
+    diverged --&gt; synced: 用户重启 / reload-plugins\n（快照与磁盘重新同步）
+    installed --&gt; scope_removed: removePluginInstallation\n（按 scope 移除）
+    scope_removed --&gt; last_scope: isLastScope = true\n（所有 scope 都移除）
+    scope_removed --&gt; installed: isLastScope = false\n（其他 scope 仍在）
+    last_scope --&gt; cleanup: markPluginVersionOrphaned\n+ deletePluginOptions\n+ deletePluginDataDir
+    cleanup --&gt; [*]
+    synced --&gt; installed
+</code></pre>
+<p>生命周期的核心不是「状态机的节点数量」，而是<strong>两层缓冲如何分工</strong>：<code>inMemoryInstalledPlugins</code>（会话快照）与 <code>installedPluginsCacheV2</code>（读缓存）在不同时刻扮演不同角色——后者随磁盘变化失效，前者只在启动时初始化一次。</p>
+<hr />
+<h2 id="源码实例-1--双缓冲初始化两个变量三条读路径"><a class="header" href="#源码实例-1--双缓冲初始化两个变量三条读路径">源码实例 1 — 双缓冲初始化：两个变量，三条读路径</a></h2>
+<p><code>installedPluginsManager.ts</code> 在模块顶部声明了两个模块级变量，它们是整个双缓冲机制的物质基础：</p>
+<pre><code class="language-typescript">// 读缓存：随磁盘写入失效（clearInstalledPluginsCache 时清空）
+let installedPluginsCacheV2: InstalledPluginsFileV2 | null = null
+
+// 会话快照：启动时初始化一次，后台操作不修改它
+let inMemoryInstalledPlugins: InstalledPluginsFileV2 | null = null
+</code></pre>
+<p><strong>源码引用：</strong> <code>src/utils/plugins/installedPluginsManager.ts:66</code></p>
+<p>两个变量指向相同的数据结构，但生命周期完全不同。它们分别被三个不同的读取函数使用，形成三条读路径：</p>
+<p><strong>路径 A：会话读取</strong>（<code>getInMemoryInstalledPlugins</code>）——初始化后冻结</p>
+<pre><code class="language-typescript">export function getInMemoryInstalledPlugins(): InstalledPluginsFileV2 {
+  if (inMemoryInstalledPlugins === null) {
+    inMemoryInstalledPlugins = loadInstalledPluginsV2() // 第一次调用时从磁盘加载
+  }
+  return inMemoryInstalledPlugins // 后续返回同一个对象引用
+}
+</code></pre>
+<p><strong>源码引用：</strong> <code>src/utils/plugins/installedPluginsManager.ts:488</code></p>
+<p><strong>路径 B：缓存读取</strong>（<code>loadInstalledPluginsV2</code>）——读缓存，写入后失效</p>
+<pre><code class="language-typescript">export function loadInstalledPluginsV2(): InstalledPluginsFileV2 {
+  if (installedPluginsCacheV2 !== null) {
+    return installedPluginsCacheV2 // 命中缓存
+  }
+  // 从磁盘读取并写入缓存
+  const rawData = readInstalledPluginsFileRaw()
+  // ... 解析并存入 installedPluginsCacheV2
+}
+</code></pre>
+<p><strong>路径 C：磁盘直读</strong>（<code>loadInstalledPluginsFromDisk</code>）——完全绕过缓存</p>
+<pre><code class="language-typescript">export function loadInstalledPluginsFromDisk(): InstalledPluginsFileV2 {
+  // 不检查任何缓存，直接读文件
+  const rawData = readInstalledPluginsFileRaw()
+  if (rawData) {
+    if (rawData.version === 2) {
+      return InstalledPluginsFileSchemaV2().parse(rawData.data)
+    }
+    const v1Data = InstalledPluginsFileSchemaV1().parse(rawData.data)
+    return migrateV1ToV2(v1Data)
+  }
+  return { version: 2, plugins: {} }
+}
+</code></pre>
+<p><strong>源码引用：</strong> <code>src/utils/plugins/installedPluginsManager.ts:502</code></p>
+<p>注释明确写道：「Used by background updater to check for changes without affecting the running session's view.」这是三条路径的核心差异——路径 C 专门为后台更新器设计，它的存在就是为了让写入者（更新器）和读取者（会话）操作不同的对象引用。</p>
+<p><strong>图 41-2：三条读取路径与两个缓冲层的关系</strong></p>
+<pre><code>                 ┌─────────────────────────────────────────┐
+                 │        installed_plugins.json (磁盘)    │
+                 └──────────────────┬──────────────────────┘
+                                    │
+          ┌─────────────────────────┼─────────────────────────┐
+          │                         │                         │
+   路径C: 直读                  路径B: 缓存读             路径A: 会话读
+loadInstalledPluginsFromDisk  loadInstalledPluginsV2   getInMemoryInstalledPlugins
+          │                         │                         │
+          │                  installedPluginsCacheV2    inMemoryInstalledPlugins
+          │                  (写入时 null → 失效)         (启动时初始化，不再更新)
+          │                         │                         │
+          ▼                         ▼                         ▼
+    后台更新器                  UI / 查询                 工具加载器
+  (跨越快照写磁盘)              (读最新磁盘状态)            (会话稳定视图)
+</code></pre>
+<p><strong>后台更新</strong>路径是双缓冲设计最精妙的体现。<code>updateInstallationPathOnDisk</code> 只修改磁盘和读缓存，刻意不碰会话快照：</p>
+<pre><code class="language-typescript">export function updateInstallationPathOnDisk(
+  pluginId: string,
+  scope: PersistableScope,
+  projectPath: string | undefined,
+  newPath: string,
+  newVersion: string,
+  gitCommitSha?: string,
+): void {
+  const diskData = loadInstalledPluginsFromDisk() // 路径C：直读磁盘
+  // ... 修改 diskData ...
+  writeFileSync_DEPRECATED(filePath, jsonStringify(diskData, null, 2), { ... })
+
+  installedPluginsCacheV2 = null // 读缓存失效
+
+  // Note: inMemoryInstalledPlugins is NOT updated  ← 关键注释
+}
+</code></pre>
+<p><strong>源码引用：</strong> <code>src/utils/plugins/installedPluginsManager.ts:537</code></p>
+<p>那一行注释「is NOT updated」不是遗忘，是设计意图的明确表达。<code>hasPendingUpdates()</code> 正是依赖这个分叉来检测是否有待生效的更新：</p>
+<pre><code class="language-typescript">export function hasPendingUpdates(): boolean {
+  const memoryState = getInMemoryInstalledPlugins()  // 启动时快照
+  const diskState = loadInstalledPluginsFromDisk()    // 当前磁盘
+
+  for (const [pluginId, diskInstallations] of Object.entries(diskState.plugins)) {
+    const memoryInstallations = memoryState.plugins[pluginId]
+    if (!memoryInstallations) continue
+    for (const diskEntry of diskInstallations) {
+      const memoryEntry = memoryInstallations.find(
+        m =&gt; m.scope === diskEntry.scope &amp;&amp; m.projectPath === diskEntry.projectPath,
+      )
+      if (memoryEntry &amp;&amp; memoryEntry.installPath !== diskEntry.installPath) {
+        return true // 磁盘有不同版本 → 有待生效更新
+      }
+    }
+  }
+  return false
+}
+</code></pre>
+<p><strong>源码引用：</strong> <code>src/utils/plugins/installedPluginsManager.ts:595</code></p>
+<p><strong>两层状态的分叉</strong> 就是「后台更新已完成，等待重启生效」的信号。这个设计让更新器可以随时把新版本写入磁盘，而不打断当前会话的任何工具调用。</p>
+<hr />
+<h2 id="源码实例-2变体-卸载流多-scope-协调与逐层清理"><a class="header" href="#源码实例-2变体-卸载流多-scope-协调与逐层清理">源码实例 2（变体）— 卸载流：多 Scope 协调与逐层清理</a></h2>
+<p>为什么卸载比安装复杂？因为同一个插件可以在多个 scope 下安装：用户全局安装了它（<code>scope: 'user'</code>），同时某个项目又安装了它（<code>scope: 'project'</code>）。卸载「用户安装」不应该删除文件——文件还被项目安装用着。</p>
+<p><code>installedPluginsManager.ts</code> 的 V2 格式用<strong>每插件 scope 数组</strong>解决了这个问题：</p>
+<pre><code class="language-typescript">// V2 格式：每个 pluginId 对应一个安装记录数组（每条记录是一个 scope）
+type InstalledPluginsFileV2 = {
+  version: 2
+  plugins: Record&lt;string, PluginInstallationEntry[]&gt;
+}
+
+// 按 scope 移除单条记录（不影响其他 scope）
+export function removePluginInstallation(
+  pluginId: string,
+  scope: PersistableScope,
+  projectPath?: string,
+): void {
+  const data = loadInstalledPluginsFromDisk()
+  const installations = data.plugins[pluginId]
+  if (!installations) return
+
+  data.plugins[pluginId] = installations.filter(
+    entry =&gt; !(entry.scope === scope &amp;&amp; entry.projectPath === projectPath),
+  )
+
+  // 所有 scope 都移除后，整个插件条目删除
+  if (data.plugins[pluginId].length === 0) {
+    delete data.plugins[pluginId]
+  }
+
+  saveInstalledPluginsV2(data)
+}
+</code></pre>
+<p><strong>源码引用：</strong> <code>src/utils/plugins/installedPluginsManager.ts:452</code></p>
+<p><code>removePluginInstallation</code> 只管注册表，不管文件。真正的资源清理发生在更上层的 <code>uninstallPluginOp</code>（<code>src/services/plugins/pluginOperations.ts:427</code>），它在调用 <code>removePluginInstallation</code> 之后，检查是否这是最后一个 scope：</p>
+<pre><code class="language-typescript">// 来自 pluginOperations.ts:516
+removePluginInstallation(pluginId, scope, projectPath)
+
+const updatedData = loadInstalledPluginsV2()
+const remainingInstallations = updatedData.plugins[pluginId]
+const isLastScope =
+  !remainingInstallations || remainingInstallations.length === 0
+
+if (isLastScope &amp;&amp; installPath) {
+  await markPluginVersionOrphaned(installPath)  // 标记为孤立（GC 候选）
+}
+if (isLastScope) {
+  deletePluginOptions(pluginId)                 // 清除配置项和密钥
+  if (deleteDataDir) {
+    await deletePluginDataDir(pluginId)         // 清除数据目录
+  }
+}
+</code></pre>
+<p><strong>源码引用：</strong> <code>src/services/plugins/pluginOperations.ts:519</code></p>
+<p>注释解释了为什么 <code>deletePluginOptions</code> 和 <code>deletePluginCache</code> 有不同的触发条件：「Before this, uninstalling left orphaned entries in settings.pluginConfigs... forever.」选项和密钥是不与文件路径绑定的键值记录，只有在所有 scope 都移除时才能安全删除——否则「此 scope 已卸载但彼 scope 还在用」的情况下就会丢失配置。</p>
+<p>卸载时还有一个<strong>反向依赖检查</strong>：</p>
+<pre><code class="language-typescript">// pluginOperations.ts:543
+const reverseDependents = findReverseDependents(pluginId, allPlugins)
+const depWarn = formatReverseDependentsSuffix(reverseDependents)
+</code></pre>
+<p>注释写道：「Blocking creates tombstones — can't tear down a graph with a delisted plugin.」检查发现依赖方时只<strong>警告</strong>，不<strong>阻断</strong>——否则一个已被下架的插件会让依赖它的所有插件永远无法卸载，造成不可解开的依赖死锁。</p>
+<p><strong>图 41-3：卸载流程的 isLastScope 分叉</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    start[uninstallPluginOp] --&gt; settings[从 settings.json 删除 enabledPlugins 条目]
+    settings --&gt; registry[removePluginInstallation\n按 scope+projectPath 过滤]
+    registry --&gt; check{isLastScope?}
+    check --&gt;|是| orphan[markPluginVersionOrphaned\n标记目录为 GC 候选]
+    orphan --&gt; opts[deletePluginOptions\n清除配置+密钥]
+    opts --&gt; data[deletePluginDataDir\n清除数据目录]
+    data --&gt; warn[检查反向依赖 → 仅警告]
+    check --&gt;|否| warn
+    warn --&gt; done[返回 success 结果]
+</code></pre>
+<p>与安装时的<strong>双缓冲写路径</strong>不同，卸载直接通过 <code>loadInstalledPluginsFromDisk</code> 操作磁盘。原因是卸载是用户主动发起的明确意图，无需「后台悄悄完成、下次重启生效」的缓冲——用户按下卸载，期望的是立即生效。</p>
+<hr />
+<h2 id="模式剖析"><a class="header" href="#模式剖析">模式剖析</a></h2>
+<p>会话-磁盘双缓冲模式的四个核心要素：</p>
+<p><strong>第一：两个模块级变量，明确区分职责</strong></p>
+<p><code>installedPluginsCacheV2</code>（读缓存）随每次磁盘写入失效，确保非后台读取者获得最新数据。<code>inMemoryInstalledPlugins</code>（会话快照）只在 <code>initializeVersionedPlugins</code> 调用时初始化，在整个会话生命周期内保持不变。两者指向同类数据结构，但失效策略完全不同。</p>
+<p><strong>第二：「磁盘直读」路径作为逃逸通道</strong></p>
+<p><code>loadInstalledPluginsFromDisk</code> 不经过任何缓存，专门给需要「超过快照」的操作使用——后台更新器写入新版本后，会调用此路径验证写入结果；<code>hasPendingUpdates</code> 调用此路径与快照比对。这个逃逸通道使缓冲架构不会变成「信息孤岛」。</p>
+<p><strong>第三：写入时缓存失效，不更新快照</strong></p>
+<p><code>saveInstalledPluginsV2</code> 在保存后设置 <code>installedPluginsCacheV2 = data</code>（写入缓存），但不更新 <code>inMemoryInstalledPlugins</code>。<code>updateInstallationPathOnDisk</code> 则连 <code>installedPluginsCacheV2</code> 也设置为 <code>null</code>（失效），但同样不更新快照。这种「写入时差异化失效」策略确保不同读者始终看到它们「该看到的版本」。</p>
+<p><strong>第四：scope 数组而非单条记录</strong></p>
+<p>V2 格式将每个插件的安装记录从单对象升级为数组，每条记录携带 <code>scope + projectPath</code>。这让「按 scope 卸载」的 <code>removePluginInstallation</code> 可以用一次 <code>.filter()</code> 原子地移除单条记录，而不触碰其他 scope 的文件路径——多 scope 协调的复杂性被压缩到一行过滤逻辑里。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th style="text-align: center">适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>后台更新需要在不打断当前会话的情况下写入新版本</td><td style="text-align: center">✓</td><td>双缓冲天然隔离两个时间维度</td><td>锁文件（会阻断读取，用户可感知卡顿）</td></tr>
+<tr><td>同一资源可在多个上下文（scope）下安装</td><td style="text-align: center">✓</td><td>数组记录 + isLastScope 精确控制清理时机</td><td>单条记录 + 引用计数（并发修改时难以保证原子性）</td></tr>
+<tr><td>需要「有多少待生效更新」的可查询视图</td><td style="text-align: center">✓</td><td><code>hasPendingUpdates</code> / <code>getPendingUpdateCount</code> 直接对比两层</td><td>版本号字段（依赖单调递增，不适合路径型版本标识）</td></tr>
+<tr><td>工具加载器要求会话期间路径稳定</td><td style="text-align: center">✓</td><td>快照冻结保证路径不会在会话中途变化</td><td>每次加载都重读磁盘（路径可能指向已更新目录）</td></tr>
+<tr><td>更新期间需要零停机（不重启应用）</td><td style="text-align: center">✗（谨慎）</td><td>双缓冲需要重启才能生效，不适合要求热加载的场景</td><td>动态模块加载（如 Node.js require cache bust）</td></tr>
+<tr><td>卸载需要立即生效（不等重启）</td><td style="text-align: center">✓</td><td>卸载直接写磁盘，绕过后台写路径</td><td>标记删除 + 后台 GC（卸载后工具可能仍可调用）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p><strong>权衡 1：快照冻结 vs 热加载</strong></p>
+<p>会话快照的稳定性是有代价的：安装新插件后，当前会话看不到它，必须重启 Claude Code 才能使用。这是设计的有意取舍——稳定性优先于及时性。如果系统改为「安装后立即可用」，需要引入模块热加载机制，复杂度会急剧上升，且可能破坏已加载工具的状态一致性。</p>
+<p><strong>权衡 2：orphanedVersions 的 GC 延迟</strong></p>
+<p><code>markPluginVersionOrphaned</code> 不立即删除文件，而是给目录打一个 <code>.orphaned_at</code> 标记，由后续的 GC 任务（<code>cleanupLegacyCache</code>）统一清理。这让卸载操作本身足够快，但留下了一个时间窗口：被标记为孤立的目录在 GC 运行之前仍占用磁盘空间。如果用户频繁更新插件，可能积累较多孤立版本目录。</p>
+<p><strong>权衡 3：<code>isLastScope</code> 依赖实时磁盘读取</strong></p>
+<pre><code class="language-typescript">removePluginInstallation(pluginId, scope, projectPath) // 写磁盘
+const updatedData = loadInstalledPluginsV2()            // 读缓存（刚失效→从磁盘重读）
+const isLastScope = !updatedData.plugins[pluginId]?.length
+</code></pre>
+<p><code>isLastScope</code> 是在「移除后立即重读」的结果上计算的。如果并发发生了另一次写入（如两个 <code>uninstallPluginOp</code> 同时运行），两者都可能认为自己是 <code>isLastScope</code>，导致选项和数据目录被清理两次。当前实现假设 Claude Code 是单进程单用户操作插件，这个假设在绝大多数场景下成立，但在自动化脚本批量操作时可能触发边界情况。</p>
+<p><strong>权衡 4：V1→V2 迁移的一次性设计</strong></p>
+<p><code>migrateToSinglePluginFile</code> 用 <code>migrationCompleted</code> 标志保证「每个会话只迁移一次」。迁移失败时也会设置 <code>migrationCompleted = true</code>，让会话继续运行，而不是反复重试或崩溃。这是「优雅降级」而非「强保证」的取舍——迁移失败后，系统从空状态重新开始，已安装的插件会在 <code>migrateFromEnabledPlugins</code> 中通过 <code>settings.enabledPlugins</code> 重新同步。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与备忘录模式（Memento Pattern，GoF）</strong>：GoF 的备忘录模式在对象外部保存状态快照，用于撤销操作。<code>inMemoryInstalledPlugins</code> 是一个备忘录——启动时保存「安装状态的快照」，整个会话中不被后台操作修改。但它不用于「撤销」，而用于「稳定性保证」：快照不是回退点，是当前会话的唯一真实视图。<strong>区别在于用途</strong>：GoF 备忘录是时间维度的回退工具，此处快照是并发维度的隔离工具。</p>
+<p><strong>与写时复制（Copy-on-Write, COW）</strong>：Linux 内核对 fork 后的内存页、数据库对事务中的数据页都用写时复制——读者看到的是原始页，写入时才复制出新页。<code>installedPluginsManager.ts</code> 的双缓冲与 COW 的方向相反：不是「写者在写时复制给自己」，而是「读者（快照）在初始化时复制一份，写者改原本，读者用副本」。<strong>结果相同，方向相反</strong>：两者都实现了读写隔离，但 COW 的复制由写入触发，双缓冲的复制由读取初始化触发。</p>
+<p><strong>与 CQRS（命令查询职责分离）</strong>：CQRS 将写模型（Command）和读模型（Query）完全分离成两个系统。<code>installedPluginsManager.ts</code> 是轻量的 CQRS 实践：<code>loadInstalledPluginsFromDisk</code>（写路径配套的查询，跟磁盘一致）与 <code>getInMemoryInstalledPlugins</code>（会话读模型，跟启动时状态一致）服务两个不同的读取场景。<strong>没有消息总线</strong>，没有事件溯源，只用两个模块级变量实现了读写视图分离的核心效果。</p>
+<hr />
+<h2 id="模式命名框"><a class="header" href="#模式命名框">模式命名框</a></h2>
+<blockquote>
+<p><strong>模式名称：会话-磁盘双缓冲（Session-Disk Dual Buffer）</strong></p>
+<p><strong>问题：</strong> 后台更新需要在不中断当前会话的情况下修改插件的磁盘状态，同时系统需要能够检测「磁盘已更新但会话还未生效」的分叉状态。</p>
+<p><strong>解决方案：</strong> 维护两个独立的模块级状态变量——会话快照（启动时初始化，整个会话内不变）和读缓存（随每次磁盘写入失效，下次读取时从磁盘重建）。后台更新只通过磁盘直读路径操作，刻意不更新快照。<code>hasPendingUpdates</code> 通过对比两层状态检测分叉。</p>
+<p><strong>源码锚点：</strong> <code>src/utils/plugins/installedPluginsManager.ts:66</code>（两个变量声明）、<code>:537</code>（<code>updateInstallationPathOnDisk</code> 的 "NOT updated" 注释）、<code>:595</code>（<code>hasPendingUpdates</code> 的分叉检测）</p>
+</blockquote>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>区分三种读取语义</strong>：会话读（稳定快照）、缓存读（最新已知状态）、磁盘直读（绕过一切缓存）。在设计后台更新时，明确每个读取点属于哪种语义，避免后台写入意外刷新了需要稳定的会话视图。</p>
+</li>
+<li>
+<p><strong>在模块顶部声明两个变量，而非一个</strong>。一个变量既当缓存又当快照，会在「缓存失效」时意外更新快照。用两个变量明确分工，注释说明两者的失效策略差异，是防止后期维护者混淆的最廉价方法。</p>
+</li>
+<li>
+<p><strong>在后台写函数末尾加一行注释</strong>「<code>inMemoryInstalledPlugins</code> is NOT updated」。这行注释本身就是一份意图文档，让后来的 reviewer 知道这不是遗漏，而是设计决定。</p>
+</li>
+<li>
+<p><strong>用 scope 数组替代单条记录</strong>管理多上下文资源。当同一个资源（插件、配置、凭据）可以在多个上下文（全局/项目/本地）下分别安装时，用 <code>entry[]</code> 存储，用 <code>isLastScope</code>（<code>entries.length === 0</code>）决定何时触发资源清理，避免「还有其他 scope 在用，却因为移除了一个 scope 而清空了文件」的 bug。</p>
+</li>
+<li>
+<p><strong>把注册表操作与资源清理分层</strong>：<code>removePluginInstallation</code> 只管 JSON 注册表，物理文件删除由上层调用者（<code>uninstallPluginOp</code>）在确认 <code>isLastScope</code> 后决定。每一层只做自己的事，清理时机的判断在调用者处集中，不分散在工具函数里。</p>
+</li>
+<li>
+<p>**设计「孤立标记 + 延迟 GC」**而非「立即删除」来处理卸载后的版本目录。标记的成本极低（写一个 <code>.orphaned_at</code> 文件），GC 可以在空闲时批量清理，不影响卸载操作本身的响应速度。</p>
+</li>
+<li>
+<p><strong>检测分叉，不要强同步</strong>。后台更新完成后，不要试图在后台重载会话——通知用户「有待生效的更新，重启后生效」比强制刷新更安全。<code>hasPendingUpdates</code> + 通知的组合比自动重启的惊喜感要好得多。</p>
+</li>
+</ul>
+<hr />
+<p>第 41 章揭示了双缓冲如何让插件系统在「后台悄悄更新」和「当前会话稳定运行」之间取得平衡，而 <code>isLastScope</code> 守护着卸载时的资源清理边界。当插件安装到磁盘上之后，它是如何被发现并注册到 Marketplace 的？Marketplace 协议和注册表机制——详见第 42 章。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part11/part.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part11/ch42.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part11/part.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part11/ch42.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -157,55 +157,58 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="序言一个源码侦探的自白"><a class="header" href="#序言一个源码侦探的自白">序言：一个源码侦探的自白</a></h1>
-<p>Claude Code 的 npm 包里意外留了一个 60MB 的调试文件。1,902 个源文件、51 万行 TypeScript 代码，全部暴露。</p>
-<p>第一次打开 <code>src/main.tsx</code> 时，文件长度是 8,247 行。我只是想搞清楚"这个 CLI 到底是怎么跑起来的"，但顺着 <code>launchRepl()</code> 往下追了三个文件之后，意识到自己掉进了一个与任何外部文档都不符的世界——这个工具的复杂度远超任何官方描述。</p>
+<p>Claude Code 的 npm 包里意外留了一个 60MB 的 source map 文件。1,902 个源文件、51 万行 TypeScript 代码，全部暴露。</p>
+<p>第一次打开 <code>src/main.tsx</code>，映入眼帘的不是入口函数，而是一段工程备忘录——注释里写着"利用 import 求值期间约 135ms 的等待窗口并行执行 I/O 操作"。我本来只想搞清楚"这个 CLI 到底怎么跑起来的"，但顺着 <code>launchRepl()</code> 往下追了三个文件，意识到自己掉进了一个远比文档描述更精密的世界。</p>
 <p><strong>这不是一个 CLI。这是一套 Agent Harness。</strong></p>
-<p>「Harness」是工程术语，指把不可控的外部系统包裹在可控接口之内的框架结构。Claude Code 把 Anthropic 的模型变成一个可编排的 Agent 运行时——它的每一个子系统（Tool、Hook、Task、Swarm、Context Engineering）都在做同一件事：<strong>在 AI 的不确定性和工程系统的确定性之间，修一道桥梁</strong>。</p>
-<p>写作本书过程中，最让我意外的不是某个具体实现，而是<strong>演化的痕迹</strong>。Hook 系统从 3 个事件增长到 27 个，Task 类型从 1 种扩展到 7 种，Swarm 从单进程演化为三种 Teammate 后端。每一次演化都留下了接口膨胀的痕迹——但没有一次是重写。这些「伤疤」恰恰是最有价值的工程证据：它们展示了真实系统如何在约束条件下渐进式扩展，而不是推倒重来。</p>
+<p>「Harness」是工程术语——把不可控的外部系统包裹在可控接口内的框架结构。Claude Code 的 Harness 层有十个独立子系统、58 个工具目录、20+ 个 Hook 事件、7 种任务类型、三种多智能体后端——每一个数字背后，都是一个小系统在功能压力下被迫膨胀的痕迹。Hook 从 3 个事件增长到 20+ 个，Task 从 1 种扩展到 7 种，Swarm 从单进程演化出三种后端——<strong>没有一次是推倒重来</strong>。教科书教的是"应该怎么设计"，源码展示的是"实际上怎么演化"。本书就是沿着这些演化伤疤做的一次完整追踪。</p>
 <hr />
 <h2 id="这本书适合谁"><a class="header" href="#这本书适合谁">这本书适合谁</a></h2>
-<p><strong>主要读者</strong>：正在构建 AI Agent 系统的工程师和架构师。如果你在问「我的 Agent 系统应该用框架还是自己造？工具调用怎么设计才能可扩展？权限系统怎么避免成为瓶颈？」——本书提供了一个 50 万行生产代码的真实样本。</p>
-<p><strong>次要读者</strong>：对 AI 工程底层机制感兴趣、想理解现代 AI 应用基础设施的开发者。Claude Code 是目前罕见的、源码完整暴露的生产级 Agent Harness。</p>
-<p><strong>不适合本书的读者</strong>：只想了解 Claude Code 使用方法的用户。本书没有「如何使用 <code>/slash command</code>」或「如何配置 CLAUDE.md」的操作指南——这是一本拆解工程决策的技术书，不是操作手册。</p>
+<p><strong>主要读者</strong>：正在构建 AI Agent 系统的工程师和架构师。如果你在问"工具调用怎么设计才能可扩展？权限系统怎么避免成为瓶颈？多个 Agent 如何安全协作？"——本书提供了一个 51 万行生产代码的真实样本。</p>
+<p><strong>次要读者</strong>：对 AI 工程底层机制感兴趣的开发者。Claude Code 是目前罕见的源码完整暴露的生产级 Agent Harness。</p>
+<p><strong>不适合</strong>：只想了解 Claude Code 使用方法的用户。本书没有操作指南，没有配置教程，只有工程决策的追踪和模式提炼。</p>
 <hr />
 <h2 id="如何阅读本书"><a class="header" href="#如何阅读本书">如何阅读本书</a></h2>
-<p>全书分十篇，41 章正文，遵循两条并行线索：</p>
-<p><strong>源码追踪线</strong>：每章跟随一个具体的工程问题——「为什么 <code>QueryEngine.ts:436</code> 在进入 for-await 循环前先写入转录文件？」「为什么权限系统用三个函数而非一个？」——顺着源码追踪到设计决策的原因。</p>
-<p><strong>模式提炼线</strong>：每章末尾提炼一个可命名的工程模式，配有源码锚点和可携带性说明。第 40 章是所有 12 个模式的汇总图谱，可作为复习地图。</p>
+<p>全书 45 章正文，分 12 篇，遵循两条并行线索：</p>
+<ul>
+<li><strong>源码追踪线</strong>：每章跟随一个具体的工程问题——"为什么 <code>QueryEngine</code> 在进入循环前先写转录文件？""为什么权限系统用三层而非一层？"——顺着源码追到设计决策的原因。</li>
+<li><strong>模式提炼线</strong>：每章末尾提炼一个可命名的工程模式，配有源码锚点。第 44 章是全部 12 个模式的汇总图谱，可作为复习地图。</li>
+</ul>
 <h3 id="篇章导航"><a class="header" href="#篇章导航">篇章导航</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>篇</th><th>主题</th><th>章节</th><th>核心问题</th></tr></thead><tbody>
-<tr><td>第一篇</td><td>地图与地基</td><td>ch01-ch03</td><td>Claude Code 是什么？代码如何组织？</td></tr>
-<tr><td>第二篇</td><td>查询引擎</td><td>ch04-ch09</td><td>一次用户输入如何变成 AI 响应？</td></tr>
-<tr><td>第三篇</td><td>Tool 系统</td><td>ch10-ch14</td><td>工具如何定义、权限如何控制？</td></tr>
-<tr><td>第四篇</td><td>上下文工程</td><td>ch15-ch19</td><td>送给 AI 的 token 怎么精确控制？</td></tr>
-<tr><td>第五篇</td><td>Hook 与 SDK</td><td>ch20-ch24</td><td>Agent 行为如何被观测和拦截？</td></tr>
-<tr><td>第六篇</td><td>Task 系统</td><td>ch25-ch28</td><td>后台任务怎么调度和管理？</td></tr>
-<tr><td>第七篇</td><td>多智能体</td><td>ch29-ch32</td><td>多 Agent 如何协调？</td></tr>
-<tr><td>第八篇</td><td>安全与权限</td><td>ch33-ch36</td><td>危险操作怎么防守？</td></tr>
-<tr><td>第九篇</td><td>插件生态</td><td>ch37-ch39</td><td>插件系统怎么设计？</td></tr>
-<tr><td>第十篇</td><td>模式总结</td><td>ch40-ch41</td><td>12 个模式与架构跃迁路线图</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>篇</th><th>主题</th><th>章节</th><th>追踪的核心问题</th></tr></thead><tbody>
+<tr><td>第一篇</td><td>地图与地基</td><td>第 1 - 3 章</td><td>架构认知、代码组织、状态管理</td></tr>
+<tr><td>第二篇</td><td>交互层</td><td>第 4 - 8章</td><td>用户输入到 Agent 事件的完整链路</td></tr>
+<tr><td>第三篇</td><td>核心循环</td><td>第 9 - 10 章</td><td>查询输入到模型调用的生命周期</td></tr>
+<tr><td>第四篇</td><td>模型层</td><td>第11 - 13 章</td><td>模型路由、推理控制、API 通信</td></tr>
+<tr><td>第五篇</td><td>Tool 系统——可扩展的工具协议</td><td>第14 - 18 篇</td><td>工具注册、权限、MCP、Skill</td></tr>
+<tr><td>第六篇</td><td>上下文工程</td><td>第19 -23篇</td><td>提示词、会话、压缩、记忆</td></tr>
+<tr><td>第七篇</td><td>Hooks 引擎</td><td>第24 - 28篇</td><td>事件、执行器、注册表、快照</td></tr>
+<tr><td>第八篇</td><td>Task 系统</td><td>第29 - 32篇</td><td>任务类型、子 Agent、远程、自主执行</td></tr>
+<tr><td>第九篇</td><td>Swarm</td><td>第33 - 36篇</td><td>多 Agent 协作与权限同步</td></tr>
+<tr><td>第十篇</td><td>安全权限</td><td>第37 - 40篇</td><td>防线、规则、审计</td></tr>
+<tr><td>第十一篇</td><td>Marketplace 与 Plugins——生态扩展架构</td><td>第41 - 43篇</td><td>Plugin、Marketplace、沙箱</td></tr>
+<tr><td>第十二篇</td><td>模式提炼——工程启示录</td><td>第44 - 45篇</td><td>12 个 Harness 模式图谱、从 CLI 到平台跃迁路线图</td></tr>
 </tbody></table>
 </div>
 <h3 id="推荐阅读路径"><a class="header" href="#推荐阅读路径">推荐阅读路径</a></h3>
-<p><strong>完整阅读</strong>：按篇序阅读。第一篇（ch01-ch03）是必读地基，建立全局架构认知；第二篇（ch04-ch09）完整追踪一次交互生命周期；之后可以任意调整顺序。</p>
+<p><strong>完整阅读</strong>：按篇序读。第一篇（ch01-ch03）是必读地基——建立三层架构认知和全局状态管理的基础；第二篇（ch04-ch08）完整追踪"用户按下回车到 AI 响应"的交互层链路；第三篇（ch09-ch10）进入 Harness 核心循环。之后各篇相对独立，可按需跳读。</p>
 <p><strong>专题阅读</strong>：</p>
 <ul>
-<li>对工具系统感兴趣 → 直接从第三篇（ch10）开始</li>
-<li>对多智能体感兴趣 → 先读第六篇（ch25），再读第七篇（ch29）</li>
-<li>想快速获取可用模式 → 直接阅读第 40 章，按需跳回引用的章节</li>
-<li>阅读第七篇（Swarm）前建议先读第六篇（Task 系统），因为 Swarm 架构依赖 Task 系统的概念</li>
+<li>对工具系统感兴趣 → 直接从第五篇（ch14）开始</li>
+<li>对多智能体感兴趣 → 先读第八篇（ch29 Task 系统），再读第九篇（ch33 Swarm）—— Swarm 的 Teammate 概念建立在 Task 系统之上</li>
+<li>对安全架构感兴趣 → 先读第五篇的权限入门（ch15-ch16），再跳到第十篇的深潜（ch37-ch40）</li>
+<li>想快速获取可用模式 → 直接阅读第 44 章，按需跳回引用的章节</li>
 </ul>
 <hr />
 <h2 id="约定说明"><a class="header" href="#约定说明">约定说明</a></h2>
-<p><strong>源码引用格式</strong>：所有源码引用采用 <code>`相对路径:行号`</code> 格式，例如 <code>src/QueryEngine.ts:675</code>。引用前均已通过 <code>sed -n '[行号]p' [文件]</code> 验证，行号对应 Claude Code v2.1.88（重建版）。</p>
+<p><strong>源码引用格式</strong>：<code>src/相对路径:行号</code>，例如 <code>src/QueryEngine.ts:675</code>。引用前已验证行号对应 Claude Code v2.1.88（重建版）。</p>
 <p><strong>术语标注</strong>：技术术语首次出现时标注英文原文，例如「死代码消除（Dead Code Elimination, DCE）」；后续章节直接使用简称「DCE」。完整术语表见<strong>附录 F</strong>。</p>
 <p><strong>推断标注</strong>：无直接源码依据的设计意图推断，会明确标注「（推断）」，区别于有源码证据的断言。</p>
 <p><strong>章节交叉引用</strong>：已在其他章节详细分析过的内容，用「详见第 X 章」代替重复讲解。</p>
-<p><strong>代码注释翻译</strong>：源码中的英文注释在书中统一翻译为中文，保留变量名和函数名原文；中文翻译后附英文原文，格式为「（原文："..."）」。</p>
+<p><strong>代码注释翻译</strong>：英文注释翻译为中文，附原文（原文："..."）。</p>
 <hr />
 <h2 id="关于这个项目"><a class="header" href="#关于这个项目">关于这个项目</a></h2>
-<p>本书基于 Claude Code v2.1.88 的重建源码分析写成。这份源码来自 npm 包意外保留的 source map 文件，是可合法获取的公开数据。书中分析的所有设计决策均以源码为证据，不依赖任何官方文档或内部信息。</p>
-<p>书中提炼的 12 个工程模式是从源码中归纳的，不是 Anthropic 官方的架构术语——它们是这次追踪之旅的工程结晶，随时可以更名或重新分类。</p>
+<p>本书的核心主张是：<strong>Claude Code 是一个活体样本，展示了「从 CLI 工具到 Agent 平台」的架构跃迁如何在生产级代码中真实发生</strong>。它不是从零设计的 Agent 框架，而是一个 CLI 工具在功能压力下被迫演化——每一个子系统都留下了演化的痕迹。</p>
+<p>本书基于 Claude Code v2.1.88 的重建源码分析写成。书中所有设计决策均以源码为证据，不依赖官方文档或内部信息。提炼的 12 个工程模式是从源码中归纳的——它们是追踪之旅的工程结晶，不是 Anthropic 官方术语。</p>
 <hr />
 <p>源码会过时，但模式不会。开始追踪吧。</p>
 

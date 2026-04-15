@@ -1,23 +1,19 @@
 flowchart LR
-    subgraph 有状态单例
+    subgraph DCE["构建时 DCE（feature()）"]
         direction TB
-        STATE2["STATE 对象"]
-        Get2["get 函数"]
-        Set2["set 函数"]
-        STATE2 --- Get2
-        Set2 --- STATE2
+        Source1["源码：KAIROS + COORDINATOR_MODE + ..."]
+        Build1["Bun 构建"]
+        Prod1["产物：仅活跃分支"]
+        Source1 --> Build1 --> Prod1
     end
 
-    subgraph 无状态信号
+    subgraph Runtime["运行时 if/else（process.env）"]
         direction TB
-        Signal2["createSignal"]
-        Emit2["emit()"]
-        Sub2["subscribe()"]
-        Signal2 --- Emit2
-        Signal2 --- Sub2
+        Source2["源码：Bedrock + Vertex + ..."]
+        Build2["构建"]
+        Prod2["产物：全部分支"]
+        Source2 --> Build2 --> Prod2
     end
 
-    QE["QueryEngine"] -->|"读状态"| Get2
-    QE -->|"写状态"| Set2
-    CS["concurrentSessions"] -->|"注册回调"| Sub2
-    SS["switchSession()"] -->|"触发事件"| Emit2
+    style Prod1 fill:#e8f5e9,stroke:#388e3c
+    style Prod2 fill:#ffebee,stroke:#c62828

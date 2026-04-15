@@ -1,18 +1,23 @@
-graph TD
-    call_small["调用方 A\n轻量任务"] --> small["getSmallFastModel()\nmodel.ts:36"]
-    call_main["调用方 B\n主循环推理"] --> main["getMainLoopModel()\nmodel.ts:92"]
-    call_best["调用方 C\n深度推理"] --> best["getBestModel()\nmodel.ts:100"]
+graph LR
+    subgraph AGENT["Claude Code Agent（同一进程）"]
+        CORE["核心循环\nquery.ts"]
+        REPL["REPL.tsx\n终端界面"]
+        BRIDGE["Bridge\n32 个文件"]
+        LSP["LSP 服务\n7 个文件"]
+    end
 
-    small --> env_small["process.env.ANTHROPIC_SMALL_FAST_MODEL\n环境变量优先"]
-    small --> default_haiku["getDefaultHaikuModel()\nmodel.ts:131"]
+    subgraph TERMINAL["终端用户"]
+        TTY["交互式终端\nInk/React"]
+    end
 
-    main --> user_setting["getUserSpecifiedModelSetting()\n优先级链 4 层"]
-    main --> default_main["getDefaultMainLoopModel()\n按订阅者类型"]
+    subgraph IDE["IDE / 网页"]
+        CCR["Claude.ai 网页\nVS Code 扩展"]
+        LS["Language Server\nrust-analyzer/pyright"]
+    end
 
-    best --> default_opus["getDefaultOpusModel()\nmodel.ts:105"]
-
-    default_opus --> provider["按 API Provider\n返回 opus46 字符串"]
-    default_haiku --> haiku_const["haiku45 常量"]
-    default_main --> subscriber{订阅者类型?}
-    subscriber -->|Max/TeamPremium| opus_sub["Opus（高级订阅）"]
-    subscriber -->|其他| sonnet_sub["Sonnet（标准）"]
+    TTY <-->|"stdin/stdout"| REPL
+    REPL <-->|"React state"| CORE
+    CORE <-->|"React state"| BRIDGE
+    BRIDGE <-->|"SSE + WebSocket\nCCR 协议"| CCR
+    LSP <-->|"JSON-RPC\nstdio"| LS
+    LSP -->|"诊断注入 AppState"| CORE

@@ -1,19 +1,14 @@
-flowchart LR
-    subgraph DCE["构建时 DCE（feature()）"]
-        direction TB
-        Source1["源码：KAIROS + COORDINATOR_MODE + ..."]
-        Build1["Bun 构建"]
-        Prod1["产物：仅活跃分支"]
-        Source1 --> Build1 --> Prod1
-    end
+flowchart TD
+    Import["import feature from bun:bundle"]
 
-    subgraph Runtime["运行时 if/else（process.env）"]
-        direction TB
-        Source2["源码：Bedrock + Vertex + ..."]
-        Build2["构建"]
-        Prod2["产物：全部分支"]
-        Source2 --> Build2 --> Prod2
-    end
+    Import -->|"Bun 环境"| Real["真 feature()"]
+    Import -->|"非 Bun 环境"| Shim["bunFeatures.ts 模拟"]
 
-    style Prod1 fill:#e8f5e9,stroke:#388e3c
-    style Prod2 fill:#ffebee,stroke:#c62828
+    Real --> DCE["构建时 DCE：未激活分支被消除"]
+    Shim --> Runtime["运行时判断：全部分支保留"]
+
+    DCE --> Small["产物体积小"]
+    Runtime --> Large["产物体积大"]
+
+    style DCE fill:#e8f5e9,stroke:#388e3c
+    style Runtime fill:#fff3e0,stroke:#e65100

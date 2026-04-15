@@ -1,17 +1,16 @@
-flowchart LR
-    subgraph session_level["会话级覆盖（src/bootstrap/state.ts）"]
-        set["setMainLoopModelOverride(model)"]
-        get["getMainLoopModelOverride()"]
-        state["STATE.mainLoopModelOverride"]
-        set --> state
-        state --> get
-    end
-    subgraph env_level["环境级覆盖（src/utils/model/model.ts）"]
-        envvar["process.env.ANTHROPIC_SMALL_FAST_MODEL"]
-        small["getSmallFastModel()"]
-        default_haiku["getDefaultHaikuModel()"]
-        envvar --> small
-        default_haiku --> small
-    end
-    get --> priority["优先级链\ngetUserSpecifiedModelSetting()"]
-    small --> caller["调用方（分类器、轻量任务）"]
+mindmap
+    root(命令系统三层设计)
+        目录即注册表
+            src_commands 每个子目录
+            index_ts 自描述元数据
+            load 懒加载实现
+            聚合函数自动发现
+        三层门控
+            构建时 feature 删死代码
+            运行时 availability 认证过滤
+            运行时 isEnabled 条件开关
+        懒加载聚合
+            memoize by cwd
+            Promise.all 并行加载
+            7个来源 spread 合并
+            清除时机绑定业务事件

@@ -1,8 +1,14 @@
-<div class="part-page">
-  <div class="part-label">PART X</div>
-  <div class="part-number">第十篇</div>
-  <div class="part-title">模式提炼：工程启示录</div>
-  <div class="part-rule"></div>
-  <div class="part-desc">12 个可命名、可移植的 Harness 工程模式，与从 CLI 到 Agent 平台的四阶段演化路线图。这是全书的终点——也是你下一个项目的起点。</div>
-  <div class="part-chapters">第 40—41 章</div>
-</div>
+# 第十篇：安全权限——Agent 行为的边界工程
+
+> *目的：从安全架构视角深潜 Harness·权限护栏子系统——规则引擎、处理器分态和审计追踪的实现细节*
+
+本篇从三层防线全景出发，经过规则引擎匹配算法、处理器三态分叉，到达信任对话和拒绝追踪。
+
+---
+
+## 本章导航
+
+- [第 37 章：权限系统全景——拦截→规则→确认的三层防线](ch37.md)
+- [第 38 章：PermissionRule 规则引擎——`allowedTools` 的 glob 匹配与优先级链](ch38.md)
+- [第 39 章：权限处理器三态——`interactive/coordinator/swarmWorker` 的策略差异](ch39.md)
+- [第 40 章：信任对话与拒绝追踪——用户决策的持久化与安全审计](ch40.md)

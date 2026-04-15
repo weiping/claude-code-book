@@ -1,9 +1,9 @@
-stateDiagram-v2
-    [*] --> closed : 会话开始，failures=0
-    closed --> closed : 压缩成功\nfailures=0（重置）
-    closed --> half_open : 压缩失败\nfailures=1
-    half_open --> half_open : 压缩失败\nfailures=2
-    half_open --> open_state : failures >= 3\n熔断
-    open_state --> open_state : 平能尝试均跳过
-    closed --> closed : wasCompacted=true\nfailures重置=0
-    Note: 新会话即重置，不需要定时实探
+flowchart TD
+    resume["claude --resume"] --> load["loadSessionFile\n读取 sessionId.jsonl"]
+    load --> check_empty{"messages.size == 0?"}
+    check_empty -->|是| return_null["返回 null\n（无会话可恢复）"]
+    check_empty -->|否| prime_cache["预热 getSessionMessages 缓存\n（避免第二次文件读取）"]
+    prime_cache --> find_last["findLatestMessage\n过滤 sidechain，找最新消息"]
+    find_last --> build_chain["buildConversationChain\n从最后一条消息向上重建链"]
+    build_chain --> return_log["返回 LogOption\n（包含完整对话历史）"]
+    return_log --> repl["REPL 挂载，\n恢复上一次会话状态"]

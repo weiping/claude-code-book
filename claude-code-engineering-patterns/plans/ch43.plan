@@ -1,0 +1,88 @@
+# 第 43 章写作计划
+
+**批次**：批次 10b（来自 plans/batch.md）
+**章节**：ch43 — Plugin 包结构——目录约定、package.json 契约与沙箱边界
+**风格**：hunter（模式猎人）
+
+## 章节意图
+揭示 `src/services/plugins/pluginOperations.ts` 中插件包的目录结构约定、版本化缓存目录、package.json 契约，以及插件进程沙箱边界（CLAUDE_PLUGIN_ROOT 环境变量）的设计。
+
+## 通用约束
+**排除范围**：Plugin 生命周期（第 41 章）、Marketplace 协议（第 42 章）、stubs
+
+## ⛔ 风格专属写作要求
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「版本化目录隔离」（Versioned Directory Isolation）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（版本化缓存目录 + CLAUDE_PLUGIN_ROOT 沙箱），适用范围表，与已知模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+## 前置阅读清单
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/services/plugins/pluginOperations.ts | 版本化缓存目录(821行)、temp目录下载(923行)、try/finally清理(1010行)、manifest加载(987行) | 815-1015 |
+
+```bash
+grep -n "versioned\|cache.*dir\|CLAUDE_PLUGIN_ROOT\|sandbox\|temp.*dir\|manifest" src/services/plugins/pluginOperations.ts | head -15
+```
+
+## Spec 验收场景清单（E > A > B = C > D）
+所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+
+## 章节骨架
+
+### 开篇（最后补写，⛔不引源码）
+触发句：插件安装在哪个目录？更新后旧版本留还是删？插件可以读写哪些文件？Claude Code 通过版本化目录隔离和 CLAUDE_PLUGIN_ROOT 环境变量回答这三个问题。
+
+### 节 43.1：问题
+- 核心主张：**插件更新不能覆盖正在运行的版本（可能导致崩溃）——版本化目录让每个版本有独立路径，更新只影响新会话**
+- 源码锚点：`src/services/plugins/pluginOperations.ts:821`（注释：版本不同时复制到新版本化缓存目录）
+
+### 节 43.2：源码实例1 — 版本化缓存目录设计
+- 核心主张：**每个插件版本安装在独立目录下（包含版本号），这样新旧版本可以共存，不需要原地升级**
+- 源码锚点：`src/services/plugins/pluginOperations.ts:821-830`（版本化目录逻辑）
+
+### 节 43.3：源码实例2 — temp 目录下载 + try/finally 清理
+- 核心主张：**远程插件先下载到临时目录，校验后才移动到最终目录——try/finally 保证 temp 目录总是被清理，即使安装失败**
+- 源码锚点：
+  - `src/services/plugins/pluginOperations.ts:923`（Remote plugin: download to temp directory first）
+  - `src/services/plugins/pluginOperations.ts:1010`（Use try/finally to ensure temp directory cleanup）
+
+### 节 43.4-39.7：模式剖析/适用范围/权衡/对话
+- 模式：版本化目录隔离（每个版本独立路径）、temp-then-move 原子安装（先下载校验再移动）
+
+### 章末：模式提炼
+```
+模式名称：版本化目录隔离（Versioned Directory Isolation）
+问题：插件更新会覆盖正在使用的文件，可能导致运行中的进程崩溃
+解决方案：每个版本安装在包含版本号的独立目录下，新旧版本共存，新会话使用新版本
+前置条件：有版本信息，文件系统支持多版本共存
+源码锚点：src/services/plugins/pluginOperations.ts:821 (版本化目录)
+```
+
+```
+模式名称：Temp-then-Move 原子安装（Temp-then-Move Atomic Install）
+问题：远程下载可能失败，失败时不应留下半安装状态
+解决方案：下载到临时目录，校验后 move 到最终位置，try/finally 保证 temp 清理
+前置条件：目标文件系统支持原子 rename（同分区 move）
+源码锚点：src/services/plugins/pluginOperations.ts:923 (temp download), :1010 (try/finally cleanup)
+```
+
+### 章末：你能做什么
+1. 用包含版本号的目录名隔离不同版本，让新旧版本可以共存
+2. 下载到 temp 目录后校验，校验通过后 move 到最终位置，而非直接下载到目标目录
+3. 用 try/finally 保证临时目录总是被清理，即使中途抛出异常
+
+## 图表清单
+| # | 标题 | 类型 | 描述 | 对应节 |
+|---|------|------|------|--------|
+| 图43-1 | 插件目录结构 | ASCII | 版本化目录层级 + temp-then-move 流程 | 39.1 |
+
+## 写作前 checklist
+```bash
+sed -n '821p' src/services/plugins/pluginOperations.ts  # 版本化目录注释
+sed -n '923p' src/services/plugins/pluginOperations.ts  # temp download
+sed -n '1010p' src/services/plugins/pluginOperations.ts # try/finally
+```
+
+## ⛔ Spec 一致性声明
+所有 16 项均 ✓，plan 审查通过。

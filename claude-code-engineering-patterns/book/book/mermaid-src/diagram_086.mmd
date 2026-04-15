@@ -1,9 +1,9 @@
 stateDiagram-v2
-    [*] --> 挂起: registerPendingAsyncHook\n注册 + 启动进度报告
-    挂起 --> 完成: shellCommand.status=completed\n且 exitCode=0
-    挂起 --> 错误: shellCommand.status=completed\n且 exitCode≠0
-    挂起 --> 取消: finalizePendingAsyncHooks\n（会话结束强制清理）
-    挂起 --> 取消: shellCommand.status=killed
-    完成 --> [*]: finalizeHook(success)\n+ 从 Map 删除
-    错误 --> [*]: finalizeHook(error)\n+ 从 Map 删除
-    取消 --> [*]: finalizeHook(cancelled)\n+ Map.clear()
+    [*] --> closed : 会话开始，failures=0
+    closed --> closed : 压缩成功\nfailures=0（重置）
+    closed --> half_open : 压缩失败\nfailures=1
+    half_open --> half_open : 压缩失败\nfailures=2
+    half_open --> open_state : failures >= 3\n熔断
+    open_state --> open_state : 平能尝试均跳过
+    closed --> closed : wasCompacted=true\nfailures重置=0
+    Note: 新会话即重置，不需要定时实探

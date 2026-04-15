@@ -1,19 +1,19 @@
 spec: task
-name: "第33章：权限系统全景——拦截→规则→确认的三层防线"
-tags: [book-chapter, part-8]
+name: "第 33 章：Teammate 生命周期——Swarm 架构总览"
+tags: [book-chapter, part-9]
 ---
 
 ## 意图
 
-从全局视角描述 Claude Code 的完整安全架构：PreToolUse 拦截层（Hook 事件）、PermissionRule 规则层（`src/utils/permissions/permissions.ts`，1486行）、用户确认层（interactiveHandler）三者如何协同，以及任意一层失守时的降级策略。读者读完后能完整描述三层防线的整体协同，并能为自己的 Agent 系统设计类似的分层安全架构。
+揭示 Claude Code 的多智能体 Swarm 模型——Leader/Teammate 角色划分、Teammate 从创建到清理的生命周期管理，以及 `src/utils/swarm/teammateInit.ts`（129行）的初始化序列。读者读完后能理解 Leader-Teammate 多智能体架构，并能与其他 Agent 框架的 Swarm 设计进行比较。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/utils/permissions/permissions.ts（1486行）、src/hooks/toolPermission/handlers/interactiveHandler.ts（536行）
-- 前置依赖：第11章（PermissionMode）、第20章（PreToolUse Hook 事件）
+- 核心文件：src/utils/swarm/teammateInit.ts（129行）、teamHelpers.ts、constants.ts
+- 前置依赖：第 29 章（Task 系统，InProcessTeammateTask 是 Swarm 的基础）
 
 
 ## 约束
@@ -39,62 +39,23 @@ tags: [book-chapter, part-8]
 ## 边界
 
 ### 允许修改
-- book/src/part8/ch33.md
+- book/src/part9/ch33.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不展开 PermissionRule 规则引擎细节（第34章）
-- 不展开三态处理器细节（第35章）
+- 不展开 leaderPermissionBridge（第 34 章）
+- 不展开三种 Teammate 后端（第 35 章）
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch33_hunter_opening
-  假设 读者打开第33章
+  测试: ch29_hunter_opening
+  假设 读者打开第 33 章
   当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: 三层防线架构图存在
-  测试: ch33_three_layer_diagram
-  假设 读者阅读三层防线节
-  当 读者检查图表
-  那么 包含一个图表，展示 PreToolUse 拦截→规则匹配→用户确认三层的协同流程
-
-场景: 降级策略说明
-  测试: ch33_fallback_strategy
-  假设 读者阅读降级策略节
-  当 读者追问"如果规则层没有匹配到任何规则，会发生什么"
-  那么 章节展示默认降级到用户确认的逻辑，并有源码证据
-
-场景: 源码引用有效性
-  测试: ch33_source_anchors
-  层级: 集成
-  假设 读者跟随章节中的源码引用
-  当 读者在项目目录查找每处路径和行号
-  那么 每处引用都实际存在于对应文件
-
-场景: 模式命名框存在
-  测试: ch33_pattern_box
-  假设 本章使用 hunter 风格
-  当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"分层安全防线"模式
-
-场景: 章末行动建议
-  测试: ch33_action_items
-  假设 读者读完本章
-  当 读者检查"你能做什么"节
-  那么 包含 5-8 条以行动动词开头的可操作建议
-
-场景: 不引用排除范围
-  测试: ch33_no_excluded_refs
-  层级: 集成
-  假设 DESIGN.md 列出了排除范围
-  当 读者检查本章所有源码路径
-  那么 没有路径落在排除范围 stub 模块中
-
-
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch33_hunter_opening_format
+  测试: ch29_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -102,33 +63,33 @@ tags: [book-chapter, part-8]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch33_multi_instance_proof
+  测试: ch29_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch33_applicability_table
+  测试: ch29_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch33_tradeoffs_and_limits
+  测试: ch29_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch33_known_pattern_dialogue
+  测试: ch29_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch33_pattern_box_format
+  测试: ch29_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -138,7 +99,7 @@ tags: [book-chapter, part-8]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch33_reader_voice
+  测试: ch29_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -146,15 +107,8 @@ tags: [book-chapter, part-8]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch33_key_info_highlight
+  测试: ch29_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
   那么 对比信息用表格展示，而非散文逐条列举
-
-## 排除范围
-
-- PermissionRule 规则引擎 glob 匹配细节（第34章）
-- 三态处理器的分叉逻辑（第35章）
-- TrustDialog 与 denialTracking（第36章）
-- src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）

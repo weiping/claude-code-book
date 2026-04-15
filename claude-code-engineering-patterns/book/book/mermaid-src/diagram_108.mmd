@@ -1,22 +1,14 @@
 sequenceDiagram
-    participant Classifier
-    participant Permissions as permissions.ts
-    participant DenialTracking as denialTracking.ts
-    participant Storage as AppState/localDenialTracking
+    participant W as Worker Agent
+    participant LMB as Leader Mailbox\n（文件系统）
+    participant L as Leader Agent
+    participant WMB as Worker Mailbox\n（文件系统）
 
-    Classifier->>Permissions: 分类器拒绝（deny）
-    Permissions->>DenialTracking: recordDenial(state)
-    DenialTracking-->>Permissions: newState（+1/+1）
-    Permissions->>Storage: persistDenialState(newState)
-    Permissions->>DenialTracking: shouldFallbackToPrompting(newState)?
-    DenialTracking-->>Permissions: false（未达阈值）
-    Permissions-->>Caller: deny decision
-
-    Note over Permissions: 再次拒绝...
-
-    Classifier->>Permissions: 分类器拒绝（连续第3次）
-    Permissions->>DenialTracking: recordDenial(state)
-    DenialTracking-->>Permissions: newState（consecutive=3）
-    Permissions->>DenialTracking: shouldFallbackToPrompting(newState)?
-    DenialTracking-->>Permissions: true（达到阈值3）
-    Permissions-->>Caller: ask decision（降级到交互模式）
+    W->>LMB: writePermissionRequest\n（pending/{id}.json）
+    W->>LMB: sendPermissionViaMailbox\n（permission_request 消息）
+    L->>LMB: 轮询 mailbox，发现 permission_request
+    Note over L: 用户通过 Leader UI\n批准或拒绝
+    L->>WMB: sendPermissionResponseViaMailbox\n（permission_response 消息）
+    L->>L: 移动 pending → resolved
+    W->>WMB: 轮询 mailbox，发现 permission_response
+    Note over W: 继续执行\n（携带决策和 updatedInput）

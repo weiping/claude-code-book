@@ -1,17 +1,18 @@
-flowchart TD
-    subgraph 主 Agent（QueryEngine）
-        direction TB
-        QE1["for await query()"] --> QE2{max_turns_reached?}
-        QE2 -->|否| QE3[继续消费消息]
-        QE2 -->|是| QE4["return（终止生成器）"]
-        QE4 --> QE5["SDK 调用者收到 errors 字段\n（任务彻底失败）"]
-    end
+sequenceDiagram
+    participant QM as queryModel()<br/>生产者
 
-    subgraph 子 Agent（runAgent）
-        direction TB
-        RA1["for await query()"] --> RA2{max_turns_reached?}
-        RA2 -->|否| RA3[继续消费消息]
-        RA2 -->|是| RA4["break（退出循环）"]
-        RA4 --> RA5[继续执行收尾逻辑]
-        RA5 --> RA6["AgentTool 决定\n是否视为失败"]
-    end
+    participant QMS as queryModelWithStreaming()<br/>流式+VCR包装
+    participant A as ask()<br/>便利封装
+    participant H as execAgentHook()<br/>hooks隔离执行
+
+    QM->>QMS: yield* 透传所有事件
+    Note over QMS: withStreamingVCR 透明包装
+    QMS-->>QMS: 实时处理每个事件
+
+    QM->>A: yield SDKMessage
+    Note over A: for await 逐条转发
+    A-->>A: yield 给 SDK 调用方
+
+    QM->>H: yield message
+    Note over H: for await 独立消费
+    H-->>H: hook 逻辑完全隔离

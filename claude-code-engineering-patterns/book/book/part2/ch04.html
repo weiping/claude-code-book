@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>第 4 章：用户输入分流——processUserInput 的路由决策树 - Claude Code 工程模式</title>
+        <title>第 4 章：CLI 入口与模式分叉——从 main.tsx 到 REPL / Headless / SDK - Claude Code 工程模式</title>
 
 
         <!-- Custom HTML head -->
@@ -156,228 +156,200 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="第-4-章用户输入分流processuserinput-的路由决策树"><a class="header" href="#第-4-章用户输入分流processuserinput-的路由决策树">第 4 章：用户输入分流——<code>processUserInput</code> 的路由决策树</a></h1>
+                        <h1 id="第-4-章cli-入口与模式分叉从-maintsx-到-repl--headless--sdk"><a class="header" href="#第-4-章cli-入口与模式分叉从-maintsx-到-repl--headless--sdk">第 4 章：CLI 入口与模式分叉——从 main.tsx 到 REPL / Headless / SDK</a></h1>
 <blockquote>
-<p>"在副作用执行之前就完成分流，是这套路由的设计宣言。"
-（原文："Runs before attachment extraction so this path matches the slash-command path below."）</p>
+<p>"在用户按下回车键之后、终端显示第一个字符之前，有一段没人看到的窗口。"</p>
 </blockquote>
-<p>在 Claude Code 的代码库中，有一个函数在所有消息处理路径上只出现一次，但它的结构在整个系统中被反复复用：<strong>先判断输入类型，再懒加载处理器，期间不触碰任何业务状态</strong>。这就是本章要讲的「前置路由（Pre-dispatch Router）」模式——代码库中至少有 4 条路径遵循这一结构。</p>
-<p>识别这个模式，你就能在自己的 Agent 系统中构建可测试、无副作用的多类型输入分流器。</p>
+<p>一个 CLI 工具需要支持四种完全不同的运行场景：交互式终端、无头脚本模式、SDK 程序调用、以及内部助手模式。如果用朴素的方式处理，启动序列就是一段串行代码——解析参数、加载配置、根据 flag 跳转。但 <code>src/main.tsx</code> 做的是另一件事：<strong>在 import 求值期间塞入并行 I/O，把不可避免的等待时间变成有用的工作</strong>。</p>
+<p>这个模式在 <code>main.tsx</code> 的两个不同阶段各出现一次：进程启动时的三路并行副作用，以及首次渲染后的延迟预热序列。两处实例用同一个骨架解决同一个问题——<strong>让等待时间做到不"空转"</strong>。</p>
+<p>配合另一个在代码库中大量出现的模式：<strong>模式分叉（Mode Fork）</strong>——在参数解析完成后的第一时间，根据 flag 将控制流永久分叉到四条独立路径，每条路径有自己的 I/O 模型，互不干扰。读完本章，我们将掌握这两个模式及其适用场景。</p>
 <hr />
-<h2 id="问题agent-输入的二义性困境"><a class="header" href="#问题agent-输入的二义性困境">问题：Agent 输入的二义性困境</a></h2>
-<p>当一条字符串到达 Agent 系统的入口，它可能是任何东西。<code>/help</code> 可以是斜杠命令，也可以是普通问题（当用户关闭了斜杠命令功能时）；同一条 <code>npm install</code> 在 <code>bash</code> 模式下是要直接执行的 shell 命令，在 <code>prompt</code> 模式下则是发给 AI 模型的普通消息。</p>
-<p>这个「二义性」问题有一个直觉上的解法：在各处理器内部判断。处理斜杠命令的函数自己检查当前 mode，处理 bash 命令的函数自己检查内容格式——每个处理器都做自己认为需要的判断。</p>
-<p><strong>这种做法的问题是 N×M 爆炸</strong>。假设有 4 种 mode（'bash' | 'prompt' | 'orphaned-permission' | 'task-notification'，定义于 <code>src/types/textInputTypes.ts:265</code>）和 4 个处理器，理论上就有 16 个判断组合需要维护，而且每次新增一个 mode 或处理器，都要重新审查所有组合点。</p>
-<p>更深层的问题是<strong>副作用污染路由逻辑</strong>。如果路由判断与附件提取、权限检查、状态变更混在一起，一旦路由判断发生在副作用之后，就意味着：即使最终要走的是 Bash 分支，系统也已经花时间提取了不需要的图片附件、执行了不必要的权限检查。</p>
-<p>Claude Code 的解法是把路由决策提升到函数入口，在任何业务逻辑执行之前完成。这在 <code>processUserInputBase</code>（<code>src/utils/processUserInput/processUserInput.ts:281</code>）的结构中体现得非常清楚。</p>
-<hr />
-<h2 id="源码实例-1四条分支的实际路由"><a class="header" href="#源码实例-1四条分支的实际路由">源码实例 1：四条分支的实际路由</a></h2>
-<p>我们直接进入路由函数的核心部分。<code>processUserInput</code>（<code>src/utils/processUserInput/processUserInput.ts:85</code>）是对外暴露的函数，它接收输入后立即委托给内部的 <code>processUserInputBase</code>（第 281 行）执行路由决策。</p>
-<p>在 <code>processUserInputBase</code> 的中段，我们能看到四条分支按优先级顺序排列：</p>
-<p><strong>图 4-1：processUserInput 路由决策树</strong></p>
-<pre><code class="language-mermaid">flowchart TD
-    input["用户输入 (字符串 or ContentBlockParam)"] --&gt; mode_check{mode?}
-    mode_check --&gt;|"feature flag + Ultraplan 关键词"| ultraplan["Ultraplan 分支 → processSlashCommand"]
-    mode_check --&gt;|"mode === bash"| bash_branch["Bash 分支 → processBashCommand"]
-    mode_check --&gt;|"startsWith 斜杠"| slash_branch["斜杠命令分支 → processSlashCommand"]
-    mode_check --&gt;|其他| text_branch["普通文本分支 → processTextPrompt"]
-    ultraplan --&gt; attach_skip[附件提取: 跳过]
-    bash_branch --&gt; attach_bash[附件提取: 执行]
-    slash_branch --&gt; attach_slash[附件提取: 执行]
-    text_branch --&gt; attach_text[附件提取: 执行]
+<h2 id="问题cli-启动的工程挑战"><a class="header" href="#问题cli-启动的工程挑战">问题：CLI 启动的工程挑战</a></h2>
+<p><code>src/main.tsx</code> 的前 9 行不是代码，而是一份工程备忘录：</p>
+<pre><code class="language-typescript">// src/main.tsx:1-9
+// 以下副作用必须在所有其他 import 之前执行：
+// 1. profileCheckpoint 在重量级模块求值开始前标记入口时间戳
+// 2. startMdmRawRead 启动 MDM 子进程（plutil/reg query），使其与后续约 135ms 的
+//    import 求值并行执行
+// 3. startKeychainPrefetch 并行启动两组 macOS Keychain 读取（OAuth + 旧版 API key）
+//    ——否则 isRemoteManagedSettingsEligible() 会在
+//    applySafeConfigEnvironmentVariables() 内通过同步 spawn 顺序读取
+//    （每次 macOS 启动约 65ms）
+// （原文：These side-effects must run before all other imports:
+//  1. profileCheckpoint marks entry before heavy module evaluation begins
+//  2. startMdmRawRead fires MDM subprocesses (plutil/reg query) so they run in
+//     parallel with the remaining ~135ms of imports below
+//  3. startKeychainPrefetch fires both macOS keychain reads (OAuth + legacy API
+//     key) in parallel — isRemoteManagedSettingsEligible() otherwise reads them
+//     sequentially via sync spawn inside applySafeConfigEnvironmentVariables()
+//     (~65ms on every macOS startup)）
 </code></pre>
-<p>注意图中 Ultraplan 分支的特殊性：它是唯一一条在附件提取之前就提前返回的路径（原因见源码注释）。</p>
-<p>以下是四个分支的判断条件代码。我们关注的不是每个处理器做了什么，而是<strong>每个 <code>if</code> 条件本身的设计</strong>：</p>
-<pre><code class="language-typescript">// src/utils/processUserInput/processUserInput.ts:460-578（精简版，仅保留判断条件和分支入口）
+<p><strong>源码参考：</strong> <code>src/main.tsx:1-9</code></p>
+<p>注释给出了三个精确数字：约 135ms 的 import 求值时间，以及 ~65ms 的顺序 Keychain 读取成本。这不是猜测，是实测数据的记录。问题的本质在于：<strong>JavaScript 的 <code>import</code> 语句是同步阻塞的</strong>——模块求值期间，主线程什么都不能做。对于 Claude Code 这种依赖链深厚的工程，所有模块求值完毕需要约 135ms。如果 MDM 配置读取和 Keychain 预读取都等到 import 完成再开始，用户感知到的启动延迟就是 135ms + 65ms + 业务初始化时间。</p>
+<p><strong>把等待变成并行：</strong> MDM 子进程（<code>plutil/reg query</code>）和 Keychain 读取都是独立的 I/O 操作——它们不依赖 import 求值的结果，只是需要尽快拿到数据供后续流程使用。把它们塞在 import 语句之间，让它们在 JavaScript 等待模块求值时已经在操作系统层面并行跑起来，是一个零成本的优化。</p>
+<p><strong>图 4-1：三路并行启动时序</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant JS as JavaScript 主线程
+    participant MDM as MDM 子进程
+    participant KC as Keychain 读取
+    participant M as 模块求值
 
-// 分支 1：Ultraplan 特殊路径（优先级最高，附件提取前执行）
-// 注释原文："Runs before attachment extraction so this path matches the slash-command
-// path below (no await between setUserInputOnProcessing and setAppState —
-// React batches both into one render, no flash)."
-if (
-  feature('ULTRAPLAN') &amp;&amp;
-  mode === 'prompt' &amp;&amp;
-  !context.options.isNonInteractiveSession &amp;&amp;
-  inputString !== null &amp;&amp;
-  !effectiveSkipSlash &amp;&amp;
-  !inputString.startsWith('/') &amp;&amp;
-  !context.getAppState().ultraplanSessionUrl &amp;&amp;
-  !context.getAppState().ultraplanLaunching &amp;&amp;
-  hasUltraplanKeyword(preExpansionInput ?? inputString)
-) {
-  // ... 懒加载 processSlashCommand，以 '/ultraplan ...' 调用
-}
+    Note over JS: profileCheckpoint('main_tsx_entry')
+    JS-&gt;&gt;MDM: startMdmRawRead()（launch subprocess）
+    JS-&gt;&gt;KC: startKeychainPrefetch()（async I/O）
+    JS-&gt;&gt;M: import 求值（~135ms 阻塞）
+    MDM--&gt;&gt;JS: MDM 配置就绪（并行完成）
+    KC--&gt;&gt;JS: Keychain 就绪（并行完成）
+    M--&gt;&gt;JS: 所有模块加载完毕
+    Note over JS: 三路结果均已就绪，无需额外等待
+</code></pre>
+<p><em>图注：三路操作在同一个时间窗口内并行执行。import 求值期间，MDM 和 Keychain 的 I/O 已经在操作系统层面完成，主线程加载完模块就能立即使用它们的结果——等待时间从串行叠加变为并行重叠。</em></p>
+<hr />
+<h2 id="源码实例-1三路并行启动序列"><a class="header" href="#源码实例-1三路并行启动序列">源码实例 1：三路并行启动序列</a></h2>
+<p>三个操作在 <code>src/main.tsx</code> 前 21 行完成部署：</p>
+<pre><code class="language-typescript">// src/main.tsx:12-20
+profileCheckpoint('main_tsx_entry');
+import { startMdmRawRead } from './utils/settings/mdm/rawRead.ts';
 
-// [附件提取逻辑在此处，约 20 行]
+// eslint-disable-next-line custom-rules/no-top-level-side-effects
+startMdmRawRead();
+import { ensureKeychainPrefetchCompleted, startKeychainPrefetch }
+  from './utils/secureStorage/keychainPrefetch.ts';
 
-// 分支 2：Bash 命令（依赖 mode，不检查内容）
-if (inputString !== null &amp;&amp; mode === 'bash') {
-  const { processBashCommand } = await import('./processBashCommand.js')
+// eslint-disable-next-line custom-rules/no-top-level-side-effects
+startKeychainPrefetch();
+import { feature } from 'bun:bundle';
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:12-20</code></p>
+<p>注意两处 <code>eslint-disable</code> 注释：<code>custom-rules/no-top-level-side-effects</code>。这表明 Claude Code 有一条 ESLint 规则专门禁止模块顶层副作用——但这两处是<strong>刻意的例外</strong>，正因为规则的存在，例外才变得显眼。当我们在代码库里看到 <code>eslint-disable</code>，往往就是设计意图最集中的地方。</p>
+<p><code>profileCheckpoint('main_tsx_entry')</code> 是性能剖析标记——它在第 12 行就打入，记录"模块代码开始执行"的时间戳。这一行配合后续的 <code>profileCheckpoint</code> 调用，能精确测量每个启动阶段的耗时，这是三个数字（135ms、65ms）能被记录在注释里的技术基础。</p>
+<h3 id="延迟预热首次渲染后的第二波并行"><a class="header" href="#延迟预热首次渲染后的第二波并行">延迟预热：首次渲染后的第二波并行</a></h3>
+<p>三路并行不是启动阶段的全部。<code>src/main.tsx:388</code> 定义了 <code>startDeferredPrefetches()</code>——一组延迟到<strong>首次渲染后</strong>才执行的预热操作：</p>
+<pre><code class="language-typescript">// src/main.tsx:388-395
+export function startDeferredPrefetches(): void {
+  // This function runs after first render, so it doesn't block the initial paint.
   // ...
-}
-
-// 分支 3：斜杠命令（依赖内容前缀 + mode 兜底）
-if (
-  inputString !== null &amp;&amp;
-  !effectiveSkipSlash &amp;&amp;
-  inputString.startsWith('/')
-) {
-  const { processSlashCommand } = await import('./processSlashCommand.js')
+  void initUser();
+  void getUserContext();
+  prefetchSystemContextIfSafe();
+  void getRelevantTips();
   // ...
+  void refreshModelCapabilities();
 }
-
-// 分支 4：普通文本（兜底，无条件）
-return addImageMetadataMessage(
-  processTextPrompt(normalizedInput, ...),
-  imageMetadataTexts,
-)
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/utils/processUserInput/processUserInput.ts:460-578</code></p>
-<p>这段代码值得仔细读一遍。四个分支之所以以这个顺序排列，背后有具体的工程理由：</p>
-<p><strong>Ultraplan 为什么排第一？</strong> 这是一条"早退路径"（early return）。源码注释说得很清楚：它必须在附件提取之前执行，这样它和斜杠命令路径的 React 渲染行为完全一致（"React batches both into one render, no flash"——React 将两次状态更新合并为一次渲染，避免界面闪烁）。如果把它放到附件提取之后，等待附件的 <code>await</code> 会中断合批，产生可见的界面抖动。</p>
-<p><strong>Bash 为什么用 <code>mode === 'bash'</code> 而非内容判断？</strong> 这是参数化 mode 模式的核心体现。bash 命令在内容上看起来就是普通字符串，无法通过内容特征区分——必须靠外部传入的 mode 参数明确声明。这个设计把"这是什么类型的输入"的判断权交给了调用方，而不是让处理函数自己猜测。</p>
-<p><strong>斜杠命令为什么需要双重条件（<code>startsWith('/') &amp;&amp; !effectiveSkipSlash</code>）？</strong> <code>effectiveSkipSlash</code> 来自 <code>skipSlashCommands</code> 参数（函数签名第 130 行附近），当输入来自远程桥接（CCR 客户端）时为 <code>true</code>。这意味着同样以 <code>/</code> 开头的输入，在本地运行时走斜杠命令路径，在远程传入时走普通文本路径——<strong>调用方通过参数而非内容格式声明了语义</strong>。</p>
-<p><strong>普通文本为什么不需要条件？</strong> 因为它是兜底路径（fallthrough）——所有无法匹配前三条的输入都会到达这里。这符合"穷举分支"的设计哲学：路由函数覆盖所有可能的输入类型，不存在"未处理的类型"。</p>
+<p><strong>源码参考：</strong> <code>src/main.tsx:388-428</code></p>
+<p>这是同一个并行抢跑思路的第二个变体：第一波（启动副作用）的目标是"在 import 阻塞期间完成 I/O"，第二波（延迟预热）的目标是"在用户输入第一条消息之前完成 API 预热"。注释说明了选择 firstRender 后执行的原因："doesn't block the initial paint"——用户看到界面比数据就绪更重要，把"用户还在打字"的时间利用起来预取数据，是感知性能优化的经典手段。</p>
+<p>两个变体的<strong>关键区别</strong>：启动副作用需要在 import 求值期间同步部署（利用阻塞窗口），延迟预热是完全异步的（通过 <code>void</code> 前缀忽略 Promise 返回值，只要启动、不等结果）。</p>
 <hr />
-<h2 id="源码实例-2变体懒加载处理器的架构含义"><a class="header" href="#源码实例-2变体懒加载处理器的架构含义">源码实例 2（变体）：懒加载处理器的架构含义</a></h2>
-<p>如果仔细看上面的代码，会注意到每个分支的处理器不是在文件顶部 <code>import</code>，而是在分支内部用 <code>await import(...)</code> 动态加载：</p>
-<pre><code class="language-typescript">// 斜杠命令分支内部：
-const { processSlashCommand } = await import('./processSlashCommand.js')
-
-// Bash 命令分支内部：
-const { processBashCommand } = await import('./processBashCommand.js')
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/utils/processUserInput/processUserInput.ts:480, 518</code></p>
-<p>这不是 JavaScript 的懒加载优化技巧——在这种规模的代码库里，这几个模块的加载时间可以忽略不计。<strong>真正的原因是架构隔离</strong>。</p>
-<p>如果在文件顶部 <code>static import</code> 所有处理器，<code>processUserInput.ts</code> 就需要在模块初始化时就加载 <code>processSlashCommand</code>、<code>processBashCommand</code>、<code>processTextPrompt</code> 的全部依赖——包括这些处理器可能在模块初始化时执行的副作用（例如注册命令、初始化状态）。更微妙的是，一旦 <code>processUserInput.ts</code> 的编译单元包含了所有处理器的 <code>import</code>，打包工具（如 bun）就可能把这些模块全部打进同一个 bundle，失去了代码分割的机会。</p>
-<p><code>dynamic import</code> 的语义是<strong>按需加载</strong>：只有当代码实际走到这个分支时，才去加载对应的处理器模块。路由层对处理器的内部实现一无所知——它只知道处理器的调用签名（<code>processSlashCommand(inputString, ...)</code> 接受什么参数、返回什么结果）。</p>
-<p>这实现了路由层与处理层的<strong>物理隔离（Physical Isolation）</strong>：</p>
-<p><strong>图 4-2：static import vs dynamic import 的架构差异</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>维度</th><th>static import（路由层顶部导入）</th><th>dynamic import（分支内导入）</th></tr></thead><tbody>
-<tr><td>处理器加载时机</td><td>模块初始化时（无论走哪条分支）</td><td>实际执行到该分支时</td></tr>
-<tr><td>路由层对处理器的依赖</td><td>编译时依赖（影响打包和测试）</td><td>运行时依赖（按需引入）</td></tr>
-<tr><td>处理器初始化副作用</td><td>随路由层初始化提前触发</td><td>在对应分支内才触发</td></tr>
-<tr><td>新增处理器的影响范围</td><td>需修改路由层顶部 import</td><td>只在新分支内添加，路由层主结构不变</td></tr>
+<h2 id="源码实例-2变体四种模式分叉"><a class="header" href="#源码实例-2变体四种模式分叉">源码实例 2（变体）：四种模式分叉</a></h2>
+<p><code>main.tsx</code> 的第二个核心模式出现在参数解析完成后。Claude Code 需要处理四种场景，但每种场景的 I/O 模型完全不同：</p>
+<div class="table-wrapper"><table><thead><tr><th>模式</th><th>触发条件</th><th>入口</th><th>I/O 模型</th></tr></thead><tbody>
+<tr><td>交互模式</td><td>默认（TTY 终端）</td><td><code>launchRepl()</code></td><td>Ink/React 渲染循环</td></tr>
+<tr><td>Headless</td><td><code>-p/--print</code> flag</td><td><code>runHeadless()</code></td><td>NDJSON 流式输出</td></tr>
+<tr><td>SDK</td><td><code>--sdk-url</code> / <code>ENTRYPOINT=sdk-ts</code></td><td>事件循环 API</td><td>结构化 JSON</td></tr>
+<tr><td>Assistant</td><td><code>feature('KAIROS') &amp;&amp; _pendingAssistantChat</code></td><td><code>assistantModule</code></td><td>（stub）</td></tr>
 </tbody></table>
 </div>
-<p><strong>结论</strong>：<code>dynamic import</code> 在这里不是性能优化，而是一条<strong>架构边界声明</strong>：路由层宣告"我不依赖处理器的存在"。</p>
-<p>这一模式在代码库的另一处得到印证。<code>src/main.tsx</code> 是 CLI 入口文件，其命令路由中同样使用了"判断先于加载"的结构——先检查命令行参数，再用 <code>dynamic import</code> 按需加载对应模块：</p>
-<pre><code class="language-typescript">// src/main.tsx:615-622（CLI 命令路由，不同文件中的相同模式）
-if (ccIdx !== -1 &amp;&amp; _pendingConnect) {
-  const {
-    parseConnectUrl
-  } = await import('./server/parseConnectUrl.js')  // 仅当命中 cc:// URL 时才加载
-  const parsed = parseConnectUrl(ccUrl)
-  // ...
+<p>分叉决策在 <code>src/main.tsx:800-804</code> 用一行完成：</p>
+<pre><code class="language-typescript">// src/main.tsx:800-804
+const hasPrintFlag = cliArgs.includes('-p') || cliArgs.includes('--print');
+const hasInitOnlyFlag = cliArgs.includes('--init-only');
+const hasSdkUrl = cliArgs.some(arg =&gt; arg.startsWith('--sdk-url'));
+const isNonInteractive = hasPrintFlag || hasInitOnlyFlag || hasSdkUrl
+  || !process.stdout.isTTY;
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/main.tsx:800-803</code></p>
+<p><code>isNonInteractive</code> 这一个布尔值是整个模式分叉的核心：只要进入非交互状态，后续的全部流程都走不同的代码路径。注意条件的设计——<code>!process.stdout.isTTY</code> 作为最后一个条件，确保了"重定向到管道"的场景也自动落入非交互模式，无需用户显式指定 <code>-p</code>。</p>
+<p>Assistant 模式（KAIROS）的分叉逻辑出现得更早，在 Commander.js 解析之前：</p>
+<pre><code class="language-typescript">// src/main.tsx:685-695
+if (feature('KAIROS') &amp;&amp; _pendingAssistantChat) {
+  const rawArgs = process.argv.slice(2);
+  if (rawArgs[0] === 'assistant') {
+    // ...修改 process.argv，使 commander 接收的参数
+    // 去掉 'assistant' 前缀
+  }
 }
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/main.tsx:619</code></p>
-<p>两处对比揭示了这个模式的跨层次复用性：在 <code>processUserInput.ts</code> 中，路由判断发生在<strong>消息处理层</strong>（根据消息类型选择处理器）；在 <code>main.tsx</code> 中，路由判断发生在 <strong>CLI 入口层</strong>（根据命令行参数选择子命令模块）。层次不同，模式相同——"先判断，再按需加载"在系统的多个抽象层次上重复出现。</p>
-<hr />
-<h2 id="模式剖析前置路由pre-dispatch-router"><a class="header" href="#模式剖析前置路由pre-dispatch-router">模式剖析：前置路由（Pre-dispatch Router）</a></h2>
-<p>把前面看到的两个源码实例放在一起，我们能命名一个在系统中反复出现的模式：</p>
-<p><strong>前置路由（Pre-dispatch Router）</strong> 的核心做法是将输入类型判断提升到函数入口的最顶层，在所有副作用（网络请求、文件读写、状态变更）执行之前完成路由决策，然后懒加载对应的处理器。</p>
-<p>这个模式有三个关键组成部分：</p>
-<p><strong>组成部分 1：显式的模式参数（Explicit Mode Parameter）</strong>
-路由函数接受 <code>mode: PromptInputMode</code> 作为参数，而非从全局状态推断。<code>PromptInputMode</code> 的 4 个合法值（'bash' | 'prompt' | 'orphaned-permission' | 'task-notification'）在类型定义时就穷举了所有可能的输入语义（<code>src/types/textInputTypes.ts:265</code>）。调用方明确声明"这条输入是什么类型"，路由层不猜测。</p>
-<p><strong>组成部分 2：优先级链（Priority Chain）</strong>
-四条分支以明确的优先级顺序排列。当多条分支的判断条件理论上可能同时满足时（例如一条以 <code>/</code> 开头的字符串，同时满足"以 <code>/</code> 开头"和"mode === 'prompt'"），优先级链保证行为确定——先匹配到的分支优先处理，后续分支不再执行。这与 if-else 链的语义完全一致，但比 strategy map 更清晰地表达了优先级意图。</p>
-<p><strong>组成部分 3：懒加载隔离（Lazy-load Isolation）</strong>
-路由层通过 <code>dynamic import</code> 而非 static import 引用处理器。路由层不需要知道处理器的任何实现细节——只需要知道处理器的调用签名。新增一种处理器时，路由层主结构（判断条件链）保持不变，只在适当位置插入一个新的 if 分支。</p>
-<p><strong>图 4-3：前置路由模式的三个核心组成部分</strong></p>
-<pre><code class="language-mermaid">flowchart LR
-    A["① 显式模式参数
-mode: PromptInputMode"] --&gt; D["前置路由
-Pre-dispatch Router"]
-    B["② 优先级链
-if-chain 顺序语义"] --&gt; D
-    C["③ 懒加载隔离
-dynamic import"] --&gt; D
-    D --&gt; E["路由决策
-先于所有副作用"]
+<p><strong>源码参考：</strong> <code>src/main.tsx:685-695</code></p>
+<p>这里有个设计细节值得注意：KAIROS 模式通过修改 <code>process.argv</code> 实现"透明分叉"——后续的 Commander.js 解析看不到 <code>assistant</code> 这个前缀，整个分叉对命令解析层来说是不可见的。与 <code>isNonInteractive</code> 的显式判断相比，这是一种更隐式的分叉方式（推断：这可能是为了让 KAIROS 模式完全复用主流程的参数解析逻辑，而不需要在 Commander 里单独注册）。</p>
+<p><strong>图 4-2：四种运行模式分叉决策树</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    START["main.tsx 入口"] --&gt; PRE["三路并行启动副作用\nMDM + Keychain + profileCheckpoint"]
+    PRE --&gt; PARSE["Commander.js 参数解析"]
+
+    PARSE --&gt; K{"feature KAIROS\n&amp;&amp; assistant argv"}
+    K --&gt;|"是"| ASST["Assistant 模式\n修改 process.argv\n透明分叉"]
+    K --&gt;|"否"| NI{"isNonInteractive\n= -p/--print\n|| --sdk-url\n|| !isTTY"}
+
+    NI --&gt;|"是"| HL["Headless 模式\nrunHeadless()\nNDJSON 输出"]
+    NI --&gt;|"否"| REPL["交互模式\nlaunchRepl()\nInk/React 渲染"]
+
+    REPL --&gt; DP["startDeferredPrefetches()\n首次渲染后执行"]
 </code></pre>
-<p>三个组成部分缺一不可：只有显式参数（①）才能避免从全局状态推断类型；只有明确的优先级链（②）才能在条件交叉时保证行为确定；只有懒加载（③）才能切断路由层对处理器的编译时依赖。</p>
+<p><em>图注：分叉在参数解析后立刻发生——KAIROS 检查在 Commander 解析前，isNonInteractive 判断在解析后。一旦进入某条分支，两条路径的 I/O 模型就完全不同，不会再合并。延迟预热只在交互模式下触发（因为 Headless 模式没有"用户在打字"的时间窗口）。</em></p>
+<hr />
+<h2 id="模式剖析两个互补的启动模式"><a class="header" href="#模式剖析两个互补的启动模式">模式剖析：两个互补的启动模式</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>并行抢跑（Parallel Pre-flight）</th><th>模式分叉（Mode Fork）</th></tr></thead><tbody>
+<tr><td><strong>触发时机</strong></td><td>进程启动的最早期</td><td>参数解析完成后</td></tr>
+<tr><td><strong>目标</strong></td><td>利用不可避免的等待时间完成 I/O</td><td>把互不兼容的运行路径彻底隔离</td></tr>
+<tr><td><strong>实现机制</strong></td><td>模块顶层副作用 + <code>void</code> 异步调用</td><td><code>isNonInteractive</code> 布尔 + feature gate</td></tr>
+<tr><td><strong>变体</strong></td><td>启动副作用（import 期间）+ 延迟预热（渲染后）</td><td>显式 flag 检查 + 隐式 argv 修改</td></tr>
+<tr><td><strong>关联模式</strong></td><td>见 <code>src/main.tsx:12-20</code> 和 <code>:388</code></td><td>见 <code>src/main.tsx:803</code> 和 <code>:685</code></td></tr>
+</tbody></table>
+</div>
+<p>两个模式的关键互补在于：并行抢跑解决的是"如何让等待时间不空转"，模式分叉解决的是"如何让不同运行场景互不干扰"。它们在时序上是串联的——并行抢跑发生在分叉之前（甚至在参数解析之前），分叉发生后，不同的路径有各自独立的后续操作（比如延迟预热只在交互路径触发）。</p>
 <hr />
 <h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
-<tr><td>输入有多种明确语义类型（命令/消息/模式）</td><td>✓</td><td>类型可以静态区分，不需要执行处理器才知道类型</td><td>N/A</td></tr>
-<tr><td>各类型处理路径完全互斥（走了A就不走B）</td><td>✓</td><td>if-chain 语义清晰，不需要组合逻辑</td><td>N/A</td></tr>
-<tr><td>分支数量 ≤ 6</td><td>✓</td><td>if-chain 在 6 条以内可读性高</td><td>超过后改用 strategy map</td></tr>
-<tr><td>类型判断依赖外部状态（如数据库查询）</td><td>✗</td><td>路由层引入 I/O 副作用，破坏"前置无副作用"原则</td><td>Command Bus 或 Strategy Pattern</td></tr>
-<tr><td>输入类型之间有共享的前置步骤</td><td>✗</td><td>需要在路由前执行共享逻辑，考虑 Template Method</td><td>Template Method + 子类路由</td></tr>
-<tr><td>需要运行时动态注册新的输入类型</td><td>✗</td><td>if-chain 是静态的，添加新类型需改代码</td><td>插件注册表（详见第 37 章）</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>CLI 工具有 &gt; 100ms 的模块加载时间</td><td>✓</td><td>并行抢跑收益与模块加载时间正相关</td><td>减少依赖（根本解法）</td></tr>
+<tr><td>启动时需要读取多个独立的外部配置</td><td>✓</td><td>多路 I/O 并行能叠加收益</td><td>懒加载（用时再读）</td></tr>
+<tr><td>同一个入口需要支持多种 I/O 模型</td><td>✓</td><td>模式分叉让每条路径可独立优化</td><td>多个独立入口文件</td></tr>
+<tr><td>I/O 操作之间有依赖关系</td><td>✗</td><td>依赖关系破坏并行性，收益为零或负</td><td>串行初始化</td></tr>
+<tr><td>模式数量 ≤ 2 且逻辑简单</td><td>△</td><td>可以，但 if/else 可能已经足够，不必封装</td><td>简单条件分支</td></tr>
+<tr><td>需要在运行时动态切换模式</td><td>✗</td><td>模式分叉是一次性的永久决策</td><td>策略模式（运行时可替换）</td></tr>
 </tbody></table>
 </div>
 <hr />
 <h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
-<p><strong>优先级链的顺序是 breaking change 的来源</strong>。上面看到的四条分支，它们的顺序不是随意的——Ultraplan 排第一是因为它需要在附件提取之前执行，这是 React 批量渲染的要求。如果将来某个开发者把 Bash 分支调整到 Ultraplan 分支之前，在某些边界场景下（mode==='bash' 的输入正好满足 Ultraplan 的所有其他条件），行为会静默改变。<strong>优先级链的顺序变更是隐性的不兼容改动</strong>，在代码审查时需要格外注意。</p>
-<p><strong>dynamic import 引入了异步开销</strong>。<code>await import(...)</code> 在 Node.js/Bun 环境下的实际耗时通常是微秒级（模块已经在内存中时），但在测试环境或 CI 中可能产生略高的首次加载延迟。如果 <code>processUserInput</code> 需要在高频循环中调用（例如批处理场景），应该评估这个开销是否可接受。在 Claude Code 的实际使用场景中，它是用户按下 Enter 触发的，人类操作频率远低于微秒级，所以这个开销完全可以接受。</p>
-<p><strong>四种 mode 之外的输入如何处理？</strong> <code>PromptInputMode</code> 目前有 4 个值，其中 'orphaned-permission' 和 'task-notification' 在路由逻辑中没有专属分支——它们会落入普通文本的兜底路径（processTextPrompt）。这是一个潜在的扩展点：如果未来需要为这两种 mode 增加专属处理逻辑，需要在 if-chain 中添加新分支，同时评估优先级位置。</p>
+<p><strong>并行抢跑的时序风险</strong>：模块顶层副作用在所有依赖加载完毕之前就开始执行。如果 <code>startMdmRawRead()</code> 的实现意外依赖了后续才加载的模块，会在运行时报错。Claude Code 用 ESLint 规则（<code>no-top-level-side-effects</code>）管理这一风险——除了这两处显式例外，所有其他地方都不允许顶层副作用，让这两处特例保持清晰可见。</p>
+<p><strong>延迟预热的不确定性</strong>：<code>startDeferredPrefetches()</code> 里的操作都用 <code>void</code> 丢弃了 Promise 返回值。这意味着如果某个预热操作失败（网络超时、认证错误），主流程不会感知——失败是静默的。这是刻意的取舍：预热是"尽力而为"的优化，失败了大不了第一个 API 调用慢一点，不能因为预热失败就阻断用户交互。</p>
+<p><strong>模式分叉的维护成本</strong>：四种运行模式意味着同一个 <code>main.tsx</code> 需要同时服务四条代码路径。当新增一个全局参数时，需要评估它对四种模式的影响。<code>src/main.tsx:4,683</code> 行的体积很大程度上来自于这种"一个入口多条路径"的复杂度积累——这是模式分叉设计的固有代价。</p>
 <hr />
 <h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
-<p><strong>图 4-4：前置路由与 GoF 责任链、策略模式的对比</strong></p>
-<pre><code class="language-mermaid">flowchart TD
-    subgraph 前置路由
-        R1[路由层判断类型] --&gt; R2{条件匹配?}
-        R2 --&gt;|是| R3[懒加载处理器]
-        R3 --&gt; R4[立即处理并返回]
-        R2 --&gt;|否| R5[下一条件]
-    end
-    subgraph GoF责任链
-        C1[Handler1] --&gt;|pass-through| C2[Handler2]
-        C2 --&gt;|pass-through| C3[Handler3]
-        C3 --&gt; C4[处理或放弃]
-    end
-</code></pre>
-<p>上图直观展示了两个模式的核心差异：前置路由是中心化的分流决策，命中即返回，处理器之间不知道彼此；GoF 责任链是去中心化的请求传递，每个处理器可以决定传递或接管。</p>
-<p><strong>这个模式最接近 GoF 责任链（Chain of Responsibility）</strong>。两者的相同点在于：请求沿着一个有序的处理器链传递，直到某个处理器接受并处理它。</p>
-<p>不同点有两个：</p>
-<p><strong>第一，GoF 责任链允许"传递"（pass-through）</strong>。链中的每个处理器可以选择处理、或者转给下一个处理器。<code>processUserInputBase</code> 的分支是互斥的——一旦命中某个分支，就立即返回，不传递给后续分支。这不是职责链，而是<strong>优先级路由</strong>：谁先匹配谁处理，处理完直接返回。</p>
-<p><strong>第二，GoF 责任链中处理器互相知道彼此的存在</strong>（通过 <code>next</code> 引用）。<code>processUserInputBase</code> 中，每个处理器完全不知道其他处理器的存在——它们通过 <code>dynamic import</code> 独立加载，路由层是唯一知道所有处理器的中心点。这是一种更松散的耦合，更接近 <strong>Strategy Pattern（策略模式）</strong> 的精神，只是这里的"策略选择"发生在调用时而非构造时。</p>
-<p>如果用 GoF 的语言来说，<code>processUserInput</code> 更像是一个<strong>工厂方法</strong>（Factory Method）的变体：根据 mode 和内容特征，运行时决定调用哪个处理器——而且这个决定不可回退（已经返回了）。</p>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>并行抢跑</th><th>Promise.all</th><th>服务端并行请求</th></tr></thead><tbody>
+<tr><td><strong>并行时机</strong></td><td>模块加载期间（利用阻塞窗口）</td><td>显式创建后并行等待</td><td>请求处理期间</td></tr>
+<tr><td><strong>等待方式</strong></td><td>不等待（副作用启动即返回）</td><td>显式 <code>await Promise.all</code></td><td>响应合并后返回</td></tr>
+<tr><td><strong>失败处理</strong></td><td>静默（错误留给调用方处理）</td><td>任意一个失败即整体失败</td><td>可配置</td></tr>
+<tr><td><strong>适用场景</strong></td><td>启动阶段的非关键预读取</td><td>关键路径上的多个依赖</td><td>服务端 I/O 密集操作</td></tr>
+</tbody></table>
+</div>
+<p><strong>并行抢跑 vs <code>Promise.all</code></strong>：两者都实现了并行，但时机不同。<code>Promise.all</code> 需要显式创建后等待，它不能"利用等待时间"——因为调用 <code>Promise.all</code> 时主线程已经进入等待状态。并行抢跑把并行操作塞在一段不可跳过的阻塞之前，让阻塞期间的等待时间"物尽其用"。</p>
+<p><strong>模式分叉 vs GoF Strategy 模式</strong>：Strategy 模式在运行时可以切换策略；模式分叉是一次性永久决策——分叉后两条路径不会合并，也无法切换。Strategy 解决的是"同一操作的多种算法"，模式分叉解决的是"完全不同的运行场景"。可以把模式分叉理解为"静态策略"：策略在参数解析时确定，之后不再改变。</p>
 <hr />
 <h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
-<h3 id="前置路由pre-dispatch-router"><a class="header" href="#前置路由pre-dispatch-router">前置路由（Pre-dispatch Router）</a></h3>
-<p><strong>解决的问题</strong>：多类型输入在执行业务逻辑前需要确定处理路径，副作用不能污染路由决策，路由决策不能重复在各处理器内部执行。</p>
-<p><strong>核心做法</strong>：将类型判断提升到函数入口，以参数（mode）和内容特征（startsWith）为依据建立优先级链，在每条分支内用 <code>dynamic import</code> 懒加载对应处理器。</p>
-<p><strong>前置条件</strong>：类型判断逻辑无 I/O 副作用；处理路径互斥；优先级关系在编写时已知。</p>
-<p><strong>源码证据</strong>：<code>src/utils/processUserInput/processUserInput.ts:460-578</code> — <code>processUserInputBase</code> 的四分支路由链。</p>
+<h3 id="并行抢跑parallel-pre-flight"><a class="header" href="#并行抢跑parallel-pre-flight">并行抢跑（Parallel Pre-flight）</a></h3>
+<p><strong>解决的问题</strong>：CLI启动时有不可避免的等待窗口（模块加载），等待期间主线程空闲但外部I/O可并行。</p>
+<p><strong>核心做法</strong>：在import语句之间插入副作用调用启动独立I/O，首次渲染后用void异步启动非关键预热操作。</p>
+<p><strong>前置条件</strong>：预热操作与主流程无强依赖（可以独立启动），允许静默失败（预热失败不阻断主流程）。</p>
+<p><strong>源码证据</strong>：src/main.tsx:12-20，src/main.tsx:388</p>
 <hr />
-<h3 id="懒加载隔离lazy-load-isolation"><a class="header" href="#懒加载隔离lazy-load-isolation">懒加载隔离（Lazy-load Isolation）</a></h3>
-<p><strong>解决的问题</strong>：路由层引用了处理器，如果是 static import，处理器的初始化副作用会污染路由层的加载时序；新增处理器时也需要修改路由层顶部的 import 列表。</p>
-<p><strong>核心做法</strong>：在路由分支内用 <code>dynamic import()</code> 而非文件顶部 <code>import</code> 加载处理器，路由层只知道处理器的调用签名，不知道实现细节。</p>
-<p><strong>前置条件</strong>：处理器是独立模块，加载本身无副作用；运行时允许异步动态加载。</p>
-<p><strong>源码证据</strong>：<code>src/utils/processUserInput/processUserInput.ts:480, 518</code> — 斜杠命令和 Bash 命令分支内的 <code>await import('./processSlashCommand.js')</code> 和 <code>await import('./processBashCommand.js')</code>。</p>
-<hr />
-<h3 id="参数化模式分流parameterized-mode-dispatch"><a class="header" href="#参数化模式分流parameterized-mode-dispatch">参数化模式分流（Parameterized Mode Dispatch）</a></h3>
-<p><strong>解决的问题</strong>：同一内容字符串在不同模式下语义不同，路由层不能通过内容猜测模式，必须依赖外部明确声明。</p>
-<p><strong>核心做法</strong>：将 mode 作为显式参数传入分流函数（<code>mode: PromptInputMode</code>），而非从全局状态或内容格式推断；<code>PromptInputMode</code> 类型枚举所有合法值，TypeScript 编译器保证调用方不能传入非法值。</p>
-<p><strong>前置条件</strong>：输入的模式在调用方已知；不同模式下的处理路径差异足够大，值得用参数显式区分。</p>
-<p><strong>源码证据</strong>：<code>src/utils/processUserInput/processUserInput.ts:85</code>（函数签名中的 <code>mode: PromptInputMode</code>）和 <code>src/types/textInputTypes.ts:265</code>（<code>PromptInputMode</code> 类型定义：<code>'bash' | 'prompt' | 'orphaned-permission' | 'task-notification'</code>）。</p>
+<h3 id="模式分叉mode-fork"><a class="header" href="#模式分叉mode-fork">模式分叉（Mode Fork）</a></h3>
+<p><strong>解决的问题</strong>：同一个CLI入口需支持多种运行场景，各场景I/O模型完全不兼容，混合在同一路径导致大量条件判断。</p>
+<p><strong>核心做法</strong>：参数解析后立即计算isNonInteractive布尔值，后续全部路径基于此分叉；feature gate用于更早期的透明分叉。</p>
+<p><strong>前置条件</strong>：各模式的 I/O 模型确实互不兼容（否则共用一套代码反而更简单），模式数量相对稳定（否则分叉点会持续膨胀）。</p>
+<p><strong>源码证据</strong>：src/main.tsx:803，src/main.tsx:685，src/main.tsx:2826，src/main.tsx:3134</p>
 <hr />
 <h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
 <ul>
-<li>
-<p><strong>将输入类型判断提升到统一入口函数</strong>。在你的 Agent 系统中，如果处理函数内部有大量 <code>if (mode === ...)</code> 判断，考虑把这些判断上移到调用点，在分流前决定走哪条路径。</p>
-</li>
-<li>
-<p><strong>用显式 mode 参数替代从全局状态推断输入模式</strong>。全局状态依赖让路由函数难以测试（测试时需要设置全局状态）；显式参数让单元测试只需要传入不同的 mode 值即可覆盖所有分支。</p>
-</li>
-<li>
-<p><strong>为每种输入类型编写独立的处理器模块，通过 dynamic import 在路由时懒加载</strong>。这确保了路由层和处理层的物理隔离——添加一种新输入类型只需要新增一个处理器模块和一条 if 分支，不需要修改现有处理器。</p>
-</li>
-<li>
-<p><strong>当分支数超过 6 条时，考虑将 if-chain 重构为 strategy map</strong>。Map 的优势在于可以运行时注册新处理器（<code>handlers.set('newMode', newHandler)</code>），而 if-chain 是静态的。6 条是一个经验阈值：低于这个数量，if-chain 的优先级语义比 map 更清晰；超过后维护成本开始超过 map 的实现成本。</p>
-</li>
-<li>
-<p><strong>在路由函数的单元测试中，只验证路由决策，不测试业务逻辑</strong>。测试 <code>processUserInput</code> 时，mock 掉 <code>processBashCommand</code>、<code>processSlashCommand</code> 等处理器（只验证它们被正确调用），将处理器的业务逻辑测试独立到各处理器自己的测试文件中。</p>
-</li>
-<li>
-<p><strong>避免在路由层执行任何 I/O 或状态变更</strong>。一旦路由函数包含 <code>await dbQuery(...)</code>，它就不再是"前置路由"，而变成了"带副作用的路由"——测试难度指数级上升，且路由顺序变更会产生难以预测的副作用。</p>
-</li>
+<li><strong>在自己的 CLI 工具里找到那段"不可避免的等待"</strong>：<code>npm install</code> 的依赖解析、TypeScript 的类型检查初始化、配置文件扫描——凡是必须执行但不依赖前序结果的 I/O，都可以提前启动</li>
+<li><strong>用 ESLint 规则管理顶层副作用</strong>：添加 <code>no-top-level-side-effects</code> 规则，让所有刻意的例外（并行预读取）显式可见，防止无意的副作用积累</li>
+<li><strong>用 <code>void</code> + async 区分"启动即忘"和"等待结果"</strong>：预热操作用 <code>void fn()</code> 明确表达"我不关心结果"，关键路径操作用 <code>await fn()</code> 明确表达"我必须等"——这两种语义混在一起是常见的启动性能问题根源</li>
+<li><strong>用一个布尔值驱动模式分叉</strong>：参考 <code>isNonInteractive</code> 的设计——用一个聚合了所有条件的布尔值作为分叉点，而非在代码各处重复检查 <code>-p</code> flag</li>
+<li><strong>对照 <code>process.stdout.isTTY</code> 自动检测重定向</strong>：在设计 CLI 工具时，总要考虑"如果输出被重定向到管道会怎样"——<code>!process.stdout.isTTY</code> 是自动检测的标准做法，不需要用户显式指定 <code>--no-color</code> 或 <code>--json</code></li>
+<li><strong>在 deferred prefetch 之前检查模式</strong>：延迟预热只对交互模式有意义。参考 <code>startDeferredPrefetches</code> 中的 <code>isBareMode()</code> 检查（<code>src/main.tsx:400</code>）——非交互模式下跳过所有预热，不占用 CI/脚本调用的 CPU 和网络资源</li>
 </ul>
 <hr />
-<p>下一章（第 5 章）将深入斜杠命令系统的内部——当 <code>processSlashCommand</code> 收到一条以 <code>/</code> 开头的输入时，103 个命令如何注册、加载和执行。</p>
+<p><em>下一章深入第二篇交互层的第二个子系统：<code>src/screens/REPL.tsx</code> 的 5,005 行是如何用 Ink（React for CLI）实现消息渲染、权限弹窗和推测执行的——以及"单文件巨组件"在强内聚场景下的工程合理性（详见第 5 章）。</em></p>
 
                     </main>
 

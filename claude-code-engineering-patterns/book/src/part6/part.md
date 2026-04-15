@@ -1,8 +1,15 @@
-<div class="part-page">
-  <div class="part-label">PART VI</div>
-  <div class="part-number">第六篇</div>
-  <div class="part-title">Task 系统：后台执行的基础设施</div>
-  <div class="part-rule"></div>
-  <div class="part-desc">当 Agent 需要并行、后台、跨进程执行时，Task 系统提供七种类型的状态机和统一的生命周期接口。从 LocalShellTask 到 DreamTask，后台自主执行的完整图谱。</div>
-  <div class="part-chapters">第 25—28 章</div>
-</div>
+# 第六篇：上下文工程——控制 AI 的信息视野
+
+> *目的：理解 Harness·提示词管理与上下文管理两个子系统——Claude Code 如何精确控制送入 AI 的每一个 token*
+
+本篇追踪"送入 AI 的信息"的完整生命周期：从提示词动态组装、到 CLAUDE.md 层级注入、到会话持久化、到上下文压缩、到记忆系统。
+
+---
+
+## 本章导航
+
+- [第 19 章：提示词装配——`fetchSystemPromptParts()` 的分层组装](ch19.md)
+- [第 20 章：CLAUDE.md 注入——层级化指令的加载与优先级](ch20.md)
+- [第 21 章：会话持久化——转录、快照与断点续写](ch21.md)
+- [第 22 章：AutoCompact 与上下文折叠——窗口压缩的触发机制](ch22.md)
+- [第 23 章：记忆系统——本地、跨会话与团队记忆的三层架构](ch23.md)

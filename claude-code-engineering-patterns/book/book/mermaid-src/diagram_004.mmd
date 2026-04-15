@@ -1,15 +1,14 @@
-flowchart TD
-    Caller["调用方（QueryEngine、REPL 等）"]
-    GetSet["get/set 函数对（210 个导出函数）"]
-    AtomicOp["原子操作函数（switchSession 等）"]
-    STATE["STATE 对象（模块级，不导出）"]
+sequenceDiagram
+    participant Caller as 调用方<br/>（REPL.tsx 等）
+    participant State as bootstrap/state.ts
+    participant Sub1 as 订阅者 1<br/>（concurrentSessions.ts）
+    participant Sub2 as 订阅者 N<br/>（其他模块）
 
-    Caller -->|"读状态"| GetSet
-    Caller -->|"写状态"| GetSet
-    Caller -->|"复合写操作"| AtomicOp
-    GetSet --> STATE
-    AtomicOp --> STATE
+    Note over State: import 时<br/>const sessionSwitched = createSignal()
+    Sub1->>State: onSessionSwitch(callback1)（注册订阅）
+    Sub2->>State: onSessionSwitch(callbackN)（注册订阅）
 
-    style STATE fill:#e8f5e9,stroke:#388e3c
-    style GetSet fill:#e3f2fd,stroke:#1565c0
-    style AtomicOp fill:#fff3e0,stroke:#e65100
+    Caller->>State: switchSession(newId)
+    Note over State: STATE.sessionId = newId
+    State->>Sub1: sessionSwitched.emit(newId) → callback1(newId)
+    State->>Sub2: sessionSwitched.emit(newId) → callbackN(newId)

@@ -1,19 +1,19 @@
 spec: task
-name: "第24章：Frontmatter Hooks——Skill 与 Agent 的声明式钩子注册"
-tags: [book-chapter, part-5]
+name: "第 24 章：27 个事件的生命周期地图——Hooks 全景"
+tags: [book-chapter, part-7]
 ---
 
 ## 意图
 
-揭示 `src/utils/hooks/registerSkillHooks.ts` 和 `registerFrontmatterHooks.ts` 如何让用户通过 Markdown frontmatter 声明钩子，以及"声明式注册"与"命令式注册"在工程权衡上的差异。读者读完后能理解声明式钩子注册的边界与局限，并能在自己的系统中合理选择两种注册方式。
+从 `src/entrypoints/sdk/coreTypes.ts:25` 的 HOOK_EVENTS 数组（27 个事件）出发，完整绘制一个 AI 操作从 PreToolUse 到 SubagentStop 的钩子触发序列，以及每个事件的设计意图。读者读完后能完整描述 Hooks 生命周期地图，并能在自己的 Agent 系统中设计类似的事件体系。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/utils/hooks/registerSkillHooks.ts、registerFrontmatterHooks.ts
-- 前置依赖：第23章（hooksConfigSnapshot，frontmatter hooks 也写入快照）、第14章（Skill 加载）
+- 核心文件：src/entrypoints/sdk/coreTypes.ts（HOOK_EVENTS，第25行）、src/utils/hooks.ts（5022行）、src/types/hooks.ts
+- 事件数量以 coreTypes.ts 实际定义为准（当前 27 个）
 
 
 ## 约束
@@ -39,54 +39,60 @@ tags: [book-chapter, part-5]
 ## 边界
 
 ### 允许修改
-- book/src/part5/ch24.md
+- book/src/part7/ch24.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不重复第14章对 Skill 加载流程的描述
-- 不重复第23章对快照机制的描述
+- 不展开执行器实现（第 25 章）
+- 不展开 AsyncHookRegistry（第 26 章）
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch24_hunter_opening
-  假设 读者打开第24章
+  测试: ch20_hunter_opening
+  假设 读者打开第 24 章
   当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: 声明式 vs 命令式注册对比
-  测试: ch24_declarative_vs_imperative
-  假设 读者阅读对比节
-  当 读者检查两种注册方式的对比
-  那么 章节有明确对比说明：声明式（Markdown frontmatter，无需编写 JS）和命令式（代码调用 registerHook）的适用场景与限制
+场景: 事件数量具体化
+  测试: ch20_event_count
+  假设 本章提到 Hook 事件数量
+  当 读者验证数字
+  那么 使用精确数字（27个，来自 coreTypes.ts 实际定义）而非"20+"
 
-场景: frontmatter 到钩子对象的转化
-  测试: ch24_frontmatter_to_hook
-  假设 读者阅读转化链路节
-  当 读者检查 Markdown frontmatter 如何变成 Hook 注册项
-  那么 章节展示解析路径（frontmatter 字段→Hook 类型→执行器选择）
+场景: 生命周期序列图存在
+  测试: ch20_lifecycle_diagram
+  假设 读者阅读生命周期节
+  当 读者检查图表
+  那么 包含一个 Mermaid 序列图，展示一次完整工具调用的钩子触发顺序
+
+场景: 每类事件设计意图说明
+  测试: ch20_event_intent
+  假设 读者阅读事件分类节
+  当 读者检查各类事件的说明
+  那么 27个事件按功能分组（生命周期/工具/权限/任务/配置等），每组有设计意图说明
 
 场景: 源码引用有效性
-  测试: ch24_source_anchors
+  测试: ch20_source_anchors
   层级: 集成
   假设 读者跟随章节中的源码引用
   当 读者在项目目录查找每处路径和行号
   那么 每处引用都实际存在于对应文件
 
 场景: 模式命名框存在
-  测试: ch24_pattern_box
+  测试: ch20_pattern_box
   假设 本章使用 hunter 风格
   当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"声明式钩子注册"模式
+  那么 存在至少 1 个格式规范的模式命名框，提炼"可观测 Agent 事件总线"模式
 
 场景: 章末行动建议
-  测试: ch24_action_items
+  测试: ch20_action_items
   假设 读者读完本章
   当 读者检查"你能做什么"节
   那么 包含 5-8 条以行动动词开头的可操作建议
 
 场景: 不引用排除范围
-  测试: ch24_no_excluded_refs
+  测试: ch20_no_excluded_refs
   层级: 集成
   假设 DESIGN.md 列出了排除范围
   当 读者检查本章所有源码路径
@@ -94,7 +100,7 @@ tags: [book-chapter, part-5]
 
 
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch24_hunter_opening_format
+  测试: ch20_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -102,33 +108,33 @@ tags: [book-chapter, part-5]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch24_multi_instance_proof
+  测试: ch20_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch24_applicability_table
+  测试: ch20_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch24_tradeoffs_and_limits
+  测试: ch20_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch24_known_pattern_dialogue
+  测试: ch20_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch24_pattern_box_format
+  测试: ch20_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -138,7 +144,7 @@ tags: [book-chapter, part-5]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch24_reader_voice
+  测试: ch20_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -146,7 +152,7 @@ tags: [book-chapter, part-5]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch24_key_info_highlight
+  测试: ch20_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
@@ -154,6 +160,7 @@ tags: [book-chapter, part-5]
 
 ## 排除范围
 
-- Skill 加载完整流程（第14章）
-- hooksConfigSnapshot 机制（第23章）
+- 执行器实现细节（第 25 章）
+- AsyncHookRegistry（第 26 章）
+- hooksConfigSnapshot（第 27 章）
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）

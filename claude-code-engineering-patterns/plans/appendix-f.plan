@@ -1,27 +1,219 @@
-# 附录 F：术语表
+# 附录 F 写作计划：术语表（Glossary）
 
 **类型**：附录
-**风格**：reference（精炼参考，无论全书 STYLE_ID 是什么）
-**目标长度**：视内容而定，表格为主
+**风格**：`reference`（精炼参考，无论全书 STYLE_ID 是什么）
+**目标长度**：~3500 字（以按字母分组的条目为主，不含分隔线）
+
+## 章节意图
+
+为读者提供全书核心技术术语与专有名词的一站式速查表。每条术语给出中英文名称、一句话定义及首次出现章节，按英文字母顺序分组排列。读者遇到陌生术语时无需翻阅正文，在此附录即可快速定位含义和相关章节。术语的完整工程分析、设计权衡和使用模式见对应正文章节。
+
+## 通用约束
+
+**通用必须**：
+- 每条术语的定义必须基于正文章节的实际用法，不得凭直觉编写
+- 跨章节引用使用"首次出现：第 X 章"格式
+- 术语按英文首字母分组，组内按字母顺序排列
+- 中文译名与正文保持一致，括号内附英文原文
+- 缺少通用中文译名的术语保留英文，不强行翻译
+- 条目之间用 `---` 分隔，每组字母标题用 `##` 二级标题
+
+**通用禁止**：
+- 不得展开设计分析（正文职责）
+- 不得重复正文的段落级描述，每条限一句话定义
+- 不得遗漏 DESIGN.md 指定的任何术语
+- 不得使用模糊的同义替换描述术语
+
+**排除范围**：
+- 术语的完整工程分析或设计权衡（见各对应章节）
+- 术语的源码实现细节（见附录 C 类型索引）
+- Hook 事件的详细字段说明（见附录 A）
+
+## 风格专属写作要求
+
+**开篇格式**（reference — 条目概览）：一段话说明本附录覆盖范围 + 收录标准（全书核心技术术语与专有名词）+ 排列方式（按英文字母顺序）+ 交叉查阅场景 + 版本来源标注。
+
+**分节组织**（reference — 字母分组条目）：按英文首字母分节（A / B / C / ...），每节下列出该字母开头的所有术语。每个条目格式：
+
+```
+**术语（英文原文）**
+一句话定义。首次出现：第 X 章。
+```
+
+字母组之间用二级标题分隔。同一字母组下的条目之间用 `---` 分隔。
+
+**章末结构**（reference — 收录范围说明 + 版本信息）：不需要模式提炼，末尾用简短段落标注术语覆盖范围和版本来源即可。
+
+**风格专属必须**：
+- 每个字母组标题独立（如 `## A`、`## B`）
+- 条目定义精确到一句话（≤60 字），不展开分析
+- "首次出现"章节号必须与正文一致
+- 关联术语可在定义中自然提及，不另设"关联"列
+
+**风格专属禁止**：
+- 不展开任何术语的工程分析或设计权衡
+- 不用正文风格的叙事/设问句式
+- 不添加"为什么叫这个名字"类词源解释
+- 不为术语添加"优点/缺点"评价
+
+**通用写作铁律**：
+- ⛔ 源码第一：术语定义必须与源码和正文章节的实际用法一致
+- ⛔ 数据驱动：术语的中英文对照、首次出现章节必须可验证
+- ⛔ 术语标准化：首次出现标注原文（如 运行框架（Harness））
+- ⛔ 开篇铁律：开篇最后补写，简洁覆盖范围即可
 
 ## 数据提取清单
 
-> ⛔ 附录内容必须从已完成的章节中提取，不得凭记忆编写。
-
-**内容描述**：全书使用的技术术语与专有名词定义。格式：术语（原文）— 定义 — 首次出现章节
+> ⛔ 附录内容必须从源码和已完成章节中提取，不得凭记忆编写。每条数据必须有源码锚点或章节出处。
 
 | # | 提取来源 | 提取方法 | 目标数据 |
 |---|---------|---------|---------|
-| 1 | 全部 ch*.md | 搜索相关内容 | 表格数据行 |
-| 2 | 源码文件 | grep 搜索 | 验证和补全 |
+| 1 | 全部 `book/src/part*/ch*.md` | `grep -rn 'Harness\|Agent Harness\|Reconciler\|Ink\|Swarm\|Teammate\|QueryEngine\|PermissionMode\|HookEvent\|Feature Flag\|DCE\|Compact\|buildTool\|CLAUDE.md\|MCP\|LSP\|Transcript\|Token Budget\|SDK Mode\|Skill\|Plugin\|Fire-and-forget\|Frontmatter\|Fail-closed\|Async Generator\|Discriminated Union\|Marketplace' book/src/` | 每个术语在正文中的首次出现章节号、上下文语境、中文译名用法 |
+| 2 | `book/src/appendix-f.md`（已写版本） | `cat` 全文 | 已收录的全部术语条目、定义文案、首现章节——作为基础数据 |
+| 3 | `src/main.tsx` | `grep -n 'feature(\|Harness\|Agent\|Coordinator\|Swarm\|Teammate\|SDK\|REPL\|DCE'` | 术语的源码出处和上下文，用于验证定义准确性 |
+| 4 | `src/Tool.ts` | `grep -n 'buildTool\|Tool<\|ToolDef\|BuiltTool\|ToolUseContext'` | `buildTool`、`Tool` 等术语的源码定义，用于验证一句话定义 |
+| 5 | `src/QueryEngine.ts` | `grep -n 'CacheSafeParams\|State\|QueryEngine\|StreamingToolExecutor\|compact\|Compaction'` | `CacheSafeParams`、`StreamingToolExecutor`、`QueryEngine` 等术语的源码锚点 |
+| 6 | `src/utils/permissions/` | `grep -rn 'PermissionMode\|PermissionResult\|PermissionDecision\|bypass\|auto\|plan'` | `PermissionMode` 枚举值和定义 |
+| 7 | `src/utils/hooks/hooksConfigManager.ts` | `grep -n 'HookEvent\|HookCommand\|hooks'` | `HookEvent`、`Hook` 的源码定义 |
+| 8 | `src/bootstrap/state.ts` | `grep -n 'setIsRemoteMode\|setMainLoopModelOverride\|getOriginalCwd\|Coordinator\|Compact'` | `Compact Boundary`、`Coordinator Mode` 等术语的源码出处 |
+| 9 | `src/components/` | `grep -rn 'Ink\|Yoga\|Reconciler\|termio\|ANSI\|SGR\|CSI\|OSC\|Cursor Managed'` | UI 相关术语（Ink、Yoga Layout、termio、ANSI Escape Sequence 等）的源码锚点 |
+| 10 | `src/services/mcp/` | `grep -rn 'Bridge Protocol\|MCP\|Model Context Protocol'` | `Bridge Protocol`、`MCP` 的源码定义 |
+| 11 | `src/utils/hooks/` + `src/entrypoints/sdk/` | `grep -rn 'AsyncHookRegistry\|HookRegistry\|registerHook\|async.*hook'` | `AsyncHookRegistry` 的源码锚点和实现特征 |
+| 12 | `DESIGN.md` | 读取"附录 F：术语表"节 | DESIGN.md 指定的必须收录术语清单，用于交叉校验覆盖度 |
 
 ## 结构骨架
 
-1. 说明本附录用途和查阅场景（~50字）
-2. 速查表（主体内容）
-3. 说明表格生成时间（基于哪个版本的源码）
+### 开篇（~80 字）
+- 覆盖范围说明：核心技术术语与专有名词
+- 排列方式：按英文字母顺序
+- 每条内容：中英文名称 + 一句话定义 + 首次出现章节
+- 交叉查阅说明
+- 版本来源标注：基于 Claude Code v2.1.88 重建版源码
+
+### 字母分组条目（主体）
+
+根据已写版本和 DESIGN.md 要求，以下是必须覆盖的字母分组和术语：
+
+**A（3 条）**
+- Agent Harness（Agent 运行框架）
+- Async Generator（异步生成器）
+- AsyncHookRegistry（异步钩子注册表） ← DESIGN.md 新增
+
+**B（2 条）**
+- Bridge Protocol（桥接协议） ← DESIGN.md 新增
+- buildTool（工具工厂函数）
+
+**C（5 条）**
+- CacheSafeParams（缓存安全参数） ← DESIGN.md 新增
+- CLAUDE.md（Claude 指令文件）
+- Compact / Compaction（上下文压缩）
+- Compact Boundary（压缩边界） ← DESIGN.md 新增
+- Coordinator Mode（协调者模式） ← 新增
+
+**D（2 条）**
+- DCE（Dead Code Elimination，死代码消除）
+- Discriminated Union（判别联合类型）
+
+**F（3 条）**
+- Fail-closed（失败关闭默认）
+- Feature Flag（特性开关）
+- Fire-and-forget（即发即忘）
+- Frontmatter（文档前置元数据）
+
+**H（2 条）**
+- Harness（运行框架 / 执行环境）
+- Hook（钩子）
+
+**I（2 条）**
+- Ink（终端 React 框架）
+- Interaction Layer（交互层） ← DESIGN.md 新增
+
+**L（1 条）**
+- LSP（Language Server Protocol）
+
+**M（2 条）**
+- Marketplace（插件市场）
+- MCP（Model Context Protocol）
+- Model Layer（模型层） ← DESIGN.md 新增
+
+**P（1 条）**
+- PermissionMode（权限模式）
+- Plugin（插件）
+
+**Q（1 条）**
+- QueryEngine（查询引擎）
+
+**R（1 条）**
+- Reconciler（协调器） ← DESIGN.md 新增
+
+**S（4 条）**
+- SDK Mode（SDK 模式）
+- Skill（技能）
+- StreamingToolExecutor（流式工具执行器） ← DESIGN.md 新增
+- Swarm（集群）
+
+**T（4 条）**
+- Task（任务）
+- Teammate（队友）
+- Token Budget（Token 预算）
+- Transcript（转录文件）
+- termio（终端 I/O） ← DESIGN.md 新增
+
+**Y（2 条）**
+- Yoga Layout（Yoga 布局引擎） ← DESIGN.md 新增
+- Yoga Node（Yoga 节点） ← DESIGN.md 新增
+
+**其他需覆盖的术语**（来自 DESIGN.md）：
+- ANSI Escape Sequence（ANSI 转义序列） → A 组
+- CSI / OSC / DEC / SGR → C / O / D / S 组（或合并至 ANSI 条目下）
+- Cursor Managed（光标托管模式） → C 组
+- SGR（Select Graphic Rendition） → S 组（如独立于 ANSI 条目）
+
+### 末尾（~30 字）
+- 收录范围说明：仅收录全书核心技术术语，未包含通用编程术语
+- 版本信息脚注
+
+## 必须覆盖的术语清单（来自 DESIGN.md）
+
+> 以下术语由 DESIGN.md 附录 F 节显式指定，每条必须收录。已在已写版本中存在的标注 ✅，需新增的标注 ❌。
+
+| # | 术语 | 英文原文 | 已写版本状态 |
+|---|------|---------|-------------|
+| 1 | 运行框架 | Harness | ✅ 已有 |
+| 2 | Agent 运行框架 | Agent Harness | ✅ 已有 |
+| 3 | 交互层 | Interaction Layer | ❌ 需新增 |
+| 4 | 模型层 | Model Layer | ❌ 需新增 |
+| 5 | 协调器 | Reconciler | ❌ 需新增 |
+| 6 | Yoga 布局引擎 | Yoga Layout | ❌ 需新增 |
+| 7 | Yoga 节点 | Yoga Node | ❌ 需新增 |
+| 8 | ANSI 转义序列 | ANSI Escape Sequence | ❌ 需新增 |
+| 9 | CSI / OSC / DEC / SGR | CSI / OSC / DEC / SGR | ❌ 需新增（可合并为子条目或独立条目） |
+| 10 | 特性开关 | Feature Flag | ✅ 已有 |
+| 11 | 死代码消除 | DCE (Dead Code Elimination) | ✅ 已有 |
+| 12 | 权限模式 | PermissionMode | ✅ 已有 |
+| 13 | 钩子事件 | HookEvent | ❌ 需新增（已有 Hook 条目，但 HookEvent 是独立术语） |
+| 14 | 集群 | Swarm | ✅ 已有 |
+| 15 | 队友 | Teammate | ✅ 已有 |
+| 16 | 终端 React 框架 | Ink | ✅ 已有 |
+| 17 | 终端 I/O | termio | ❌ 需新增 |
+| 18 | 光标托管模式 | Cursor Managed | ❌ 需新增 |
+| 19 | 压缩边界 | Compact Boundary | ❌ 需新增 |
+| 20 | 缓存安全参数 | CacheSafeParams | ❌ 需新增 |
+| 21 | 流式工具执行器 | StreamingToolExecutor | ❌ 需新增 |
+| 22 | 异步钩子注册表 | AsyncHookRegistry | ❌ 需新增 |
+| 23 | 桥接协议 | Bridge Protocol | ❌ 需新增 |
+
+**新增术语合计：13 条**（需从源码和正文章节提取定义）
 
 ## 写作前验证
-- [ ] 已从各章节提取原始数据
-- [ ] 每条数据已验证源码锚点有效性
-- [ ] 按字母/分类排序完成
+
+- [ ] 已从全部分 `book/src/part*/ch*.md` 提取每个术语的首次出现章节号
+- [ ] 已写版本中已有条目的定义已与正文核对，确认准确无偏差
+- [ ] 13 条新增术语已从源码提取定义依据（文件:行号）
+- [ ] 新增术语的首次出现章节号已确认
+- [ ] CSI / OSC / DEC / SGR 的组织方式已决定（独立条目 vs 合并至 ANSI 条目下）
+- [ ] 全部术语的中英文对照与正文一致（无同一术语不同译名的问题）
+- [ ] 按英文字母排序已验证无遗漏无错位
+- [ ] 每条术语的定义控制在一句话（≤60 字）
+- [ ] DESIGN.md 指定的 23 条术语全部覆盖
+- [ ] 版本信息脚注与 DESIGN.md 元信息一致（v2.1.88）

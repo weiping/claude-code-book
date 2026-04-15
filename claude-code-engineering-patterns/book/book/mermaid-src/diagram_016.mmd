@@ -1,22 +1,18 @@
-sequenceDiagram
-    participant boot as CLI 启动
-    participant cmd as commands.ts
-    participant skills as getSkills()
-    participant dir as src/commands/ 目录
-    participant user as 用户输入 /clear
+flowchart LR
+    start([loadAllCommands 调用]) --> pa["Promise.all 并行加载"]
+    pa --> gs["getSkills(cwd)\n→ 4 个子来源"]
+    pa --> gpc["getPluginCommands()\n→ 插件命令"]
+    pa --> gwc["getWorkflowCommands(cwd)\n→ 工作流命令（WORKFLOW_SCRIPTS gate）"]
 
-    boot->>cmd: getCommands(cwd)
-    cmd->>cmd: loadAllCommands(cwd) 首次调用
-    cmd->>skills: getSkills(cwd) + getPluginCommands() 并行
-    skills->>dir: 扫描技能目录 I/O
-    dir-->>skills: skillDirCommands 返回
-    skills-->>cmd: 4 组 skills 汇总
-    cmd->>cmd: spread 合并 7 个来源
-    cmd->>cmd: memoize 缓存结果
-    cmd->>cmd: 过滤 availability + isEnabled
-    cmd-->>boot: 可见命令列表
-    Note over cmd: 第二次调用直接返回缓存
-    user->>boot: 输入 /clear
-    boot->>dir: clear.load() = import clear.js
-    dir-->>boot: 实现模块
-    boot-->>user: 执行命令
+    gs --> bs[bundledSkills]
+    gs --> bps[builtinPluginSkills]
+    gs --> sdc[skillDirCommands]
+    gs --> ps[pluginSkills]
+
+    bs --> merge["...spread 合并\n返回统一列表"]
+    bps --> merge
+    sdc --> merge
+    gwc --> merge
+    gpc --> merge
+    ps --> merge
+    cmds["COMMANDS()\n内置命令"] --> merge

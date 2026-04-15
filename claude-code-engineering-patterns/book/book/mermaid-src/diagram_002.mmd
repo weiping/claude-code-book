@@ -1,46 +1,25 @@
-graph LR
-    subgraph 接入层
-        CLI["Commander.js\n参数解析"]
-        REPL["REPL.tsx\nTUI 状态机"]
+graph TB
+    subgraph Tools["④ 工具编排"]
+        TD["src/tools/
+58 个目录"] --> TF["buildTool() 工厂
+Tool 接口约束"]
+    end
+    subgraph Cmds["命令系统"]
+        CD["src/commands/
+113 个目录"] --> CF["getCommands() 聚合
+Command 接口约束"]
+    end
+    subgraph Tasks["⑧ 任务编排"]
+        KD["src/tasks/
+7 个目录"] --> KF["TaskType 联合类型
+每目录对应一种 TaskType"]
+    end
+    subgraph Hooks["⑦ Hooks 引擎"]
+        HD["HOOK_EVENTS as const
+27 个命名事件"] --> HF["AsyncHookRegistry
+静态枚举替代目录"]
     end
 
-    subgraph 编排层
-        PUI["processUserInput\n路由决策"]
-        QE["QueryEngine\n主循环"]
-        QL["query.ts\n流式生成器"]
-    end
-
-    subgraph 记忆层
-        MEM["memdir\nCLAUDE.md"]
-        HST["history.ts\n对话历史"]
-        CMP["compact\n上下文压缩"]
-    end
-
-    subgraph 工具层
-        TOOL["tools/\n55+工具"]
-        TASK["tasks/\n7种任务"]
-        MCP["services/mcp\nMCP协议"]
-        SWM["swarm/\nAgent集群"]
-    end
-
-    subgraph 模型层
-        API["services/api/claude\nAnthropic API"]
-        MDL["utils/model\n模型路由"]
-        PERM["permissions\n权限决策"]
-        BST["bootstrap/state\n全局状态"]
-    end
-
-    CLI --> REPL --> PUI --> QE
-    QE --> QL --> API
-    MDL --> API
-    MEM --> QE
-    HST --> QE
-    QE --> CMP
-    QE --> TOOL --> API
-    QE --> TASK
-    QE --> MCP
-    SWM --> QE
-    PERM --> QE
-    PERM --> TOOL
-    BST -. 状态注入 .-> QE
-    BST -. 状态注入 .-> API
+    PATTERN(["共同骨架：约定位置替代显式注册
+类型系统提供编译期保证"])
+    Tools & Cmds & Tasks & Hooks --> PATTERN

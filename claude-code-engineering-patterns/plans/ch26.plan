@@ -1,30 +1,29 @@
 # 第 26 章写作计划
 
-**批次**：批次 7a（来自 plans/batch.md）
-**章节**：ch26 — 第26章：LocalAgentTask——子 Agent 的进程模型与 I/O 协议
+**批次**：批次 6a（来自 plans/batch.md）
+**章节**：ch26 — AsyncHookRegistry——异步钩子的注册、超时与并发控制
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/tasks/LocalAgentTask/LocalAgentTask.tsx`（682行）如何通过子进程隔离运行独立的 Agent，以及父子 Agent 之间结构化 I/O 协议的设计——输入如何传入、输出如何回传、错误如何传播。读者读完后能理解子进程 Agent 的进程模型，并能在自己的多 Agent 系统中设计类似的 I/O 协议。
+揭示 `src/utils/hooks/AsyncHookRegistry.ts`（309行）如何处理异步钩子的完整生命周期：挂起、超时、取消、结果回调，以及为何需要一个专门的注册表而非直接 await。读者读完后能将这一注册表模式用于自己的异步钩子系统，理解"挂起→完成/超时/取消"三态的工程价值。
 
 ## 通用约束
-**排除范围**：Swarm 多智能体协作（第29-32章）、RemoteAgentTask（第27章）、DreamTask（第28章）、stubs
+**排除范围**：hooksConfigSnapshot（第 27 章）、Frontmatter Hooks（第 28 章）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「子进程 Agent 隔离」（Sub-process Agent Isolation）
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「异步钩子注册表」（Async Hook Registry）
 **章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（LocalAgentTaskState 字段设计 + backgroundAgentTask 背景化），适用范围表，与已知模式对话
+**必须**：≥2处实例（注册+超时处理 vs 批量检查），适用范围表，与已知模式对话
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
 
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/tasks/LocalAgentTask/LocalAgentTask.tsx | LocalAgentTaskState(116行)、isLocalAgentTask(149行)、isPanelAgentTask(159行)、registerTask(513行)、backgroundAgentTask(620行)、killAllRunningAgentTasks(309行) | 116-165, 305-320, 480-530, 615-640 |
-| 2 | src/tools/AgentTool/runAgent.ts | runAgent 函数（子 Agent 实际执行逻辑） | 740-800 |
+| 1 | src/utils/hooks/AsyncHookRegistry.ts | PendingAsyncHook(12行)、pendingHooks Map(28行)、registerPendingAsyncHook(30行)、超时15s(51行)、finalizeHook(91行)、checkForAsyncHookResponses(113行)、finalizePendingAsyncHooks(281行) | 全文(309行) |
 
 ```bash
-ls src/tasks/LocalAgentTask/LocalAgentTask.tsx src/tools/AgentTool/runAgent.ts
+ls src/utils/hooks/AsyncHookRegistry.ts
 ```
 
 ## Spec 验收场景清单（E > A > B = C > D）
@@ -33,83 +32,84 @@ ls src/tasks/LocalAgentTask/LocalAgentTask.tsx src/tools/AgentTool/runAgent.ts
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：当用户委托 Claude Code 执行一个独立的子任务时，一个完整的 Agent 实例在后台运行——它有自己的消息历史、AbortController、Token 计数、甚至可以从前台切换到后台运行。这就是 LocalAgentTask 的设计核心。
+触发句：当一个 hook 以异步方式（fire-and-forget）启动后，谁来追踪它是否完成？默认超时多久？如果用户提前退出怎么处理？这些问题催生了一个专门的"异步钩子注册表"。
 
 ### 节 26.1：问题
-- 核心主张：**子 Agent 不是一次函数调用——它是一个有完整生命周期（创建/运行/后台化/完成/失败/杀死）的实体，需要独立的状态容器**
-- 源码锚点：`src/tasks/LocalAgentTask/LocalAgentTask.tsx:116`（LocalAgentTaskState 类型定义，含20+字段）
-- 包含元素：**图26-1** — Mermaid 状态图，LocalAgentTask 生命周期（pending→running→backgrounded/completed/failed/killed）
+- 核心主张：**fire-and-forget 的异步钩子需要一个全局注册表来追踪——否则进程退出时无法等待钩子完成，也无法报告超时**
+- 源码锚点：`src/utils/hooks/AsyncHookRegistry.ts:28`（`const pendingHooks = new Map<string, PendingAsyncHook>()`——模块级全局 Map）
+- 包含元素：**图26-1** — Mermaid 状态图，钩子从"挂起"到"完成/超时/取消"的三态转换
 - 估计字数：600-800字
 
-### 节 26.2：源码实例1 — LocalAgentTaskState 字段的工程语义
-- 核心主张：**LocalAgentTaskState 的每个字段都对应一个具体的工程需求——messages 用于 transcript 恢复、retain 用于 UI 持有、evictAfter 用于 GC 延迟**
+### 节 26.2：源码实例1 — registerPendingAsyncHook（注册与超时设置）
+- 核心主张：**registerPendingAsyncHook 在注册时立刻设置超时计时器——超时后自动 finalize，不需要外部轮询**
 - 源码锚点：
-  - `src/tasks/LocalAgentTask/LocalAgentTask.tsx:116`（LocalAgentTaskState 完整定义）
-  - `src/tasks/LocalAgentTask/LocalAgentTask.tsx:141`（retain 字段注释："UI is holding this task: blocks eviction, enables stream-append, triggers disk bootstrap"）
-  - `src/tasks/LocalAgentTask/LocalAgentTask.tsx:146`（evictAfter 字段注释：GC 可用时间点）
-  - `src/tasks/LocalAgentTask/LocalAgentTask.tsx:513`（registerTask 调用）
-- 概念层次：retain vs isBackgrounded 的语义差异、diskLoaded 的延迟加载语义、pendingMessages 的消息队列
-- 估计字数：900-1100字
+  - `src/utils/hooks/AsyncHookRegistry.ts:12`（`export type PendingAsyncHook = { processId, hookName, startTime, timeout, ... }`）
+  - `src/utils/hooks/AsyncHookRegistry.ts:30`（`export function registerPendingAsyncHook({`）
+  - `src/utils/hooks/AsyncHookRegistry.ts:51`（`const timeout = asyncResponse.asyncTimeout || 15000`——默认 15 秒）
+  - `src/utils/hooks/AsyncHookRegistry.ts:91`（`async function finalizeHook(`——成功/错误/取消三种结果）
+- 概念层次：PendingAsyncHook 的字段语义、15s 默认超时的来源、finalizeHook 的三种 outcome
+- 估计字数：800-1000字
 
-### 节 26.3：源码实例2 — backgroundAgentTask（前台/后台切换）
-- 核心主张：**backgroundAgentTask 是"任务可见性控制"而非"任务暂停"——后台化的任务仍在运行，只是从 UI 焦点中移除**
+### 节 26.3：源码实例2 — checkForAsyncHookResponses（轮询检查）与 finalizePendingAsyncHooks（清理）
+- 核心主张：**checkForAsyncHookResponses 是批量轮询——一次调用检查所有挂起钩子的状态；finalizePendingAsyncHooks 是会话结束时的强制清理**
 - 源码锚点：
-  - `src/tasks/LocalAgentTask/LocalAgentTask.tsx:620`（backgroundAgentTask 函数）
-  - `src/tasks/LocalAgentTask/LocalAgentTask.tsx:309`（killAllRunningAgentTasks — 批量清理）
-  - `src/tasks/LocalAgentTask/LocalAgentTask.tsx:159`（isPanelAgentTask — UI 面板过滤谓词）
-- 概念层次：前台 vs 后台的 UI 语义、isBackgrounded 字段含义、面板 vs 状态栏 pill 的显示差异
+  - `src/utils/hooks/AsyncHookRegistry.ts:113`（`export async function checkForAsyncHookResponses(`）
+  - `src/utils/hooks/AsyncHookRegistry.ts:138`（`const pendingCount = pendingHooks.size`——批量处理）
+  - `src/utils/hooks/AsyncHookRegistry.ts:281`（`export async function finalizePendingAsyncHooks(`）
+  - `src/utils/hooks/AsyncHookRegistry.ts:270`（removeDeliveredAsyncHooks — 清理已完成 hooks）
+- 概念层次：轮询 vs 推送的权衡、会话结束时的强制 finalize、removeDeliveredAsyncHooks 的清理时机
 - 估计字数：700-900字
 
 ### 节 26.4：模式剖析
-- 核心主张：**子进程 Agent 隔离的本质是"每个 Agent 是独立的状态机 + 生命周期管理单元"——不共享消息历史，不共享 AbortController**
+- 核心主张：**异步钩子注册表的本质是"生命周期委托"——调用方不管理钩子生命周期，注册表统一管理超时/取消/清理**
 - 估计字数：500-700字
 
 ### 节 26.5：适用范围
 | 场景 | 适用性 | 理由 | 替代方案 |
 |------|--------|------|---------|
-| 需要并行执行多个独立 AI 任务 | ✓ | 每个 LocalAgentTask 有独立状态 | 串行执行（但耗时）|
-| 需要后台化不阻塞主交互 | ✓ | isBackgrounded 支持前后台切换 | 阻塞等待（体验差）|
-| 任务可能需要从磁盘恢复（resume）| ✓ | diskLoaded/retain 支持 transcript 延迟加载 | 无持久化（崩溃后丢失）|
-| 简单的一次性查询（无生命周期）| ✗ | LocalAgentTask 的状态机开销不合算 | 直接 query() 调用 |
+| fire-and-forget 任务需要超时保证 | ✓ | 注册表统一管理超时，不遗漏 | 每处单独 setTimeout（容易漏）|
+| 会话结束时需要等待后台任务完成 | ✓ | finalizePendingAsyncHooks 确保清理 | 进程退出信号（但不等待）|
+| 需要取消特定钩子 | ✓ | 注册表持有引用，可按 processId 取消 | 无法取消 |
+| 高频短任务（每秒>100个）| ✗（谨慎）| Map 查找开销积累（推断）| 轻量队列 |
 
 ### 节 26.6：权衡与局限
-- 状态字段膨胀（20+字段）、GC 延迟（evictAfter）导致短时间内内存泄漏风险、diskLoaded 的 IO 成本
+- Map 持有引用阻止 GC、超时精度依赖 setTimeout、批量轮询 vs 实时推送的延迟差异
 - 估计字数：500-700字
 
 ### 节 26.7：与已知模式的对话
-- 与 Actor 模型（Erlang/Akka）：相同——每个 Agent 是独立状态的 Actor；不同——Actor 模型通过消息传递，本模式通过 AppState 共享（React 状态树）
-- 与进程监督树（supervisor）：相同——父进程管理子进程生命周期；不同——本模式的"父子"关系通过 toolUseId 而非 PID 链接
+- 与 Promise Registry 模式：几乎完全一致——中央 Map 追踪所有 pending Promise；本模式多了超时自动 finalize
+- 与 GoF 备忘录（Memento）：相同——持有状态供后续恢复；不同——备忘录是为了撤销，本模式是为了超时后清理
 
 ### 章末：模式提炼
 ```
-模式名称：子进程 Agent 隔离（Sub-process Agent Isolation）
-问题：多个并发 AI Agent 需要独立的消息历史和生命周期，不能共享状态
-解决方案：为每个 Agent 创建 LocalAgentTaskState 容器，包含独立的 messages/abortController/progress，通过 taskId 而非引用关联
-前置条件：有 AppState 集中管理所有 Task，有 registerTask/updateTaskState 框架
-源码锚点：src/tasks/LocalAgentTask/LocalAgentTask.tsx:116 (LocalAgentTaskState), :513 (registerTask)
+模式名称：异步钩子注册表（Async Hook Registry）
+问题：fire-and-forget 的异步任务缺乏生命周期管理——超时、取消、会话结束清理无人负责
+解决方案：全局 Map 注册所有挂起钩子，注册时设置超时计时器，会话结束时强制 finalize 所有挂起钩子
+前置条件：任务有唯一 processId，可通过回调或轮询获取结果
+源码锚点：src/utils/hooks/AsyncHookRegistry.ts:28 (pendingHooks Map), :30 (registerPendingAsyncHook), :51 (15s超时)
 ```
 
 ### 章末：你能做什么
-1. 为每个并发 Agent 创建独立的状态容器（messages/abortController 不共享）
-2. 用 retain 标志控制 UI 持有和 GC 资格，而非简单的运行/停止两态
-3. 实现 isBackgrounded 语义——任务后台化不等于暂停，UI 可见性和任务执行分离
-4. 用 evictAfter 时间戳实现延迟 GC，给 UI 足够时间显示完成状态后再回收
-5. 为长时间 Agent 实现 diskLoaded 延迟加载，避免恢复时立即读取全量 transcript
+1. 用全局 Map 追踪所有 fire-and-forget 异步任务，而非 void Promise 后不管
+2. 在注册时而非调用时设置超时计时器，保证每个任务都有确定的最大执行时间
+3. 定义三态结果（success/error/cancelled），让调用方能区分正常结束、失败和主动取消
+4. 实现 finalizePendingXxx 函数，在进程退出或会话结束时强制清理所有挂起任务
+5. 为批量轮询提供 checkForXxxResponses 接口，而非让每个调用方自行轮询
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图26-1 | LocalAgentTask 生命周期状态图 | Mermaid stateDiagram | pending→running→backgrounded/completed/failed/killed | 26.1 |
+| 图26-1 | 异步钩子三态生命周期 | Mermaid stateDiagram | 挂起→完成/超时/取消 | 22.1 |
 
 ## 写作前 checklist
 ```bash
-sed -n '116p' src/tasks/LocalAgentTask/LocalAgentTask.tsx  # LocalAgentTaskState
-sed -n '141p' src/tasks/LocalAgentTask/LocalAgentTask.tsx  # retain 注释
-sed -n '149p' src/tasks/LocalAgentTask/LocalAgentTask.tsx  # isLocalAgentTask
-sed -n '159p' src/tasks/LocalAgentTask/LocalAgentTask.tsx  # isPanelAgentTask
-sed -n '309p' src/tasks/LocalAgentTask/LocalAgentTask.tsx  # killAllRunningAgentTasks
-sed -n '513p' src/tasks/LocalAgentTask/LocalAgentTask.tsx  # registerTask
-sed -n '620p' src/tasks/LocalAgentTask/LocalAgentTask.tsx  # backgroundAgentTask
+sed -n '12p' src/utils/hooks/AsyncHookRegistry.ts  # PendingAsyncHook
+sed -n '28p' src/utils/hooks/AsyncHookRegistry.ts  # pendingHooks Map
+sed -n '30p' src/utils/hooks/AsyncHookRegistry.ts  # registerPendingAsyncHook
+sed -n '51p' src/utils/hooks/AsyncHookRegistry.ts  # 15s timeout
+sed -n '91p' src/utils/hooks/AsyncHookRegistry.ts  # finalizeHook
+sed -n '113p' src/utils/hooks/AsyncHookRegistry.ts # checkForAsyncHookResponses
+sed -n '281p' src/utils/hooks/AsyncHookRegistry.ts # finalizePendingAsyncHooks
 ```
 
 ## ⛔ Spec 一致性声明

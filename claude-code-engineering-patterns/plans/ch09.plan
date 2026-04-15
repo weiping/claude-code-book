@@ -1,721 +1,433 @@
-# 第9章写作计划：流式响应管道——异步生成器的工程应用
+# 第 9 章写作计划
 
-> STYLE_ID: hunter（模式猎人）
-> 生成日期：2026-04-08
-> 前置章节：第8章（QueryEngine 主循环）
-
----
-
-## 1. 章节意图
-
-> 原文直引自 specs/ch09.spec
-
-揭示 `src/query.ts` 和 `src/QueryEngine.ts:1186`（`async function* ask`）如何用 async generator 把 SSE 流转化为结构化事件序列，以及这一模式在高延迟 AI 调用中解决了什么具体工程问题（背压控制、中间状态消费、错误传播）。读者读完后能将"async generator 作为流式 API 适配器"模式用于自己的高延迟 IO 场景。
-
-**核心模式名称**：异步生成器流式适配器（Async Generator Streaming Adapter）
-
-**读者收获承诺**：读完本章，你能将"async generator 作为流式 API 适配器"模式应用于任意高延迟 IO 场景，并理解为什么这比 EventEmitter、Promise.all 或 callback 链更优越。
+**批次**：批次 2b（来自 plans/batch.md）
+**章节**：ch09 — QueryEngine 主循环——工具调用的编排逻辑
+**风格**：hunter（模式猎人）
 
 ---
 
-## 2. 通用约束
+## 章节意图（从 spec `## 意图` 提取）
 
-### 2.1 通用必须（4条）
-
-| # | 约束 | 说明 |
-|---|------|------|
-| M1 | 每节必须包含至少一个源码锚点 | 格式：`文件名:行号 — 函数/变量名` |
-| M2 | 图表必须可 Mermaid 渲染，且 ≥2 个 | 包括流程图、序列图、适用范围表等 |
-| M3 | 代码片段限制在 25 行以内 | 超出部分用注释省略，保留核心逻辑 |
-| M4 | 章末必须包含 5-8 条行动建议 | 具体可操作，用第二人称"你" |
-
-### 2.2 通用禁止（4条）
-
-| # | 禁止项 | 原因 |
-|---|--------|------|
-| F1 | 开篇不得引用源码路径或行号 | hunter 风格：开篇是模式预告，不是代码讲解 |
-| F2 | 禁止空洞表述（如"优雅地"、"强大的"） | 必须用具体数据或对比替代 |
-| F3 | 不重复第8章对主循环的描述 | 章节边界清晰，引用第8章即可 |
-| F4 | 不展开 Anthropic SDK 内部 SSE 实现 | 边界：仅分析 Claude Code 侧的消费逻辑 |
-
-### 2.3 排除范围
-
-根据 spec 明确排除：
-
-- `node_modules/@anthropic-ai/sdk` — Anthropic SDK 内部 SSE 实现
-- 第8章已讲解的主循环编排逻辑（`src/QueryEngine.ts` 主循环部分）
-- `src/assistant/` — stub，排除
-- `src/ssh/` — stub，排除
-- `src/server/` — stub，排除
-- `src/proactive/` — stub，排除
+追踪 `src/QueryEngine.ts`（1295行）中"用户输入→AI响应→工具调用→再次请求"主循环的完整编排逻辑，识别重试机制（`src/QueryEngine.ts:946`）和中断模式（`QueryEngine.interrupt()`，第1158行）的实现。读者读完后能识别 AI 工具调用主循环的通用编排模式，并能在自己的系统中实现稳定的多轮工具调用循环。
 
 ---
 
-## 3. 风格专属写作要求（hunter 模式猎人）
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
 
-### 3.1 开篇格式（⛔ 最高优先级）
+**通用必须**（从 spec 约束·必须 前 4 条提取）：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个可渲染的 Mermaid 流程图或 ASCII 架构图
+- 跨章节引用使用"详见第 X 章"格式，不重复解释
+- 使用"我们"而非"用户"/"读者"建立对话感
 
-**结构**：模式预告段（150-200字）
+**通用禁止**（从 spec 约束·禁止 前 4 条提取）：
+- 不得引用排除范围中的 stub 或未实现模块（src/assistant/、src/ssh/、src/server/、src/proactive/）
+- 不得出现"介绍了…"、"描述了…"、"讲解了…"等空洞表述
+- 不得对源码中没有依据的设计意图做无标注的猜测（必须标注「（推断）」）
+- 不得重复已在其他章节详细讲解的内容（用交叉引用代替）
 
-- 必须：在正文第一段预告本章将识别的 1-2 个模式名称
-- 必须：用"猎人"视角，从现象入手（用户看到流式输出的体验）描述模式存在的线索
-- 必须：以一个钩子式问句结尾，引发读者好奇（例："为什么 Claude Code 没有选择 EventEmitter 或 RxJS？"）
-- 禁止：开篇出现任何文件路径、行号、函数名
-- 禁止：开篇是枯燥的章节结构介绍
+**排除范围**（从 spec `## 排除范围` 提取）：
+- 流式响应管道的内部实现（第 10 章）
+- Tool 接口契约定义（第 14 章）
+- src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
 
-**示例结构**（不是内容，是格式参考）：
+---
+
+## ⛔ 风格专属写作要求
+
+> STYLE_ID = hunter（模式猎人）
+
+**开篇格式**：模式预告（150-200字）
+- 以"在代码库中，N 处地方用同样方式解决同一问题"切入
+- 预告模式名称：「可中断多轮工具调用循环」
+- 价值承诺：读完能识别并实现一个稳定的 AI 工具调用主循环
+- ⛔ 开篇禁止直接引用任何源码路径或行号
+- ⛔ 全章不混用其他风格的写作手法
+
+**分节组织**：hunter 风格结构
 ```
-[现象观察 1-2句] → [模式线索 2-3句] → [本章将识别的模式名 1句] → [钩子问句 1句]
+## [模式预告开篇]
+## 问题
+## 源码实例 1（QueryEngine.ts 主循环）
+## 源码实例 2（AgentTool/runAgent.ts 变体）
+## 模式剖析
+## 适用范围
+## 权衡与局限
+## 与已知模式的对话
+## 你能做什么
 ```
 
-### 3.2 分节组织（hunter 递进层次）
+**章末结构**：模式提炼
+- 3-5 个命名模式，每个有五层结构（模式名→解决的问题→核心做法→前置条件→源码证据）
+- 接"你能做什么"（5-8条行动建议）
 
-必须严格遵循以下顺序，不可调换：
+**风格专属必须**：
+- 展示至少 2 处不同位置的源码实例，证明模式的普遍性（QueryEngine.ts + AgentTool/runAgent.ts）
+- 每个实例说明与第一个实例的关键区别（主 Agent vs 子 Agent）
+- 包含适用范围表（✓ 适用场景 + ✗ 不适用场景，每行附理由和替代方案）
+- 包含权衡与局限分析（适用边界、潜在风险、性能影响、替代方案）
+- 与业界已知模式对话：与 EIP「事件驱动消费者」模式、GoF「命令模式」比较
+- 关键结论前有设问句（如"为什么不用…？"），复杂逻辑前有预告性文字
 
-```
-问题（Problem）
-  ↓
-实例1（Instance 1）
-  ↓
-实例2/变体（Instance 2 / Variant）
-  ↓
-模式剖析（Pattern Analysis）
-  ↓
-适用范围（Applicability）
-  ↓
-权衡局限（Trade-offs & Limitations）
-  ↓
-与已知模式对话（In Conversation with Known Patterns）
-  ↓
-你能做什么（What You Can Do）
-```
+**风格专属禁止**：
+- 不跳过模式命名框，不用笼统描述代替五层结构
+- 不跳过多实例证明（只展示一个实例不够）
+- 不假设读者了解 Anthropic API 的 stop_reason 含义
 
-### 3.3 章末结构（hunter 专属）
-
-章末必须包含两个专属结构块：
-
-**① 模式命名框**（2-3个）
-格式：
-```
-┌─────────────────────────────────────────────┐
-│ 模式：[模式名]                                │
-│ 意图：[一句话]                                │
-│ 别名：[其他名称]                              │
-│ 适用：[2-3个触发条件]                         │
-└─────────────────────────────────────────────┘
-```
-
-**② 你能做什么**（5-8条行动建议）
-- 每条以动词开头
-- 具体到可执行（"用 async generator 替换 callback" 而非 "考虑使用 async generator"）
-- 覆盖：立即可做、项目可用、深入探索 三个层次
-
-### 3.4 风格专属必须（5条）
-
-| # | 必须项 |
-|---|--------|
-| S1 | 每个模式出现时必须有"这就是XXX模式的信号"式显式点名 |
-| S2 | 适用范围必须用表格呈现（场景 vs 是否适用 vs 原因） |
-| S3 | 与已知模式对话节必须至少对话2个已知模式（EIP/GoF/Reactive等） |
-| S4 | 模式剖析节必须有"生产者-管道-消费者"的三层结构分析 |
-| S5 | 每个实例节必须以"这里有一个信号"或类似的模式识别句收尾 |
-
-### 3.5 风格专属禁止（3条）
-
-| # | 禁止项 |
-|---|--------|
-| P1 | 不得以"首先"、"然后"、"最后"的线性流水账讲解代码 |
-| P2 | 不得把模式当成"功能列表"枚举，必须用工程问题驱动 |
-| P3 | 不得在正文中直接粘贴超过 25 行的完整函数 |
-
-### 3.6 通用写作铁律（6条）
-
-| # | 铁律 |
-|---|------|
-| L1 | 数据驱动：用具体数字替代模糊描述（如"平均延迟 2-30 秒"而非"高延迟"） |
-| L2 | 术语标准化：async generator / SSE / backpressure 首次出现时给出精确定义 |
-| L3 | 章节间链接：引用其他章节时明确说明"第X章已讲解"，不重复内容 |
-| L4 | 读者对话感：每节至少有一处直接用"你"提问或引导 |
-| L5 | 关键信息突出：每节的核心主张必须在该节第一段或最后一段明确点出 |
-| L6 | 代码注释引用：代码片段中必须有注释说明关键行的意图 |
+**通用写作铁律**：
+- ⛔ 源码第一：每个关于代码行为的断言必须附 `路径:行号` 证据
+- ⛔ 代码无裸露：每个代码块必须有引入段+解读段（至少 2 句/行代码）
+- ⛔ 数据驱动：不用"很多"/"通常"等模糊词，用具体数字或源码常量名
+- ⛔ 术语标准化：首次出现技术术语时标注原文（中文（English Full Name, ABBR））
+- ⛔ 开篇铁律：开篇在全章初稿完成后最后补写，禁止在开篇直接引用源码
 
 ---
 
-## 4. 前置阅读清单
-
-| # | 文件 | 读取范围 | 读取目的 | 验证命令 |
-|---|------|----------|----------|----------|
-| 1 | `src/query.ts` | 全文（重点 L219-L400） | 理解 query/queryLoop 入口和循环结构 | `wc -l src/query.ts` |
-| 2 | `src/QueryEngine.ts` | L1180-L1230（ask 函数） | 理解 convenience wrapper 模式 | `sed -n '1180,1230p' src/QueryEngine.ts` |
-| 3 | `src/services/api/claude.ts` | L750-L800（queryModelWithStreaming）、L1010-L1060（queryModel）、L1975-L2020（switch part.type） | 理解 SSE 转换核心逻辑 | `grep -n 'async function\*' src/services/api/claude.ts` |
-| 4 | `src/utils/hooks/execAgentHook.ts` | L160-L185（for await 消费） | 理解第三个消费模式（hooks 场景） | `sed -n '160,185p' src/utils/hooks/execAgentHook.ts` |
-| 5 | `book/ch08.md` | 全文（扫描主循环相关内容） | 确认边界：不重复第8章内容 | `grep -n 'queryLoop\|query(' book/ch08.md \| head -20` |
-| 6 | `specs/ch09.spec` | 全文 | 确认 spec 意图和排除范围 | `cat specs/ch09.spec` |
-
----
-
-## 5. Spec 验收场景清单
-
-### A组：源码锚点验收
-
-| 场景ID | 验收项 | 通过标准 |
-|--------|--------|----------|
-| A1 | 所有锚点引用有效 | 每个 `文件:行号` 锚点对应的代码实际存在 |
-| A2 | 推断内容有标注 | 无法直接从源码读出的内容，标注"（推断）" |
-| A3 | 不引用排除范围 | 不出现 `node_modules/@anthropic-ai/sdk` 路径，不出现 `src/assistant/`、`src/ssh/`、`src/server/`、`src/proactive/` |
-| A4 | 不重复第8章锚点 | 不重复引用第8章已讲解的主循环锚点（如 `QueryEngine.ts` 主循环部分） |
-
-### B组：语言精确性验收
-
-| 场景ID | 验收项 | 通过标准 |
-|--------|--------|----------|
-| B1 | 无空洞表述 | 全文无"优雅"、"强大"、"完美"等形容词（除非引用他人） |
-| B2 | 数据驱动 | 延迟、时间、比较等描述均有具体数值支撑 |
-| B3 | 术语标准化 | async generator、SSE、backpressure 首次出现均有定义 |
-| B4 | 无模糊因果 | 所有"因为……所以"的断言均有源码或逻辑支撑 |
-
-### C组：结构完整性验收
-
-| 场景ID | 验收项 | 通过标准 |
-|--------|--------|----------|
-| C1 | hunter 递进层次 | 按问题→实例1→实例2→模式剖析→适用→权衡→对话→行动 顺序排列 |
-| C2 | hunter 专属结构 | 包含模式命名框（≥2个）和"你能做什么"（5-8条） |
-| C3 | 核心主张可提炼 | 每节第一段或最后一段有明确的核心主张句 |
-| C4 | 设计权衡 | 9.6节覆盖 generator 调试困难、中间状态复杂、Memory 压力三个权衡点 |
-| C5 | 章末行动建议 | "你能做什么"包含 5-8 条具体可执行建议 |
-| C6 | 章节间链接 | 明确引用第8章，不重复其内容 |
-
-### D组：图表与代码验收
-
-| 场景ID | 验收项 | 通过标准 |
-|--------|--------|----------|
-| D1 | 图表数量 | ≥2 个可渲染 Mermaid 图表 |
-| D2 | 图表标注格式 | 每个图表下方有 `图9-X：说明文字` 格式的标题 |
-| D3 | 代码片段长度 | 每个代码片段 ≤25 行 |
-| D4 | 源码注释引用 | 每个代码片段中有注释说明关键行意图 |
-| D5 | hunter 专属图表 | 包含适用范围表（表格）和模式命名框 |
-
-### E组：风格符合性验收
-
-| 场景ID | 验收项 | 通过标准 |
-|--------|--------|----------|
-| E1 | hunter 开篇格式（⛔最高优先级） | 开篇 150-200 字，模式预告，无文件路径/行号，以钩子问句结尾 |
-| E2 | 读者对话感 | 每节至少一处用"你"直接提问或引导 |
-| E3 | 关键信息突出 | 每节核心主张在首段或末段明确点出 |
-
----
-
-## 6. 章节骨架
-
-### 开篇：模式预告（150-200字）
-
-**写作要点**：
-- 现象：用户在终端看到 Claude Code 逐字输出，从不卡顿，即使 AI 思考了 30 秒
-- 线索：这种流式体验不是"魔法"，背后有一个工程模式在撑腰
-- 预告：本章将识别"异步生成器流式适配器"和"协作式背压"两个模式
-- 钩子：为什么不用 EventEmitter？为什么不用 RxJS Observable？
-
----
-
-### 节9.1：问题——SSE 流的消费困境
-
-**核心主张**：高延迟 AI 调用的流式响应无法用 Promise 模型描述，async generator 提供了一种既能推送中间状态又能自然传播错误的语言原语。
-
-**源码锚点**：
-- `src/query.ts:337` — `yield { type: 'stream_request_start' }` — 每轮开始推送的信号，证明"中间状态"是一等公民
-
-**概念层次（3层）**：
-1. 表层：为什么不能 `await response.body()`（30秒没输出用户体验崩溃）
-2. 中层：背压问题——如果消费者（UI 渲染）比生产者（API 流）慢，谁等谁？
-3. 深层：错误传播——`try/catch` 穿透 `for await` 的语义保证
-
-**权衡分析**：
-- 对比方案：Callback、Promise.all、EventEmitter、RxJS
-- 为什么 async generator 是最简洁的表达（语言级支持，无需额外依赖）
-
-**包含元素**：
-- [ ] 用户体验动机（AI 响应延迟 2-30 秒的数量级）
-- [ ] 背压控制的直觉解释（用水管比喻）
-- [ ] 错误传播的代码对比（callback vs generator）
-- [ ] `yield { type: 'stream_request_start' }` 的意义解读
-
-**内容密度规划**：
-- 高密度：背压控制的技术原理（必须讲透）
-- 中密度：错误传播的对比（点到为止，后面实例会展示）
-- 低密度：用户体验动机（引子，不展开）
-
-**估计字数**：800-1000 字
-
-**对应 spec 场景**：B1（无空洞表述）、C3（核心主张）、E2（读者对话感）
-
----
-
-### 节9.2：源码实例1 — queryModel() 将 SSE 转化为结构化消息
-
-**核心主张**：`queryModel()` 是一个三段管道的中间层：接收原始 SSE 字节流，yield 结构化 `AssistantMessage` 事件，向上层屏蔽所有 HTTP 细节。
-
-**源码锚点**：
-- `src/services/api/claude.ts:1017` — `async function* queryModel(` — 管道函数签名
-- `src/services/api/claude.ts:1980` — `switch (part.type) { case 'message_start':` — SSE 事件到结构化消息的核心转换
-
-**概念层次（3层）**：
-1. 表层：`queryModel` 接收什么、yield 什么（类型签名层面）
-2. 中层：`switch(part.type)` 的状态机——把 SSE 协议的 7 种事件类型折叠成业务需要的结构
-3. 深层：为什么是 generator 而不是 transform stream——可组合性和错误边界
-
-**权衡分析**：
-- `switch` 状态机 vs 函数分派表（代码可读性 vs 可扩展性）
-- 单层 yield vs yield* 委托（扁平化 vs 分层）
-
-**包含元素**：
-- [ ] `queryModel` 函数签名解读（≤10行代码片段）
-- [ ] `switch(part.type)` 核心状态机（≤25行代码片段，含注释）
-- [ ] 图9-1：Mermaid 流程图，SSE原始事件 → queryModel → AssistantMessage 三段管道
-- [ ] 模式识别句："这就是管道-过滤器（Pipe-and-Filter）模式的信号"
-
-**图表设计（图9-1）**：
-```mermaid
-graph LR
-    A["Anthropic API<br/>SSE Stream"] -->|raw bytes| B["queryModel()<br/>async generator"]
-    B -->|message_start| C["AssistantMessage<br/>构建开始"]
-    B -->|content_block_delta| D["文本块累积"]
-    B -->|message_stop| E["AssistantMessage<br/>完整对象"]
-    C --> F["上层消费者<br/>for await"]
-    D --> F
-    E --> F
-```
-
-**内容密度规划**：
-- 高密度：switch 状态机逐段解读（本节核心）
-- 中密度：类型签名和接口设计
-- 低密度：与第8章的关联（一句话引用）
-
-**估计字数**：1000-1200 字
-
-**对应 spec 场景**：A1（锚点有效）、D1（图表）、D3（代码长度）、S5（模式识别句）
-
----
-
-### 节9.3：源码实例2 — ask() 与 queryModelWithStreaming() 的两种消费模式
-
-**核心主张**：同一个 async generator 可以有两种截然不同的消费模式：ask() 批量收集后一次性返回，queryModelWithStreaming() 保持流式让消费者逐事件处理——这揭示了 generator 的核心设计价值：生产者和消费者解耦。
-
-**源码锚点**：
-- `src/QueryEngine.ts:1186` — `export async function* ask({` — convenience wrapper，批量收集模式
-- `src/services/api/claude.ts:752` — `export async function* queryModelWithStreaming(` — 带 VCR 回放的流式变体
-- `src/utils/hooks/execAgentHook.ts:167` — `for await (const message of query({` — 第三个消费模式（hooks 场景）
-
-**概念层次（3层）**：
-1. 表层：ask() 和 queryModelWithStreaming() 的函数签名对比
-2. 中层：`for await` 的"拉取"语义——消费者控制节奏，producer 暂停等待
-3. 深层：VCR 回放模式——queryModelWithStreaming 包装了录制/回放能力，不改变接口
-
-**权衡分析**：
-- 批量消费（ask）：简单，但大响应时内存压力大
-- 流式消费（queryModelWithStreaming）：复杂，但响应可分块处理
-- hooks 场景（execAgentHook）：第三方扩展点，generator 保证隔离性
-
-**包含元素**：
-- [ ] ask() 核心逻辑片段（≤15行，展示 for await 收集模式）
-- [ ] queryModelWithStreaming 签名对比（≤10行）
-- [ ] execAgentHook 的 for await 消费（≤10行，第三种模式）
-- [ ] 图9-2：Mermaid 序列图，三种消费模式的对比
-- [ ] 模式识别句："这里有一个信号——generator 让消费者成为节奏的主人"
-
-**图表设计（图9-2）**：
-```mermaid
-sequenceDiagram
-    participant P as queryModel()<br/>生产者
-    participant A as ask()<br/>批量消费者
-    participant S as queryModelWithStreaming()<br/>流式消费者
-    participant H as execAgentHook()<br/>hooks消费者
-
-    P->>A: yield event1
-    P->>A: yield event2
-    P->>A: yield event_n
-    A-->>A: 收集所有后返回
-
-    P->>S: yield event1
-    S-->>S: 立即处理event1
-    P->>S: yield event2
-    S-->>S: 立即处理event2
-
-    P->>H: yield message
-    H-->>H: 触发hook逻辑
-```
-
-**内容密度规划**：
-- 高密度：两种消费模式的设计差异分析（本节核心）
-- 中密度：VCR 回放机制的简介（不深入，只说明扩展点）
-- 低密度：hooks 场景（作为第三种佐证，不展开）
-
-**估计字数**：1000-1200 字
-
-**对应 spec 场景**：A1（锚点有效）、D1（图表）、S5（模式识别句）
-
----
-
-### 节9.4：模式剖析——三层 Generator 管道
-
-**核心主张**：Claude Code 的流式响应是一个三层 async generator 栈：`queryModel`（SSE适配层）→ `queryLoop`（多轮循环层）→ `query/ask`（接口暴露层）。每层职责单一，通过 `yield*` 委托连接，背压天然由 `for await` 的协作式调度解决。
-
-**源码锚点**：
-- `src/query.ts:219` — `export async function* query(` — 入口层
-- `src/query.ts:241` — `async function* queryLoop(` — 循环层（真正的多轮逻辑）
-- `src/services/api/claude.ts:1017` — `async function* queryModel(` — 适配层
-
-**概念层次（3层）**：
-1. 表层：三层函数调用栈图（query → queryLoop → queryModel）
-2. 中层：`yield*` 委托的语义——不是调用，是"接管"控制流
-3. 深层：协作式调度（cooperative scheduling）——`for await` 是 JavaScript 的微任务让出点
-
-**权衡分析**：
-- 深层 generator 栈 vs 扁平化：分层清晰 vs 调用栈追踪困难
-- yield* vs 手动 for await 转发：简洁 vs 可以在中间插入逻辑
-
-**包含元素**：
-- [ ] 三层管道示意（文字 ASCII 图或 Mermaid）
-- [ ] `yield*` 的简短代码示例（≤10行）
-- [ ] 协作式背压的直觉解释（不需要 RxJS 的 backpressure 算子）
-- [ ] 显式点名："这就是异步生成器流式适配器（Async Generator Streaming Adapter）模式"
-
-**内容密度规划**：
-- 高密度：三层分工分析和 yield* 语义（本节核心）
-- 高密度：协作式背压原理（关键洞见）
-- 低密度：与第8章主循环的关系（一句话收束）
-
-**估计字数**：900-1100 字
-
-**对应 spec 场景**：C3（核心主张）、S4（三层结构分析）、S1（模式显式点名）
-
----
-
-### 节9.5：适用范围
-
-**核心主张**：异步生成器流式适配器适用于"生产速度不可预测、消费者需要中间状态、错误需要从深层传播"的场景，但不适用于需要多播或历史重放的场景。
-
-**源码锚点**（作为适用案例支撑）：
-- `src/utils/hooks/execAgentHook.ts:167` — hooks 消费场景（适用：第三方扩展点）
-- `src/services/api/claude.ts:752` — VCR 变体（适用：录制/回放需求）
-
-**包含元素**：
-- [ ] 适用范围表格（hunter 专属）
-
-**适用范围表设计**：
-
-| 场景 | 适用？ | 原因 |
-|------|--------|------|
-| 高延迟 AI/LLM API 调用 | ✅ 强烈推荐 | 生产速度不可预测，消费者需要中间状态 |
-| HTTP SSE / WebSocket 流式接收 | ✅ 推荐 | 天然适配协议的推送模型 |
-| 文件系统大文件逐行处理 | ✅ 适用 | 背压自动控制，内存友好 |
-| 数据库游标/分页查询 | ✅ 适用 | 延迟加载，避免全量加载 |
-| 多播（一个 producer，多个 consumer） | ❌ 不适用 | Generator 是一次性的，需要 Subject/BehaviorSubject |
-| 需要历史重放的流 | ❌ 不适用 | Generator 消费过后不可回退，需要 RxJS ReplaySubject |
-| CPU 密集型同步计算 | ⚠️ 谨慎 | Generator 切换有微任务开销，纯计算用普通循环更快 |
-| 需要组合多个流（zip/merge） | ⚠️ 需要额外工具 | 原生 generator 无组合算子，需要 for await 手动协调 |
-
-**估计字数**：400-500 字（表格为主）
-
-**对应 spec 场景**：D5（hunter 专属图表：适用范围表）
-
----
-
-### 节9.6：权衡与局限
-
-**核心主张**：Async generator 不是银弹——它在调试工具链支持、中间状态复杂性、以及多消费者场景上有明显局限，Claude Code 本身也为此付出了代价。
-
-**源码锚点**：
-- `src/query.ts:337` — `yield { type: 'stream_request_start' }` — 中间状态事件类型（体现了中间状态的复杂性）
-
-**权衡点分析（3个）**：
-
-**① Generator 调试困难**
-- 问题：断点在 generator 中命中时，调用栈显示的是 generator 帧，而非真实调用者
-- 代价：Claude Code 团队在 generator 中添加了大量 `yield { type: 'xxx' }` 信号事件，实际上是手工的调试跟踪
-- 对策：使用具名 generator 函数（非箭头函数），配合 `--inspect-brk`
-
-**② 中间状态类型复杂性**
-- 问题：`yield` 的事件类型随着功能增长而膨胀（`stream_request_start`、`stream_request_end`、`tool_use`、`error` 等）
-- 代价：消费者需要处理所有事件类型，否则容易漏掉错误事件
-- 对策：定义 discriminated union 类型，TypeScript 会强制穷举
-
-**③ 内存压力（批量消费场景）**
-- 问题：`ask()` 模式收集所有 yield 值后返回，大响应会造成内存压力
-- 数量级：一次 Claude 响应可能产生 50-200 个 yield 事件
-- 对策：优先使用流式消费，仅在确需完整结果时使用批量模式
-
-**包含元素**：
-- [ ] 三个权衡点的分析
-- [ ] 每个权衡点配一个"对策"
-- [ ] 简短的代码示例（调试技巧，≤10行）
-
-**估计字数**：600-800 字
-
-**对应 spec 场景**：C4（设计权衡）
-
----
-
-### 节9.7：与已知模式对话
-
-**核心主张**：异步生成器流式适配器不是新发明——它是 EIP 管道-过滤器模式的语言级实现，同时借鉴了 Reactive Streams 的背压规范，但用更轻量的方式解决了同样的问题。
-
-**源码锚点**：
-- `src/query.ts:241` — `queryLoop` — 多个 yield 点体现了 EIP Filter 角色
-
-**对话对象（2个）**：
-
-**① EIP 管道-过滤器（Pipe-and-Filter）模式**
-- 相似：`queryModel` 是 Filter，`yield*` 是 Pipe，消费者是 Sink
-- 不同：EIP 原版是线程模型，async generator 是单线程协作式
-- Claude Code 的选择：语言级原语而非框架，零依赖
-
-**② Reactive Streams 背压规范（RxJS / Project Reactor）**
-- 相似：都解决了背压问题（慢消费者不会被快生产者淹没）
-- 不同：Reactive Streams 支持多播、操作符组合、历史重放；async generator 不支持
-- Claude Code 的选择：不引入 RxJS 依赖，接受功能子集，换取代码简洁性
-- 数量级比较：RxJS ~40KB gzip，async generator 是语言原语
-
-**包含元素**：
-- [ ] 两个模式对话的对比分析
-- [ ] 明确说明"Claude Code 为什么没有选择 RxJS"的推断
-- [ ] 与 Node.js Streams（Transform Stream）的简短对比
-
-**估计字数**：600-800 字
-
-**对应 spec 场景**：S3（至少对话2个已知模式）
-
----
-
-### 章末：模式命名框 + 你能做什么
-
-#### 模式命名框（2个）
-
-**模式1**：
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 模式：异步生成器流式适配器                                      │
-│       (Async Generator Streaming Adapter)                    │
-│                                                             │
-│ 意图：将不可预测的 IO 流（SSE/WebSocket/文件流）转化为结构化     │
-│       事件序列，同时提供天然的背压控制和错误传播                  │
-│                                                             │
-│ 别名：Generator Pipeline、Async Iterator Adapter            │
-│                                                             │
-│ 适用：① 生产速度不可预测的高延迟 IO                            │
-│       ② 消费者需要处理中间状态（非最终结果）                     │
-│       ③ 错误需要从深层自然传播到顶层调用者                       │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**模式2**：
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 模式：协作式背压（Cooperative Backpressure）                   │
-│                                                             │
-│ 意图：利用 async generator 的 for await 协作式调度，            │
-│       让消费者天然控制生产者节奏，无需显式背压信号               │
-│                                                             │
-│ 别名：Pull-based Backpressure、Generator Throttle           │
-│                                                             │
-│ 适用：① 消费者处理速度慢于生产者                               │
-│       ② 单消费者场景（不需要多播）                              │
-│       ③ 希望避免引入 RxJS 等流式库依赖                          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-#### 你能做什么（7条）
-
-1. **立即可用**：将你现有的 `fetch` + `response.json()` 调用改为 async generator，让 UI 在响应流入时就能开始渲染
-2. **立即可用**：给你的 async generator 函数命名（不要用箭头函数），调试时调用栈会清晰得多
-3. **项目可用**：为 generator yield 的事件类型定义 TypeScript discriminated union，强制消费者处理所有事件类型（包括错误事件）
-4. **项目可用**：用 `yield { type: 'start' }` / `yield { type: 'end' }` 模式给你的 generator 添加生命周期信号，方便日志追踪和调试
-5. **项目可用**：在需要多轮对话的场景中，用 `queryLoop` 模式——generator 函数内部的 while 循环可以用 `yield*` 委托给内层 generator，保持每层职责单一
-6. **深入探索**：阅读 TC39 的 AsyncIterator Helpers 提案（Stage 3），了解原生 `map`、`filter`、`take` 等算子即将到来
-7. **深入探索**：对比在相同场景下用 Node.js Transform Stream 实现的代码复杂度，理解为什么 async generator 在单消费者场景下是更简洁的选择
-
-**对应 spec 场景**：C2（5-8条行动建议）、C5（章末结构完整）
-
----
-
-## 7. 图表清单
-
-| 图表ID | 类型 | 标题 | 所在节 | 渲染方式 | 用途 |
-|--------|------|------|--------|----------|------|
-| 图9-1 | Mermaid flowchart LR | SSE原始事件 → queryModel → AssistantMessage 三段管道 | 9.2 | Mermaid | 展示 queryModel 的管道角色 |
-| 图9-2 | Mermaid sequenceDiagram | 三种消费模式对比：ask / queryModelWithStreaming / execAgentHook | 9.3 | Mermaid | 对比批量 vs 流式消费 |
-| 表9-1 | Markdown table | 异步生成器流式适配器适用范围 | 9.5 | 原生表格 | hunter专属：适用范围表 |
-| 框9-1 | ASCII/文本框 | 模式命名框：异步生成器流式适配器 | 章末 | 代码块 | hunter专属：模式命名框 |
-| 框9-2 | ASCII/文本框 | 模式命名框：协作式背压 | 章末 | 代码块 | hunter专属：模式命名框 |
-
-> 注：图9-1 和 图9-2 是强制要求的 Mermaid 图表（≥2个）；表9-1 和框9-1/9-2 是 hunter 风格专属结构。
-
----
-
-## 8. 写作顺序（完整8步）
-
-### Step 1：锚点验证（写作前）
+## 前置阅读清单
+（按阅读顺序排列，≤6 个文件）
+
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/QueryEngine.ts | class QueryEngine(184行)、submitMessage(209行)、主循环 for await query(675行)、maxTurns 错误(870行)、重试(946行)、interrupt(1158行) | 184-215, 488-560, 670-690, 860-900, 940-960, 1155-1165 |
+| 2 | src/query.ts | queryLoop while(true)(307行)、needsFollowUp 逻辑(558-564, 1062行) | 190-315, 550-570, 1055-1075 |
+| 3 | src/tools/AgentTool/runAgent.ts | 子 Agent 循环(748行)、max_turns_reached(779行) | 740-800 |
+| 4 | src/utils/abortController.ts | createAbortController 实现 | 全文（估计 50 行内）|
+
+验证文件存在：
 ```bash
-# 验证所有关键源码锚点存在
-sed -n '1186,1200p' src/QueryEngine.ts
-sed -n '219,245p' src/query.ts
-sed -n '241,260p' src/query.ts
-sed -n '335,340p' src/query.ts
-sed -n '1015,1025p' src/services/api/claude.ts
-sed -n '1978,1985p' src/services/api/claude.ts
-sed -n '750,760p' src/services/api/claude.ts
-sed -n '165,170p' src/utils/hooks/execAgentHook.ts
+ls src/QueryEngine.ts src/query.ts src/tools/AgentTool/runAgent.ts src/utils/abortController.ts
 ```
-
-### Step 2：边界确认（写作前）
-- 阅读 `book/ch08.md` 最后2节，确认主循环描述范围
-- 确认本章不会重复第8章的 QueryEngine 主循环内容
-
-### Step 3：开篇写作（模式预告段）
-- 从用户体验现象入手（流式输出体验）
-- 预告两个模式名称
-- 以钩子问句结尾
-- 严格控制在 150-200 字
-- 不引用任何文件路径或行号
-
-### Step 4：问题节（9.1）
-- 写背压控制的直觉解释
-- 写错误传播的挑战
-- 引入 `src/query.ts:337` 锚点，说明中间状态是一等公民
-- 设置读者问题：为什么不用 EventEmitter / Promise.all？
-
-### Step 5：实例节（9.2 → 9.3）
-- 先写 9.2（queryModel，SSE 转换核心）
-  - 绘制图9-1（Mermaid 流程图）
-  - 分析 switch 状态机
-  - 以模式识别句收尾
-- 再写 9.3（ask vs queryModelWithStreaming，两种消费模式）
-  - 绘制图9-2（Mermaid 序列图）
-  - 对比批量 vs 流式消费
-  - 加入 execAgentHook 第三种消费模式
-
-### Step 6：模式剖析（9.4）
-- 绘制三层管道示意
-- 解释 yield* 委托语义
-- 解释协作式背压
-- **显式点名模式**："这就是异步生成器流式适配器（Async Generator Streaming Adapter）模式"
-
-### Step 7：适用范围 + 权衡 + 对话（9.5 → 9.7）
-- 9.5：填写适用范围表格（8行）
-- 9.6：分析三个权衡点，每个附对策
-- 9.7：与 EIP 管道-过滤器、Reactive Streams 对话
-
-### Step 8：章末收尾
-- 写模式命名框（2个）
-- 写"你能做什么"（7条行动建议）
-- 检查全文是否符合 E1（hunter开篇格式）
 
 ---
 
-## 9. 写作前 Checklist
+## Spec 验收场景清单
 
-### 9.1 源码锚点验证命令
+**验收优先级**：E（风格符合性）> A（源码锚点）> B（语言精确性）= C（结构完整性）> D（图表与代码）
 
+### A. 源码锚点组（铁律）
+
+| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
+|---|--------|----------------------|-------------|------|
+| A1 | 源码引用有效性 | 每处 `路径:行号` 引用都实际存在于对应文件 | 所有节的源码锚点（已验证） | ☑ |
+| A2 | 推断有标注 | 每处推断有"（推断）"或"源码中未直接说明"标注 | 模式剖析、权衡与局限节 | ☑ |
+| A3 | 不引用排除范围 | 没有任何引用落在排除范围 stub 中 | 排除范围已列出，写作时严格遵守 | ☑ |
+| A4 | 不重复其他章内容 | 用"详见第 X 章"代替重复 | 流式响应→第 10 章，Tool契约→第 14 章 | ☑ |
+
+### B. 语言精确性组（铁律）
+
+| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
+|---|--------|----------------------|-------------|------|
+| B1 | 禁止空洞表述 | 不存在"介绍了"/"描述了"等空洞动词 | 全章审查 | ☑ |
+| B2 | 数据驱动 | "很多"/"通常"等模糊词已替换为具体数字 | 重试机制、maxTurns 限制节 | ☑ |
+| B3 | 术语标准化 | 首次出现时有原文标注 | 所有首次出现的英文术语 | ☑ |
+
+### C. 结构完整性组（铁律）
+
+| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
+|---|--------|----------------------|-------------|------|
+| C1 | 概念递进层次 | 按 hunter 风格：问题识别→模式命名→实例证明→规律提炼 | 节9.1→8.2→8.3→章末模式提炼 | ☑ |
+| C2 | ⛔ hunter 专属结构 | 模式预告开篇→问题→源码实例1→源码实例2（变体）→模式剖析→适用范围→权衡局限→与已知模式对话→你能做什么 | 全章骨架 | ☑ |
+| C3 | 核心主张可提炼 | `## 为什么这很重要` 可提炼出 1-2 句答案 | 模式剖析节 | ☑ |
+| C4 | 设计权衡有说明 | 有"选 A 不选 B 的原因" | 权衡与局限节 | ☑ |
+| C5 | 章末行动建议 | 5-8 条行动动词开头的可操作建议 | 你能做什么节 | ☑ |
+| C6 | 章节间链接 | 章末向后链接 + 章节内向前链接 | 开篇引用第 6 章，章末链接第9/10章 | ☑ |
+
+### D. 图表与代码组（铁律）
+
+| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
+|---|--------|----------------------|-------------|------|
+| D1 | 图表可渲染且达标 | 包含 Mermaid 流程图展示主循环；字数约 4000-5000，需 ≥2 个图 | 节9.2（主循环流程图）、节9.5（适用范围表） | ☑ |
+| D2 | 图表标注格式 | 上方有 `**图 N-X：标题**`，下方有说明文字 | 所有图表 | ☑ |
+| D3 | 代码片段长度 | ≤25 行，前后有说明 | 所有代码块 | ☑ |
+| D4 | 源码注释引用 | 先引原注释+路径:行号，再展开工程逻辑 | 节9.2、8.3 | ☑ |
+| D5 | ⛔ hunter 专属图表 | 适用范围表（✓/✗）+ 模式命名框（五层结构）+ Mermaid 流程图 | 节9.5适用范围表 + 章末模式命名框 | ☑ |
+
+### E. 风格符合性组（⛔ 最高优先级）
+
+| # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
+|---|--------|----------------------|-------------|------|
+| E1 | ⛔ hunter 风格符合性 | 开篇为模式预告（150-200字，含N处实例+模式名+价值承诺），分节按 hunter 结构，章末有模式命名框；⛔ 开篇不引源码路径；全章不混用其他风格 | 开篇 + 全章骨架 + 章末模式提炼 | ☑ |
+| E2 | 读者对话感 | "我们"而非"用户"，有预告和设问 | 全章 | ☑ |
+| E3 | 关键信息突出 | 加粗标注，表格展示对比 | 所有关键结论、对比信息 | ☑ |
+
+---
+
+## 章节骨架
+（每节必须有源码锚点，写前先确认锚点存在。⛔ 骨架结构与 spec `## 已定决策→章节结构` 一致）
+
+### 开篇（hunter 风格：模式预告，最后补写）
+> ⛔ 开篇禁止直接引用任何源码路径或行号，在全章初稿完成后最后补写
+
+**模式预告公式**：
+- 触发句：在这个代码库中，至少 3 处地方（QueryEngine.ts、AgentTool/runAgent.ts、hooks/execAgentHook.ts）用同样方式解决同一个问题：如何在 AI 模型返回"还没完"的信号时，自动继续对话直到任务真正结束
+- 模式名预告：「可中断多轮工具调用循环」（Interruptible Multi-Turn Tool-Call Loop）
+- 价值承诺：识别这个模式，你就能用 20 行代码实现一个可以调用任意工具、随时停止、不怕 API 超时的 AI 主循环
+
+- 可选题词：源码注释精选（待阅读源码后选择）
+
+### 节 9.1：问题
+- 核心主张：**AI 工具调用不是一次请求，而是一个有出口条件的状态机循环**
+- 源码锚点：`src/query.ts:558`（`let needsFollowUp = false`）— 出口条件旗标的初始化
+- 概念层次：
+  - 定义：单轮请求 vs 多轮对话的本质区别（stop_reason: end_turn vs tool_use）
+  - 设计意图：为什么需要循环？AI 的"tool_use" stop_reason 是明确的"继续"信号
+  - 实际案例：一次"ls 某目录再 grep 关键词"的用户请求会触发几轮循环？（通常 2-3 轮）
+- 权衡分析：为什么不用递归而用 while(true)？— 避免栈溢出，支持异步生成器中的流式 yield
+- 包含元素：Mermaid 流程图（问题空间：单轮 vs 多轮的对比）
+- **⛔ 内容密度规划**：
+  - 引入段要点：描述用户一次"查找并修改"任务中 AI 至少需要两轮对话的场景
+  - 解读段要点：解释 stop_reason 机制——AI 不是说"我要调用工具了"，而是通过返回含 tool_use blocks 的消息暗示"还有未完成的事情"
+  - 散文与代码比例目标：至少 3 句散文/行代码
+- 估计字数：600-900 字（散文 ≥ 60%）
+- 对应 spec 场景：C1、C4
+
+### 节 9.2：源码实例 1——QueryEngine.ts 主循环
+- 核心主张：**`submitMessage()` 是一个"委托给 queryLoop"的薄壳，真正的循环在 `src/query.ts` 的 `while(true)` 中**
+- 源码锚点：
+  - `src/QueryEngine.ts:209`（`async *submitMessage()`）— 生成器入口
+  - `src/QueryEngine.ts:675`（`for await (const message of query({...})`）— 委托调用
+  - `src/query.ts:307`（`while (true) {`）— 真正的主循环
+  - `src/query.ts:1062`（`if (!needsFollowUp) {`）— 出口判断
+- 概念层次：
+  - 定义：submitMessage 是 SDK 门面，queryLoop 是实际循环体
+  - 设计意图：为什么 QueryEngine 是"薄壳"？分离状态管理（QueryEngine 负责 AbortController 和消息历史）与循环逻辑（query.ts 负责驱动循环）
+  - 实际案例：一次完整工具调用的消息流图（assistant[tool_use] → user[tool_result] → assistant[end_turn]）
+- 权衡分析：为什么用 `for await` 消费一个 `while(true)` 生成器？—  背压（backpressure）控制，外层可以随时 break
+- 包含元素：
+  - **图9-1**：Mermaid 流程图，展示 submitMessage→query→queryLoop→while(true)→needsFollowUp 的完整路径
+  - 核心代码片段（QueryEngine.ts:675 附近，≤15 行）带引入+解读
+  - 核心代码片段（query.ts:307+1062，≤15 行）带引入+解读
+- **⛔ 内容密度规划**：
+  - 引入段要点：先用一句话说"submitMessage 只是门面，主循环在 query.ts"，再解释为什么要这样分层
+  - 解读段要点：重点说明 needsFollowUp 旗标如何精确控制循环出口——不靠 stop_reason（不可靠），靠 toolUseBlocks 数组是否非空
+  - 散文与代码比例目标：至少 3 句散文/行代码
+- 估计字数：900-1200 字（散文 ≥ 60%）
+- 对应 spec 场景：A1、E1、C1
+
+### 节 9.3：源码实例 2——AgentTool/runAgent.ts（子 Agent 变体）
+- 核心主张：**同一个 `query()` 函数在子 Agent 场景中被重用，但处理 max_turns 的方式不同——主 Agent 返回错误，子 Agent 主动 break**
+- 源码锚点：
+  - `src/tools/AgentTool/runAgent.ts:748`（`for await (const message of query({...})`）— 子 Agent 循环
+  - `src/tools/AgentTool/runAgent.ts:779`（`max_turns_reached` 处理）— break 而非 return
+- 概念层次：
+  - 定义：子 Agent 与主 Agent 共享 query() 核心循环，但有不同的生命周期语义
+  - 设计意图：子 Agent 超轮次应该"优雅降级"（break 并返回已有结果），而不是"抛出错误"
+  - 实际案例：对比主 Agent 的 `Reached maximum number of turns (${maxTurns})` 错误（QueryEngine.ts:870）与子 Agent 的 `break`
+- 权衡分析：为什么主 Agent 用 return（中止）而子 Agent 用 break（继续调用方）？—  子 Agent 的调用者（AgentTool）还需要收集结果并返回给主循环
+- 包含元素：并排对比表（主 Agent vs 子 Agent 的循环差异）
+- **⛔ 内容密度规划**：
+  - 引入段要点：先说"我们找到了模式的第二个实例，它在同一 query() 基础上做了什么改动"
+  - 解读段要点：解读 break vs return 的语义差异，说明这体现了"调用者决定失败语义"的设计原则（推断）
+  - 散文与代码比例目标：至少 3 句散文/行代码
+- 估计字数：700-900 字（散文 ≥ 60%）
+- 对应 spec 场景：A1、E1（多实例证明）
+
+### 节 9.4：重试与中断——循环的两个安全阀
+- 核心主张：**重试是循环对 API 失败的自愈能力，中断是循环对外部信号的响应能力；二者合一才构成"稳定循环"**
+- 源码锚点：
+  - `src/QueryEngine.ts:946`（`subtype: 'api_retry'`）— 重试事件发出
+  - `src/QueryEngine.ts:1158`（`interrupt(): void { this.abortController.abort() }`）— 中断实现
+  - `src/QueryEngine.ts:203`（`this.abortController = config.abortController ?? createAbortController()`）— AbortController 初始化
+- 概念层次：
+  - 定义：重试（API 层面，由 withRetry 触发，QueryEngine 接收事件）vs 中断（AbortController 信号，立即生效）
+  - 设计意图：重试是透明的（调用者无需知道），中断是显式的（调用者主动调用 interrupt()）
+  - 实际案例：Ctrl+C 按下→interrupt()→abortController.abort()→queryLoop 中 AbortSignal 失效→循环自然退出
+- 权衡分析：为什么不用 Promise.race()？—  AsyncGenerator 的 abort 通过 AbortSignal 传入，支持跨层级取消，比 race 更干净（推断）
+- 包含元素：
+  - 重试消息流代码片段（QueryEngine.ts:946 附近，≤10 行）带引入+解读
+  - interrupt() 代码片段（QueryEngine.ts:1158-1161，≤5 行）带引入+解读
+- **⛔ 内容密度规划**：
+  - 引入段要点：先设问"如果 API 返回 429 怎么办？如果用户点 Stop 怎么办？"，再说本节回答这两个问题
+  - 解读段要点：重点说明 interrupt() 只有一行但影响深远——通过 AbortSignal 链条，这个中止信号会传到 queryLoop 内部的所有 API 调用
+  - 散文与代码比例目标：至少 3 句散文/行代码
+- 估计字数：700-900 字（散文 ≥ 60%）
+- 对应 spec 场景：A1（重试 B2：数据驱动）、C4
+
+### 节 9.5：模式剖析——可中断多轮工具调用循环
+- 核心主张：**这个模式的本质是"以工具调用信号为循环继续条件，以外部中止信号为循环退出条件"**
+- 源码锚点：`src/query.ts:558+1062`（needsFollowUp 控制出口）
+- 概念层次：
+  - 定义：五层结构完整展示（见章末模式命名框）
+  - 设计意图：为什么要把"继续信号"和"退出信号"分开维护？—  继续信号由 AI 决定，退出信号由外部决定；职责分离
+  - 实际案例：边缘情况——如果 AI 一直返回 tool_use 怎么办？maxTurns 限制是第三道防线
+- 权衡分析：三道防线设计（needsFollowUp 出口 → maxTurns 限制 → AbortSignal 中断）的必要性
+- 包含元素：**图9-2** — 模式结构图（Mermaid），展示三道防线
+- **⛔ 内容密度规划**：
+  - 引入段要点：先说"现在我们看到了这个模式在三个地方出现，可以开始命名和提炼了"
+  - 解读段要点：解读三道防线的设计逻辑——needsFollowUp 是业务出口，maxTurns 是资源保护，AbortController 是紧急停止
+  - 散文与代码比例目标：2:1（重在概念，少量代码）
+- 估计字数：500-700 字（散文 ≥ 70%）
+- 对应 spec 场景：C2（hunter 专属结构：模式剖析节）
+
+### 节 9.6：适用范围
+- 核心主张：**这个模式适合"AI 调用外部资源"场景，不适合"纯流式输出"场景**
+- 源码锚点：`src/QueryEngine.ts:146`（maxTurns 参数定义）
+- 概念层次：适用/不适用矩阵
+- 包含元素：适用范围表（✓/✗，每行附理由和替代方案）
+
+**适用范围表**：
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| AI 多步工具调用（文件读写、代码执行） | ✓ | 需要多轮对话驱动工具 | 无（这正是本模式的设计目标） |
+| 子 Agent 递归调用 | ✓ | query() 可复用，AgentTool 已验证 | 无 |
+| 需要随时中断的交互场景 | ✓ | interrupt() 支持外部信号 | Promise.race()（但不支持流式） |
+| 纯文本流式输出（无工具） | ✗ | 不需要循环，单次请求即可 | 直接 for await 消费流 |
+| 需要精确 token 计费 | ✗（谨慎）| 重试时 token 计费可能重复（推断）| 在调用层做幂等保护 |
+
+- **⛔ 内容密度规划**：
+  - 引入段要点：先说"适用范围帮我们判断什么时候该用这个模式，什么时候用它反而增加复杂度"
+  - 解读段要点：重点解读"纯文本流式输出"不需要本模式——区分"工具调用循环"和"流式接收"
+  - 散文与代码比例目标：80% 散文（主要是表格和文字）
+- 估计字数：500-700 字（散文 ≥ 70%）
+- 对应 spec 场景：D5（hunter 适用范围表）
+
+### 节 9.7：权衡与局限
+- 核心主张：**主循环的最大隐患不是功能缺失，而是"无限循环"风险——maxTurns 是唯一的硬性保护**
+- 源码锚点：`src/QueryEngine.ts:870`（`Reached maximum number of turns (${message.attachment.maxTurns})`）
+- 概念层次：
+  - 潜在失败：maxTurns 默认值不够低时，恶意/错误工具可以让循环空转数十轮
+  - 性能影响：每次工具调用 + API 请求都是网络延迟，主循环每轮至少一次网络调用
+  - 替代方案：token budget 控制（taskBudget 参数，src/QueryEngine.ts:224）作为辅助保护
+- 权衡分析：maxTurns 为什么是"软限制"（可配置）而不是硬编码？—  不同场景需要不同轮次
+- **⛔ 内容密度规划**：
+  - 引入段要点：先说"任何循环都有失控风险，我们来看这个模式的失控路径"
+  - 解读段要点：解读 maxTurns → taskBudget → abortController 三道防线的先后顺序和各自保护的维度
+  - 散文与代码比例目标：至少 3 句散文/行代码
+- 估计字数：600-800 字（散文 ≥ 65%）
+- 对应 spec 场景：C4（权衡分析）
+
+### 节 9.8：与已知模式的对话
+- 核心主张：**这个模式与 GoF 命令模式有"表面相似、本质不同"——命令模式是"执行后丢弃"，而本模式是"执行后再对话"**
+- 包含元素：对比表（本模式 vs GoF 命令模式 vs EIP 事件驱动消费者）
+- 概念层次：
+  - 与 GoF 命令模式（Command Pattern）：相同——把操作封装为对象（Tool）；不同——命令模式执行结果不会反馈给命令发起者，本模式的工具结果会被 AI 读取并决定下一步
+  - 与 EIP 事件驱动消费者（Event-Driven Consumer）：相同——持续从消息源消费消息；不同——本模式的消费者（AI）会根据消费结果产生新消息，形成反馈环
+  - 与 Reactor 模式（POSA）：相同——中央事件循环分发事件；不同——事件类型由 AI 动态生成，不是预定义的
+- **⛔ 内容密度规划**：
+  - 引入段要点：先说"识别一个模式的最终标准，是能够说清楚它和已知模式的区别"
+  - 解读段要点：重点区分"工具调用后有反馈给 AI"这一核心差异——这是传统设计模式中没有的
+  - 散文与代码比例目标：85% 散文（概念对比为主）
+- 估计字数：500-700 字（散文 ≥ 80%）
+- 对应 spec 场景：与已知模式的对话
+
+### 章末：模式提炼（hunter 风格）
+
+**模式命名框 1**：
+```
+模式名称：可中断多轮工具调用循环（Interruptible Multi-Turn Tool Loop）
+问题：AI 工具调用不能在单次 API 请求内完成，需要在收到工具使用信号后继续对话
+解决方案：用 while(true) + needsFollowUp 旗标驱动循环，用 AbortController 支持外部中断
+前置条件：AI API 支持 tool_use stop_reason 或等效的"继续"信号
+源码锚点：src/query.ts:307 (while循环), src/query.ts:1062 (出口判断)
+```
+
+**模式命名框 2**：
+```
+模式名称：三道防线循环保护（Three-Gate Loop Guard）
+问题：多轮循环如果缺乏出口保护，可能因 AI 错误或恶意工具导致无限运行
+解决方案：业务出口（needsFollowUp）+ 轮次限制（maxTurns）+ 紧急中止（AbortSignal）三道防线并行
+前置条件：调用方能传入 maxTurns 配置和 AbortController 引用
+源码锚点：src/QueryEngine.ts:946 (重试), src/QueryEngine.ts:870 (maxTurns), src/QueryEngine.ts:1158 (interrupt)
+```
+
+**模式命名框 3**：
+```
+模式名称：生成器委托薄壳（Generator Delegation Thin Shell）
+问题：SDK 接口（QueryEngine）需要封装复杂循环逻辑，同时保持可测试性
+解决方案：SDK 层（submitMessage）作为薄壳，仅管理状态（AbortController、mutableMessages）；循环逻辑下沉到独立的 query.ts
+前置条件：语言支持异步生成器和 yield* 委托语法
+源码锚点：src/QueryEngine.ts:209 (薄壳), src/query.ts:230 (queryLoop)
+```
+
+### 章末：你能做什么
+预规划 5-8 条行动建议（写作前列出方向）：
+1. 在自己的 AI 应用中，用 `while(true) + needsFollowUp` 替换递归调用，避免栈溢出
+2. 为主循环添加 `maxTurns` 参数，设置合理的默认值（建议 ≤20 轮）
+3. 始终传入 `AbortController` 支持随时中断，避免"停不下来"的 AI 循环
+4. 实现"三道防线"保护：业务出口 + 轮次限制 + 紧急中止
+5. 参考 `AgentTool/runAgent.ts` 区分主 Agent（return 错误）和子 Agent（break 降级）的不同退出策略
+6. 用异步生成器（AsyncGenerator）而非 Promise.all 实现流式工具调用，支持背压控制
+7. 参考 `src/QueryEngine.ts:946` 的 `api_retry` 事件模式，向调用方透明传递重试状态
+
+---
+
+## 图表清单
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图9-1 | QueryEngine 主循环调用链 | Mermaid flowchart | submitMessage → query → queryLoop(while true) → needsFollowUp → break/continue | 8.2 |
+| 图9-2 | 三道防线保护机制 | Mermaid flowchart | needsFollowUp出口 → maxTurns限制 → AbortSignal中断 三道防线 | 8.5 |
+
+---
+
+## 写作顺序
+
+1. ⛔ **确认完整 spec 与风格规则**：重新读取 `specs/ch09.spec` 和 DESIGN.md 的 STYLE_ID=hunter，确认 16 项要素已在 plan 中反映
+2. 先读取所有前置文件（按前置阅读清单），确认所有锚点存在
+3. 写节 9.1（问题节——建立"多轮循环必要性"认知）
+4. 写节 9.2（实例 1——QueryEngine.ts 主循环，含图9-1）
+5. 写节 9.3（实例 2——AgentTool 子 Agent 变体）
+6. 写节 9.4（重试与中断）
+7. 写节 9.5（模式剖析，含图9-2）
+8. 写节 9.6（适用范围表）
+9. 写节 9.7（权衡与局限）
+10. 写节 9.8（与已知模式的对话）
+11. 写章末模式命名框（3个）
+12. 写"你能做什么"（7条）
+13. 最后补写开篇（此时知道全章讲了什么，才能写出150-200字模式预告）
+
+---
+
+## 写作前 checklist
+
+执行以下命令确认所有源码锚点存在：
 ```bash
-#!/bin/bash
-# 验证第9章所有关键锚点
-PROJECT=/Users/liuweiping/workspace/dev/claude-code-sourcemap
-
-echo "=== 锚点1: QueryEngine.ts:1186 ==="
-sed -n '1184,1192p' $PROJECT/src/QueryEngine.ts
-
-echo "=== 锚点2: query.ts:219 ==="
-sed -n '217,225p' $PROJECT/src/query.ts
-
-echo "=== 锚点3: query.ts:241 ==="
-sed -n '239,247p' $PROJECT/src/query.ts
-
-echo "=== 锚点4: query.ts:337 ==="
-sed -n '335,341p' $PROJECT/src/query.ts
-
-echo "=== 锚点5: claude.ts:1017 ==="
-sed -n '1015,1023p' $PROJECT/src/services/api/claude.ts
-
-echo "=== 锚点6: claude.ts:1980 ==="
-sed -n '1978,1986p' $PROJECT/src/services/api/claude.ts
-
-echo "=== 锚点7: claude.ts:752 ==="
-sed -n '750,758p' $PROJECT/src/services/api/claude.ts
-
-echo "=== 锚点8: execAgentHook.ts:167 ==="
-sed -n '165,172p' $PROJECT/src/utils/hooks/execAgentHook.ts
-
-echo "=== 验证完毕 ==="
+# 验证所有关键锚点
+sed -n '184p' src/QueryEngine.ts    # class QueryEngine
+sed -n '209p' src/QueryEngine.ts    # async *submitMessage
+sed -n '675p' src/QueryEngine.ts    # for await query
+sed -n '870p' src/QueryEngine.ts    # maxTurns 错误
+sed -n '946p' src/QueryEngine.ts    # api_retry
+sed -n '1158p' src/QueryEngine.ts   # interrupt()
+sed -n '307p' src/query.ts          # while (true)
+sed -n '558p' src/query.ts          # needsFollowUp = false
+sed -n '1062p' src/query.ts         # if (!needsFollowUp)
+sed -n '748p' src/tools/AgentTool/runAgent.ts  # 子 Agent for await
 ```
 
-### 9.2 边界检查命令
-
+如果任何锚点不存在，重新搜索正确行号：
 ```bash
-# 确认第8章覆盖范围（不重复）
-grep -n 'queryLoop\|queryModel\|stream_request' \
-  /Users/liuweiping/workspace/dev/claude-code-sourcemap/book/ch08.md \
-  | head -30
-
-# 确认排除范围不出现在本章内容规划中
-echo "排除：node_modules/@anthropic-ai/sdk（不分析SDK内部）"
-echo "排除：src/assistant/ src/ssh/ src/server/ src/proactive/（stub）"
+grep -n "interrupt\|api_retry\|needsFollowUp\|maxTurns\|while (true)" src/QueryEngine.ts src/query.ts
 ```
 
-### 9.3 风格 Checklist（写作中）
-
-- [ ] 开篇是否为 150-200 字的模式预告？
-- [ ] 开篇是否以钩子问句结尾？
-- [ ] 开篇是否没有出现文件路径或行号？
-- [ ] 每节是否有至少一个源码锚点？
-- [ ] 9.4 节是否显式点名了模式名称？
-- [ ] 9.5 节是否包含适用范围表格？
-- [ ] 9.6 节是否覆盖三个权衡点（调试、中间状态复杂性、内存）？
-- [ ] 9.7 节是否与两个已知模式对话？
-- [ ] 章末是否包含 2 个模式命名框？
-- [ ] 章末是否包含 5-8 条行动建议？
-- [ ] 全文是否有 ≥2 个可渲染 Mermaid 图表？
-- [ ] 代码片段是否均 ≤25 行？
-- [ ] 是否有空洞表述（优雅/强大/完美）？
-
 ---
 
-## 10. Spec 一致性声明
+## ⛔ Spec 一致性声明
 
-以下 16 项对齐检查，全部已在本 plan 中覆盖：
+**完整 spec 文件**：`specs/ch09.spec`
 
-| # | 检查项 | 状态 |
-|---|--------|------|
-| 1 | 章节意图原文已提取（来自 specs/ch09.spec） | ✓ |
-| 2 | 核心文件（query.ts、QueryEngine.ts）已纳入前置阅读 | ✓ |
-| 3 | 排除范围（SDK内部、第8章主循环、stub目录）已明确标注 | ✓ |
-| 4 | 所有8个关键锚点已映射到具体节 | ✓ |
-| 5 | hunter开篇格式已规划（150-200字，无路径/行号，钩子问句） | ✓ |
-| 6 | hunter递进层次（问题→实例→模式→适用→权衡→对话→行动）已确认 | ✓ |
-| 7 | 模式命名框（2个）已设计，包含意图/别名/适用 | ✓ |
-| 8 | 你能做什么（7条）已规划，覆盖三个层次 | ✓ |
-| 9 | ≥2个 Mermaid 图表已设计（图9-1流程图、图9-2序列图） | ✓ |
-| 10 | 适用范围表（hunter专属）已设计（8行，含❌场景） | ✓ |
-| 11 | 权衡分析覆盖3个点（调试难、中间状态复杂、内存） | ✓ |
-| 12 | 与已知模式对话覆盖2个（EIP管道-过滤器、Reactive Streams） | ✓ |
-| 13 | 代码片段 ≤25 行约束已注明每节 | ✓ |
-| 14 | 第8章边界检查命令已提供 | ✓ |
-| 15 | 五组验收场景（A/B/C/D/E）已全部纳入骨架规划 | ✓ |
-| 16 | 写作顺序（8步）完整，Step 1 为锚点验证 | ✓ |
+### 对齐检查清单
 
----
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用约束→通用必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用约束→通用禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属写作要求→风格专属必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属写作要求→风格专属禁止 |
+| 6 | 章节结构 | ✓ | 章节骨架（与 spec 已定决策一致） |
+| 7 | 源码引用格式 | ✓ | 所有节的锚点使用 `src/相对路径:行号` |
+| 8 | 图表格式 | ✓ | 图表清单（Mermaid flowchart）|
+| 9 | 边界路径 | ✓ | 排除范围已列出 |
+| 10 | 验收优先级 | ✓ | Spec 验收场景清单（E>A>B=C>D）|
+| 11 | 验收场景·A 源码锚点组 | ✓ | Spec 验收场景清单 A |
+| 12 | 验收场景·B 语言精确性组 | ✓ | Spec 验收场景清单 B |
+| 13 | 验收场景·C 结构完整性组 | ✓ | Spec 验收场景清单 C |
+| 14 | 验收场景·D 图表与代码组 | ✓ | Spec 验收场景清单 D |
+| 15 | 验收场景·E 风格符合性组 | ✓ | Spec 验收场景清单 E |
+| 16 | 排除范围 | ✓ | 通用约束→排除范围 |
 
-## 附录：本章字数估算
+**验收场景覆盖统计**：A 组 [4/4] + B 组 [3/3] + C 组 [6/6] + D 组 [5/5] + E 组 [3/3] = **[21/21]**
+（已覆盖 spec 中全部 16 个命名场景）
 
-| 节 | 估算字数 |
-|----|----------|
-| 开篇模式预告 | 150-200 |
-| 9.1 问题节 | 800-1000 |
-| 9.2 实例1 | 1000-1200 |
-| 9.3 实例2 | 1000-1200 |
-| 9.4 模式剖析 | 900-1100 |
-| 9.5 适用范围 | 400-500 |
-| 9.6 权衡局限 | 600-800 |
-| 9.7 与已知模式对话 | 600-800 |
-| 章末（命名框+行动） | 400-500 |
-| **合计** | **5850-7300** |
-
-> 注：含图表说明文字、代码注释、表格内容，实际字数可达 6000-8000 字。
+**⛔ 所有项目均已勾选 ✓，plan 审查通过。**

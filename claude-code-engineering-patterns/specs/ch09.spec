@@ -1,19 +1,19 @@
 spec: task
-name: "第9章：流式响应管道——异步生成器的工程应用"
-tags: [book-chapter, part-2]
+name: "第 09 章：QueryEngine 主循环——工具调用的编排逻辑"
+tags: [book-chapter, part-3]
 ---
 
 ## 意图
 
-揭示 `src/query.ts` 和 `src/QueryEngine.ts:1186`（`async function* ask`）如何用 async generator 把 SSE 流转化为结构化事件序列，以及这一模式在高延迟 AI 调用中解决了什么具体工程问题（背压控制、中间状态消费、错误传播）。读者读完后能将"async generator 作为流式 API 适配器"模式用于自己的高延迟 IO 场景。
+追踪 `src/QueryEngine.ts`（1295行）中"用户输入→AI响应→工具调用→再次请求"主循环的完整编排逻辑，识别重试机制（`src/QueryEngine.ts:946`）和中断模式（`QueryEngine.interrupt()`，第1158行）的实现。读者读完后能识别 AI 工具调用主循环的通用编排模式，并能在自己的系统中实现稳定的多轮工具调用循环。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/query.ts、src/QueryEngine.ts（ask 函数，第1186行起）、src/query/ 目录
-- 前置依赖：第8章（QueryEngine 主循环调用流式响应）
+- 核心文件：src/QueryEngine.ts（class QueryEngine，第184行）
+- 前置依赖：第 6 章（processUserInput 将输入传入 QueryEngine）
 
 
 ## 约束
@@ -39,54 +39,60 @@ tags: [book-chapter, part-2]
 ## 边界
 
 ### 允许修改
-- book/src/part2/ch09.md
+- book/src/part3/ch09.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不重复第8章对主循环的描述
-- 不展开 Anthropic SDK 的 SSE 实现细节（只分析 Claude Code 侧的消费逻辑）
+- 不展开流式响应管道细节（第 9 章）
+- 不展开 Tool 接口契约（第 14 章）
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch09_hunter_opening
-  假设 读者打开第9章
+  测试: ch08_hunter_opening
+  假设 读者打开第 8 章
   当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: async generator 模式说明
-  测试: ch09_async_generator_pattern
-  假设 读者阅读核心模式节
-  当 读者检查对 async generator 的解释
-  那么 章节通过具体代码片段说明 yield 如何将事件逐步推送给消费方，而非等待全量响应
-
-场景: 流式管道图存在
-  测试: ch09_pipeline_diagram
-  假设 读者阅读管道结构节
+场景: 主循环流程图存在
+  测试: ch08_main_loop_diagram
+  假设 读者阅读主循环节
   当 读者检查图表
-  那么 包含一个图表，展示 SSE 原始事件→generator 转化→QueryEngine 消费的三段管道结构
+  那么 包含一个 Mermaid 流程图，展示输入→AI响应→工具调用→再次请求的循环结构
+
+场景: 重试机制说明
+  测试: ch08_retry_mechanism
+  假设 读者阅读重试节
+  当 读者检查重试逻辑的描述
+  那么 章节展示重试触发条件、最大重试次数（或限制）的源码依据
+
+场景: 中断机制说明
+  测试: ch08_interrupt_mechanism
+  假设 读者阅读中断节
+  当 读者检查 interrupt() 方法的实现描述
+  那么 章节说明中断信号如何从外部传入并在主循环中生效
 
 场景: 源码引用有效性
-  测试: ch09_source_anchors
+  测试: ch08_source_anchors
   层级: 集成
   假设 读者跟随章节中的源码引用
   当 读者在项目目录查找每处路径和行号
   那么 每处引用都实际存在于对应文件
 
 场景: 模式命名框存在
-  测试: ch09_pattern_box
+  测试: ch08_pattern_box
   假设 本章使用 hunter 风格
   当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"流式 API 适配器"模式
+  那么 存在至少 1 个格式规范的模式命名框，提炼"可中断主循环"模式
 
 场景: 章末行动建议
-  测试: ch09_action_items
+  测试: ch08_action_items
   假设 读者读完本章
   当 读者检查"你能做什么"节
   那么 包含 5-8 条以行动动词开头的可操作建议
 
 场景: 不引用排除范围
-  测试: ch09_no_excluded_refs
+  测试: ch08_no_excluded_refs
   层级: 集成
   假设 DESIGN.md 列出了排除范围
   当 读者检查本章所有源码路径
@@ -94,7 +100,7 @@ tags: [book-chapter, part-2]
 
 
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch09_hunter_opening_format
+  测试: ch08_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -102,33 +108,33 @@ tags: [book-chapter, part-2]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch09_multi_instance_proof
+  测试: ch08_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch09_applicability_table
+  测试: ch08_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch09_tradeoffs_and_limits
+  测试: ch08_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch09_known_pattern_dialogue
+  测试: ch08_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch09_pattern_box_format
+  测试: ch08_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -138,7 +144,7 @@ tags: [book-chapter, part-2]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch09_reader_voice
+  测试: ch08_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -146,7 +152,7 @@ tags: [book-chapter, part-2]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch09_key_info_highlight
+  测试: ch08_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
@@ -154,6 +160,6 @@ tags: [book-chapter, part-2]
 
 ## 排除范围
 
-- Anthropic SDK 内部的 SSE 实现（node_modules/@anthropic-ai/sdk）
-- 第8章已讲解的主循环编排逻辑
+- 流式响应管道的内部实现（第 9 章）
+- Tool 接口契约定义（第 14 章）
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）

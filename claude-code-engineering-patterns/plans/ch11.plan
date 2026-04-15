@@ -1,18 +1,14 @@
 # 第 11 章写作计划
 
-**批次**：批次 4a（来自 plans/batch.md）
-**章节**：ch11 — 第11章：权限决策树——PermissionMode 的四层设计
-**风格**：hunter（模式猎人）
-
----
+**批次**：批次 3a（来自 plans/batch.md）
+**章节**：ch11 — 模型自动选择——Opus、Sonnet 与 Haiku 的路由逻辑
+**风格**：hunter
 
 ## 章节意图（从 spec `## 意图` 提取）
 
-揭示 `src/utils/permissions/PermissionMode.ts`（141行）如何将"默认拒绝→规则允许→用户确认→策略覆盖"组织成可组合的四层决策链，以及 `getNextPermissionMode`（getNextPermissionMode.ts）如何驱动状态转换。读者读完后能将这一决策链模式用于自己的 Agent 权限系统。
+揭示 Claude Code 如何通过 `src/utils/model/model.ts` 中的函数集合实现三层模型路由：`getSmallFastModel()`（Haiku，高频轻量）、`getMainLoopModel()`（Sonnet，主力开发）、`getBestModel()`（Opus，深度推理），以及 `setMainLoopModelOverride` 和 `mainLoopModelForSession` 如何实现覆盖机制。读者读完后能在自己的多模型 Agent 系统中复用这一路由模式。
 
----
-
-## 通用约束
+## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
 
 **通用必须**：
 - 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
@@ -22,309 +18,274 @@
 
 **通用禁止**：
 - 不得引用排除范围中的 stub 或未实现模块
-- 不得出现"介绍了…"、"描述了…"等空洞表述
+- 不得出现"介绍了…"、"描述了…"、"讲解了…"等空洞表述
 - 不得对源码中没有依据的设计意图做无标注的猜测（必须标注「（推断）」）
 - 不得重复已在其他章节详细讲解的内容（用交叉引用代替）
 
-**排除范围**：
-- AI 分类器 autoModeState（第12章）
-- 第33章的全局安全架构（三层防线）
-- PermissionRule 规则引擎细节（第34章）
+**排除范围**（从 spec `## 排除范围` 提取）：
+- effort/thinking 深度控制（第 12 章）
+- 具体模型的 API 参数、定价、上下文窗口大小
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
-
----
 
 ## ⛔ 风格专属写作要求
 
-> STYLE_ID = hunter（模式猎人）
+**开篇格式**：hunter — 模式预告（150-200字，问题场景+模式预告+价值承诺），⛔ 开篇禁止直接引用源码
 
-**开篇格式**：模式预告（150-200字，⛔不引用源码路径或行号）
-- 触发句：在 Claude Code 的代码库中，同一个"权限检查"逻辑在 6 种不同 mode 下有不同结果——但调用方永远只需要问一个问题："当前 mode 下允许吗？"
-- 模式名预告：「可组合决策链」（Composable Decision Chain）
-- 价值承诺：识别这个模式，你就能用少量代码实现一套"默认安全 + 可升级"的权限决策体系
+**分节组织**：hunter — `## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 
-**分节组织**：hunter 结构（开篇→问题→实例1→实例2→模式剖析→适用范围→权衡→与已知模式对话→你能做什么）
-
-**章末结构**：模式提炼（3个命名模式，五层结构）
+**章末结构**：hunter — 模式提炼（3-5 个命名模式，五层结构：模式名→解决的问题→核心做法→前置条件→源码证据）
 
 **风格专属必须**：
-- 至少 2 处不同位置实例（PermissionMode.ts + getNextPermissionMode.ts）
-- 适用范围表（✓/✗）
-- 与业界模式对话（GoF 责任链模式、状态模式）
-- 关键结论前有设问句，复杂逻辑前有预告性文字
+- ⛔ 每节开篇格式与 hunter 风格匹配（模式预告，不引用源码）
+- ⛔ 展示至少 2 处源码实例，证明模式的普遍性
+- 包含适用范围表（什么场景用/不用该模式）
+- 包含权衡与局限分析
+- 包含与已知业界模式的对话（至少引用一个 GoF/POSA/EIP 模式）
 
 **风格专属禁止**：
-- 不跳过模式命名框
-- 不只展示一个实例
+- ⛔ 开篇不得直接引用源码路径或行号
+- 全章不得混用其他风格的写作手法
 
 **通用写作铁律**：
-- ⛔ 源码第一：每个断言必须附 `路径:行号` 证据
-- ⛔ 代码无裸露：每个代码块必须有引入段+解读段
-- ⛔ 数据驱动：不用模糊词，用具体数字（6种模式）
-- ⛔ 术语标准化：首次出现时标注（权限模式（PermissionMode））
-- ⛔ 开篇铁律：开篇最后补写
-
----
+- ⛔ 源码第一：每个关于代码行为的断言必须附 `路径:行号` 证据
+- ⛔ 代码无裸露：每个代码块必须有引入段+解读段（至少 2 句/行代码）
+- ⛔ 数据驱动：不用"很多"/"通常"等模糊词，用具体数字
+- ⛔ 术语标准化：首次出现技术术语时标注原文
+- ⛔ 开篇铁律：开篇在全章初稿完成后最后补写
 
 ## 前置阅读清单
 
 | # | 文件路径 | 重点关注 | 预计阅读行数 |
 |---|---------|---------|------------|
-| 1 | src/utils/permissions/PermissionMode.ts | PermissionModeConfig(34行)、PERMISSION_MODE_CONFIG映射表(43行)、6种模式定义 | 全文(141行) |
-| 2 | src/utils/permissions/getNextPermissionMode.ts | getNextPermissionMode switch-case(34-87行)、cyclePermissionMode(88-97行) | 全文(101行) |
-| 3 | src/utils/permissions/permissionSetup.ts | transitionPermissionMode、isAutoModeGateEnabled | 前100行 |
+| 1 | src/utils/model/model.ts | getSmallFastModel/getMainLoopModel/getBestModel 三函数 | 行 36-115 |
+| 2 | src/utils/model/model.ts | getUserSpecifiedModelSetting 优先级注释（5层优先级） | 行 60-92 |
+| 3 | src/bootstrap/state.ts | getMainLoopModelOverride/setMainLoopModelOverride | 行 838-870 |
+| 4 | src/utils/model/model.ts | getDefaultOpusModel/getDefaultHaikuModel 环境变量覆盖 | 行 100-150 |
 
 验证文件存在：
 ```bash
-ls src/utils/permissions/PermissionMode.ts src/utils/permissions/getNextPermissionMode.ts
+ls src/utils/model/model.ts src/bootstrap/state.ts
 ```
-
----
 
 ## Spec 验收场景清单
 
-**验收优先级**：E > A > B = C > D
+**验收优先级**：E（风格符合性）> A（源码锚点）> B（语言精确性）= C（结构完整性）> D（图表与代码）
 
-### A. 源码锚点组
-
-| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
-|---|--------|---------|-------------|------|
-| A1 | 源码引用有效性 | 每处引用实际存在 | 所有节 | ☑ |
-| A2 | 推断有标注 | 有"（推断）"标注 | 模式剖析、权衡节 | ☑ |
-| A3 | 不引用排除范围 | 不引第12/33/34章内容 | 排除范围已列出 | ☑ |
-| A4 | 不重复其他章内容 | 用"详见第X章" | AI分类器→12章，全局安全→33章 | ☑ |
-
-### B. 语言精确性组
+### A. 源码锚点组（铁律）
 
 | # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
-|---|--------|---------|-------------|------|
-| B1 | 禁止空洞表述 | 无"介绍了"等 | 全章 | ☑ |
-| B2 | 数据驱动 | 用"6种模式"而非"多种" | 节11.1 | ☑ |
-| B3 | 术语标准化 | 首次标注原文 | 所有术语 | ☑ |
+|---|--------|---------|------------|------|
+| A1 | 源码引用有效性 | 每处 `路径:行号` 引用实际存在 | 章节骨架各节 | ☐ |
+| A2 | 推断有标注 | 推断有"（推断）"标注 | 全章 | ☐ |
+| A3 | 不引用排除范围 | 没有 effort/thinking/stub 引用 | 排除范围声明 | ☐ |
+| A4 | 不重复其他章内容 | 用"详见第 12 章"代替 effort 内容 | 深度控制处 | ☐ |
 
-### C. 结构完整性组
-
-| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
-|---|--------|---------|-------------|------|
-| C1 | 概念递进层次 | hunter递进：问题→命名→实例→提炼 | 全章骨架 | ☑ |
-| C2 | hunter专属结构 | 按spec结构 | 全章骨架 | ☑ |
-| C3 | 核心主张可提炼 | "可组合决策链"一句话 | 模式剖析节 | ☑ |
-| C4 | 设计权衡有说明 | "选决策链不选if-else" | 权衡节 | ☑ |
-| C5 | 章末行动建议 | 5-8条 | 你能做什么节 | ☑ |
-| C6 | 章节间链接 | 前→第10章，后→第12章 | 开篇、章末 | ☑ |
-
-### D. 图表与代码组
+### B. 语言精确性组（铁律）
 
 | # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
-|---|--------|---------|-------------|------|
-| D1 | 图表可渲染达标 | ≥2个图表 | 节11.1四层决策图+节11.4 | ☑ |
-| D2 | 图表标注格式 | 上标题下说明 | 所有图 | ☑ |
-| D3 | 代码片段≤25行 | 前后有说明 | 所有代码 | ☑ |
-| D4 | 源码注释引用 | 先引注释再展开 | 节11.2 | ☑ |
-| D5 | hunter专属图表 | 适用范围表+模式命名框 | 节11.5+章末 | ☑ |
+|---|--------|---------|------------|------|
+| B1 | 禁止空洞表述 | 不存在"介绍了"等空洞动词 | 全章 | ☐ |
+| B2 | 数据驱动 | 用具体模型名（Haiku/Sonnet/Opus），不用"轻/重量级" | 全章 | ☐ |
+| B3 | 术语标准化 | 首次出现时有原文标注 | 全章 | ☐ |
 
-### E. 风格符合性组（⛔最高优先级）
+### C. 结构完整性组（铁律）
 
 | # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
-|---|--------|---------|-------------|------|
-| E1 | hunter开篇格式 | 模式预告150-200字，不引源码 | 开篇 | ☑ |
-| E2 | 读者对话感 | "我们"，有设问 | 全章 | ☑ |
-| E3 | 关键信息突出 | 加粗，表格对比 | 关键结论、对比信息 | ☑ |
+|---|--------|---------|------------|------|
+| C1 | 概念递进层次 | hunter: 问题→实例→模式剖析递进 | 节 11.1→6.2→6.3→6.4 | ☐ |
+| C2 | hunter 专属结构 | 模式命名框（五层结构）存在 | 节 11.4 | ☐ |
+| C3 | 核心主张可提炼 | 可提炼"分层模型路由"模式 | 章末 | ☐ |
+| C4 | 设计权衡有说明 | 有覆盖机制的优先级分析 | 节 11.6 | ☐ |
+| C5 | 章末行动建议 | 5-8 条行动动词开头的建议 | 章末 | ☐ |
+| C6 | 章节间链接 | 向第 12 章链接 | 各节 | ☐ |
 
----
+### D. 图表与代码组（铁律）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| D1 | 图表可渲染且达标 | 三层路由对比表 + Mermaid 图 | 图表清单 | ☐ |
+| D2 | 图表标注格式 | 上方有 `**图 N-X：标题**` | 图表清单 | ☐ |
+| D3 | 代码片段长度 | ≤25 行，前后有说明 | 源码实例节 | ☐ |
+| D4 | 源码注释引用 | 先引优先级注释+行号，再展开 | 节 11.2 | ☐ |
+| D5 | hunter 专属图表 | 适用范围表（✓/✗ 格式） | 节 11.5 | ☐ |
+
+### E. 风格符合性组（⛔ 最高优先级）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|------------|------|
+| E1 | hunter 开篇格式 | 150-200字，三要素，不引源码 | 开篇节 | ☐ |
+| E2 | 读者对话感 | "我们"，有设问句 | 全章 | ☐ |
+| E3 | 关键信息突出 | 三层路由对比表格存在 | 节 11.1 | ☐ |
 
 ## 章节骨架
 
-### 开篇（最后补写，⛔不引源码）
-模式预告：在 Claude Code 中，6 种权限模式（default/acceptEdits/plan/bypassPermissions/dontAsk/auto）形成了一条"默认保守、可逐步解锁"的决策链。Shift+Tab 切换模式时，一个 switch-case 函数决定下一个状态——这个模式在代码库中出现了不止一处。
+### 开篇（hunter 模式预告，最后补写）
+- 问题场景：当 Agent 需要分类一个任务（用 Haiku）但需要深度推理另一个（用 Opus）——硬编码模型名会让这套逻辑散落在各处。我们在代码库里找到了一个反复出现的解决方案。
+- 模式预告：**分层模型路由**（Tiered Model Router）——用函数封装模型选择逻辑，调用方只说"给我小模型"或"给我最好的模型"
+- 价值承诺：读完本章，你能设计自己的多模型路由层，让 Agent 在成本和性能之间自动权衡
+- ⛔ 禁止直接引用源码
 
-### 节 11.1：问题
-- 核心主张：**Agent 系统的权限不是二元的"允许/拒绝"，而是一个有状态的决策链——不同安全级别对应不同的用户信任**
-- 源码锚点：`src/utils/permissions/PermissionMode.ts:21`（permissionModeSchema，6个模式值）
+### 节 11.1：问题——多模型 Agent 的路由困境
+- 核心主张：硬编码模型名会在 Agent 系统中产生两个问题：无法切换模型版本，无法按任务复杂度动态选择
+- 源码锚点：`src/utils/model/model.ts:36` — getSmallFastModel（Haiku 路由函数入口）
 - 概念层次：
-  - 定义：6种 PermissionMode 的语义（default=保守，acceptEdits=自动接受编辑，plan=只读计划，bypassPermissions=跳过所有检查，dontAsk=不询问，auto=AI自主判断）
-  - 设计意图：为什么不用单一布尔值？因为"允许什么操作"取决于上下文，不同用户场景需要不同粒度
-  - 实际案例：用户在终端按 Shift+Tab 时发生了什么？
-- 权衡分析：为什么用字符串字面量而非数字枚举？— 序列化时更可读，持久化到配置文件时用户可以理解（推断）
-- 包含元素：**图11-1** — Mermaid 状态图，6种模式和转换关系
-- **⛔内容密度规划**：
-  - 引入段：先描述"用户按一个快捷键，权限模式切换"的场景
-  - 解读段：解释6种模式的安全等级从高到低
-  - 散文/代码比：3:1
-- 估计字数：600-800字（散文≥60%）
-- 对应spec场景：C1、四层决策链图（ch11_four_layer_diagram）
+  - **层次1 定义**：三层路由——轻量/主力/最强，各对应不同任务复杂度
+  - **层次2 设计意图**：调用方用语义（"我需要小模型"）而非具体名（"claude-haiku-3-5-xxx"）
+- 权衡分析：函数封装 vs 常量定义——函数可以包含运行时逻辑（环境变量/覆盖），常量不能
+- 包含元素：三层路由对比表
 
-### 节 11.2：源码实例1 — PermissionMode.ts 的配置映射
-- 核心主张：**PermissionModeConfig 结构将每种模式的"展示属性"与"权限属性"分离——UI 显示和权限逻辑用同一份数据驱动**
+| 函数 | 对应模型层 | 典型场景 | 源码位置 |
+|------|-----------|---------|---------|
+| getSmallFastModel() | Haiku | 内容分类、简单填充 | model.ts:36 |
+| getMainLoopModel() | Sonnet | 主循环推理 | model.ts:92 |
+| getBestModel() | Opus | 复杂深度推理 | model.ts:100 |
+
+- 估计字数：800-1000 字
+- 对应 spec 场景：C1、D1（三层路由对比表）
+
+### 节 11.2：源码实例 1——getMainLoopModel 的五层优先级
+- 核心主张：`getMainLoopModel` 实现了一个 5 层优先级链：会话内覆盖 > 启动时 flag > 环境变量 > 用户设置 > 内置默认
 - 源码锚点：
-  - `src/utils/permissions/PermissionMode.ts:34`（type PermissionModeConfig）
-  - `src/utils/permissions/PermissionMode.ts:43`（PERMISSION_MODE_CONFIG 映射表）
-  - `src/utils/permissions/PermissionMode.ts:87`（auto 模式用 feature flag 条件注入）
+  - `src/utils/model/model.ts:64` — 优先级注释（5 层顺序）
+  - `src/utils/model/model.ts:92` — getMainLoopModel 函数实现
+  - `src/utils/model/model.ts:60` — getUserSpecifiedModelSetting（聚合前 4 层）
 - 概念层次：
-  - 定义：PermissionModeConfig 的5个字段（title/shortTitle/symbol/color/external）
-  - 设计意图：为什么 external 字段将内部模式映射到外部模式？— 'auto' 是内部概念，对外等同 'default'
-  - 实际案例：PERMISSION_MODE_CONFIG 的具体内容（每种模式的符号和颜色）
-- 权衡分析：为什么 'auto' 模式用 feature flag 条件注入而不是直接定义？— 渐进式功能发布，避免影响所有用户（推断）
-- 包含元素：PERMISSION_MODE_CONFIG 代码片段（≤20行）带引入+解读
-- **⛔内容密度规划**：
-  - 引入段：先说"模式定义和展示逻辑在同一文件，我们来看这份'模式宪法'"
-  - 解读段：重点解读 external 字段的映射意义——auto 对外不可见，体现内外分离设计
-  - 散文/代码比：2:1
-- 估计字数：700-900字（散文≥60%）
-- 对应spec场景：A1、E1
+  - **层次1 实例**：getUserSpecifiedModelSetting 的级联 if 链
+  - **层次2 模式特征**：每层都有明确的 fallthrough 语义——找到就返回，否则继续向下
+- 权衡分析：为什么用函数而非 YAML 配置——运行时需要读取 env 和 state，配置文件无法动态
+- 包含元素：getUserSpecifiedModelSetting 代码片段（≤20行）
+- 估计字数：900-1100 字
+- 对应 spec 场景：A1（源码引用）、D4（注释引用）
 
-### 节 11.3：源码实例2 — getNextPermissionMode 的状态机转换
-- 核心主张：**getNextPermissionMode 是一个纯函数状态机：输入当前模式 → 输出下一个模式，完全无副作用，可测试**
+### 节 11.3：源码实例 2（变体）——覆盖机制的工程实现
+- 核心主张：`setMainLoopModelOverride`（运行时覆盖）和 `getSmallFastModel`（环境变量覆盖）展示了同一模式在两个层次的实现
 - 源码锚点：
-  - `src/utils/permissions/getNextPermissionMode.ts:34`（`export function getNextPermissionMode(`）
-  - `src/utils/permissions/getNextPermissionMode.ts:38`（`switch (toolPermissionContext.mode) {`）
-  - `src/utils/permissions/getNextPermissionMode.ts:17`（`function canCycleToAuto(`）— 双重检查防止崩溃
-  - `src/utils/permissions/getNextPermissionMode.ts:88`（`export function cyclePermissionMode(`）— 包装函数
+  - `src/bootstrap/state.ts:838` — getMainLoopModelOverride
+  - `src/bootstrap/state.ts:846` — setMainLoopModelOverride
+  - `src/utils/model/model.ts:36` — `process.env.ANTHROPIC_SMALL_FAST_MODEL || getDefaultHaikuModel()`
 - 概念层次：
-  - 定义：switch-case 状态机（6个case，每个决定下一个状态）
-  - 设计意图：canCycleToAuto 的双重检查（ctx.isAutoModeAvailable && isAutoModeGateEnabled()）— 源码注释说明"live check prevents throwing"
-  - 实际案例：default → acceptEdits → plan → bypassPermissions → default 的完整循环路径
-- 权衡分析：为什么区分 getNextPermissionMode（纯计算）和 cyclePermissionMode（副作用）？— 单一职责，纯函数更容易测试
-- 包含元素：getNextPermissionMode switch-case 代码片段（≤25行）带引入+解读
-- **⛔内容密度规划**：
-  - 引入段：先设问"如果你想测试权限模式切换逻辑，最好的方式是什么？"引出纯函数设计
-  - 解读段：重点解读 canCycleToAuto 的双重检查—— 源码注释"live check prevents transitionPermissionMode from throwing"是关键证据
-  - 散文/代码比：2:1
-- 估计字数：800-1000字（散文≥60%）
-- 对应spec场景：A1、E1（多实例）、状态转换函数说明（ch11_state_transition）
+  - **层次1 实例**：state.ts 中的会话级覆盖（/model 命令触发）
+  - **层次2 对比**：环境变量覆盖（更低优先级）vs 会话覆盖（更高优先级）
+- 权衡分析：为什么覆盖存储在 state.ts 而非 model.ts——覆盖是全局状态，model.ts 是纯函数
+- 估计字数：800-1000 字
+- 对应 spec 场景：A1、C2（hunter 专属结构）
 
-### 节 11.4：模式剖析——可组合决策链
-- 核心主张：**这个模式的本质是"每个状态知道自己的后继者"——状态本身编码了转换规则，而不是外部的调度器**
-- 源码锚点：`src/utils/permissions/getNextPermissionMode.ts:38`（switch case 结构）
-- 概念层次：
-  - 定义：决策链 = 状态定义（PermissionMode）+ 转换规则（getNextPermissionMode）+ 副作用分离（cyclePermissionMode）
-  - 设计意图：为什么把转换规则和副作用分开？— 测试纯转换逻辑不需要模拟 context，副作用（transitionPermissionMode）只在 cycle 时触发
-  - 实际案例：从用户按 Shift+Tab 到 UI 渲染新模式符号的完整路径
-- 包含元素：**图11-2** — 决策链模式结构图（Mermaid）
-- **⛔内容密度规划**：
-  - 引入段："现在我们看到了模式的两处实例，可以命名和提炼了"
-  - 解读段：重点说明"副作用分离"是可测试性的关键
-  - 散文/代码比：80%散文
-- 估计字数：500-700字（散文≥70%）
-- 对应spec场景：C2
+### 节 11.4：模式剖析——分层模型路由（Tiered Model Router）
+- 模式命名框：
+  ```
+  模式名称：分层模型路由（Tiered Model Router）
+  问题：Agent 系统需要根据任务复杂度选择不同能力/成本的模型，硬编码模型名导致系统僵化
+  解决方案：将模型选择封装为语义化函数（getSmallFast/getMainLoop/getBest），内部实现优先级链
+  前置条件：系统使用多个不同能力的模型；调用方无需关心具体模型版本
+  源码锚点：src/utils/model/model.ts:36-115
+  ```
+- 估计字数：600-800 字
 
 ### 节 11.5：适用范围
 
-**适用范围表**：
-| 场景 | 适用性 | 理由 | 替代方案 |
-|------|--------|------|---------|
-| Agent系统需要分级权限（默认保守，可升级）| ✓ | 决策链天然支持"默认拒绝"的保守策略 | 单一布尔值（但无法分级）|
-| 用户可手动切换安全级别 | ✓ | 纯函数状态机，易于绑定UI快捷键 | 无 |
-| 权限规则需要测试覆盖 | ✓ | 纯函数，无依赖，单元测试直接调用 | N/A |
-| 需要动态添加权限级别（插件注册新mode）| ✗ | switch-case 是静态的，新增 mode 需要改代码 | 策略注册表（Map）|
-| 权限决策需要异步操作（网络请求鉴权）| ✗（谨慎）| getNextPermissionMode 是同步的 | 异步权限验证器链 |
+| 场景 | 适用 | 理由/替代方案 |
+|------|------|------------|
+| 系统有 2+ 个不同能力层的模型 | ✓ | 分层语义使切换模型版本只需改一处 |
+| 任务有明确的轻/重分级 | ✓ | 分类/summarize 用轻量，推理/写作用重量 |
+| 需要运行时覆盖模型选择 | ✓ | 覆盖机制可以注入到优先级链 |
+| 只有一个模型 | ✗ | 直接使用常量即可，封装无意义 |
+| 模型选择需要用户输入才能决定 | ✗ | 改用 Strategy 模式（用户选择注入） |
+| 需要 A/B 测试不同模型 | ✗ | 改用特性开关 + 随机分流 |
 
-- 估计字数：400-600字（散文≥70%）
-- 对应spec场景：D5
+- 估计字数：400-600 字
 
 ### 节 11.6：权衡与局限
-- 核心主张：**决策链的最大局限是"静态性"——6种模式在编译时固定，无法运行时扩展**
-- 源码锚点：`src/utils/permissions/getNextPermissionMode.ts:38`（default case兜底）
-- 概念层次：可扩展性局限、auto模式的 feature flag 依赖、bypassPermissions 的安全风险
-- 估计字数：500-700字（散文≥65%）
-- 对应spec场景：C4
+- 适用边界：层数 ≤3 时清晰；层数 >5 时建议改用路由规则表（rule-based router）
+- 潜在风险：优先级链文档化不足会导致覆盖行为难以预测
+- 性能影响：env 读取在冷路径，memoize 可缓解
+- 替代方案：rule-based router（根据 task type/complexity 查表选择模型）
+- 估计字数：500-700 字
 
 ### 节 11.7：与已知模式的对话
-- 核心主张：**这个模式与 GoF 责任链模式（Chain of Responsibility）有深层联系，但关键差异在于"谁决定下一个处理者"**
-- 概念层次：
-  - 与 GoF 责任链：相同——请求沿链传递，每个节点决定处理或转发；不同——本模式的"链"是循环的（模式循环），GoF 的链是线性的（有终点）
-  - 与 GoF 状态模式：相同——对象根据当前状态改变行为；不同——GoF 状态模式用类封装行为，本模式用数据（PermissionModeConfig）+ 函数（getNextPermissionMode）实现
-- 估计字数：500-700字（散文≥80%）
-- 对应spec场景：与已知模式的对话
+- 对比：Chain of Responsibility（职责链）
+- 相同点：优先级链，找到就停止
+- 不同点：职责链中处理器可以"传递"；模型路由中每层是覆盖而非处理
+- 另一对比：Strategy 模式——Router 是静态选择（基于优先级），Strategy 是动态注入（调用方决定）
+- 估计字数：400-600 字
 
-### 章末：模式提炼
+### 章末结构：模式提炼（hunter）
 
-**模式命名框 1**：
-```
-模式名称：可组合决策链（Composable Decision Chain）
-问题：Agent 需要多级权限策略，不同安全级别对应不同的操作范围
-解决方案：用字面量枚举定义有限状态，用纯函数 switch-case 定义转换规则，副作用单独封装
-前置条件：权限状态数量固定，转换规则在编译时已知
-源码锚点：src/utils/permissions/getNextPermissionMode.ts:34
-```
+**模式 1：分层模型路由（Tiered Model Router）**
+- 解决问题：多模型 Agent 需要按任务复杂度动态选择模型
+- 核心做法：用语义化函数（getSmall/getMain/getBest）封装，内部实现优先级链
+- 前置条件：有多个不同能力层的模型；任务有明确的复杂度分级
+- 源码证据：`src/utils/model/model.ts:36-115`
 
-**模式命名框 2**：
-```
-模式名称：纯函数状态转换（Pure State Transition）
-问题：UI快捷键触发的状态切换逻辑难以测试（有副作用）
-解决方案：把"下一个状态是什么"（纯计算）和"进入新状态时做什么"（副作用）拆成两个函数
-前置条件：状态转换可以表达为纯函数（输入=当前状态，输出=下一状态）
-源码锚点：src/utils/permissions/getNextPermissionMode.ts:34 vs 88
-```
+**模式 2：优先级覆盖链（Priority Override Chain）**
+- 解决问题：不同来源（flag/env/设置/默认）的配置需要明确的优先级
+- 核心做法：cascade if 链，从高优先级向低优先级检查，找到就返回
+- 前置条件：覆盖来源数量固定；优先级关系稳定
+- 源码证据：`src/utils/model/model.ts:60-92`
+
+**模式 3：全局状态隔离的运行时覆盖（Runtime Override via Global State）**
+- 解决问题：运行时临时覆盖需要跨越模块边界但不影响持久配置
+- 核心做法：覆盖值存入全局 state（非持久化），路由函数查询 state 而非直接读配置
+- 前置条件：覆盖生命周期 = 会话生命周期
+- 源码证据：`src/bootstrap/state.ts:838-870`
 
 ### 章末：你能做什么
-1. 用字符串字面量联合类型定义权限模式，而非数字枚举——便于序列化到配置文件
-2. 将状态转换逻辑写成纯函数（输入=当前状态，输出=下一状态），不混入副作用
-3. 用 `default → conservativeMode` 模式实现"默认保守"策略，让用户显式升级权限
-4. 为 canCycleToXxx 这类门禁函数做双重检查（缓存值 + 实时值），防止 feature flag 变化时状态不一致
-5. 将权限模式的 UI 属性（title/color/symbol）与逻辑属性（什么操作被允许）放在同一结构体，避免同步问题
-6. 用 cyclePermissionMode 模式将"计算下一状态"和"应用状态"分开，让单元测试只覆盖纯计算部分
 
----
+1. 在自己的多模型系统中，用语义化函数封装模型选择（getSmall/getMain/getBest），而非散落各处的硬编码字符串
+2. 实现 5 层优先级链：代码内覆盖 > 会话覆盖 > 环境变量 > 配置文件 > 默认值
+3. 将"运行时模型覆盖"存入会话级全局状态，而非写回持久化配置
+4. 设计覆盖机制时，在代码注释中明确写出优先级顺序（参考 model.ts:64 的注释格式）
+5. 当模型层数超过 3 时，改用路由规则表（`{ taskType: model }` 查表）替代 if 链
+6. 用环境变量作为模型覆盖的最低优先级，让测试环境可以不修改代码就替换模型
 
 ## 图表清单
 
 | # | 图表标题 | 类型 | 内容描述 | 对应节 |
 |---|---------|------|---------|--------|
-| 图11-1 | 六种权限模式的状态转换 | Mermaid stateDiagram | 6种模式 + 转换箭头 + canCycleToAuto 条件 | 11.1 |
-| 图11-2 | 可组合决策链模式结构 | Mermaid flowchart | PermissionMode → getNextPermissionMode(纯函数) → cyclePermissionMode(副作用) | 11.4 |
-
----
+| 图 6-1 | 三层模型路由对比表 | Markdown 表格 | Haiku/Sonnet/Opus 函数+场景+锚点对比 | 6.1 |
+| 图 6-2 | getMainLoopModel 五层优先级链 | Mermaid flowchart | 从"会话覆盖"到"内置默认"的 5 层 cascade | 6.2 |
 
 ## 写作顺序
 
-1. ⛔ 重新读取完整 spec 文件 + DESIGN.md STYLE_ID=hunter
-2. 读取前置文件（PermissionMode.ts、getNextPermissionMode.ts）
-3. 写节11.1（问题节，含图11-1）
-4. 写节11.2（实例1：配置映射）
-5. 写节11.3（实例2：状态机转换）
-6. 写节11.4（模式剖析，含图11-2）
-7. 写节11.5（适用范围表）
-8. 写节11.6（权衡与局限）
-9. 写节11.7（与已知模式对话）
-10. 写章末模式命名框+你能做什么
-11. 最后补写开篇
-
----
+1. ⛔ 确认 STYLE_ID=hunter + 读取完整 spec（`specs/ch11.spec`）
+2. 先写节 11.2（源码实例1，五层优先级链）
+3. 再写节 11.3（源码实例2，覆盖机制两层对比）
+4. 写节 11.1（问题节 + 三层路由对比表）
+5. 写节 11.4-6.7
+6. 画图表
+7. 写章末模式提炼
+8. 写"你能做什么"
+9. 最后补写开篇
 
 ## 写作前 checklist
 
 ```bash
-sed -n '21p' src/utils/permissions/PermissionMode.ts    # permissionModeSchema
-sed -n '34p' src/utils/permissions/PermissionMode.ts    # PermissionModeConfig
-sed -n '43p' src/utils/permissions/PermissionMode.ts    # PERMISSION_MODE_CONFIG
-sed -n '34p' src/utils/permissions/getNextPermissionMode.ts  # getNextPermissionMode
-sed -n '38p' src/utils/permissions/getNextPermissionMode.ts  # switch
-sed -n '17p' src/utils/permissions/getNextPermissionMode.ts  # canCycleToAuto
-sed -n '88p' src/utils/permissions/getNextPermissionMode.ts  # cyclePermissionMode
+sed -n '36p' src/utils/model/model.ts    # getSmallFastModel
+sed -n '92p' src/utils/model/model.ts    # getMainLoopModel
+sed -n '100p' src/utils/model/model.ts   # getBestModel
+sed -n '64p' src/utils/model/model.ts    # 优先级注释
+sed -n '838p' src/bootstrap/state.ts     # getMainLoopModelOverride
+sed -n '846p' src/bootstrap/state.ts     # setMainLoopModelOverride
 ```
-
----
 
 ## ⛔ Spec 一致性声明
 
-| # | 提取项 | 写入 plan | 对应节 |
-|---|--------|----------|--------|
+| # | 提取项 | 是否已写入 plan | 对应 plan 节 |
+|---|--------|---------------|-------------|
 | 1 | 意图 | ✓ | 章节意图 |
-| 2 | 通用约束·必须 | ✓ | 通用约束→必须 |
-| 3 | 通用约束·禁止 | ✓ | 通用约束→禁止 |
-| 4 | 风格专属必须 | ✓ | 风格专属→必须 |
-| 5 | 风格专属禁止 | ✓ | 风格专属→禁止 |
+| 2 | 通用约束·必须 | ✓ | 通用约束 |
+| 3 | 通用约束·禁止 | ✓ | 通用约束 |
+| 4 | 风格专属必须 | ✓ | 风格专属写作要求 |
+| 5 | 风格专属禁止 | ✓ | 风格专属写作要求 |
 | 6 | 章节结构 | ✓ | 章节骨架 |
-| 7 | 源码引用格式 | ✓ | 所有节锚点 |
+| 7 | 源码引用格式 | ✓ | 各节锚点 |
 | 8 | 图表格式 | ✓ | 图表清单 |
 | 9 | 边界路径 | ✓ | 排除范围 |
-| 10 | 验收优先级 | ✓ | E>A>B=C>D |
-| 11 | 验收场景·A | ✓ | Spec验收A组 |
-| 12 | 验收场景·B | ✓ | Spec验收B组 |
-| 13 | 验收场景·C | ✓ | Spec验收C组 |
-| 14 | 验收场景·D | ✓ | Spec验收D组 |
-| 15 | 验收场景·E | ✓ | Spec验收E组 |
+| 10 | 验收优先级 | ✓ | Spec 验收场景清单头部 |
+| 11 | 验收场景·A | ✓ | A 组表格 |
+| 12 | 验收场景·B | ✓ | B 组表格 |
+| 13 | 验收场景·C | ✓ | C 组表格 |
+| 14 | 验收场景·D | ✓ | D 组表格 |
+| 15 | 验收场景·E | ✓ | E 组表格 |
 | 16 | 排除范围 | ✓ | 通用约束→排除范围 |
 
-**⛔ 所有项目均已勾选 ✓，plan 审查通过。**
+**验收场景覆盖统计**：A 组 4/4 + B 组 3/3 + C 组 6/6 + D 组 5/5 + E 组 3/3 = **21/21**

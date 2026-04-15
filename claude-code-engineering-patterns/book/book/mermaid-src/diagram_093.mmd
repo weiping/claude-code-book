@@ -1,25 +1,9 @@
-graph TD
-    subgraph 需要解耦（LocalShellTask）
-        GST["guards.ts
-（纯类型，无框架依赖）
-isLocalShellTask()"]
-        STT["stopTask.ts
-（纯逻辑）"] -->|import| GST
-        PRN["print.ts
-（纯逻辑）"] -->|import| GST
-        LST["LocalShellTask.tsx
-（React 组件）"] -->|import| GST
-    end
-    subgraph 不需要解耦（LocalAgentTask）
-        LAT["LocalAgentTask.tsx
-（React 组件）
-含 isLocalAgentTask()"]
-        QE["QueryEngine.tsx
-（已有 React）"] -->|import| LAT
-        UI["AgentTaskList.tsx
-（已有 React）"] -->|import| LAT
-    end
-    note1["纯逻辑消费者 ← 需要解耦
-守卫函数提取到 guards.ts"]
-    note2["React 消费者 ← 无需解耦
-守卫函数留在 .tsx 内"]
+stateDiagram-v2
+    [*] --> 挂起: registerPendingAsyncHook\n注册 + 启动进度报告
+    挂起 --> 完成: shellCommand.status=completed\n且 exitCode=0
+    挂起 --> 错误: shellCommand.status=completed\n且 exitCode≠0
+    挂起 --> 取消: finalizePendingAsyncHooks\n（会话结束强制清理）
+    挂起 --> 取消: shellCommand.status=killed
+    完成 --> [*]: finalizeHook(success)\n+ 从 Map 删除
+    错误 --> [*]: finalizeHook(error)\n+ 从 Map 删除
+    取消 --> [*]: finalizeHook(cancelled)\n+ Map.clear()

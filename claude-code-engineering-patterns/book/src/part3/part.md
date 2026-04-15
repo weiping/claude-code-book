@@ -1,8 +1,12 @@
-<div class="part-page">
-  <div class="part-label">PART III</div>
-  <div class="part-number">第三篇</div>
-  <div class="part-title">Tool 系统：可扩展的工具协议</div>
-  <div class="part-rule"></div>
-  <div class="part-desc">工具是 Agent 与世界交互的唯一接口。这一篇拆解工具契约、权限决策链、AI 分类器、MCP 协议与 Skill 系统的五层设计，揭示「56 个工具目录如何保持一致」的工程答案。</div>
-  <div class="part-chapters">第 10—14 章</div>
-</div>
+# 第三篇：Harness 核心循环——查询引擎
+
+> *目的：深入 Harness 控制层的核心——从用户输入到模型调用的主循环*
+
+本篇是全书的工程核心：QueryEngine 的 `while(true)` 异步生成器循环如何编排工具调用，以及 async generator 如何在高延迟 AI 调用中实现流式管道。
+
+---
+
+## 本章导航
+
+- [第 9 章：QueryEngine 主循环——工具调用的编排逻辑](ch09.md)
+- [第 10 章：流式响应管道——异步生成器的工程应用](ch10.md)

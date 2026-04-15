@@ -1,11 +1,11 @@
-flowchart LR
-    FM["Markdown Frontmatter\nhooks: { PreToolUse: [...] }"]
-    RS["registerSkillHooks\n或 registerFrontmatterHooks"]
-    ASH["addSessionHook\n（命令式底层）"]
-    AppState["AppState\n（session hooks Map）"]
-    Exec["executeHooks\n（运行时触发）"]
-
-    FM -->|"解析 HooksSettings"| RS
-    RS -->|"遍历 HOOK_EVENTS\n+ 语义转换"| ASH
-    ASH -->|"写入"| AppState
-    AppState -->|"按事件查找"| Exec
+flowchart TD
+    A["读入 MEMORY.md 内容"] --> B{行数 > 200?}
+    B -->|"是"| C["取前 200 行"]
+    B -->|"否"| D["保持原内容"]
+    C --> E{截断后 > 25KB?}
+    D --> E
+    E -->|"是"| F["在最后换行符处切断\n（不截断中间一行）"]
+    E -->|"否"| G["直接返回"]
+    F --> H["追加警告，说明触发上限类型"]
+    G --> I["返回 EntrypointTruncation"]
+    H --> I

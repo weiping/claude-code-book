@@ -1,19 +1,18 @@
-sequenceDiagram
-    participant REPL as REPL 组件\n（React）
-    participant Bridge as leaderPermissionBridge\n（模块级注册表）
-    participant Runner as inProcessRunner\n（非 React）
-
-    REPL->>Bridge: registerLeaderToolUseConfirmQueue(setter)
-    REPL->>Bridge: registerLeaderSetToolPermissionContext(setter)
-    Note over Bridge: registeredSetter = setter\nregisteredPermissionContextSetter = setter
-    Runner->>Bridge: getLeaderToolUseConfirmQueue()
-    Bridge-->>Runner: SetToolUseConfirmQueueFn
-    Runner->>REPL: 调用 setter → 推入权限对话框
-    REPL-->>Runner: 用户决定（Promise resolve）
-    Runner->>Bridge: getLeaderSetToolPermissionContext()
-    Bridge-->>Runner: SetToolPermissionContextFn
-    Runner->>REPL: 调用 setter → 写回权限上下文
-    Note over REPL: 组件卸载时 useEffect cleanup
-    REPL->>Bridge: unregisterLeaderToolUseConfirmQueue()
-    REPL->>Bridge: unregisterLeaderSetToolPermissionContext()
-    Note over Bridge: 两个变量重置为 null
+flowchart TD
+    enter["stopTask(taskId)"] --> s1{"task.status
+!== 'running'?"}
+    s1 -->|是| err1["throw StopTaskError
+code: 'not_running'"]
+    s1 -->|否| s2{"isLocalShellTask
+(task)?"}
+    s2 -->|是| bash_action["抑制 exit code 137 通知
+（LocalShellTask 特有）
+task 类型收窄为 LocalShellTaskState"]
+    s2 -->|否| agent_action["跳过通知抑制
+（Agent 任务有实际错误载荷）"]
+    bash_action & agent_action --> s3["const command =
+isLocalShellTask(task)
+? task.command
+: task.description"]
+    s3 --> kill["发送 SIGKILL
+更新 status = killed"]

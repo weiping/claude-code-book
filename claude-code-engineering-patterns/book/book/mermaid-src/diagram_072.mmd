@@ -1,9 +1,12 @@
 flowchart TD
-    resume["claude --resume"] --> load["loadSessionFile\n读取 sessionId.jsonl"]
-    load --> check_empty{"messages.size == 0?"}
-    check_empty -->|是| return_null["返回 null\n（无会话可恢复）"]
-    check_empty -->|否| prime_cache["预热 getSessionMessages 缓存\n（避免第二次文件读取）"]
-    prime_cache --> find_last["findLatestMessage\n过滤 sidechain，找最新消息"]
-    find_last --> build_chain["buildConversationChain\n从最后一条消息向上重建链"]
-    build_chain --> return_log["返回 LogOption\n（包含完整对话历史）"]
-    return_log --> repl["REPL 挂载，\n恢复上一次会话状态"]
+    managed["1. Managed 层\n/etc/claude-code/CLAUDE.md\n（机构策略，不可排除）"] --> user
+    user["2. User 层\n~/.claude/CLAUDE.md\n（个人全局偏好）"] --> project_root
+    project_root["3. Project 层（根目录）\nCLAUDE.md / .claude/CLAUDE.md\n（团队共享，git tracked）"] --> project_sub
+    project_sub["3. Project 层（子目录）\n从根目录扫描至 CWD\n越靠近 CWD 越晚加载"] --> local
+    local["4. Local 层\nCLAUDE.local.md\n（个人项目配置，gitignored）"]
+    
+    style managed fill:#ffcccc
+    style user fill:#ffe0cc
+    style project_root fill:#ffffcc
+    style project_sub fill:#ccffcc
+    style local fill:#ccccff

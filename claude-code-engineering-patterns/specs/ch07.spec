@@ -1,19 +1,19 @@
 spec: task
-name: "第7章：Effort、Fast Mode 与 Thinking——推理深度控制的三轴"
+name: "第7章：斜杠命令系统——103 个命令的注册、加载与执行"
 tags: [book-chapter, part-2]
 ---
 
 ## 意图
 
-揭示 Claude Code 如何通过三个正交维度控制 AI 推理深度：effort 级别（`src/utils/effort.ts`，329行）、fast mode（低延迟优先，`fastMode` 字段）、thinking 模式（`src/utils/thinking.ts`，162行）。读者读完后能理解三轴如何与模型选择交叉作用，并能在自己的 Agent 系统中设计类似的推理深度控制机制。
+揭示 Claude Code 如何通过"目录即注册表"约定 + 动态加载 + feature flag 门控实现 103 个斜杠命令的一致性管理。读者读完后能将这一模式用于自己的可扩展 CLI 设计，知道如何用目录结构替代显式注册表。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/utils/effort.ts、src/utils/thinking.ts、src/commands/effort/
-- 前置依赖：第6章（模型路由，三轴与模型选择交叉作用）
+- 核心文件：src/commands/ 目录（103 个子目录）、src/utils/plugins/loadPluginCommands.ts
+- 命令数量以实际 find 统计为准（当前为 95 个目录，以源码为准）
 
 
 ## 约束
@@ -43,50 +43,56 @@ tags: [book-chapter, part-2]
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不重复第6章对模型路由的描述
-- 不展开 QueryEngine 的主循环（第8章）
+- 不展开每个命令的具体实现（只分析注册/加载机制）
+- 不重复第 6 章对分流路由的描述
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch07_hunter_opening
-  假设 读者打开第7章
+  测试: ch05_hunter_opening
+  假设 读者打开第 7 章
   当 读者阅读第一屏内容
-  那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
+  那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字），引发"这么多命令是怎么管理的"疑问
 
-场景: 三轴正交说明
-  测试: ch07_three_axes
-  假设 读者阅读三轴关系节
-  当 读者检查三轴之间的关系描述
-  那么 章节明确说明三轴是正交的（可独立设置），并有交叉组合示例
+场景: 目录即注册表模式说明
+  测试: ch05_directory_as_registry
+  假设 读者阅读命令加载机制节
+  当 读者检查"目录即注册表"的实现
+  那么 章节展示 loadCommandsFromDirectory 如何扫描目录、动态 require 命令模块
 
-场景: thinking 触发条件
-  测试: ch07_thinking_trigger
-  假设 读者阅读 thinking 模式节
-  当 读者检查 thinking 的触发逻辑
-  那么 章节展示 shouldEnableThinkingByDefault、hasUltrathinkKeyword 等函数的判断条件
+场景: feature flag 门控说明
+  测试: ch05_feature_flag_gating
+  假设 读者阅读命令门控节
+  当 读者检查某个命令的 feature flag 门控逻辑
+  那么 章节有具体的门控代码引用和说明，并解释门控的工程意图
 
 场景: 源码引用有效性
-  测试: ch07_source_anchors
+  测试: ch05_source_anchors
   层级: 集成
   假设 读者跟随章节中的源码引用
   当 读者在项目目录查找每处路径和行号
   那么 每处引用都实际存在于对应文件
 
+场景: 命令数量具体化
+  测试: ch05_command_count
+  假设 本章提到命令数量
+  当 读者验证数字
+  那么 使用通过 find src/commands -maxdepth 1 -type d 实际统计的数量
+
 场景: 模式命名框存在
-  测试: ch07_pattern_box
+  测试: ch05_pattern_box
   假设 本章使用 hunter 风格
   当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"推理深度三轴控制"模式
+  那么 存在至少 1 个格式规范的模式命名框，提炼"目录即注册表"模式
 
 场景: 章末行动建议
-  测试: ch07_action_items
+  测试: ch05_action_items
   假设 读者读完本章
   当 读者检查"你能做什么"节
   那么 包含 5-8 条以行动动词开头的可操作建议
 
 场景: 不引用排除范围
-  测试: ch07_no_excluded_refs
+  测试: ch05_no_excluded_refs
   层级: 集成
   假设 DESIGN.md 列出了排除范围
   当 读者检查本章所有源码路径
@@ -94,7 +100,7 @@ tags: [book-chapter, part-2]
 
 
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch07_hunter_opening_format
+  测试: ch05_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -102,33 +108,33 @@ tags: [book-chapter, part-2]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch07_multi_instance_proof
+  测试: ch05_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch07_applicability_table
+  测试: ch05_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch07_tradeoffs_and_limits
+  测试: ch05_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch07_known_pattern_dialogue
+  测试: ch05_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch07_pattern_box_format
+  测试: ch05_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -138,7 +144,7 @@ tags: [book-chapter, part-2]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch07_reader_voice
+  测试: ch05_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -146,7 +152,7 @@ tags: [book-chapter, part-2]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch07_key_info_highlight
+  测试: ch05_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
@@ -154,6 +160,6 @@ tags: [book-chapter, part-2]
 
 ## 排除范围
 
-- 具体模型的思维链 API 参数（只分析 Claude Code 侧的控制逻辑）
-- QueryEngine 主循环（第8章）
+- 每个斜杠命令的具体业务逻辑实现
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
+- 第 6 章已讲解的输入分流路由逻辑

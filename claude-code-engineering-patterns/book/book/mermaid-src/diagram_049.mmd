@@ -1,7 +1,30 @@
 classDiagram
-    class ClassifierResult {
-        +matches boolean
-        +matchedDescription string
-        +confidence high_or_medium_or_low
-        +reason string
+    class ToolDef {
+        +call() 必填
+        +description() 必填
+        +inputSchema 必填
+        +name 必填
+        isConcurrencySafe()? 可选覆盖
+        isReadOnly()? 可选覆盖
+        isDestructive()? 可选覆盖
+        checkPermissions()? 可选覆盖
     }
+
+    class TOOL_DEFAULTS {
+        +isEnabled() true
+        +isConcurrencySafe() false
+        +isReadOnly() false
+        +isDestructive() false
+        +checkPermissions() allow
+        +toAutoClassifierInput() 空字符串
+        +userFacingName() 空字符串
+    }
+
+    class BuiltTool {
+        全部 ToolDef 字段
+        全部 TOOL_DEFAULTS 字段
+        覆盖规则 def 优先于 defaults
+    }
+
+    ToolDef --> BuiltTool : buildTool() spread
+    TOOL_DEFAULTS --> BuiltTool : buildTool() spread

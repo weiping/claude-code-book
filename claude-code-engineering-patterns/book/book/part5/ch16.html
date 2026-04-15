@@ -1,0 +1,478 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 16 章：AI 分类器替代规则引擎——yolo-classifier 的设计哲学 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-16-章ai-分类器替代规则引擎yolo-classifier-的设计哲学"><a class="header" href="#第-16-章ai-分类器替代规则引擎yolo-classifier-的设计哲学">第 16 章：AI 分类器替代规则引擎——yolo-classifier 的设计哲学</a></h1>
+<blockquote>
+<p>"让 AI 裁判 AI,是信任的递归,也是工程的妥协。"</p>
+</blockquote>
+<p>当一个 AI Agent 可以执行任意 bash 命令时,谁来裁判"这条命令是否安全"?直觉上的答案是:写一套规则--"包含 <code>rm -rf</code> 的命令拒绝","修改 <code>/etc</code> 的操作需要确认"。但这个直觉在第一个边缘案例处就会动摇:<code>rm -rf /tmp/build-cache</code> 和 <code>rm -rf /home/user/projects</code> 表面上相似,危险程度却天壤之别。危险性不在命令本身,而在命令所处的<strong>语义上下文</strong>。规则引擎处理语法,语义需要理解。</p>
+<p>Claude Code 给出的答案是<strong>让另一个 AI 模型来裁判</strong>--这就是"模型即规则引擎"(Model-as-Rule-Engine)模式:将安全判断从 if/else 规则集转移到 AI 模型的推理能力上,利用自然语言理解覆盖规则无法枚举的语义边界。</p>
+<p>读完本章,你能分析"AI 分类器 vs 规则引擎"的工程成本与收益,并能在自己的系统中设计出可降级、可白名单化的安全判断接口。</p>
+<hr />
+<h2 id="问题规则引擎的枚举困境"><a class="header" href="#问题规则引擎的枚举困境">问题：规则引擎的枚举困境</a></h2>
+<p>为什么不用规则引擎?这个问题值得认真回答。</p>
+<p>规则引擎在许多场景下工作良好:防火墙规则匹配 IP 地址,垃圾邮件过滤器检查关键词,访问控制列表比对用户 ID。它们有一个共同特征:判断标准是<strong>结构性的</strong>--可以用精确的条件表达式覆盖所有情况。</p>
+<p>bash 命令的安全判断不属于这类问题。考虑以下三条命令:</p>
+<pre><code class="language-bash"># 命令 A
+rm -rf /tmp/test-artifacts
+
+# 命令 B
+git push origin main --force
+
+# 命令 C
+curl https://internal-api/reset-database | bash
+</code></pre>
+<p>命令 A 是否危险?取决于 <code>/tmp/test-artifacts</code> 是用户特意创建的临时目录,还是某个服务的数据目录被错误命名。命令 B 是否危险?取决于这是用户的个人项目仓库,还是团队共享的生产主干分支。命令 C 几乎一定危险--但你只能靠理解 URL 的含义和 <code>bash</code> 的语义才能判断。</p>
+<p><strong>规则引擎的根本局限是:它处理的是命令的字符串表示,而危险性存在于命令与执行上下文的语义关系中。</strong> 任何基于字符串匹配或结构分析的规则集,要么过于保守(拦截大量合法操作),要么存在漏洞(遗漏危险操作的语义变体)。</p>
+<p>这不是规则写得不够好的问题,而是规则引擎在这个任务上的结构性劣势。</p>
+<p><strong>图 16-1：安全判断方式对比</strong></p>
+<pre><code class="language-mermaid">flowchart LR
+    cmd[bash 命令 + 上下文]
+
+    subgraph rules[规则引擎方案]
+        r1[字符串模式匹配] --&gt; r2{匹配规则?}
+        r2 --&gt;|是| r_deny[拒绝/询问]
+        r2 --&gt;|否| r_allow[放行]
+        r3[⚠️ 枚举不完,语义盲区]
+    end
+
+    subgraph ai[AI 分类器方案]
+        a1[构建语义 transcript] --&gt; a2[AI 模型推理]
+        a2 --&gt; a3["classify_result\n{shouldBlock, reason}"]
+        a4[✓ 理解语义上下文]
+    end
+
+    cmd --&gt; rules
+    cmd --&gt; ai
+</code></pre>
+<p><strong>图 16-1：两种判断路径的对比。</strong> 规则引擎只能处理命令的字符串结构,AI 分类器能够理解命令在执行上下文中的语义含义--但后者的代价是网络延迟和 token 消耗。</p>
+<hr />
+<h2 id="源码实例-1classifierresult-的三字段协议"><a class="header" href="#源码实例-1classifierresult-的三字段协议">源码实例 1：ClassifierResult 的三字段协议</a></h2>
+<p>我们先看分类器决策结果的数据结构设计,它揭示了系统对"安全判断"这件事的理解深度。</p>
+<p>在 <code>src/utils/permissions/bashClassifier.ts</code> 中,分类器返回结果被定义为三个字段:</p>
+<pre><code class="language-typescript">// src/utils/permissions/bashClassifier.ts:5
+export type ClassifierResult = {
+  matches: boolean
+  matchedDescription?: string
+  confidence: 'high' | 'medium' | 'low'
+  reason: string
+}
+</code></pre>
+<p><strong>源码参考:</strong> <code>src/utils/permissions/bashClassifier.ts:5-10</code></p>
+<p>这三个字段背后有一套完整的工程考量。<strong><code>matches</code> 是最终决策</strong>(是否触发对应规则),但更值得关注的是另外两个字段:</p>
+<p><code>confidence</code> 的三级枚举(<code>'high' | 'medium' | 'low'</code>)承认了 AI 判断的<strong>不确定性本质</strong>--这是规则引擎思维和 AI 思维之间最关键的分野。规则引擎的输出总是确定性的(匹配或不匹配),AI 模型的推理是概率性的。将置信度显式建模进接口,迫使调用方思考"当 AI 不确定时应该怎么办"。</p>
+<p><code>reason</code> 字段更是有意思的设计选择。AI 分类器的判断理由是系统向用户解释"为什么这个操作被拦截"的原料。这意味着从第一天起,设计者就把"可解释性"列为安全系统的一等公民--被拒绝的操作必须能说清为什么。</p>
+<p>值得一提的是,这个 <code>ClassifierResult</code> 是第11章介绍的 <code>PermissionMode</code> 四层决策体系的内部实现细节之一--当 <code>PermissionMode</code> 处于 auto 模式时,才会触发 AI 分类器路径。(详见第11章 PermissionMode 的决策分层设计)</p>
+<p><strong>图 16-3：ClassifierResult 的三字段职责划分</strong></p>
+<pre><code class="language-mermaid">classDiagram
+    class ClassifierResult {
+        +matches boolean
+        +matchedDescription string
+        +confidence high_or_medium_or_low
+        +reason string
+    }
+</code></pre>
+<p><strong>图 16-3：ClassifierResult 三字段各司其职。</strong> <code>matches</code> 是二值决策结果,<code>confidence</code> 承认 AI 判断的概率性本质,<code>reason</code> 为用户提供可解释的拒绝理由--三者缺一不可。</p>
+<p>决策行为被单独定义为另一个类型:</p>
+<pre><code class="language-typescript">// src/utils/permissions/bashClassifier.ts:12
+export type ClassifierBehavior = 'deny' | 'ask' | 'allow'
+</code></pre>
+<p><strong>源码参考:</strong> <code>src/utils/permissions/bashClassifier.ts:12</code></p>
+<p><code>ClassifierBehavior</code> 的三值设计(拒绝/询问/放行)对应三种不同的安全策略:确定危险的操作直接拒绝,不确定的操作转交用户判断,明确安全的操作直接放行。这是安全系统的标准"三挡"设计,但在 AI 分类器的语境下,"不确定"的边界是由模型的推理能力动态定义的,而非人工硬编码。</p>
+<p>分类器的核心函数是 <code>classifyBashCommand</code>,其接口签名揭示了决策所需的全部上下文:</p>
+<pre><code class="language-typescript">// src/utils/permissions/bashClassifier.ts:40
+export async function classifyBashCommand(
+  _command: string,
+  _cwd: string,
+  _descriptions: string[],
+  _behavior: ClassifierBehavior,
+  _signal: AbortSignal,
+  _isNonInteractiveSession: boolean,
+): Promise&lt;ClassifierResult&gt;
+</code></pre>
+<p><strong>源码参考:</strong> <code>src/utils/permissions/bashClassifier.ts:40-48</code></p>
+<p>注意参数列表:不只有命令本身(<code>_command</code>),还有当前工作目录(<code>_cwd</code>)、自然语言描述规则列表(<code>_descriptions</code>)以及交互模式标志(<code>_isNonInteractiveSession</code>)。这些参数组合起来,构成了 AI 理解命令<strong>语义上下文</strong>所需的最小信息集合--这正是规则引擎做不到的事:它只能接受命令字符串。</p>
+<p>然而,在这份公开代码中,这个函数是一个 stub(占位实现):</p>
+<pre><code class="language-typescript">// src/utils/permissions/bashClassifier.ts:40
+return {
+  matches: false,
+  confidence: 'high',
+  reason: 'This feature is disabled',
+}
+</code></pre>
+<p><strong>源码参考:</strong> <code>src/utils/permissions/bashClassifier.ts:48-52</code></p>
+<p>文件开头的注释点明了原因:<code>// Stub for external builds - classifier permissions feature is ANT-ONLY</code>。同样地,<code>isClassifierPermissionsEnabled()</code> 函数(<code>src/utils/permissions/bashClassifier.ts:24</code>)总是返回 <code>false</code>。<strong>这是一个功能开关:AI 分类器功能被 feature flag 保护,在外部构建版本中默认关闭</strong>。这个 stub 的存在本身就是一种架构模式--公开接口完整定义(接口契约可见),核心实现受保护(通过 feature flag 控制可用性),确保外部版本性能不受影响。</p>
+<hr />
+<h2 id="源码实例-2工具如何定义自己的安全语境"><a class="header" href="#源码实例-2工具如何定义自己的安全语境">源码实例 2：工具如何定义自己的安全语境</a></h2>
+<p>第一个实例展示了分类器的输出协议。我们来看第二个实例:工具如何向分类器<strong>声明自己的语义输入</strong>。</p>
+<p>分类器想要理解"AI 代理正在做什么",但它看不到代理的内部状态--它只能通过工具的操作日志来推断。因此,每个工具都需要能够将自己的操作"翻译"成对分类器有意义的文本。这个责任被设计成 <code>Tool</code> 接口的必选方法:</p>
+<pre><code class="language-typescript">// src/Tool.ts:550
+/**
+ * 返回此工具调用的紧凑表示,供 auto-mode 安全分类器使用。
+ * 示例:Bash 工具返回 `ls -la`,Edit 工具返回 `/tmp/x: new content`。
+ * 返回 '' 表示在分类器 transcript 中跳过此工具
+ * (例如与安全无关的工具)。可以返回对象以避免
+ * 调用方 JSON 包裹时的双重编码。
+ * (原文:"Returns a compact representation of this tool use for the auto-mode
+ * security classifier. Examples: `ls -la` for Bash, `/tmp/x: new content`
+ * for Edit. Return '' to skip this tool in the classifier transcript
+ * (e.g. tools with no security relevance). May return an object to avoid
+ * double-encoding when the caller JSON-wraps the value.")
+ */
+toAutoClassifierInput(input: z.infer&lt;Input&gt;): unknown
+</code></pre>
+<p><strong>源码参考:</strong> <code>src/Tool.ts:550-556</code></p>
+<p>这个设计选择值得细品。分类器本可以直接获取工具的原始输入参数,但注释给出了两个例子:Bash 工具返回 <code>ls -la</code>(命令本身),Edit 工具返回 <code>/tmp/x: new content</code>(路径 + 变更摘要)。这不是简单的参数传递--是<strong>每个工具从分类器视角重新表述"我正在做什么"</strong>。</p>
+<p>返回空字符串 <code>''</code> 的语义同样关键:注释明确说明"Return '' to skip this tool in the classifier transcript (e.g. tools with no security relevance)"。这给了工具一种"选择退出安全审查"的机制--如果一个工具的操作天然安全(如只读查询),它可以声明自己不需要接受安全审查,从而避免不必要的 AI 调用开销。</p>
+<p>但比"选择退出"更粗粒度的优化是<strong>白名单</strong>机制。<code>classifierDecision.ts</code> 维护了一个完整的"已知安全工具"集合:</p>
+<pre><code class="language-typescript">// src/utils/permissions/classifierDecision.ts:56
+const SAFE_YOLO_ALLOWLISTED_TOOLS = new Set([
+  FILE_READ_TOOL_NAME,     // 只读文件操作
+  GREP_TOOL_NAME,          // 只读搜索
+  GLOB_TOOL_NAME,          // 只读文件列表
+  TODO_WRITE_TOOL_NAME,    // 任务元数据(无实际副作用)
+  SLEEP_TOOL_NAME,         // 等待(无副作用)
+  // ... 约 20 个工具
+])
+</code></pre>
+<p><strong>源码参考:</strong> <code>src/utils/permissions/classifierDecision.ts:56-98</code></p>
+<p>注释解释了白名单的边界：写入和编辑工具不在白名单内，由 acceptEdits 快路径单独处理（原文："Does NOT include write/edit tools - those are handled by the acceptEdits fast path"）。写入和编辑工具被单独处理(如果在工作目录内则允许,工作目录外则分类),而不是放进白名单。<strong>白名单只包含那些"无论如何都不可能造成安全风险"的工具--而不是"通常安全"的工具</strong>。这是最小化误判风险的保守策略。</p>
+<p>查询函数极简:</p>
+<pre><code class="language-typescript">// src/utils/permissions/classifierDecision.ts:96
+export function isAutoModeAllowlistedTool(toolName: string): boolean {
+  return SAFE_YOLO_ALLOWLISTED_TOOLS.has(toolName)
+}
+</code></pre>
+<p><strong>源码参考:</strong> <code>src/utils/permissions/classifierDecision.ts:96-98</code></p>
+<p>两个实例的对比揭示了模式的不同层次:<code>toAutoClassifierInput()</code> 是细粒度的"工具自定义分类器视角"接口,<code>isAutoModeAllowlistedTool()</code> 是粗粒度的"工具完全跳过分类"机制。二者协作,让分类器只在真正需要时才付出 AI 调用的代价。</p>
+<p><strong>图 16-2：工具安全审查的三种路径</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    tool[工具调用请求]
+
+    tool --&gt; check1{在白名单中?}
+    check1 --&gt;|是| allow_fast[直接放行\nisAutoModeAllowlistedTool = true]
+    check1 --&gt;|否| check2{toAutoClassifierInput\n返回空字符串?}
+    check2 --&gt;|是| allow_skip[跳过安全检查\n写入 transcript 时忽略]
+    check2 --&gt;|否| classify[构建 transcript\n调用 AI 分类器]
+    classify --&gt; result["ClassifierResult\n{shouldBlock, confidence, reason}"]
+    result --&gt;|shouldBlock=false| allow_final[放行]
+    result --&gt;|shouldBlock=true| deny[拒绝或询问用户]
+</code></pre>
+<p><strong>图 16-2：工具安全审查的三层过滤。</strong> 从白名单快速路径,到工具声明退出,再到 AI 分类器判断--三层设计让大多数操作无需付出 AI 调用代价。</p>
+<hr />
+<h2 id="模式剖析模型即规则引擎"><a class="header" href="#模式剖析模型即规则引擎">模式剖析：模型即规则引擎</a></h2>
+<p>现在我们有了足够的源码证据,可以提炼这个模式的骨架。</p>
+<p><strong>模式名称:模型即规则引擎(Model-as-Rule-Engine)</strong></p>
+<p>这个模式的核心是<strong>用 AI 模型的推理能力替代规则集来做决策</strong>,尤其适用于判断标准依赖语义理解、无法用精确条件完全枚举的场景。</p>
+<p>模式由四个组成部分构成:</p>
+<p><strong>1. 决策接口(ClassifierResult)</strong>:定义分类器的输出协议--不只是 yes/no,还包含置信度(<code>confidence</code>)和理由(<code>reason</code>)。置信度使调用方可以根据不确定程度决定后续行为;理由为用户提供可解释性。</p>
+<p><strong>2. 语境声明接口(toAutoClassifierInput)</strong>:每个"被裁判对象"(工具)负责将自己的行为翻译成对裁判(分类器)有意义的文本。这将"如何描述操作"的责任下放给了最了解自己的工具,而非集中在分类器。</p>
+<p><strong>3. 白名单快速路径(SAFE_YOLO_ALLOWLISTED_TOOLS)</strong>:对于已知安全的操作,完全跳过 AI 调用。这是性能的安全阀--AI 调用有延迟和成本,白名单确保常见安全操作不付出这个代价。</p>
+<p><strong>4. 功能开关(isClassifierPermissionsEnabled)</strong>:整个分类器功能通过 feature flag 开关控制,默认关闭。这允许系统在 AI 分类器不可用(如离线环境、外部构建版本)时降级到其他安全策略,而不是直接崩溃。</p>
+<p>这四个部分组合起来,形成一个<strong>可降级、可优化、可解释的 AI 安全决策系统</strong>--不是一个"替换规则引擎"的简单改装,而是专门为 AI 判断的不确定性和成本特征设计的完整接口。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>判断标准依赖语义理解(如 bash 命令危险性)</td><td>✓</td><td>AI 能理解上下文语义,规则引擎处理字符串结构</td><td>复杂规则集(可维护性差、漏洞多)</td></tr>
+<tr><td>覆盖"长尾"边缘案例(无法枚举的变体)</td><td>✓</td><td>AI 能泛化到未见过的模式,规则必须逐条添加</td><td>机器学习分类器(训练成本高)</td></tr>
+<tr><td>延迟敏感场景(&lt;100ms 决策要求)</td><td>✗</td><td>AI 模型调用涉及网络请求,难以保证低延迟</td><td>规则引擎(本地,无网络开销)</td></tr>
+<tr><td>需要完全可审计/可解释的决策链</td><td>✗(谨慎)</td><td>AI 推理存在不透明性,虽有 <code>reason</code> 字段但不可完全追溯(推断)</td><td>规则引擎(每条规则可独立追踪)</td></tr>
+<tr><td>高频判断(&gt;1000次/秒)</td><td>✗</td><td>API token 成本会随频率线性增长</td><td>规则引擎 + 白名单缓存</td></tr>
+<tr><td>判断标准频繁变化</td><td>✓</td><td>自然语言描述规则(<code>_descriptions</code>)比代码规则更易更新</td><td>可配置规则引擎</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p>为什么不是所有安全判断都用 AI 分类器?</p>
+<p><strong>延迟代价</strong>:调用 AI 模型涉及网络请求,延迟通常在数百毫秒量级。白名单机制(<code>isAutoModeAllowlistedTool</code>)是减少这一开销的主要手段,但对于不在白名单内的工具,每次操作都会有可感知的延迟增加。</p>
+<p><strong>不确定性传播</strong>:AI 模型的判断是概率性的--同一条命令在不同的会话上下文中可能得到不同的分类结果(推断)。<code>confidence</code> 字段承认了这一点,但系统的使用者必须接受"安全判断本身不是 100% 确定的"这一前提。对于安全要求极高的场景,这是一个根本性的风险。</p>
+<p><strong>电路断路器</strong>:<code>src/utils/permissions/autoModeState.ts</code> 中维护了一个 <code>autoModeCircuitBroken</code> 状态:</p>
+<pre><code class="language-typescript">// src/utils/permissions/autoModeState.ts:9
+let autoModeCircuitBroken = false
+</code></pre>
+<p><strong>源码参考:</strong> <code>src/utils/permissions/autoModeState.ts:9</code></p>
+<p>当 auto mode 的后端权限被撤销时(通过 GrowthBook 功能配置检测),<code>isAutoModeCircuitBroken()</code> 返回 <code>true</code>,阻止会话内的后续 auto mode 请求。注释说明:这是 <code>verifyAutoModeGateAccess</code> 异步检查读取到 <code>tengu_auto_mode_config.enabled === 'disabled'</code> 时触发的。<strong>这是对"AI 服务不可用"场景的防御--分类器失败不能导致主功能中断,而是通过断路器降级处理</strong>。</p>
+<p><strong>功能可用性局限</strong>:如前所述,完整的 AI 分类功能是 ANT-ONLY 的,外部版本中是 stub。这意味着外部用户实际上看到的是一个"接口完整但功能关闭"的系统--这种设计为未来开放预留了接口,但当前版本的外部用户无法受益于 AI 安全裁判能力。</p>
+<p><strong>图 16-4：Auto Mode 的状态机与电路断路器</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; inactive
+    inactive --&gt; active: setAutoModeActive(true)
+    active --&gt; inactive: 会话结束
+    active --&gt; circuit_broken: verifyAutoModeGateAccess发现disabled
+    circuit_broken --&gt; circuit_broken: 拒绝新auto请求
+    note right of circuit_broken
+        isAutoModeCircuitBroken=true
+        会话内不可恢复
+    end note
+</code></pre>
+<p><strong>图 16-4：Auto Mode 的状态转换。</strong> <code>active</code> 到 <code>circuit_broken</code> 是单向箭头--一旦触发电路断路,当前会话内不可恢复。这是"快速失败"而非"无限重试"的设计选择,防止损坏的配置状态无限干扰主功能。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p>这个模式与业界已知模式有什么异同?</p>
+<p><strong>与 GoF 策略模式(Strategy Pattern)的关系</strong>:策略模式将可替换的算法封装为对象。"模型即规则引擎"与之相似--<code>classifyBashCommand</code> 是一个可替换的判断策略,stub 实现和实际 AI 实现共享同一接口。但关键区别是:<strong>策略模式的策略是确定性的算法,AI 分类器是概率性的推理系统</strong>。这要求在策略接口上显式建模不确定性(<code>confidence</code> 字段),这是标准策略模式接口没有的需求。</p>
+<p><strong>与规则引擎(如 Drools/RETE 算法)的关系</strong>:规则引擎将判断逻辑外部化为可配置的规则声明,与代码分离。"模型即规则引擎"也实现了判断逻辑的外部化--<code>_descriptions</code> 参数就是外部化的自然语言规则。但经典规则引擎的规则是<strong>声明性的、可追溯的</strong>,AI 分类器的"规则"存在于模型权重中,<strong>不可直接检查</strong>。二者都解决了"将判断逻辑从代码中分离"的问题,但可解释性和可审计性的保障程度完全不同。</p>
+<p><strong>与责任链模式（Chain of Responsibility）的关系</strong>：<code>classifierDecision.ts</code> 的三层过滤（白名单 → 空字符串退出 → AI 分类）与责任链有相似的结构——每层都可以“处理并终止”或“传递给下一层”。但这里的链条是性能优化导向的（快速路径优先），而非职责划分导向的（每层处理不同类型的请求）。</p>
+<p><strong>图 16-5：本章模式与业界已知模式的核心差异</strong></p>
+<pre><code class="language-mermaid">flowchart TD
+    diff[核心差异：确定性]
+    
+    diff --&gt; ai[模型即规则引擎\n概率性推理\n需要confidence字段]
+    diff --&gt; strategy[策略模式\n确定性算法\n无需confidence]
+    diff --&gt; rule_engine[规则引擎\n声明式可验证\n无需confidence]
+    
+    strategy --&gt;|相同:可替换| common[判断逻辑可替换]
+    rule_engine --&gt;|相同:外部化| common
+    ai --&gt; common
+</code></pre>
+<p><strong>图 16-5：三种模式的核心差异。</strong> 所有三种模式都实现了“判断逻辑可替换”，但确定性是分岐点——策略模式和规则引擎的输出是确定的，AI 分类器的输出是概率性的。这一差异决定了接口必须包含 <code>confidence</code> 字段，是架构上的根本分歧。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<hr />
+<p><strong>模型即规则引擎(Model-as-Rule-Engine)</strong></p>
+<p><strong>解决的问题</strong>:安全判断需要理解自然语言上下文和操作语义,传统规则引擎只能匹配字符串结构,无法覆盖语义边界。</p>
+<p><strong>核心做法</strong>:将判断任务委托给 AI 模型--通过 <code>toAutoClassifierInput()</code> 让被裁判对象声明自己的语义输入,通过结构化输出(<code>ClassifierResult</code>)获得带置信度和理由的判断结果,通过白名单和 feature flag 控制可用性和成本。</p>
+<p><strong>前置条件</strong>:判断逻辑可以用自然语言描述;判断延迟和 token 成本在可接受范围内;需要接受 AI 推理的概率性(非确定性)特征。</p>
+<p><strong>源码证据:</strong></p>
+<ul>
+<li><code>src/utils/permissions/bashClassifier.ts:5</code> - <code>ClassifierResult</code> 类型定义(三字段协议)</li>
+<li><code>src/utils/permissions/bashClassifier.ts:12</code> - <code>ClassifierBehavior</code> 三值枚举</li>
+<li><code>src/Tool.ts:556</code> - <code>toAutoClassifierInput()</code> 接口(工具语境声明)</li>
+<li><code>src/utils/permissions/classifierDecision.ts:56</code> - <code>SAFE_YOLO_ALLOWLISTED_TOOLS</code>(白名单快速路径)</li>
+<li><code>src/utils/permissions/autoModeState.ts:9</code> - <code>autoModeCircuitBroken</code>(电路断路器)</li>
+</ul>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>在安全判断接口中显式建模不确定性</strong>。为 AI 分类器的返回值设计 <code>confidence: 'high' | 'medium' | 'low'</code> 字段,让调用方能够根据置信度选择不同的后续行为(低置信度时转交人工判断,而非直接二值决策)。</p>
+</li>
+<li>
+<p><strong>用 <code>toAutoClassifierInput()</code> 接口让工具声明自己的安全语境</strong>,而非在分类器层硬编码各工具的语义解析逻辑。这将"如何描述操作"的责任下放给最了解自己的工具,使分类器保持通用性。</p>
+</li>
+<li>
+<p><strong>为 AI 分类器设计白名单快速路径</strong>。维护一个"已知安全工具"集合(对应 <code>SAFE_YOLO_ALLOWLISTED_TOOLS</code>),让天然安全的操作(只读、无副作用)完全跳过 AI 调用,控制 token 消耗和延迟。</p>
+</li>
+<li>
+<p><strong>用 feature flag 保护 AI 分类器功能</strong>(对应 <code>isClassifierPermissionsEnabled</code> 的设计),默认关闭,确保功能不可用时系统能平稳降级,而非崩溃。这也使得功能可以灰度发布,不需要一次性对所有用户开启。</p>
+</li>
+<li>
+<p><strong>为 AI 安全裁判系统实现电路断路器</strong>(对应 <code>isAutoModeCircuitBroken</code>):当后端服务失效或权限被撤销时,断开连接并拒绝新的安全裁判请求,防止分类器失败蔓延影响主功能。</p>
+</li>
+<li>
+<p><strong>在分类结果中保留 <code>reason</code> 字段</strong>作为一等公民。即使分类结果不影响最终行为,AI 的判断理由也是向用户解释"为什么被拦截"的关键素材--可解释性不是附加功能,是安全系统的基础能力。</p>
+</li>
+<li>
+<p><strong>当判断标准依赖语义理解、无法用精确条件枚举时</strong>,考虑"模型即规则引擎"模式;当判断标准是结构性的、延迟要求严格或需要完全可审计时,规则引擎仍是更合适的选择。两种方案不是非此即彼,可以通过白名单 + AI fallback 的方式组合使用。</p>
+</li>
+</ul>
+<hr />
+<p>AI 分类器的完整工作机制--包括它如何构建 transcript、如何发起 <code>sideQuery</code>、如何通过工具调用提取结构化判断结果--将在第 21 章全局安全架构中详细展开。本章聚焦的是这个机制的<strong>接口设计层</strong>:为什么要这样定义 <code>ClassifierResult</code>,为什么工具需要实现 <code>toAutoClassifierInput()</code>,以及这些设计选择如何共同构成一个可降级、可优化的安全判断系统。安全判断层只是工具系统的一个截面，下一章（第 17 章）将把视角拉到工具协议层——第三方工具如何通过 MCP 协议成为与内置工具同等地位的一等公民。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part5/ch15.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part5/ch17.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part5/ch15.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part5/ch17.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

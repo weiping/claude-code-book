@@ -1,0 +1,464 @@
+<!DOCTYPE HTML>
+<html lang="zh" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第 26 章：AsyncHookRegistry——异步钩子的注册、超时与并发控制 - Claude Code 工程模式</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Claude Code 工程模式</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第-26-章asynchookregistry异步钩子的注册超时与并发控制"><a class="header" href="#第-26-章asynchookregistry异步钩子的注册超时与并发控制">第 26 章：AsyncHookRegistry——异步钩子的注册、超时与并发控制</a></h1>
+<blockquote>
+<p>"fire-and-forget 不是'发送后不管'，而是'发送后委托管理'。"</p>
+</blockquote>
+<hr />
+<p>当一个钩子以异步方式启动——在后台运行 shell 命令、等待外部服务响应——有三件事没有人自动负责：这个钩子是否已经完成？如果超时了谁来清理？如果用户在结果回来之前关闭了会话，进程怎么处理这些半途而废的任务？</p>
+<p>回答这三个问题的，是一个 300 多行的专用模块——<code>AsyncHookRegistry</code>。它的核心是一个<strong>模块级全局注册表</strong>（module-level global Map），追踪所有处于"挂起"状态的异步钩子。每个钩子被注册时携带超时配置、进程引用和完成回调；批量轮询函数负责定期检查哪些已完成；会话结束时，强制清理函数确保不遗漏任何挂起任务。</p>
+<p>这是<strong>异步钩子注册表</strong>（Async Hook Registry）模式：把"谁负责生命周期管理"从调用方移到全局注册表，让每个 fire-and-forget 任务都有明确的超时上限、完成检测和会话结束清理。读完本章，你将理解为什么异步任务的生命周期管理需要专门的注册表，而不是散落在各处的 <code>setTimeout</code> 调用。</p>
+<hr />
+<h2 id="问题fire-and-forget-任务的三个生命周期空白"><a class="header" href="#问题fire-and-forget-任务的三个生命周期空白">问题：fire-and-forget 任务的三个生命周期空白</a></h2>
+<p>当调用方启动一个异步 hook 并立即返回时，谁来追踪这个 hook 是否完成？在 <code>AsyncHookRegistry</code> 存在之前，可能的方案是：在每个启动点单独设置 <code>setTimeout</code>，在每个调用方自行轮询结果。这会导致三个问题：</p>
+<p><strong>超时遗漏</strong>：任何一处忘记设置超时，都会产生一个永远不会被清理的挂起任务。<strong>重复交付</strong>：多个调用方同时轮询同一个 hook 的结果，会导致结果被处理多次。<strong>会话结束泄漏</strong>：用户关闭会话时，后台运行的 hook 进程可能继续运行，但它们的结果永远不会被消费。</p>
+<p>这三个问题的共同根源是：<strong>任务生命周期管理被分散在调用方</strong>，没有单一的权威追踪点。</p>
+<p><code>src/utils/hooks/AsyncHookRegistry.ts:28</code> 用一行代码定义了解决方案的核心：</p>
+<pre><code class="language-typescript">// src/utils/hooks/AsyncHookRegistry.ts:28
+// 全局注册表状态
+const pendingHooks = new Map&lt;string, PendingAsyncHook&gt;()
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks/AsyncHookRegistry.ts:28</code></p>
+<p>这是一个<strong>模块级</strong>（module-level）的常量——不是类的实例变量，不是函数内的局部变量，而是模块加载时就存在、整个进程生命周期内共享的全局注册表。<code>Map&lt;string, PendingAsyncHook&gt;</code> 以 <code>processId</code>（进程 ID）为键，以完整的 <code>PendingAsyncHook</code> 记录为值。</p>
+<p><code>PendingAsyncHook</code> 的类型定义（第 12 行）揭示了注册表需要追踪的完整状态：</p>
+<pre><code class="language-typescript">// src/utils/hooks/AsyncHookRegistry.ts:12-27
+export type PendingAsyncHook = {
+  processId: string           // 唯一标识，也是 Map 的键
+  hookId: string              // UI 展示用的 hook 唯一 ID
+  hookName: string            // hook 的显示名称
+  hookEvent: HookEvent | 'StatusLine' | 'FileSuggestion'
+  toolName?: string           // 关联的工具名（如 BashTool）
+  pluginId?: string           // 来源插件 ID
+  startTime: number           // 注册时间戳，用于计算已等待时长
+  timeout: number             // 期望的超时时间（毫秒）
+  command: string             // 执行的命令字符串（用于日志/展示）
+  responseAttachmentSent: boolean  // 防止重复交付的标志
+  shellCommand?: ShellCommand // 持有 shell 进程引用（可用于 kill）
+  stopProgressInterval: () =&gt; void // 停止进度报告的清理函数
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks/AsyncHookRegistry.ts:12</code></p>
+<p><code>responseAttachmentSent</code> 字段是防止重复交付的核心机制：一旦某个 hook 的结果被处理，这个标志就被设为 <code>true</code>，后续的轮询调用会跳过它。<code>shellCommand</code> 字段持有进程引用，让注册表在需要时能主动 kill 还在运行的进程（而不是只能等待）。</p>
+<p><strong>图 26-1：异步钩子三态生命周期</strong></p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; 挂起: registerPendingAsyncHook\n注册 + 启动进度报告
+    挂起 --&gt; 完成: shellCommand.status=completed\n且 exitCode=0
+    挂起 --&gt; 错误: shellCommand.status=completed\n且 exitCode≠0
+    挂起 --&gt; 取消: finalizePendingAsyncHooks\n（会话结束强制清理）
+    挂起 --&gt; 取消: shellCommand.status=killed
+    完成 --&gt; [*]: finalizeHook(success)\n+ 从 Map 删除
+    错误 --&gt; [*]: finalizeHook(error)\n+ 从 Map 删除
+    取消 --&gt; [*]: finalizeHook(cancelled)\n+ Map.clear()
+</code></pre>
+<p>这张状态图揭示了一个重要设计决策：<strong>"取消"是一个一等公民结果</strong>，与成功和错误并列。当会话结束时，还在运行的 hook 不会被静默丢弃，而是显式地以 <code>'cancelled'</code> 结果完成，让调用方能区分"hook 正常完成"和"hook 被会话关闭中断"。</p>
+<hr />
+<h2 id="源码实例-1registerpendingasynchook注册与进度追踪"><a class="header" href="#源码实例-1registerpendingasynchook注册与进度追踪">源码实例 1：registerPendingAsyncHook——注册与进度追踪</a></h2>
+<p><code>registerPendingAsyncHook</code> 是新异步钩子进入注册表的唯一入口（<code>src/utils/hooks/AsyncHookRegistry.ts:30</code>）：</p>
+<pre><code class="language-typescript">// src/utils/hooks/AsyncHookRegistry.ts:30-84（简化）
+export function registerPendingAsyncHook({
+  processId,
+  hookId,
+  asyncResponse,
+  hookName,
+  hookEvent,
+  command,
+  shellCommand,
+  toolName,
+  pluginId,
+}: { ... }): void {
+  const timeout = asyncResponse.asyncTimeout || 15000  // 默认 15 秒
+  logForDebugging(
+    `Hooks: Registering async hook ${processId} (${hookName}) with timeout ${timeout}ms`,
+  )
+  // 启动进度报告——定期读取 shellCommand 的 stdout/stderr 并推送 UI 更新
+  const stopProgressInterval = startHookProgressInterval({
+    hookId,
+    hookName,
+    hookEvent,
+    getOutput: async () =&gt; {
+      const taskOutput = pendingHooks.get(processId)?.shellCommand?.taskOutput
+      if (!taskOutput) return { stdout: '', stderr: '', output: '' }
+      const stdout = await taskOutput.getStdout()
+      const stderr = taskOutput.getStderr()
+      return { stdout, stderr, output: stdout + stderr }
+    },
+  })
+  pendingHooks.set(processId, {
+    processId, hookId, hookName, hookEvent, toolName, pluginId, command,
+    startTime: Date.now(),
+    timeout,
+    responseAttachmentSent: false,
+    shellCommand,
+    stopProgressInterval,
+  })
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks/AsyncHookRegistry.ts:30</code></p>
+<p>注意超时值的处理（第 51 行）：<code>asyncResponse.asyncTimeout || 15000</code>。这是从钩子的异步响应对象中读取钩子<strong>自己声明的期望超时</strong>，若未声明则默认 15 秒。这里的设计是：<strong>超时值是元数据，实际的超时执行在 shell 命令层</strong>。<code>shellCommand</code> 在被传入注册表之前，已经绑定了一个 <code>AbortSignal</code>（在 <code>executeInBackground</code> 调用层设置）。注册表存储的 <code>timeout</code> 字段主要用于记录和展示，而不是在这里启动一个独立的 <code>setTimeout</code>。</p>
+<p>这个区分很重要：注册表<strong>不是超时执行器</strong>，它是<strong>超时状态的记录者</strong>。超时后 shell 命令会被 abort signal 终止，注册表在下次轮询时发现 <code>shellCommand.status === 'killed'</code>，随后清理这条记录。</p>
+<p><code>startHookProgressInterval</code> 开启了一个定时器，定期从 <code>shellCommand.taskOutput</code> 读取已输出的 stdout/stderr，并推送到 UI 层作为进度更新。注意这里的 <code>getOutput</code> 回调是通过 <code>pendingHooks.get(processId)</code> 访问的——它在每次调用时重新从 Map 查找，而不是闭包捕获 <code>shellCommand</code> 引用。这样即使注册表中的条目被更新（如 <code>shellCommand</code> 被替换），进度回调始终访问最新状态。</p>
+<p><code>finalizeHook</code>（第 91 行）是结束一个 hook 的统一出口，处理成功/错误/取消三种 outcome：</p>
+<pre><code class="language-typescript">// src/utils/hooks/AsyncHookRegistry.ts:91-110（简化）
+async function finalizeHook(
+  hook: PendingAsyncHook,
+  exitCode: number,
+  outcome: 'success' | 'error' | 'cancelled',
+): Promise&lt;void&gt; {
+  hook.stopProgressInterval()  // 停止进度报告
+  const stdout = taskOutput ? await taskOutput.getStdout() : ''
+  const stderr = taskOutput?.getStderr() ?? ''
+  hook.shellCommand?.cleanup()  // 释放 shell 进程资源
+  emitHookResponse({            // 通知 UI 层：hook 已完成
+    hookId: hook.hookId,
+    hookName: hook.hookName,
+    hookEvent: hook.hookEvent,
+    output: stdout + stderr,
+    stdout, stderr, exitCode, outcome,
+  })
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks/AsyncHookRegistry.ts:91</code></p>
+<p><code>finalizeHook</code> 做的三件事——停止进度报告、清理进程资源、发送完成通知——顺序是固定的：必须先停止进度报告（否则 cleanup 后再读输出会出错），再清理资源，最后通知。这是资源清理的标准顺序，但值得注意的是它被封装在一个函数里，而不是散落在每个 outcome 处理分支中。</p>
+<hr />
+<h2 id="源码实例-2checkforasynchookresponses批量轮询与-promiseallsettled-隔离"><a class="header" href="#源码实例-2checkforasynchookresponses批量轮询与-promiseallsettled-隔离">源码实例 2：checkForAsyncHookResponses——批量轮询与 Promise.allSettled 隔离</a></h2>
+<p><code>checkForAsyncHookResponses</code> 是注册表的心跳函数——每次调用，它扫描所有挂起的 hook，返回已完成的结果（<code>src/utils/hooks/AsyncHookRegistry.ts:113</code>）：</p>
+<pre><code class="language-typescript">// src/utils/hooks/AsyncHookRegistry.ts:138-155（简化）
+// 快照：处理前先复制 Map 内容，避免处理中修改 Map
+const hooks = Array.from(pendingHooks.values())
+
+const settled = await Promise.allSettled(
+  hooks.map(async hook =&gt; {
+    const stdout = await hook.shellCommand?.taskOutput.getStdout() ?? ''
+    const stderr = hook.shellCommand?.taskOutput.getStderr() ?? ''
+
+    if (hook.shellCommand?.status === 'killed') {
+      hook.stopProgressInterval()
+      hook.shellCommand.cleanup()
+      return { type: 'remove', processId: hook.processId }
+    }
+
+    if (hook.shellCommand?.status !== 'completed') {
+      return { type: 'skip' }  // 还在运行，本次跳过
+    }
+
+    if (hook.responseAttachmentSent || !stdout.trim()) {
+      return { type: 'remove', processId: hook.processId }
+    }
+
+    // ... 解析 stdout 中的 JSON 响应 ...
+    hook.responseAttachmentSent = true
+    await finalizeHook(hook, exitCode, exitCode === 0 ? 'success' : 'error')
+    return { type: 'response', processId: hook.processId, payload: {...} }
+  }),
+)
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks/AsyncHookRegistry.ts:138</code></p>
+<p><code>Promise.allSettled</code>（而非 <code>Promise.all</code>）是这里的关键选择。<code>Promise.all</code> 在任意一个 Promise 拒绝时立即失败，后续的副作用（<code>responseAttachmentSent = true</code>、<code>finalizeHook</code> 调用）可能被中断。<code>Promise.allSettled</code> 等待所有 Promise 都完成（无论成功或失败），然后统一处理结果。</p>
+<p>源码注释中明确说明了这个选择的理由：</p>
+<blockquote>
+<p>"allSettled — 隔离失败，防止一个抛出错误的回调孤立已应用的副作用（responseAttachmentSent、finalizeHook）"</p>
+</blockquote>
+<p>这体现了一个工程原则：<strong>当多个并行操作各自有副作用时，用 <code>allSettled</code> 而非 <code>all</code></strong>。一个 hook 的处理失败不应影响其他已经成功标记 <code>responseAttachmentSent</code> 的 hook——否则这些 hook 的状态会变成"标记了已发送但结果未被消费"的不一致状态。</p>
+<p>处理完所有 hook 后，Map 的变更批量进行（统一 <code>pendingHooks.delete</code>），而不是在每个 hook 处理时立即修改——这是"快照处理"模式：先复制状态读取，完成后批量写入，避免在迭代中修改被迭代的集合。</p>
+<p><code>finalizePendingAsyncHooks</code>（第 281 行）是会话结束时的强制清理：</p>
+<pre><code class="language-typescript">// src/utils/hooks/AsyncHookRegistry.ts:281-302
+export async function finalizePendingAsyncHooks(): Promise&lt;void&gt; {
+  const hooks = Array.from(pendingHooks.values())
+  await Promise.all(
+    hooks.map(async hook =&gt; {
+      if (hook.shellCommand?.status === 'completed') {
+        // 已完成的：正常 finalize
+        const result = await hook.shellCommand.result
+        await finalizeHook(hook, result.code, result.code === 0 ? 'success' : 'error')
+      } else {
+        // 还在运行的：先 kill，再标记 cancelled
+        if (hook.shellCommand &amp;&amp; hook.shellCommand.status !== 'killed') {
+          hook.shellCommand.kill()
+        }
+        await finalizeHook(hook, 1, 'cancelled')
+      }
+    }),
+  )
+  pendingHooks.clear()  // 清空注册表
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/utils/hooks/AsyncHookRegistry.ts:281</code></p>
+<p><code>finalizePendingAsyncHooks</code> 与 <code>checkForAsyncHookResponses</code> 有一个关键区别：后者只<strong>报告</strong>已完成的 hook，不强制终止运行中的 hook；前者则<strong>无论 hook 当前状态如何</strong>，都会强制结束它——运行中的 kill，已完成的正常 finalize，然后清空整个注册表。</p>
+<p>这个设计保证了：<strong>无论会话以何种方式结束（正常退出、错误崩溃、用户 Ctrl+C），只要调用 <code>finalizePendingAsyncHooks</code>，注册表就会处于干净状态</strong>，不遗留任何孤儿进程或未清理的定时器。</p>
+<hr />
+<h2 id="模式剖析异步钩子注册表的三个组成部分"><a class="header" href="#模式剖析异步钩子注册表的三个组成部分">模式剖析：异步钩子注册表的三个组成部分</a></h2>
+<p><strong>1. 全局权威追踪点（Global Authoritative Registry）</strong>：模块级 <code>pendingHooks</code> Map 是整个系统中所有挂起异步钩子的唯一真相来源。没有任何调用方需要自己追踪"我启动了哪些 hook"——这个职责完全委托给了注册表。代价是：这是一个全局单例，测试时需要在每个测试后调用 <code>clearAllAsyncHooks()</code> 重置状态。</p>
+<p><strong>2. 轮询检测完成（Poll-based Completion Detection）</strong>：注册表使用轮询（<code>checkForAsyncHookResponses</code> 被周期性调用）而非推送（hook 完成时主动通知）来检测完成状态。推送模型会更及时，但需要 hook 进程主动向注册表报告——对于 shell 命令这类外部进程，推送需要额外的通信机制（如管道或 IPC），而轮询只需检查进程状态，实现简单。</p>
+<p><strong>3. 会话结束强制清理（Session-End Force Finalize）</strong>：<code>finalizePendingAsyncHooks</code> 提供了一个"强制关门"机制：无论有多少 hook 还在运行，调用这个函数后注册表保证是干净的。这是一个<strong>最终一致性保证</strong>：系统不保证每个 hook 都能正常完成，但保证每个 hook 的生命周期最终都会被关闭（要么成功/错误，要么取消）。</p>
+<hr />
+<h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用性</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
+<tr><td>fire-and-forget 任务需要超时保证</td><td>✓</td><td>注册表统一存储超时配置，确保每个任务有上限</td><td>每处单独设 setTimeout（容易漏）</td></tr>
+<tr><td>会话结束需要等待/清理后台任务</td><td>✓</td><td>finalizePendingAsyncHooks 确保会话结束时全部清理</td><td>进程退出信号（但不等待，可能中断处理中的任务）</td></tr>
+<tr><td>需要防止重复交付异步结果</td><td>✓</td><td>responseAttachmentSent 标志防止多次处理</td><td>调用方自行去重（散落，难维护）</td></tr>
+<tr><td>高频短任务（每秒 &gt;100 个）</td><td>✗（谨慎）</td><td>每次 checkForAsyncHookResponses 遍历全部 Map 条目，高频时有开销（推断）</td><td>专用队列 + 事件通知</td></tr>
+<tr><td>需要跨进程共享异步任务状态</td><td>✗</td><td>注册表是进程内单例，不跨进程</td><td>分布式任务队列（Redis/Kafka）</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
+<p><strong>权衡 1：模块级全局状态 vs 可测试性</strong></p>
+<p><code>pendingHooks</code> 是模块级全局 Map，而非可依赖注入的实例变量。这让注册表在整个进程生命周期内是同一个对象——不需要传递注册表实例，任何模块都能直接 import 并使用。代价是：<strong>测试隔离依赖测试框架来重置模块状态</strong>，<code>clearAllAsyncHooks()</code> 就是为此设计的测试工具函数（注释中明确标注"Test utility function"）。如果两个测试并发运行且共享模块状态，可能互相干扰。</p>
+<p><strong>权衡 2：轮询 vs 推送的延迟差异</strong></p>
+<p><code>checkForAsyncHookResponses</code> 是轮询模型——调用方定期调用，检查是否有新完成的 hook。如果轮询间隔是 1 秒，那么一个在轮询间隔内完成的 hook，要等到下次轮询才会被处理，引入最多 1 秒的额外延迟。对于异步 hook 的典型使用场景（后台写入、通知发送），这个延迟是可接受的。但如果 hook 的结果需要被用于下一个同步操作（如 SessionStart hook 的结果影响后续工具可用性），延迟就会成为问题——这也解释了为什么 <code>checkForAsyncHookResponses</code> 对 <code>SessionStart</code> 特殊处理：发现 SessionStart 完成时立即 <code>invalidateSessionEnvCache()</code>，而不是等下一个处理周期。</p>
+<p><strong>权衡 3：Promise.allSettled 的性能 vs 一致性权衡</strong></p>
+<p><code>Promise.allSettled</code> 等待所有 hook 检查完成后才返回，这意味着一个慢 hook（如读取大量 stdout）会拖慢整个批次的轮询周期。相比之下，<code>Promise.race</code> 或"谁先好谁先返回"的策略会更快，但会牺牲结果的一致性。当前选择倾向一致性：同一次轮询的所有 hook 要么都处理，要么用 allSettled 独立隔离失败。</p>
+<p><strong>权衡 4：shellCommand 持有在注册表中的生命周期风险</strong></p>
+<p><code>PendingAsyncHook.shellCommand</code> 持有对 shell 进程对象的引用。在 hook 被从 Map 删除之前，这个引用阻止了 <code>ShellCommand</code> 被垃圾回收（即使进程已经结束）。<code>cleanup()</code> 调用（在 <code>finalizeHook</code> 中）负责释放进程资源，但如果 <code>finalizeHook</code> 在某些异常路径下未被调用，就会产生资源泄漏（推断：这也是 <code>clearAllAsyncHooks</code> 要显式调用 <code>stopProgressInterval</code> 的原因——至少释放定时器）。</p>
+<hr />
+<h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
+<p><strong>与 Promise Registry（Promise 注册表）</strong>：本模式与"用 Map 追踪所有 pending Promise"的 Promise Registry 模式几乎完全一致，差异在于两点：第一，本模式追踪的不是 Promise 本身，而是 shell 进程的状态（通过 <code>shellCommand.status</code> 轮询而非 Promise resolve/reject）；第二，本模式有 <code>finalizePendingAsyncHooks</code> 提供会话结束的强制清理，而标准 Promise Registry 通常依赖 Promise 的自然完成。</p>
+<p><strong>与 GoF 备忘录模式（Memento Pattern）</strong>：备忘录模式持有对象在某个时刻的内部状态，允许后续恢复（undo）。<code>PendingAsyncHook</code> 也是持有钩子的状态快照（startTime、timeout、command 等），但目的完全不同——不是为了恢复，而是为了<strong>追踪和清理</strong>。备忘录是"为了回退"，本模式是"为了善后"。</p>
+<p><strong>与 Actor 模型的 Supervisor</strong>：Actor 模型中，Supervisor 负责监控子 Actor 的生命周期，在子 Actor 失败时决定重启、停止或上报。<code>AsyncHookRegistry</code> 有类似的监护关系：注册表知道每个挂起 hook 的状态，在会话结束时"决定"要么等待完成，要么强制取消。差异在于：AsyncHookRegistry 没有"重启"策略——hook 被取消就是取消，没有重试机制。</p>
+<hr />
+<h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
+<h3 id="异步钩子注册表async-hook-registry"><a class="header" href="#异步钩子注册表async-hook-registry">异步钩子注册表（Async Hook Registry）</a></h3>
+<p><strong>解决的问题</strong>：fire-and-forget 的异步任务缺乏统一的生命周期管理——超时、取消、会话结束清理没有中央负责方，导致孤儿进程和资源泄漏。</p>
+<p><strong>核心做法</strong>：用模块级全局 Map 注册所有挂起任务，以 <code>processId</code> 为键存储任务状态（超时配置、进程引用、完成标志）；轮询函数批量检查完成状态；会话结束时强制 finalize 全部挂起任务。</p>
+<p><strong>前置条件</strong>：任务有唯一标识（processId）；任务状态可通过轮询检测（status polling）；系统有明确的会话/生命周期结束点可以触发强制清理。</p>
+<p><strong>源码证据</strong>：<code>src/utils/hooks/AsyncHookRegistry.ts:28</code>（<code>pendingHooks</code> 全局 Map）；<code>src/utils/hooks/AsyncHookRegistry.ts:281</code>（<code>finalizePendingAsyncHooks</code>，会话结束强制清理）</p>
+<hr />
+<h3 id="快照-批量-提交模式snapshot-process-commit"><a class="header" href="#快照-批量-提交模式snapshot-process-commit">快照-批量-提交模式（Snapshot-Process-Commit）</a></h3>
+<p><strong>解决的问题</strong>：在迭代集合时修改集合本身会导致迭代行为不确定（跳过条目或重复处理）；并发处理时，早期副作用（如标记 <code>responseAttachmentSent</code>）不应因后续失败而被回滚。</p>
+<p><strong>核心做法</strong>：先 <code>Array.from(map.values())</code> 拷贝快照，用 <code>Promise.allSettled</code> 并行处理（独立失败不相互影响），最后批量提交 <code>map.delete</code> 变更——三步分离：读取、处理、写入。</p>
+<p><strong>前置条件</strong>：处理过程中可能修改被迭代的集合；多个条目的处理有副作用，需要相互隔离。</p>
+<p><strong>源码证据</strong>：<code>src/utils/hooks/AsyncHookRegistry.ts:138</code>（<code>const hooks = Array.from(pendingHooks.values())</code> 快照）；<code>src/utils/hooks/AsyncHookRegistry.ts:153</code>（<code>Promise.allSettled</code>，注释"isolate failures so one throwing callback doesn't orphan already-applied side effects"）</p>
+<hr />
+<h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
+<ul>
+<li>
+<p><strong>用模块级全局 Map 追踪所有 fire-and-forget 异步任务</strong>，而非让每个调用方自己保留引用。集中注册让超时管理、去重、会话清理都有单一入口。</p>
+</li>
+<li>
+<p><strong>在注册记录中存储 <code>startTime</code> 和 <code>timeout</code> 字段</strong>，即使超时的实际执行在外层（如 AbortSignal）。注册表持有这些元数据，让监控面板能计算"任务已等待多久"，而不需要查询外部状态。</p>
+</li>
+<li>
+<p><strong>定义三态结果（success/error/cancelled）</strong>，把"被会话关闭中断"显式区别于"任务失败"。调用方（如审计系统）可以用 <code>outcome === 'cancelled'</code> 判断这是正常的会话退出，而非异常。</p>
+</li>
+<li>
+<p><strong>用 <code>Promise.allSettled</code> 而非 <code>Promise.all</code> 批量处理异步任务集合</strong>，当每个任务有独立副作用（如标记已发送、释放资源）时，用 <code>allSettled</code> 保证一个任务的失败不影响其他任务的副作用正确执行。</p>
+</li>
+<li>
+<p><strong>在 finalizePending 函数中做完整清理</strong>：正常完成的任务 finalize（emitResponse），还在运行的任务 kill 后标 cancelled，最后 <code>map.clear()</code>。这个函数是"任何退出路径下都安全"的设计，保证调用后注册表一定干净。</p>
+</li>
+<li>
+<p><strong>提供测试清理工具函数</strong>（如 <code>clearAllAsyncHooks</code>），在模块注释中明确标注"Test utility"。全局状态的测试隔离责任应该由工具函数承担，而不是让测试直接访问内部 Map。</p>
+</li>
+</ul>
+<hr />
+<p>异步钩子的注册与生命周期管理由 <code>AsyncHookRegistry</code> 负责，而钩子配置如何在进程启动时被加载并以快照形式注入到执行上下文中，是第 27 章 <code>hooksConfigSnapshot</code> 的主题（详见第 27 章）。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../part7/ch25.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../part7/ch27.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../part7/ch25.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../part7/ch27.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

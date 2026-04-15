@@ -1,31 +1,29 @@
 # 第 32 章写作计划
 
-**批次**：批次 8b（来自 plans/batch.md）
-**章节**：ch32 — 第32章：permissionSync——多智能体间的权限同步协议
+**批次**：批次 7b（来自 plans/batch.md）
+**章节**：ch32 — DreamTask——后台自主执行的设计意图
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/utils/swarm/permissionSync.ts`（928行）在并发 Agent 场景中如何保持 Leader 和多个 Teammate 之间的权限状态一致性，以及乐观锁或消息广播在此的应用。
+揭示 `src/tasks/DreamTask/DreamTask.ts`（157行）代表的"Agent 主动触发后台工作"模式，以及自主任务调度与用户触发任务在架构上的本质差异。读者读完后能理解 Agent 自主性的工程边界，并能分析"主动触发 vs 被动触发"在 Agent 系统设计中的取舍。
 
 ## 通用约束
-**排除范围**：leaderPermissionBridge（第30章）、第33-36章全局权限系统、stubs
+**排除范围**：LocalAgentTask（第 30 章）、RemoteAgentTask（第 31 章）、Swarm（第29-32章）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「邮箱消息传递权限协商」（Mailbox-Based Permission Negotiation）
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「后台任务透明化」（Background Task Transparency）
 **章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（请求流程 + 响应流程），适用范围表，与已知模式对话
+**必须**：≥2处实例（registerDreamTask + addDreamTurn 增量更新），适用范围表，与已知模式对话
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
 
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/utils/swarm/permissionSync.ts | 文件头部注释(1-18行，6步流程)、SwarmPermissionRequestSchema(47-100行)、SwarmPermissionRequest 类型 | 1-100 |
-| 2 | src/utils/swarm/permissionSync.ts | lockfile 使用(27行)、writeToMailbox调用 | 关键行 |
+| 1 | src/tasks/DreamTask/DreamTask.ts | 全文（157行）——DreamTaskState、registerDreamTask、addDreamTurn、completeDreamTask、kill、rollbackConsolidationLock | 全文 |
 
 ```bash
-head -100 src/utils/swarm/permissionSync.ts
-grep -n "lockfile\|writeToMailbox\|readMailbox\|pollMailbox" src/utils/swarm/permissionSync.ts | head -15
+ls src/tasks/DreamTask/DreamTask.ts
 ```
 
 ## Spec 验收场景清单（E > A > B = C > D）
@@ -34,80 +32,84 @@ grep -n "lockfile\|writeToMailbox\|readMailbox\|pollMailbox" src/utils/swarm/per
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：当 3 个并发的 Teammate Agent 同时遇到需要权限确认的操作，如何避免 3 个对话框同时弹给用户？Claude Code 的答案是：通过邮箱系统路由权限请求——所有请求排队通过 Leader 的 UI，用户只需要面对一个入口。
+触发句：当 AI Agent 主动启动一个内存整理任务时，用户怎么知道发生了什么？DreamTask 的设计答案是：把本来看不见的后台操作"注入"到现有的任务 UI 框架中——不修改后台 Agent，只加可见性。
 
 ### 节 32.1：问题
-- 核心主张：**分布式权限同步的核心挑战是"多写一读"——多个 Teammate 可能同时发起权限请求，但 Leader UI 是单一入口，并发请求必须序列化**
-- 源码锚点：`src/utils/swarm/permissionSync.ts:1`（文件头部注释，完整的 6 步流程描述）
-- 包含元素：**图32-1** — Mermaid 序列图，Worker→mailbox→Leader→mailbox→Worker 的 6 步流程
+- 核心主张：**Agent 自主触发的后台任务（如内存整理）对用户是"黑盒"——没有进度、没有状态、崩溃后不知道发生了什么；DreamTask 专门解决这个透明化问题**
+- 源码锚点：`src/tasks/DreamTask/DreamTask.ts:1`（文件头部注释："Makes the otherwise-invisible forked agent visible in the footer pill and Shift+Down dialog. The dream agent itself is unchanged — this is pure UI surfacing"）
+- 包含元素：**图32-1** — Mermaid 状态图，DreamTask 的两阶段（starting→updating）和生命周期
 - 估计字数：600-800字
 
-### 节 32.2：源码实例1 — SwarmPermissionRequestSchema（消息格式的工程决策）
-- 核心主张：**SwarmPermissionRequestSchema 用 Zod 定义消息协议——id/workerId/toolName/status/resolvedBy 这些字段的精心设计，体现了"消息即合约"的思想**
+### 节 32.2：源码实例1 — registerDreamTask + DreamTaskState 字段语义
+- 核心主张：**DreamTaskState 的特殊字段（phase/sessionsReviewing/filesTouched/turns）反映了"整理任务"的语义——不是通用的工具调用计数，而是针对记忆整理的专属视图**
 - 源码锚点：
-  - `src/utils/swarm/permissionSync.ts:47`（SwarmPermissionRequestSchema Zod 定义）
-  - `src/utils/swarm/permissionSync.ts:61`（toolName/toolUseId/description/input 字段）
-  - `src/utils/swarm/permissionSync.ts:69`（permissionSuggestions/status/resolvedBy/resolvedAt/feedback/updatedInput/permissionUpdates）
-  - `src/utils/swarm/permissionSync.ts:27`（`import * as lockfile` — 文件系统锁）
-- 概念层次：status 枚举（pending/approved/rejected）、resolvedBy 字段（worker vs leader 解析差异）、lockfile 防并发写入
+  - `src/tasks/DreamTask/DreamTask.ts:26`（DreamTaskState：type 'dream', phase, sessionsReviewing, filesTouched, turns）
+  - `src/tasks/DreamTask/DreamTask.ts:12`（`const MAX_TURNS = 30`——只保留最近30轮）
+  - `src/tasks/DreamTask/DreamTask.ts:54`（registerDreamTask 函数）
+  - `src/tasks/DreamTask/DreamTask.ts:37`（filesTouched 注释："INCOMPLETE reflection... Treat as 'at least these were touched'"）
+- 概念层次：filesTouched 的不完整性说明（只捕获 Edit/Write 工具调用）、MAX_TURNS 的滚动窗口设计、phase 两态的触发条件
 - 估计字数：900-1100字
 
-### 节 32.3：源码实例2 — writeToMailbox（异步消息传递实现）
-- 核心主张：**permissionSync 通过文件系统 mailbox（writeToMailbox）而非共享内存传递权限请求——文件系统持久化保证进程崩溃后请求不丢失**
+### 节 32.3：源码实例2 — addDreamTurn 的增量更新 + kill 的特殊回滚
+- 核心主张：**addDreamTurn 的空操作优化（turn 为空且无新 touched 路径时直接返回原 task）和 kill 时回滚 consolidation lock，体现了"最小干扰"原则**
 - 源码锚点：
-  - `src/utils/swarm/permissionSync.ts:43`（`import { writeToMailbox }` from teammateMailbox.js）
-  - `src/utils/swarm/permissionSync.ts:7`（注释："Workers send permission requests to the leader's mailbox"）
-- 概念层次：文件系统 vs 内存队列的权衡（持久化 vs 速度）、mailbox 路径的命名约定
+  - `src/tasks/DreamTask/DreamTask.ts:72`（addDreamTurn，含空操作短路：turn.text===''&toolUseCount===0&newTouched.length===0→return task）
+  - `src/tasks/DreamTask/DreamTask.ts:120`（kill 函数中 rollbackConsolidationLock——kill 时需要回滚 mtime，"same path as fork-failure catch"）
+  - `src/tasks/DreamTask/DreamTask.ts:107`（completeDreamTask：notified:true immediately，注释说明原因）
+- 概念层次：空操作优化（避免无效重渲染）、kill 的 consolidation lock 回滚语义
 - 估计字数：700-900字
 
 ### 节 32.4：模式剖析
-- 核心主张：**邮箱权限协商的本质是"请求-响应通过持久化队列解耦"——发送方和接收方不需要同时在线，持久化文件保证可靠性**
+- 核心主张：**后台任务透明化的本质是"非侵入式可观测性"——不修改后台任务本身，只在任务框架层增加一个"观察者任务对象"代理其状态**
 - 估计字数：500-700字
 
 ### 节 32.5：适用范围
 | 场景 | 适用性 | 理由 | 替代方案 |
 |------|--------|------|---------|
-| 多 Agent 并发发起权限请求 | ✓ | mailbox 自然队列化，避免 UI 并发弹框 | 共享内存队列（但跨进程不可用）|
-| 需要进程崩溃后恢复请求 | ✓ | 文件系统持久化，进程重启后消息仍在 | 内存队列（崩溃丢失）|
-| 低频权限请求（<1/秒）| ✓ | 文件系统 IO 开销可接受 | N/A |
-| 高频权限请求（>10/秒）| ✗（谨慎）| 文件系统读写 IO 成为瓶颈（推断）| 内存队列 |
+| Agent 自主触发的后台操作需要 UI 可见 | ✓ | DreamTask 不改后台逻辑，纯 UI 代理 | 直接修改后台 Agent（侵入性高）|
+| 后台操作可能失败需要用户感知 | ✓ | failDreamTask 推送通知 | 静默失败（用户无感）|
+| 后台操作的输出极其复杂（需要完整分析）| ✗ | DreamTask 只保留最近30轮，信息不完整 | 完整 transcript 记录 |
+| 需要用户交互的后台任务 | ✗ | Dream 设计为自主运行，无交互接口 | 前台任务 |
 
 ### 节 32.6：权衡与局限
-- 文件系统 IO 延迟（mailbox 轮询周期）、lockfile 竞争（高并发时可能 retry）、消息积压时的清理策略
+- filesTouched 的不完整性（只捕获特定工具调用）、MAX_TURNS=30 的信息丢失、consolidation lock 回滚的错误处理复杂性
 - 估计字数：500-700字
 
 ### 节 32.7：与已知模式的对话
-- 与 EIP 消息通道（Message Channel）：最接近——发送者和接收者通过持久化通道解耦；差异是 EIP 通常用消息中间件，本模式用文件系统
-- 与 GoF 观察者：相同——状态变化通知；不同——观察者是推送，本模式是轮询（Worker 轮询 mailbox 等待响应）
+- 与 GoF 观察者模式：相同——观察后台任务状态；不同——观察者不能修改被观察对象，本模式的 DreamTask 还负责更新自己的状态
+- 与 Sidecar 模式（POSA/microservice）：最接近——辅助容器透明观察主容器；DreamTask 是"状态 Sidecar"，不在网络层而在应用状态层
 
 ### 章末：模式提炼
 ```
-模式名称：邮箱权限协商（Mailbox-Based Permission Negotiation）
-问题：多 Agent 并发发起权限请求，Leader UI 是单入口，需要序列化处理
-解决方案：通过文件系统 mailbox 路由请求，Worker 写入请求，Leader 读取处理，Worker 轮询响应
-前置条件：有共享的文件系统（同机器），mailbox 路径约定明确（按 agentName 路由）
-源码锚点：src/utils/swarm/permissionSync.ts:1 (6步流程注释), :47 (SwarmPermissionRequestSchema)
+模式名称：后台任务透明化（Background Task Transparency）
+问题：Agent 自主触发的后台操作对用户不可见，出错时无法诊断
+解决方案：创建 DreamTask 代理对象，不修改后台 Agent，只将其状态转化为 UI 可读的任务对象
+前置条件：有统一的 Task UI 框架（TaskState 联合类型），后台 Agent 有回调接口注入状态更新
+源码锚点：src/tasks/DreamTask/DreamTask.ts:1 (注释说明设计意图), :54 (registerDreamTask)
 ```
 
 ### 章末：你能做什么
-1. 用文件系统 mailbox 实现跨进程异步消息传递，获得自然的持久化和进程隔离
-2. 用 Zod 定义消息协议 Schema，让发送方和接收方有统一的类型合约
-3. 在消息中包含 resolvedBy 字段，区分"被 Leader 解析"和"被 Worker 自己解析"的不同路径
-4. 用 lockfile 防止多个 Worker 同时写入 mailbox 时的文件竞争
-5. 设计 status 状态机（pending→approved/rejected），让消息有明确的生命周期
+1. 用"代理任务对象"模式透明化后台 AI 操作——不修改后台逻辑，只加可见性层
+2. 为后台操作状态实现滚动窗口（MAX_TURNS=30），而非保留全量历史
+3. 在 addXxxTurn 中实现空操作短路（所有字段未变化时直接返回原对象），避免无效 React 重渲染
+4. 为自主任务的 kill 实现"回滚"语义——任务被强制停止时，恢复任务开始前的关键状态
+5. 对"不完整的信息"诚实标注（filesTouched 注释说明"INCOMPLETE reflection"），让下游消费者知道边界
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图32-1 | 权限协商 6 步流程 | Mermaid sequenceDiagram | Worker→Leader mailbox→Leader UI→Worker mailbox→Worker | 32.1 |
+| 图32-1 | DreamTask 生命周期 | Mermaid stateDiagram | starting→updating（触发：Edit/Write）→completed/failed/killed | 28.1 |
 
 ## 写作前 checklist
 ```bash
-sed -n '1p' src/utils/swarm/permissionSync.ts   # 文件说明
-sed -n '4p' src/utils/swarm/permissionSync.ts   # 6步流程注释开始
-sed -n '27p' src/utils/swarm/permissionSync.ts  # lockfile 导入
-sed -n '47p' src/utils/swarm/permissionSync.ts  # SwarmPermissionRequestSchema
-sed -n '61p' src/utils/swarm/permissionSync.ts  # toolName/toolUseId
+sed -n '1p' src/tasks/DreamTask/DreamTask.ts    # 设计意图注释
+sed -n '12p' src/tasks/DreamTask/DreamTask.ts   # MAX_TURNS
+sed -n '26p' src/tasks/DreamTask/DreamTask.ts   # DreamTaskState
+sed -n '37p' src/tasks/DreamTask/DreamTask.ts   # filesTouched 注释
+sed -n '54p' src/tasks/DreamTask/DreamTask.ts   # registerDreamTask
+sed -n '72p' src/tasks/DreamTask/DreamTask.ts   # addDreamTurn 空操作
+sed -n '107p' src/tasks/DreamTask/DreamTask.ts  # completeDreamTask notified
+sed -n '120p' src/tasks/DreamTask/DreamTask.ts  # kill rollback
 ```
 
 ## ⛔ Spec 一致性声明

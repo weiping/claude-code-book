@@ -1,30 +1,31 @@
 # 第 34 章写作计划
 
-**批次**：批次 9a（来自 plans/batch.md）
-**章节**：ch34 — 第34章：PermissionRule 规则引擎——allowedTools 的 glob 匹配与优先级链
+**批次**：批次 8a（来自 plans/batch.md）
+**章节**：ch34 — leaderPermissionBridge——跨进程权限协商模式
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/utils/permissions/permissionRuleParser.ts`（198行）如何解析 `Bash(npm install)` 格式的规则字符串，以及 `shellRuleMatching.ts`（228行）中 glob 匹配与 `:*` 语法的工程设计。读者读完后能理解规则引擎的解析与匹配机制，并能在自己的 Agent 系统中实现类似的声明式权限规则。
+揭示 `src/utils/swarm/leaderPermissionBridge.ts`（54行）如何在子 Agent 需要用户确认权限时，将消息跨越进程边界传递到 Leader 的 UI 层，以及这一"权限代理"模式的实现机制。
 
 ## 通用约束
-**排除范围**：第33章三层防线全景（不重复）、第35章三态处理器（不展开）、stubs
+**排除范围**：permissionSync 多 Agent 权限同步（第 36 章）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「声明式规则解析引擎」（Declarative Rule Parser）
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「模块级服务定位器」（Module-Level Service Locator）
 **章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（permissionRuleParser + shellRuleMatching），适用范围表，与已知模式对话
+**必须**：≥2处实例（register/get/unregister 三段式 + 实际调用方），适用范围表，与已知模式对话
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
 
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/utils/permissions/permissionRuleParser.ts | permissionRuleValueFromString(93行)、escapeRuleContent(55行)、unescapeRuleContent(74行)、normalizeLegacyToolName(31行) | 全文(198行) |
-| 2 | src/utils/permissions/shellRuleMatching.ts | hasWildcards(54行)、permissionRuleExtractPrefix(43行)、ShellPermissionRule类型(25行) | 全文(228行) |
+| 1 | src/utils/swarm/leaderPermissionBridge.ts | 全文——模块变量(25-26行)、register/get/unregister 六个函数(29-54行) | 全文(54行) |
+| 2 | src/utils/swarm/inProcessRunner.ts | 调用 getLeaderToolUseConfirmQueue 的位置 | 关键行 |
 
 ```bash
-ls src/utils/permissions/permissionRuleParser.ts src/utils/permissions/shellRuleMatching.ts
+cat src/utils/swarm/leaderPermissionBridge.ts
+grep -n "getLeaderToolUseConfirmQueue\|getLeaderSetToolPermissionContext" src/utils/swarm/inProcessRunner.ts | head -10
 ```
 
 ## Spec 验收场景清单（E > A > B = C > D）
@@ -33,84 +34,82 @@ ls src/utils/permissions/permissionRuleParser.ts src/utils/permissions/shellRule
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：`Bash(npm install)` 是 Claude Code 权限规则的标准格式——工具名加括号内的内容。但括号里如果有括号怎么办？这需要一个转义机制。而 `Bash(npm:*)` 这种 `:*` 语法又是什么？这两个问题揭示了规则引擎的真实复杂度。
+触发句：当进程内 Teammate 需要向用户请求权限时，它需要操作 Leader 的 React UI 队列——但 Teammate 的代码不能直接引用 React 组件。leaderPermissionBridge 用 54 行解决了这个"跨越 React 边界的模块级注册"问题。
 
 ### 节 34.1：问题
-- 核心主张：**权限规则需要匹配"工具名+内容模式"，纯字符串比较不够，glob 语义不统一，自定义格式 `Bash(content)` 是折中方案**
-- 源码锚点：`src/utils/permissions/permissionRuleParser.ts:90`（注释示例：`permissionRuleValueFromString('Bash(npm install)') => { toolName: 'Bash', ruleContent: 'npm install' }`）
-- 包含元素：**图34-1** — 规则字符串格式图（工具名+括号+内容+转义规则）
+- 核心主张：**进程内 Teammate 与 Leader 共享进程，但不能直接引用 React 组件——需要一个"注册点"让 REPL 主动注入回调函数**
+- 源码锚点：`src/utils/swarm/leaderPermissionBridge.ts:1`（注释说明设计意图："allows the REPL to register its setToolUseConfirmQueue...for in-process teammates to use"）
+- 包含元素：**图34-1** — Mermaid，REPL 注册 → Teammate 获取 → 调用 → 清理 的时序图
 - 估计字数：600-800字
 
-### 节 34.2：源码实例1 — permissionRuleParser（解析与转义）
-- 核心主张：**规则解析的核心挑战是"括号转义"——内容中的括号需要 `\(` 转义，`findFirstUnescapedChar` 处理嵌套括号**
+### 节 34.2：源码实例1 — 模块级变量 + register/get/unregister
+- 核心主张：**leaderPermissionBridge 用两个模块级变量（registeredSetter/registeredPermissionContextSetter）充当"消息总线"——register 时注入，get 时使用，unregister 时清除**
 - 源码锚点：
-  - `src/utils/permissions/permissionRuleParser.ts:82`（注释说明解析格式）
-  - `src/utils/permissions/permissionRuleParser.ts:93`（`export function permissionRuleValueFromString(`）
-  - `src/utils/permissions/permissionRuleParser.ts:55`（`export function escapeRuleContent(content: string)`）
-  - `src/utils/permissions/permissionRuleParser.ts:74`（`export function unescapeRuleContent(content: string)`）
-  - `src/utils/permissions/permissionRuleParser.ts:19`（注释：向后兼容旧工具名的 normalizeLegacyToolName）
-- 概念层次：转义/反转义的对称性、findFirstUnescapedChar 处理嵌套括号、normalizeLegacyToolName 的向后兼容
+  - `src/utils/swarm/leaderPermissionBridge.ts:25`（`let registeredSetter: SetToolUseConfirmQueueFn | null = null`）
+  - `src/utils/swarm/leaderPermissionBridge.ts:29`（registerLeaderToolUseConfirmQueue）
+  - `src/utils/swarm/leaderPermissionBridge.ts:34`（getLeaderToolUseConfirmQueue）
+  - `src/utils/swarm/leaderPermissionBridge.ts:38`（unregisterLeaderToolUseConfirmQueue）
+- 概念层次：模块级单例 vs 全局对象的差异、null 返回的语义（未注册时优雅降级）
 - 估计字数：900-1100字
 
-### 节 34.3：源码实例2 — shellRuleMatching（`:*` 语法与 glob）
-- 核心主张：**`:*` 是 legacy 语法（前缀匹配），新语法支持 glob `*`——hasWildcards 区分两者，permissionRuleExtractPrefix 处理 legacy**
+### 节 34.3：源码实例2 — SetToolPermissionContextFn（第二个注册点）
+- 核心主张：**leaderPermissionBridge 有两个独立的注册点——ConfirmQueue（用于弹出权限对话框）和PermissionContext（用于同步权限状态）——职责分离**
 - 源码锚点：
-  - `src/utils/permissions/shellRuleMatching.ts:43`（`permissionRuleExtractPrefix`——提取 `:*` 前缀）
-  - `src/utils/permissions/shellRuleMatching.ts:54`（`hasWildcards`——检测 unescaped `*`）
-  - `src/utils/permissions/shellRuleMatching.ts:25`（ShellPermissionRule 类型）
-  - `src/utils/permissions/shellRuleMatching.ts:12`（空字节哨兵用于 wildcard 转义——精妙的实现细节）
-- 概念层次：`:*` legacy 兼容 vs 新 glob 语法、空字节哨兵防止转义后的 `*` 被误识别
+  - `src/utils/swarm/leaderPermissionBridge.ts:43`（registerLeaderSetToolPermissionContext）
+  - `src/utils/swarm/leaderPermissionBridge.ts:16`（SetToolPermissionContextFn 类型定义）
+  - `src/utils/swarm/leaderPermissionBridge.ts:49`（getLeaderSetToolPermissionContext）
+- 概念层次：两个注册点的职责差异、preserveMode 参数的语义
 - 估计字数：700-900字
 
 ### 节 34.4：模式剖析
-- 核心主张：**声明式规则解析引擎的本质是"格式即契约"——规则字符串 `Bash(npm:*)` 本身就是完整的权限声明，不需要代码配置**
+- 核心主张：**模块级服务定位器的本质是"运行时依赖注入"——调用方不引用实现，而是从中央注册表运行时获取**
 - 估计字数：500-700字
 
 ### 节 34.5：适用范围
 | 场景 | 适用性 | 理由 | 替代方案 |
 |------|--------|------|---------|
-| 用户需要声明"允许执行 npm 开头的命令" | ✓ | `Bash(npm:*)` 格式简洁直观 | 代码配置（需要技术背景）|
-| 规则需要版本控制（放在配置文件）| ✓ | 字符串格式可以 git commit | 数据库存储（不随代码走）|
-| 复杂的条件权限（AND/OR 组合）| ✗ | 本格式只支持单条规则 | 规则表达式语言 |
+| 非 React 代码需要操作 React 状态 | ✓ | bridge 解耦了 React 和非 React 代码 | 直接引用 React（但增加依赖）|
+| 需要在不同生命周期阶段注入依赖 | ✓ | register/unregister 支持动态生命周期 | 构造函数注入（但不支持动态）|
+| 需要强类型的函数引用传递 | ✓ | TypeScript 类型别名（SetToolUseConfirmQueueFn）保证类型安全 | any 类型全局变量（不安全）|
+| 多实例并发使用 | ✗ | 模块变量是全局单例，并发访问可能导致竞争（推断）| 依赖注入容器（支持多实例）|
 
 ### 节 34.6：权衡与局限
-- 转义机制复杂（双重转义）、`:*` legacy 语法与 glob `*` 共存导致混乱、normalizeLegacyToolName 的向后兼容维护成本
+- 全局状态的测试隔离问题（需要 unregister 清理）、null 返回时的降级行为需要调用方检查
 - 估计字数：500-700字
 
 ### 节 34.7：与已知模式的对话
-- 与 Unix glob：相同——用通配符表达文件/命令模式；不同——本系统有工具名前缀，glob 只在内容部分
-- 与 DSL（领域特定语言）：本格式是微型 DSL，`Tool(content)` 是其完整语法
+- 与 GoF 服务定位器（Service Locator）：几乎完全一致——中央注册表运行时获取依赖；差异是 GoF 服务定位器通常是类，本模式用模块级变量实现更轻量
+- 与 IoC 容器：相同——反转依赖方向；不同——IoC 容器在启动时注入，本模式在 REPL 初始化后运行时注入
 
 ### 章末：模式提炼
 ```
-模式名称：声明式规则解析引擎（Declarative Rule Parser）
-问题：权限规则需要由用户配置（不是代码），但用户输入的字符串需要精确解析和转义
-解决方案：定义 Tool(content) 格式，用 escapeRuleContent/unescapeRuleContent 对称转义，解析时用 findFirstUnescapedChar
-前置条件：有明确的规则格式约定，转义字符不会出现在合法内容中
-源码锚点：src/utils/permissions/permissionRuleParser.ts:93 (permissionRuleValueFromString)
+模式名称：模块级服务定位器（Module-Level Service Locator）
+问题：非 React 代码需要操作 React 状态，但不能直接引用 React 组件（循环依赖/层次违反）
+解决方案：模块级 null 变量作为注册点，React 侧主动调用 register 注入回调，非 React 侧 get 获取并调用
+前置条件：双方有明确的生命周期（register 在 get 之前，unregister 在销毁时）
+源码锚点：src/utils/swarm/leaderPermissionBridge.ts:25 (模块变量), :29 (register), :34 (get)
 ```
 
 ### 章末：你能做什么
-1. 用 `Tool(content)` 格式设计权限规则字符串，分离工具名和内容模式
-2. 实现对称的 escape/unescape 函数对，确保规则字符串的序列化/反序列化不丢信息
-3. 用 findFirstUnescapedChar 处理嵌套括号，而非简单的 indexOf（容易被转义字符欺骗）
-4. 将 legacy 规则格式的兼容逻辑（normalizeLegacyToolName）集中在解析层，不泄漏到业务逻辑
-5. 用空字节哨兵替换 wildcard 字符进行临时处理，避免后续正则匹配错误识别转义的 `\*`
+1. 用模块级 null 变量实现轻量级服务定位器，避免全局对象污染和循环依赖
+2. 为注册函数对提供 register/get/unregister 三段式接口，支持测试隔离（测试后清理）
+3. 让 get 函数返回 null 而非抛出异常——调用方根据 null 值决定是否降级，而非被动异常
+4. 为跨层依赖定义 TypeScript 函数类型别名（SetToolUseConfirmQueueFn），让类型系统验证接口契约
+5. 分离不同职责的注册点（ConfirmQueue vs PermissionContext），而非塞进单一的全局对象
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图34-1 | 规则字符串格式 | ASCII | `Tool(content)` 结构 + 转义示例 + `:*` vs glob `*` 对比 | 34.1 |
+| 图34-1 | leaderPermissionBridge 注册时序 | Mermaid sequenceDiagram | REPL:register→Teammate:get→调用→unregister | 30.1 |
 
 ## 写作前 checklist
 ```bash
-sed -n '82p' src/utils/permissions/permissionRuleParser.ts   # 解析注释
-sed -n '90p' src/utils/permissions/permissionRuleParser.ts   # 示例注释
-sed -n '93p' src/utils/permissions/permissionRuleParser.ts   # permissionRuleValueFromString
-sed -n '55p' src/utils/permissions/permissionRuleParser.ts   # escapeRuleContent
-sed -n '43p' src/utils/permissions/shellRuleMatching.ts      # permissionRuleExtractPrefix
-sed -n '54p' src/utils/permissions/shellRuleMatching.ts      # hasWildcards
-sed -n '12p' src/utils/permissions/shellRuleMatching.ts      # 空字节哨兵
+sed -n '1p' src/utils/swarm/leaderPermissionBridge.ts   # 设计意图注释
+sed -n '25p' src/utils/swarm/leaderPermissionBridge.ts  # let registeredSetter
+sed -n '29p' src/utils/swarm/leaderPermissionBridge.ts  # registerLeaderToolUseConfirmQueue
+sed -n '34p' src/utils/swarm/leaderPermissionBridge.ts  # getLeaderToolUseConfirmQueue
+sed -n '38p' src/utils/swarm/leaderPermissionBridge.ts  # unregisterLeaderToolUseConfirmQueue
+sed -n '43p' src/utils/swarm/leaderPermissionBridge.ts  # registerLeaderSetToolPermissionContext
 ```
 
 ## ⛔ Spec 一致性声明

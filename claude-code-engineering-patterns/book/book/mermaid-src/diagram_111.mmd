@@ -1,12 +1,12 @@
-stateDiagram-v2
-    [*] --> discovered: getDeclaredMarketplaces
-    discovered --> pending: 计算 diff（缺失或源地址变更）
-    discovered --> up_to_date: diff 结果为 upToDate
-    pending --> installing: reconcileMarketplaces 开始
-    installing --> installed: 安装成功
-    installing --> failed: 安装失败
-    installed --> update_check: 下次启动/reload-plugins
-    update_check --> up_to_date: 源地址未变
-    update_check --> pending: 源地址变更（sourceChanged）
-    up_to_date --> [*]
-    failed --> [*]
+flowchart TD
+    request[收到权限请求] --> check_swarm{isSwarmWorker?}
+    check_swarm -->|是| swarm_handler[swarmWorkerHandler]
+    check_swarm -->|否| check_coord{isCoordinator?}
+    check_coord -->|是| coord_handler[coordinatorHandler]
+    check_coord -->|否| interactive_handler[interactiveHandler]
+
+    swarm_handler -->|"classifier 自动批准 或 Leader 响应"| done[✓ 权限决策]
+    swarm_handler -->|"null（失败或不是 swarm worker）"| interactive_handler
+    coord_handler -->|"hooks 或 classifier 自动决策"| done
+    coord_handler -->|"null（需要用户介入）"| interactive_handler
+    interactive_handler --> done

@@ -1,10 +1,22 @@
-flowchart LR
-    lap[分层提示词组装]
+sequenceDiagram
+    participant ST as SkillTool.call
+    participant Router as 路由判断
+    participant Fork as executeForkedSkill
+    participant Remote as executeRemoteSkill
+
+    ST->>Router: commandName + context
     
-    lap -->|多层叠加但无包装| dec[装饰器模式\n包装已有对象]
-    lap -->|并行不串行| mid[中间件管道\n串行依赖]
-    lap -->|提供材料不完成构建| build[Builder模式\n完整构建]
-    
-    dec --- d1[差异: 独立平行 vs 层层包裹]
-    mid --- d2[差异: Promise.all vs 串行传递]
-    build --- d3[差异: 返回原材料\n调用方完成最终组装]
+    alt 远程技能 (slug前缀 + ant-only)
+        Router->>Remote: executeRemoteSkill(slug)
+        Remote->>Remote: 从 GCS/AKI 加载 Markdown
+        Remote->>Remote: 剥离 frontmatter
+        Remote-->>ST: 内容注入用户消息
+    else context=fork 本地技能
+        Router->>Fork: executeForkedSkill(command)
+        Fork->>Fork: 创建独立 Agent\n独立 token 预算
+        Fork-->>ST: ToolResult
+    else 普通本地技能
+        Router->>ST: processPromptSlashCommand
+        ST->>ST: 展开 !command/$ARGUMENTS
+        ST-->>ST: 注入当前对话
+    end

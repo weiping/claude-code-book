@@ -1,20 +1,9 @@
 flowchart TD
-    call["调用 getFastModeState(model, userEnabled)"] --> env{isFastModeEnabled
-CLAUDE_CODE_DISABLE_FAST_MODE=false?}
-    env -->|"否（env禁用）"| off1["返回 'off'"]
-    env -->|"是"| statsig{Statsig/GrowthBook
-是否封禁?}
-    statsig -->|是| off2["返回 'off'"]
-    statsig -->|否| sdk{非交互式 SDK 会话
-且非 KAIROS?}
-    sdk -->|是（且无 flagSettings）| off3["返回 'off'
-(SDK 不支持)"]
-    sdk -->|否| billing{extra_usage
-计费是否启用?}
-    billing -->|否| off4["返回 'off'"]
-    billing -->|是| user_pref{fastModeUserEnabled
-= true 且模型支持?}
-    user_pref -->|否| off5["返回 'off'"]
-    user_pref -->|是| cooldown{isFastModeCooldown?}
-    cooldown -->|是| cool["返回 'cooldown'"]
-    cooldown -->|否| on["返回 'on'"]
+    apiError["API 错误（429/500）"] -->|触发重试| retry["底层重试机制"]
+    retry -->|透明| loop["while(true) 主循环"]
+    retry -->|产出事件| sdkCaller["SDK 调用者\n（可显示重试进度）"]
+
+    userStop["用户 Ctrl+C / Stop 按钮"] -->|调用| interrupt["interrupt()"]
+    interrupt -->|abort()| abortController["AbortController.abort()"]
+    abortController -->|AbortSignal 传播| loop
+    loop -->|收到中断信号| exit["循环退出"]

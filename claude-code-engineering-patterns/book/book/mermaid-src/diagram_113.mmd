@@ -1,11 +1,31 @@
-flowchart TD
-    complete[安装完成] --> check{result 类型?}
-    check -->|installed.length > 0| auto_refresh[自动刷新插件]
-    check -->|updated.length > 0| notify[设置 needsRefresh]
-    check -->|两者均为0| noop[无操作]
+classDiagram
+    class InteractiveHandler {
+        +handleInteractivePermission(params, resolve) void
+        -pushToQueue(callbacks)
+        -runHooks_background()
+        -runClassifier_background()
+        -createResolveOnce(resolve)
+    }
 
-    auto_refresh --> success[插件连接重建]
-    auto_refresh -->|失败| fallback[降级到 needsRefresh]
+    class CoordinatorHandler {
+        +handleCoordinatorPermission(params) Promise~Decision|null~
+        -await runHooks()
+        -await tryClassifier()
+    }
 
-    notify --> user_reload[用户手动 /reload-plugins]
-    fallback --> user_reload
+    class SwarmWorkerHandler {
+        +handleSwarmWorkerPermission(params) Promise~Decision|null~
+        -await tryClassifier()
+        -registerPermissionCallback()
+        -sendPermissionRequestViaMailbox()
+    }
+
+    class Caller {
+        +route(agentRole) Decision
+    }
+
+    Caller --> SwarmWorkerHandler : isSwarmWorker
+    Caller --> CoordinatorHandler : isCoordinator
+    Caller --> InteractiveHandler : fallback
+    SwarmWorkerHandler ..> InteractiveHandler : null → fallback
+    CoordinatorHandler ..> InteractiveHandler : null → fallback

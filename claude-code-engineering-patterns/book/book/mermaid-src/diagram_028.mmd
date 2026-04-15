@@ -1,14 +1,10 @@
-flowchart LR
-    subgraph 单轮请求
-        direction TB
-        A1[发送消息] --> B1[收到回复] --> C1[结束]
-    end
-
-    subgraph 多轮工具调用循环
-        direction TB
-        A2[发送消息] --> B2{tool_use 块?}
-        B2 -->|否| C2[结束]
-        B2 -->|是| D2[执行工具]
-        D2 --> E2[附带结果再次发送]
-        E2 --> B2
-    end
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> MessageStarted : message_start
+    MessageStarted --> BlockStarted : content_block_start
+    BlockStarted --> BlockDelta : content_block_delta
+    BlockDelta --> BlockDelta : content_block_delta（累积）
+    BlockDelta --> BlockStarted : content_block_stop → 下一个 block
+    BlockStarted --> MessageDelta : message_delta（usage 更新）
+    MessageDelta --> Done : message_stop
+    Done --> [*] : yield AssistantMessage

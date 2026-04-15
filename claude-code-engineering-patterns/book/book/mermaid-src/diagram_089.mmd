@@ -1,24 +1,9 @@
-graph TD
-    TaskState["TaskState（联合类型）"]
-    
-    subgraph 7种具体类型
-        LST["LocalShellTask\ntype: 'local_bash'\n特有: command"]
-        LAT["LocalAgentTask\ntype: 'local_agent'\n特有: agentId, messages"]
-        RAT["RemoteAgentTask\ntype: 'remote_agent'\n特有: 远程端点"]
-        IPT["InProcessTeammateTask\ntype: 'in_process_teammate'\n特有: 进程内上下文"]
-        LWT["LocalWorkflowTask\ntype: 'local_workflow'\n特有: 工作流步骤"]
-        MMT["MonitorMcpTask\ntype: 'monitor_mcp'\n特有: MCP服务标识"]
-        DT["DreamTask\ntype: 'dream'\n特有: 异步载荷"]
-    end
-
-    subgraph TaskStateBase共有字段
-        BASE["id / type / status\ndescription / startTime\noutputFile / notified"]
-    end
-    
-    subgraph 5种共享状态
-        STATUS["pending → running\n→ completed / failed / killed"]
-    end
-
-    TaskState --> LST & LAT & RAT & IPT & LWT & MMT & DT
-    LST & LAT & RAT & IPT & LWT & MMT & DT --> BASE
-    BASE --> STATUS
+flowchart TD
+    A["readdir 列出所有 .md 文件"] --> B["filter：排除 MEMORY.md"]
+    B --> C["Promise.allSettled 并发读取"]
+    C --> D["readFileInRange 前 30 行\nfrontmatter + mtimeMs 单次获取"]
+    D --> E["parseFrontmatter\n提取 description/type"]
+    E --> F["过滤 fulfilled，失败项静默跳过"]
+    F --> G["sort DESC by mtimeMs\n最新修改优先"]
+    G --> H["slice 0..200\n上限封顶"]
+    H --> I["MemoryHeader² 索引清单"]

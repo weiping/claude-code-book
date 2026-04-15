@@ -1,12 +1,25 @@
-flowchart TD
-    Start["spawn(config)"] --> NI{非交互模式\n-p flag?}
-    NI -->|"是"| IP[in-process]
-    NI -->|"否"| Mode{teammateMode 配置}
-    Mode -->|"'in-process'"| IP
-    Mode -->|"'tmux'"| Pane[pane 后端]
-    Mode -->|"'auto'（默认）"| TmuxCheck{在 tmux 内\nORIGINAL_USER_TMUX?}
-    TmuxCheck -->|"是"| TmuxNative[tmux native panes]
-    TmuxCheck -->|"否"| ITermCheck{在 iTerm2 内?}
-    ITermCheck -->|"是 + it2 可用"| ITermNative[iterm2 native panes]
-    ITermCheck -->|"是 + it2 不可用"| TmuxFallback[tmux 外部会话]
-    ITermCheck -->|"否"| IPMode[in-process]
+graph TD
+    subgraph 需要解耦（LocalShellTask）
+        GST["guards.ts
+（纯类型，无框架依赖）
+isLocalShellTask()"]
+        STT["stopTask.ts
+（纯逻辑）"] -->|import| GST
+        PRN["print.ts
+（纯逻辑）"] -->|import| GST
+        LST["LocalShellTask.tsx
+（React 组件）"] -->|import| GST
+    end
+    subgraph 不需要解耦（LocalAgentTask）
+        LAT["LocalAgentTask.tsx
+（React 组件）
+含 isLocalAgentTask()"]
+        QE["QueryEngine.tsx
+（已有 React）"] -->|import| LAT
+        UI["AgentTaskList.tsx
+（已有 React）"] -->|import| LAT
+    end
+    note1["纯逻辑消费者 ← 需要解耦
+守卫函数提取到 guards.ts"]
+    note2["React 消费者 ← 无需解耦
+守卫函数留在 .tsx 内"]

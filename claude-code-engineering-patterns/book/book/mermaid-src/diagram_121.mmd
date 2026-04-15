@@ -1,27 +1,21 @@
-flowchart TD
-    subgraph host ["宿主进程（Claude Code）"]
-        loader["createPluginFromPath\n加载插件"]
-        mcp_resolver["resolvePluginMcpEnvironment"]
-        lsp_resolver["resolvePluginLspEnvironment"]
-    end
+sequenceDiagram
+    participant C as 调用方
+    participant M as loadAndCacheMarketplace
+    participant G as cacheMarketplaceFromGit
+    participant H as cacheMarketplaceFromUrl
+    participant F as 文件系统
 
-    subgraph plugin_env ["插件子进程环境变量"]
-        root["CLAUDE_PLUGIN_ROOT\n= plugin.path\n（版本化安装目录，只读）"]
-        data["CLAUDE_PLUGIN_DATA\n= getPluginDataDir(source)\n（持久化数据目录，可读写）"]
-        other["其他 env\n（插件声明，${VAR} 展开）"]
-    end
+    C->>M: source={source:'github', repo:'anthropics/...'}
+    M->>G: SSH → 失败 → HTTPS 降级
+    G-->>M: 克隆到缓存目录
+    M-->>C: LoadedPluginMarketplace
 
-    subgraph filesys ["文件系统"]
-        install["~/.claude/plugins/marketplaces/\nplugin@version/\n（CLAUDE_PLUGIN_ROOT 指向这里）"]
-        persist["~/.claude/plugin-data/\nplugin@marketplace/\n（CLAUDE_PLUGIN_DATA 指向这里）"]
-        project["当前项目目录\n（插件子进程无直接路径）"]
-    end
+    C->>M: source={source:'url', url:'https://...'}
+    M->>H: axios.get(url, headers)
+    H-->>M: 写入 .json 缓存
+    M-->>C: LoadedPluginMarketplace
 
-    loader --> mcp_resolver
-    loader --> lsp_resolver
-    mcp_resolver --> root
-    mcp_resolver --> data
-    lsp_resolver --> root
-    lsp_resolver --> data
-    root --> install
-    data --> persist
+    C->>M: source={source:'directory', path:'/local/...'}
+    M->>F: resolve(path) + 直接读取
+    F-->>M: marketplace.json
+    M-->>C: LoadedPluginMarketplace

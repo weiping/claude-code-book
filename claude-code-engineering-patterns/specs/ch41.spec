@@ -1,19 +1,19 @@
 spec: task
-name: "第41章：从 CLI 到 Agent 平台——架构跃迁的路线图"
-tags: [book-chapter, part-10]
+name: "第 41 章：Plugin 生命周期——发现、安装、更新与卸载"
+tags: [book-chapter, part-11]
 ---
 
 ## 意图
 
-从 Claude Code 的架构演化路径（CLI → 工具宿主 → Agent Harness → 多智能体平台）中提炼出可复用的架构跃迁路线图，让读者能为自己的产品绘制类似的演化路径。这是全书的收束章节，用前章的模式和证据构建一个面向未来的架构视角。
+揭示 `src/utils/plugins/installedPluginsManager.ts`（1268行）如何管理插件从 Marketplace 发现、到本地安装、版本检查、自动更新、到最终卸载的完整生命周期，以及 `plugins/` 目录下的状态管理机制。读者读完后能理解插件系统的生命周期状态机，并能在自己的可扩展系统中设计类似的插件管理器。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
-- 源码引用格式：`src/相对路径:行号`（引用演化痕迹的源码证据）
-- 前置依赖：第40章（12 个模式图谱，本章从模式图谱推导演化路线）
-- 本章是全书最后一章，需要完整的收束感
+- 源码引用格式：`src/相对路径:行号`
+- 核心文件：src/utils/plugins/installedPluginsManager.ts（1268行）、headlessPluginInstall.ts
+- 前置依赖：第 14 章（Tool 接口，插件工具需适配同一接口）
 
 
 ## 约束
@@ -39,54 +39,54 @@ tags: [book-chapter, part-10]
 ## 边界
 
 ### 允许修改
-- book/src/part10/ch41.md
+- book/src/part11/ch41.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不引入前章未分析的新源码
-- 不对 Claude Code 未来版本做无源码依据的预测
+- 不展开 Marketplace 协议细节（第42章）
+- 不展开插件包结构（第43章）
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch41_hunter_opening
-  假设 读者打开第41章
+  测试: ch37_hunter_opening
+  假设 读者打开第 41 章
   当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: 四阶段演化路线图
-  测试: ch41_four_stage_roadmap
-  假设 读者阅读演化路线节
-  当 读者检查路线图
-  那么 包含一个图表，展示 CLI → 工具宿主 → Agent Harness → 多智能体平台四个阶段的特征与跃迁触发条件
+场景: 生命周期阶段状态图
+  测试: ch37_lifecycle_state_diagram
+  假设 读者阅读生命周期节
+  当 读者检查图表
+  那么 包含一个图表，展示发现→安装→已安装→更新→卸载各状态的转换
 
-场景: 每阶段有源码证据
-  测试: ch41_stage_evidence
-  假设 读者阅读各演化阶段
-  当 读者追问"Claude Code 在哪一阶段处于什么状态"
-  那么 每个阶段都有对应的源码演化痕迹（如 if/else 增多、接口膨胀的具体文件行号）
-
-场景: 读者视角的行动建议
-  测试: ch41_reader_roadmap
-  假设 读者有自己的 CLI 产品想演化为 Agent 平台
-  当 读者检查"你的下一步"节
-  那么 章节给出分阶段的工程建议，每个阶段对应前章的具体模式
+场景: 版本检查机制说明
+  测试: ch37_version_check
+  假设 读者阅读版本管理节
+  当 读者追问"插件如何知道自己需要更新"
+  那么 章节展示版本检查的触发条件和比较逻辑
 
 场景: 源码引用有效性
-  测试: ch41_source_anchors
+  测试: ch37_source_anchors
   层级: 集成
   假设 读者跟随章节中的源码引用
   当 读者在项目目录查找每处路径和行号
   那么 每处引用都实际存在于对应文件
 
-场景: 全书收束感
-  测试: ch41_closure
-  假设 读者读完第41章（全书最后一章）
-  当 读者检查章末结构
-  那么 章末有明确的全书总结性段落，呼应序言中的"猎人自白"主题
+场景: 模式命名框存在
+  测试: ch37_pattern_box
+  假设 本章使用 hunter 风格
+  当 读者检查章末
+  那么 存在至少 1 个格式规范的模式命名框，提炼"插件生命周期管理器"模式
+
+场景: 章末行动建议
+  测试: ch37_action_items
+  假设 读者读完本章
+  当 读者检查"你能做什么"节
+  那么 包含 5-8 条以行动动词开头的可操作建议
 
 场景: 不引用排除范围
-  测试: ch41_no_excluded_refs
+  测试: ch37_no_excluded_refs
   层级: 集成
   假设 DESIGN.md 列出了排除范围
   当 读者检查本章所有源码路径
@@ -94,7 +94,7 @@ tags: [book-chapter, part-10]
 
 
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch41_hunter_opening_format
+  测试: ch37_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -102,33 +102,33 @@ tags: [book-chapter, part-10]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch41_multi_instance_proof
+  测试: ch37_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch41_applicability_table
+  测试: ch37_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch41_tradeoffs_and_limits
+  测试: ch37_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch41_known_pattern_dialogue
+  测试: ch37_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch41_pattern_box_format
+  测试: ch37_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -138,7 +138,7 @@ tags: [book-chapter, part-10]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch41_reader_voice
+  测试: ch37_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -146,7 +146,7 @@ tags: [book-chapter, part-10]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch41_key_info_highlight
+  测试: ch37_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
@@ -154,6 +154,6 @@ tags: [book-chapter, part-10]
 
 ## 排除范围
 
-- 新的源码深度分析（用交叉引用代替）
-- 对 Claude Code 未来版本的预测（无源码依据）
+- Marketplace 协议与注册表（第42章）
+- 插件包内部结构（第43章）
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）

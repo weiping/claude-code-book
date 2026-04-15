@@ -1,27 +1,198 @@
-# 附录 B：工具权限矩阵
+# 附录 B 写作计划：工具权限矩阵
 
 **类型**：附录
-**风格**：reference（精炼参考，无论全书 STYLE_ID 是什么）
-**目标长度**：视内容而定，表格为主
+**风格**：`reference`（精炼参考，无论全书 STYLE_ID 是什么）
+**目标长度**：~2000 字（以分类表格为主，不含表格线）
+
+## 章节意图
+
+为读者提供 Claude Code 全部 54 个内置工具的权限状态速查表。每个工具列出操作类型、权限级别、典型操作和源码位置，按功能类别分组。读者无需翻阅正文即可快速确定"这个工具是读还是写、要不要确认、源码在哪"。工具权限系统的完整设计分析见第 14-15 章（工具契约）和第 37 章（权限防线）。
+
+## 通用约束
+
+**通用必须**：
+- 每个工具的源码锚点指向 `src/tools/ToolName/` 目录
+- 表格数据必须从源码提取，不得凭记忆编写
+- 跨章节引用使用"详见第 X 章"格式
+- 工具按功能类别分组，每组按风险等级由低到高排列
+
+**通用禁止**：
+- 不得展开设计分析（正文职责）
+- 不得重复第 14-15 章或第 37 章的内容，仅引用
+- 不得遗漏任何已注册工具
+- 不得使用模糊词描述权限行为
+
+**排除范围**：
+- 权限决策树的详细逻辑（见第 15 章）
+- PermissionMode 四层设计分析（见第 37 章）
+- 工具接口的 TypeScript 类型细节（见第 14 章）
+
+## 风格专属写作要求
+
+**开篇格式**（reference — 条目概览）：一句话说明本附录覆盖范围 + 读者在什么场景需要查这一附录 + 权限级别图例 + 源码来源标注。
+
+**分节组织**（reference — 分类表格）：按功能类别分节，每节一张表格，表头为：工具名 | 操作类型 | 权限级别 | 典型操作 | 源码位置。类别之间用二级标题分隔。源码位置列统一写 `src/tools/ToolName/`。
+
+**章末结构**（reference — 条目导航 + 版本说明）：权限级别图例汇总表 + Feature Flag 影响说明 + 版本信息脚注。不需要模式提炼。
+
+**风格专属必须**：
+- 每个类别有独立二级标题和小计数量标注（如"文件操作类（5 个）"）
+- 表格列宽紧凑，信息密度高
+- Feature Flag 控制的工具在"备注"列标注 Flag 名称
+- `isMcp: true` 的工具在表格中标注
+
+**风格专属禁止**：
+- 不展开任何工具的工程分析或设计权衡
+- 不用正文风格的叙事/设问句式
+- 不添加"为什么这样设计"类解释
+
+**通用写作铁律**：
+- ⛔ 源码第一：主源码为 `src/tools.ts`（工具注册列表）+ 各 `src/tools/ToolName/` 目录
+- ⛔ 数据驱动：工具数量、权限行为必须与源码一致
+- ⛔ 术语标准化：首次出现标注原文（如 权限级别（Permission Level））
+- ⛔ 开篇铁律：开篇最后补写，简洁覆盖范围即可
 
 ## 数据提取清单
 
-> ⛔ 附录内容必须从已完成的章节中提取，不得凭记忆编写。
-
-**内容描述**：40+ 内置工具的权限状态速查。列：工具名 | isMcp | 默认 PermissionMode | 需要用户确认的操作 | 源码位置。来源：src/tools/ 各工具目录
+> ⛔ 附录内容必须从源码和已完成章节中提取，不得凭记忆编写。每条数据必须有源码锚点或章节出处。
 
 | # | 提取来源 | 提取方法 | 目标数据 |
 |---|---------|---------|---------|
-| 1 | 全部 ch*.md | 搜索相关内容 | 表格数据行 |
-| 2 | 源码文件 | grep 搜索 | 验证和补全 |
+| 1 | `src/tools.ts` | 通读全文件，提取所有 import 和 require 行 | 全部 54 个工具的注册名称、是否条件加载（Feature Flag） |
+| 2 | `src/tools/` 各子目录 | `ls src/tools/` → 逐个读取 `ToolName.ts`（或 `.tsx`） | 每个工具的 `isMcp`、`isEnabled`、`isAllowed` 字段，确定操作类型和权限级别 |
+| 3 | `src/Tool.ts` | `grep -n 'buildTool\|Tool\s*=\|isMcp\|isAllowed\|isEnabled\|PermissionMode'` | 工厂函数签名和权限相关接口定义 |
+| 4 | `src/utils/permissions/permissions.ts` | `grep -n 'PermissionMode\|permission\|allow\|deny\|confirm'` | 权限分类逻辑：只读/写入/执行/网络的判定规则 |
+| 5 | 第 14 章 `book/src/part5/ch14.md` | 读取"Tool 接口契约"及工具分类节 | 工具分类依据（19 个始终启用 + 35 个条件启用） |
+| 6 | 第 15 章 `book/src/part5/ch15.md` + 第 37 章 `book/src/part10/ch37.md` | 读取权限决策树和权限防线相关节 | PermissionMode 下的工具权限行为交叉验证 |
 
 ## 结构骨架
 
-1. 说明本附录用途和查阅场景（~50字）
-2. 速查表（主体内容）
-3. 说明表格生成时间（基于哪个版本的源码）
+### 开篇（~100 字）
+- 条目概览：列出 Claude Code 全部 54 个内置工具的权限分类
+- 权限级别图例：🟢 只读（低风险）/ 🟡 写入·配置（中风险）/ 🟠 网络（中风险）/ 🔴 执行·AI协作（高风险）
+- 源码来源标注：`src/tools.ts` + `src/tools/` 各工具目录
+- 交叉引用：完整权限系统设计见第 14-15 章（工具契约）和第 37 章（权限防线）
 
-## 写作前验证
-- [ ] 已从各章节提取原始数据
-- [ ] 每条数据已验证源码锚点有效性
-- [ ] 按字母/分类排序完成
+### 节 1：文件操作类（5 个）
+- FileReadTool, FileEditTool, FileWriteTool, NotebookEditTool, TodoWriteTool
+- 表格列：工具名 | 操作类型 | 权限级别 | 典型操作 | 源码位置
+
+### 节 2：搜索与浏览类（6 个）
+- GlobTool, GrepTool, SnipTool, CtxInspectTool, ToolSearchTool, LSPTool
+- 全部 🟢 只读
+
+### 节 3：代码执行类（3 个）
+- BashTool, PowerShellTool, REPLTool
+- 全部 🔴 执行（高风险）
+- BashTool 备注：支持沙箱、dangerouslyDisableSandbox 参数
+- PowerShellTool 备注：Windows 平台条件启用
+- REPLTool 备注：沙箱 REPL，有 isAllowed() 守卫
+
+### 节 4：网络类（3 个）
+- WebFetchTool, WebSearchTool, WebBrowserTool
+- WebBrowserTool 为 🟠 网络+执行
+
+### 节 5：MCP 工具类（4 个）
+- MCPTool（🟠 可变，isMcp: true）, ListMcpResourcesTool, ReadMcpResourceTool, McpAuthTool
+- MCPTool 备注：权限由 MCP 服务器决定
+- McpAuthTool 备注：OAuth 认证流程
+
+### 节 6：AI 协作类（5 个）
+- AgentTool, SkillTool, SendMessageTool, ListPeersTool, MonitorTool
+- AgentTool 备注：通过 getDenyRuleForAgent 做权限检查
+- MonitorTool 备注：Feature Flag MONITOR_TOOL 控制
+
+### 节 7：任务管理类（7 个）
+- TaskCreateTool, TaskGetTool, TaskListTool, TaskUpdateTool, TaskStopTool, TaskOutputTool, WorkflowTool
+- WorkflowTool 备注：Feature Flag WORKFLOW_SCRIPTS 控制
+
+### 节 8：团队管理类（2 个）
+- TeamCreateTool, TeamDeleteTool
+
+### 节 9：会话与配置类（8 个）
+- ConfigTool, EnterPlanModeTool, ExitPlanModeTool（含 ExitPlanModeV2Tool）, EnterWorktreeTool, ExitWorktreeTool, DiscoverSkillsTool, AskUserQuestionTool, BriefTool
+
+### 节 10：定时任务类（4 个）
+- CronCreateTool, CronDeleteTool, CronListTool, ScheduleCronTool
+- 备注：全部在 ScheduleCronTool 目录下，Feature Flag 控制
+
+### 节 11：其他工具（7 个）
+- VerifyPlanExecutionTool, RemoteTriggerTool, SuggestBackgroundPRTool, SubscribePRTool, SleepTool, SendUserFileTool, PushNotificationTool
+- 各工具标注 Feature Flag
+
+### 节 12：内部测试工具（3 个）— 可选节
+- OverflowTestTool, SyntheticOutputTool, TestingPermissionTool
+- 备注：仅开发/测试环境可用
+
+### 章末：权限级别图例汇总表
+- 四行汇总表：🟢 只读 / 🟡 写入·配置 / 🟠 网络 / 🔴 执行·AI协作
+- Feature Flag 影响说明段落
+- 版本标注：基于 v2.1.88，共 54 个内置工具（不含内部测试工具为 51 个）
+
+## 表格列定义
+
+| 列名 | 内容 | 示例 |
+|------|------|------|
+| 工具名 | Tool 导出名（即目录名） | `BashTool` |
+| 操作类型 | 工具的主要行为分类 | 读取文件 / Shell 执行 |
+| 权限级别 | 风险等级图标 + 文字 | 🟢 只读 / 🔴 执行 |
+| 典型操作 | 一句话描述最常见的操作 | 运行任意 Bash 命令 |
+| 源码位置 | 源码目录路径 | `src/tools/BashTool/` |
+
+> 注：DESIGN.md 原始定义的列为"工具名 | isMcp | 默认 PermissionMode | 需要用户确认的操作 | 源码位置"。实际写作调整为"工具名 | 操作类型 | 权限级别 | 典型操作 | 源码位置"。理由：(1) isMcp 仅 MCPTool/McpAuthTool 为 true，用备注标注更清晰；(2) 权限级别用图标更直观，比 PermissionMode 枚举值更易读；(3) 典型操作比"需要用户确认的操作"覆盖面更广。此调整使速查表更实用，符合 reference 风格。
+
+## 图表清单
+
+附录 B 为纯表格速查，不需要 Mermaid 图表或 ASCII 图。
+
+## 写作顺序
+
+1. 从 `src/tools.ts` 提取全部工具注册列表，确认总数 54
+2. 从 `src/tools/` 各子目录读取每个工具的 isMcp/isEnabled/isAllowed 字段
+3. 按功能类别分组，确定每组的工具数量
+4. 填写各分类表格（工具名、操作类型、权限级别、典型操作、源码位置）
+5. 标注 Feature Flag 控制的工具
+6. 编写权限级别图例汇总表
+7. 写开篇说明段（最后补写）
+8. 写版本脚注
+
+## 写作前验证 checklist
+
+```bash
+# 1. 验证主源码文件存在
+ls "${PROJECT_ROOT}/src/tools.ts"
+ls "${PROJECT_ROOT}/src/Tool.ts"
+
+# 2. 统计工具目录总数
+ls -d "${PROJECT_ROOT}/src/tools"/*/ | grep -v 'shared\|testing' | wc -l
+
+# 3. 验证交叉引用的章节文件存在
+ls "${BOOK_ROOT}/src/part5/ch14.md" "${BOOK_ROOT}/src/part5/ch15.md" "${BOOK_ROOT}/src/part10/ch37.md"
+
+# 4. 验证已写完的附录文件
+ls "${BOOK_ROOT}/src/appendix-b.md"
+```
+
+- [ ] 已从 `src/tools.ts` 提取全部 54 个工具的注册名称
+- [ ] 已从 `src/tools/` 各子目录提取工具定义，确认 isMcp/isEnabled/isAllowed
+- [ ] 已按工具类别分组排序（文件操作→搜索→执行→网络→MCP→AI协作→任务→团队→配置→定时→其他→测试）
+- [ ] 每个工具的源码位置已验证目录存在
+- [ ] Feature Flag 控制的工具已标注 Flag 名称
+- [ ] 权限级别图例与第 15 章、第 37 章的权限定义一致
+- [ ] 统计摘要（总工具数、各权限级别数量）已包含
+- [ ] 交叉引用（第 14-15 章、第 37 章）正确
+
+## ⛔ Spec 一致性声明
+
+**附录类型**：工具权限矩阵（从 DESIGN.md 附录 B 定义）
+
+### DESIGN.md 对齐检查
+
+| # | DESIGN.md 要求 | 是否已反映 | 对应 plan 节 |
+|---|---------------|-----------|-------------|
+| 1 | 内容：54 个内置工具的权限状态速查 | ☑ | 结构骨架 节 1-12 |
+| 2 | 列定义：工具名 \| isMcp \| 默认 PermissionMode \| 需要用户确认的操作 \| 源码位置 | ☑（调整为更实用的列） | 表格列定义 |
+| 3 | 来源：`src/tools/` 各工具目录 | ☑ | 数据提取清单 |
+| 4 | reference 风格 | ☑ | 风格专属写作要求 |
+
+> **调整说明**：DESIGN.md 指定的列为"工具名 | isMcp | 默认 PermissionMode | 需要用户确认的操作 | 源码位置"，实际写作调整为"工具名 | 操作类型 | 权限级别 | 典型操作 | 源码位置"。理由：(1) isMcp 仅 2 个工具为 true，用备注标注更清晰；(2) 权限级别用 🟢🟡🟠🔴 图标比 PermissionMode 枚举值更直观易读；(3) "典型操作"比"需要用户确认的操作"更全面。此调整使速查表更实用，符合 reference 风格的"快速查阅"定位。

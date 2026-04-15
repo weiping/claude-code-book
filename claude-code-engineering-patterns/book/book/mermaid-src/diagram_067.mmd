@@ -1,9 +1,20 @@
 flowchart TD
-    enter["isClaudeMdExcluded 入口"] --> type_check{"type 是 Managed?"}
-    type_check -->|是| never_exclude["return false\n最高权威，永不排除"]
-    type_check -->|否| pattern_check{"claudeMdExcludes\n配置为空?"}
-    pattern_check -->|是| no_exclude["return false\n无排除规则"]
-    pattern_check -->|否| symlink["resolveExcludePatterns\n处理符号链接"]
-    symlink --> glob_match{"glob 匹配?"}
-    glob_match -->|匹配| excluded["return true\n跳过此文件"]
-    glob_match -->|不匹配| included["return false\n正常加载"]
+    input[fetchSystemPromptParts 调用]
+    
+    input --> pa[Promise.all 并行拉取]
+    
+    pa --> p1[getSystemPrompt\n工具声明+核心指令]
+    pa --> p2[getUserContext\nCLAUDE.md+用户上下文]
+    pa --> p3[getSystemContext\n环境上下文]
+    
+    p1 --> r[返回三元结构]
+    p2 --> r
+    p3 --> r
+    
+    r --> caller[调用方\nQueryEngine/buildSideQuestionFallbackParams]
+    caller --> final[最终系统提示\n由调用方叠加 extras]
+    
+    custom[customSystemPrompt 已设置?]
+    input --> custom
+    custom -->|是| override[defaultSystemPrompt=\nystemContext=空]
+    override --> r

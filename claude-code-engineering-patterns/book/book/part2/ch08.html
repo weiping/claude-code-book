@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>第 8 章：QueryEngine 主循环——工具调用的编排逻辑 - Claude Code 工程模式</title>
+        <title>第 8 章：IDE 集成——Bridge 协议与 LSP 服务 - Claude Code 工程模式</title>
 
 
         <!-- Custom HTML head -->
@@ -156,355 +156,262 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="第-8-章queryengine-主循环工具调用的编排逻辑"><a class="header" href="#第-8-章queryengine-主循环工具调用的编排逻辑">第 8 章：QueryEngine 主循环——工具调用的编排逻辑</a></h1>
+                        <h1 id="第-8-章ide-集成bridge-协议与-lsp-服务"><a class="header" href="#第-8-章ide-集成bridge-协议与-lsp-服务">第 8 章：IDE 集成——Bridge 协议与 LSP 服务</a></h1>
 <blockquote>
-<p>"循环的出口不是计时器，而是 AI 自己说'我做完了'。"</p>
+<p>"同一个引擎，两张脸——终端用户和 IDE 用户，各自看到最熟悉的界面。"</p>
 </blockquote>
-<p>在这个代码库里，至少 3 处地方用完全相同的方式解决同一个工程难题：如何驱动一个 AI 模型反复调用工具，直到任务真正完成。<code>query.ts</code> 是主 Agent 的循环引擎，<code>AgentTool/runAgent.ts</code> 是子 Agent 的循环引擎，它们共用同一个核心函数 <code>query()</code>，却在"任务结束时该怎么办"这个问题上做出了截然不同的选择。</p>
-<p>这个反复出现的结构叫做<strong>可中断多轮工具调用循环（Interruptible Multi-Turn Tool Loop）</strong>——以工具调用信号为继续条件，以外部中止信号为退出条件，中间配备三道防线防止失控。</p>
-<p>识别这个模式，你就能用不到 30 行代码实现一个可调用任意工具、随时停止、不怕 API 超时的 AI 主循环。</p>
+<p>Claude Code 的核心是一个 Agent——它理解自然语言、调用工具、生成代码。但这个 Agent 可以服务两种完全不同的用户界面：终端里的 Ink/React REPL，以及 Claude.ai 网页和 VS Code 扩展里的图形界面。两种界面都需要同一个 Agent 的能力，但协议、传输方式、消息格式截然不同。</p>
+<p>这个挑战在代码库中出现了两次，以不同形式解决：Bridge 协议（32 个文件）用自定义的 CCR（云端中继）协议把 Agent 的输出实时桥接到 Claude.ai 网页；LSP 服务（7 个文件）用标准的语言服务器协议（Language Server Protocol, LSP）把 IDE 的代码诊断结果注入 Agent 的上下文。前者是"Agent 推送给 IDE"，后者是"IDE 反馈给 Agent"。</p>
+<p>读完本章，我们将理解<strong>双界面桥接（Dual-Interface Bridge）</strong>——同一个 Agent 如何通过两条独立的协议管道，同时服务终端和 IDE 两种交互界面，以及自定义协议与标准协议的不同选型逻辑。</p>
 <hr />
-<h2 id="问题一次用户请求几轮对话"><a class="header" href="#问题一次用户请求几轮对话">问题：一次用户请求，几轮对话？</a></h2>
-<p>我们先从一个具体的用户指令出发：「找到项目里所有 TODO 注释，统计每个文件有几个」。</p>
-<p>对 AI 来说，这个任务至少需要两步：先用 bash 工具执行 <code>grep -rn "TODO" src/</code>，再分析输出统计数量。如果 AI 第一次调用工具的结果显示目录太多、输出超长，它可能还需要第三步——重新设计搜索策略，缩小范围再来一次。</p>
-<p><strong>这就是多轮对话不可避免的根本原因</strong>：AI 不能在一次 API 请求里执行工具并读到结果。每次工具调用都需要：① 向 API 发送"用户消息 + 工具定义"；② API 返回包含 tool_use 块的 assistant 消息；③ 本地执行工具；④ 把工具结果作为 user 消息再次发送给 API。每一轮都是一个完整的 HTTP 往返。</p>
-<p>更棘手的是，<strong>API 的 <code>stop_reason</code> 字段不可靠</strong>。源码注释 <code>src/query.ts:554</code> 直接说明：</p>
-<pre><code class="language-typescript">// 参见 https://docs.claude.com/en/docs/build-with-claude/tool-use
-// 注意：stop_reason === 'tool_use' 是不可靠的——它并不总是被正确设置。
-// （原文："Note: stop_reason === 'tool_use' is unreliable -- it's not always set correctly."）
+<h2 id="问题一个-agent两种界面"><a class="header" href="#问题一个-agent两种界面">问题：一个 Agent，两种界面</a></h2>
+<p><code>src/bridge/bridgeEnabled.ts:32</code> 揭示了 Bridge 功能的启用逻辑：</p>
+<pre><code class="language-typescript">// src/bridge/bridgeEnabled.ts:32
+export function isBridgeEnabled(): boolean {
+  // 正向三元模式（Positive ternary pattern）——见 docs/feature-gating.md。
+  // 反向写法（if (!feature(...)) return）无法消除外部构建中的内联字符串字面量。
+  // （原文：Positive ternary pattern — see docs/feature-gating.md.
+  //  Negative pattern (if (!feature(...)) return) does not eliminate
+  //  inline string literals from external builds.）
+  return feature('BRIDGE_MODE')
+    ? isClaudeAISubscriber() &amp;&amp;
+        getFeatureValue_CACHED_MAY_BE_STALE('tengu_ccr_bridge', false)
+    : false
+}
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/query.ts:554</code></p>
-<p>这句注释揭示了一个设计约束：系统不能依赖 <code>stop_reason</code> 来决定是否继续循环。如果 API 忘记设置 <code>stop_reason = 'tool_use'</code>，仅靠 stop_reason 的循环就会提前终止，丢失还未执行的工具调用。系统需要一个更可靠的出口信号——而这个信号就是响应消息中<strong>是否包含 tool_use 块</strong>。</p>
-<p>这个设计选择直接催生了 <code>needsFollowUp</code> 旗标，以及围绕它构建的整个主循环架构。</p>
-<p><strong>图 8-1：单轮请求 vs 多轮工具调用循环的对比</strong></p>
-<pre><code class="language-mermaid">flowchart LR
-    subgraph 单轮请求
-        direction TB
-        A1[发送消息] --&gt; B1[收到回复] --&gt; C1[结束]
+<p><strong>源码参考：</strong> <code>src/bridge/bridgeEnabled.ts:32</code></p>
+<p>两个条件缺一不可：<code>feature('BRIDGE_MODE')</code> 是构建时门控（详见第 3 章），只在 Ant 构建中存在；<code>isClaudeAISubscriber()</code> 是运行时鉴权，确保只有 Claude.ai 订阅用户才能使用。注释里提到"Positive ternary pattern"——这是刻意的写法，因为 <code>feature()</code> 的 DCE 只在正向三元运算符中能消除 false 分支的字符串字面量，<code>if (!feature(...)) return false</code> 写法会让 <code>'tengu_ccr_bridge'</code> 字符串留在非 BRIDGE_MODE 的产物中。</p>
+<p><strong>图 8-1：双界面架构——终端与 IDE 共享同一个 Agent</strong></p>
+<pre><code class="language-mermaid">graph LR
+    subgraph AGENT["Claude Code Agent（同一进程）"]
+        CORE["核心循环\nquery.ts"]
+        REPL["REPL.tsx\n终端界面"]
+        BRIDGE["Bridge\n32 个文件"]
+        LSP["LSP 服务\n7 个文件"]
     end
 
-    subgraph 多轮工具调用循环
-        direction TB
-        A2[发送消息] --&gt; B2{tool_use 块?}
-        B2 --&gt;|否| C2[结束]
-        B2 --&gt;|是| D2[执行工具]
-        D2 --&gt; E2[附带结果再次发送]
-        E2 --&gt; B2
+    subgraph TERMINAL["终端用户"]
+        TTY["交互式终端\nInk/React"]
     end
+
+    subgraph IDE["IDE / 网页"]
+        CCR["Claude.ai 网页\nVS Code 扩展"]
+        LS["Language Server\nrust-analyzer/pyright"]
+    end
+
+    TTY &lt;--&gt;|"stdin/stdout"| REPL
+    REPL &lt;--&gt;|"React state"| CORE
+    CORE &lt;--&gt;|"React state"| BRIDGE
+    BRIDGE &lt;--&gt;|"SSE + WebSocket\nCCR 协议"| CCR
+    LSP &lt;--&gt;|"JSON-RPC\nstdio"| LS
+    LSP --&gt;|"诊断注入 AppState"| CORE
 </code></pre>
-<p>单轮请求以收到回复为终点；多轮工具调用循环以"AI 不再返回 tool_use 块"为终点——这个出口完全由 AI 的行为决定，而非调用方预设。</p>
+<p><em>图注：Agent 进程内有两条对外通道——Bridge（向外推送 Agent 输出到 Claude.ai 网页）和 LSP（从 IDE 拉取代码诊断注入 Agent 上下文）。两者方向相反：Bridge 是 Agent→IDE，LSP 是 IDE→Agent。</em></p>
 <hr />
-<h2 id="源码实例-1queryenginets薄壳委托与主循环"><a class="header" href="#源码实例-1queryenginets薄壳委托与主循环">源码实例 1：QueryEngine.ts——薄壳委托与主循环</a></h2>
-<p><code>QueryEngine</code>（<code>src/QueryEngine.ts:184</code>）是对外暴露给 SDK 调用者的门面类。我们先看它的入口方法：</p>
-<pre><code class="language-typescript">// src/QueryEngine.ts:209-215（精简版）
-async *submitMessage(
-  prompt: string | ContentBlockParam[],
-  options?: { uuid?: string; isMeta?: boolean },
-): AsyncGenerator&lt;SDKMessage, void, unknown&gt; {
-  // ...构建 messages、systemPrompt、toolUseContext...
+<h2 id="源码实例-1bridge-主循环持久连接与指数退避"><a class="header" href="#源码实例-1bridge-主循环持久连接与指数退避">源码实例 1：Bridge 主循环——持久连接与指数退避</a></h2>
+<p>Bridge 的核心是 <code>src/bridge/bridgeMain.ts:141</code> 的 <code>runBridgeLoop()</code>，一个带指数退避的持久连接循环：</p>
+<pre><code class="language-typescript">// src/bridge/bridgeMain.ts:59
+export type BackoffConfig = {
+  connInitialMs: number
+  connCapMs: number
+  connGiveUpMs: number
+  generalInitialMs: number
+  generalCapMs: number
+  generalGiveUpMs: number
+  /** SIGTERM→SIGKILL 优雅关闭宽限期。默认 30s。 */
+  shutdownGraceMs?: number
+  /** stopWorkWithRetry 基础延迟（1s/2s/4s 退避）。默认 1000ms。 */
+  stopWorkBaseDelayMs?: number
 }
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:209</code></p>
-<p><code>submitMessage</code> 是一个异步生成器（<code>async *</code>）——调用方通过 <code>for await</code> 消费它产出的消息流。它的内部结构是典型的"薄壳"：主要工作是收集参数（<code>cwd</code>、<code>commands</code>、<code>maxTurns</code>、<code>taskBudget</code>），然后在第 675 行把工作全部委托给 <code>query()</code>：</p>
-<pre><code class="language-typescript">// src/QueryEngine.ts:675-687（精简版）
-for await (const message of query({
-  messages,
-  systemPrompt,
-  userContext,
-  systemContext,
-  canUseTool,
-  toolUseContext: processUserInputContext,
-  querySource: 'sdk',
-  maxTurns,
-  taskBudget,
-})) {
-  // ...将消息转换为 SDK 格式并 yield...
+<p><strong>源码参考：</strong> <code>src/bridge/bridgeMain.ts:59</code></p>
+<p><code>BackoffConfig</code> 分开管理两类退避：<code>conn*</code> 用于连接层（SSE/WebSocket 建立失败），<code>general*</code> 用于通用操作失败。这不是过度设计——连接失败和业务操作失败的恢复策略完全不同：连接失败需要快速重试（用户在等待），业务操作失败可以给更长的宽限期（不影响连接本身）。</p>
+<pre><code class="language-typescript">// src/bridge/bridgeMain.ts:141
+export async function runBridgeLoop(
+  config: BridgeConfig,
+  environmentId: string,
+  environmentSecret: string,
+  api: BridgeApiClient,
+  spawner: SessionSpawner,
+  logger: BridgeLogger,
+  signal: AbortSignal,
+  backoffConfig: BackoffConfig = DEFAULT_BACKOFF,
+): Promise&lt;void&gt; {
+  const controller = new AbortController()
+  // ...链接到外部 signal
+  const activeSessions = new Map&lt;string, SessionHandle&gt;()
+  const sessionStartTimes = new Map&lt;string, number&gt;()
+  const sessionWorkIds = new Map&lt;string, string&gt;()
+  // ...
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/bridge/bridgeMain.ts:141</code></p>
+<p>函数签名里有几个值得注意的设计细节：<code>spawner: SessionSpawner</code> 是依赖注入的——Bridge 不直接创建 Claude Code 进程，而是通过 <code>spawner</code> 接口委托，这让测试时可以替换成 mock spawner。<code>signal: AbortSignal</code> 是外部取消信号，配合内部的 <code>AbortController</code> 实现链式取消：当外部终止时，所有活跃会话都能收到取消信号。</p>
+<p><code>activeSessions</code> 是一个 <code>Map&lt;string, SessionHandle&gt;</code>——Bridge 支持同时管理多个并发会话（<code>tengu_ccr_bridge_multi_session</code> feature gate 控制）。每个会话有独立的 <code>sessionWorkIds</code>、<code>sessionIngressTokens</code> 和超时看门狗计时器。</p>
+<h3 id="心跳机制存活证明"><a class="header" href="#心跳机制存活证明">心跳机制：存活证明</a></h3>
+<p><code>src/bridge/bridgeMain.ts:202</code> 的 <code>heartbeatActiveWorkItems()</code> 定期向 CCR 后端汇报活跃会话的存活状态：</p>
+<pre><code class="language-typescript">// src/bridge/bridgeMain.ts:202
+async function heartbeatActiveWorkItems(): Promise&lt;
+  'ok' | 'auth_failed' | 'fatal' | 'failed'
+&gt; {
+  // ...对每个 activeSessions 发送心跳
+  // 返回 'auth_failed' 触发 JWT 刷新
+  // 返回 'fatal' 触发完整重连
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/bridge/bridgeMain.ts:202</code></p>
+<p>心跳返回四种结果，而非简单的成功/失败。<code>auth_failed</code>（401/403）触发 JWT 刷新重连，<code>fatal</code> 触发完整重连流程，<code>failed</code> 记录日志但继续运行。这种细粒度的错误分类——区分"凭证过期"和"真正的连接失败"——是生产级长连接服务的标准做法。</p>
+<h3 id="权限代理双向的人在回路"><a class="header" href="#权限代理双向的人在回路">权限代理：双向的"人在回路"</a></h3>
+<p><code>src/bridge/bridgePermissionCallbacks.ts:10</code> 定义了 Bridge 的权限代理接口：</p>
+<pre><code class="language-typescript">// src/bridge/bridgePermissionCallbacks.ts:10
+type BridgePermissionCallbacks = {
+  sendRequest(
+    requestId: string,
+    toolName: string,
+    input: Record&lt;string, unknown&gt;,
+    toolUseId: string,
+    description: string,
+    permissionSuggestions?: PermissionUpdate[],
+    blockedPath?: string,
+  ): void
+  sendResponse(requestId: string, response: BridgePermissionResponse): void
+  cancelRequest(requestId: string): void
+  onResponse(
+    requestId: string,
+    handler: (response: BridgePermissionResponse) =&gt; void,
+  ): () =&gt; void  // returns unsubscribe
 }
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:675</code></p>
-<p><strong>为什么 <code>QueryEngine</code> 是薄壳？</strong> 因为循环逻辑本身并不属于"对象状态管理"的职责范畴。<code>QueryEngine</code> 负责的是<strong>跨轮次持久的状态</strong>：<code>this.mutableMessages</code>（消息历史）、<code>this.abortController</code>（中断控制器，第 203 行）、<code>this.permissionDenials</code>（权限拒绝记录）。真正的"循环驱动"是无状态的纯逻辑——它可以被主 Agent 用，也可以被子 Agent 用，所以被提取到独立的 <code>query.ts</code>。</p>
+<p><strong>源码参考：</strong> <code>src/bridge/bridgePermissionCallbacks.ts:10</code></p>
+<p>这是第 5 章讲的"异步交互阻断"模式（详见第 5 章）在 Bridge 场景的跨进程版本：当 Agent 需要执行需要确认的工具时，<code>sendRequest</code> 把权限请求发送到 Claude.ai 网页，用户在网页上点击允许/拒绝，<code>onResponse</code> 回调被触发，Agent 得到结果继续执行。<code>cancelRequest</code> 用于在 Agent 侧取消后通知网页端关闭确认弹窗，保证双端 UI 同步。</p>
 <hr />
-<p>真正的主循环在 <code>query.ts</code>。<code>query()</code> 函数（<code>src/query.ts:219</code>）本身也是一个薄壳，它在第 230 行通过 <code>yield*</code> 委托给 <code>queryLoop()</code>：</p>
-<pre><code class="language-typescript">// src/query.ts:230（委托调用）
-const terminal = yield* queryLoop(params, consumedCommandUuids)
+<h2 id="源码实例-2变体lsp-服务集成标准协议的反向通道"><a class="header" href="#源码实例-2变体lsp-服务集成标准协议的反向通道">源码实例 2（变体）：LSP 服务集成——标准协议的反向通道</a></h2>
+<p>Bridge 是 Agent 向 IDE 推送；LSP 服务是 IDE 向 Agent 反馈。两者方向相反，但都让 Agent 和 IDE 之间有了双向数据流。</p>
+<p><code>src/services/lsp/LSPClient.ts:51</code> 的 <code>createLSPClient()</code> 用闭包封装了一个完整的 LSP 客户端：</p>
+<pre><code class="language-typescript">// src/services/lsp/LSPClient.ts:51
+export function createLSPClient(
+  serverName: string,
+  onCrash?: (error: Error) =&gt; void,
+): LSPClient {
+  // 闭包内状态
+  let process: ChildProcess | undefined
+  let connection: MessageConnection | undefined
+  let capabilities: ServerCapabilities | undefined
+  let isInitialized = false
+  // ...
+  // 通过 vscode-jsonrpc 建立 stdio 连接
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/query.ts:230</code></p>
-<p><code>yield*</code> 语法将 <code>queryLoop</code> 的所有 yield 值直接透传给上层——调用方完全感知不到这层包装的存在。这种<strong>生成器委托</strong>（Generator Delegation）使得 <code>query()</code> 对外承诺"我会持续产出消息"，而内部实现可以自由重构。</p>
-<p><code>queryLoop</code> 内部是这样的（<code>src/query.ts:307</code>）：</p>
-<pre><code class="language-typescript">// src/query.ts:307-320（while true 主循环入口，精简版）
-// eslint-disable-next-line no-constant-condition
-while (true) {
-  // 每次迭代开头解构状态
-  let { toolUseContext } = state
-  const {
-    messages,
-    turnCount,
-    // ...其他状态字段...
-  } = state
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/query.ts:307</code></p>
-<p>注释 <code>eslint-disable-next-line no-constant-condition</code> 有意抑制了 ESLint 对 <code>while(true)</code> 的警告——这不是遗忘，而是明确声明"这个循环的退出由内部逻辑控制，而非循环条件"。</p>
-<p><strong>为什么用 <code>while(true)</code> 而不是递归？</strong> 两个原因：第一，异步生成器中的 <code>yield</code> 天然支持外层的 <code>break</code>（<code>for await</code> 的调用方可以随时停止消费），递归则无法在中间打断；第二，Node.js/Bun 的调用栈是有限的，工具调用次数可能达到 20-50 轮，递归面临栈溢出风险，<code>while(true)</code> 则零风险。</p>
-<p><strong>图 8-2：QueryEngine 主循环调用链</strong></p>
-<pre><code class="language-mermaid">flowchart TD
-    caller[SDK 调用者] --&gt;|"for await"| submitMessage["QueryEngine.submitMessage()\n src/QueryEngine.ts:209"]
-    submitMessage --&gt;|"for await"| query["query()\nsrc/query.ts:219"]
-    query --&gt;|"yield*"| queryLoop["queryLoop()\nsrc/query.ts:241"]
-    queryLoop --&gt; whileTrue["while(true)\nsrc/query.ts:307"]
-    whileTrue --&gt; apiCall[发送 API 请求]
-    apiCall --&gt; streaming[流式接收响应]
-    streaming --&gt; needsFollowUp{needsFollowUp?}
-    needsFollowUp --&gt;|true: 有 tool_use 块| execTool[执行工具]
-    execTool --&gt; whileTrue
-    needsFollowUp --&gt;|"false: 无 tool_use"| exit[退出 while]
-    exit --&gt; terminal[返回 Terminal]
-</code></pre>
-<p>注意调用链最深处是 <code>queryLoop</code> 内的 <code>while(true)</code>——上层三层函数（<code>submitMessage</code>、<code>query</code>、<code>queryLoop</code>）都是包装和委托，真正决定"是否继续循环"的逻辑全部在 <code>while(true)</code> 内部。</p>
-<p>循环的出口旗标在每次迭代开始时重置（<code>src/query.ts:558</code>）：</p>
-<pre><code class="language-typescript">// src/query.ts:555-560（循环出口旗标初始化）
-// 注意：stop_reason === 'tool_use' 是不可靠的——不总是被正确设置。
-// 在流式响应期间，只要出现 tool_use 块就设置此旗标——这是唯一可靠的循环继续信号。
-// 如果流式结束后为 false，说明本轮对话已完成（除非 stop-hook 触发重试）。
-// （原文："Set during streaming whenever a tool_use block arrives — the sole
-// loop-exit signal. If false after streaming, we're done (modulo stop-hook retry)."）
-const toolUseBlocks: ToolUseBlock[] = []
-let needsFollowUp = false
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/query.ts:558</code></p>
-<p><strong>这个旗标的命名很有讲究</strong>：<code>needsFollowUp</code> 的语义是"这一轮结束后还需要继续对话吗？"——它不关心 <code>stop_reason</code> 的值，只关心响应中是否出现了 <code>ToolUseBlock</code>。流式接收过程中，每收到一个 tool_use 类型的内容块，就把该块加入 <code>toolUseBlocks</code> 数组，同时将 <code>needsFollowUp</code> 置为 <code>true</code>。流式结束后，检查旗标：</p>
-<pre><code class="language-typescript">// src/query.ts:1062-1065（出口判断）
-if (!needsFollowUp) {
-  // 没有工具调用——对话完成，退出循环
-  // ...处理各类终止情况（紧急停止、PTL 错误恢复等）...
+<p><strong>源码参考：</strong> <code>src/services/lsp/LSPClient.ts:51</code></p>
+<p>注意传输方式：LSP 用的是 <strong>stdio</strong>（子进程的标准输入/输出），而非 WebSocket 或 HTTP。这是 LSP 规范定义的标准传输方式——语言服务器（rust-analyzer、pyright 等）都实现了 stdio 传输。Claude Code 使用 <code>vscode-jsonrpc</code> 库（<code>LSPClient.ts:3</code>）来处理消息的序列化和帧格式，而不是自己实现 JSON-RPC 协议。</p>
+<p><strong>这与 Bridge 的核心区别</strong>：Bridge 使用自定义的 CCR 协议（因为 Claude.ai 后端有 Claude Code 专属的消息格式和会话管理需求），而 LSP 使用标准 JSON-RPC（因为复用所有兼容 LSP 的语言服务器是更大的价值）。一个是"接入专属生态需要自定义协议"，一个是"接入通用生态要遵守开放标准"。</p>
+<p><code>src/services/lsp/LSPServerManager.ts:1</code> 的 <code>LSPServerManager</code> 负责多语言服务器的生命周期：</p>
+<pre><code class="language-typescript">// src/services/lsp/LSPServerManager.ts:16
+export type LSPServerManager = {
+  initialize(): Promise&lt;void&gt;
+  shutdown(): Promise&lt;void&gt;
+  getServerForFile(filePath: string): LSPServerInstance | undefined
+  ensureServerStarted(filePath: string): Promise&lt;LSPServerInstance | undefined&gt;
+  sendRequest: &lt;TResult&gt;(
+    method: string,
+    params: unknown,
+    filePath: string,
+  ) =&gt; Promise&lt;TResult | undefined&gt;
+  // ...
 }
 </code></pre>
-<p><strong>源码参考：</strong> <code>src/query.ts:1062</code></p>
-<p><strong><code>if (!needsFollowUp)</code> 是循环的正常出口。</strong> 这里处理的不是"如何退出循环"（直接 break 或 return），而是"退出前还有什么清理工作"——例如检查是否有 prompt-too-long 错误需要恢复，是否触发了停止 Hook 的重试。设计上的精妙在于：<strong>循环退出的条件由 AI 的行为（是否返回工具调用）决定，而非调用方预设的判断逻辑。</strong></p>
+<p><strong>源码参考：</strong> <code>src/services/lsp/LSPServerManager.ts:16</code></p>
+<p><code>getServerForFile(filePath)</code> 根据文件扩展名路由到对应的语言服务器——<code>.rs</code> 文件用 rust-analyzer，<code>.py</code> 文件用 pyright，以此类推。<code>ensureServerStarted</code> 的懒启动设计意味着语言服务器只在真正需要时才被启动，不会增加 Claude Code 的启动时间。</p>
+<h3 id="诊断反馈lsp-结果如何进入-agent-上下文"><a class="header" href="#诊断反馈lsp-结果如何进入-agent-上下文">诊断反馈：LSP 结果如何进入 Agent 上下文</a></h3>
+<p><code>src/services/lsp/LSPDiagnosticRegistry.ts:1</code> 维护了一个 LRU 缓存，存放待处理的 LSP 诊断：</p>
+<pre><code class="language-typescript">// src/services/lsp/LSPDiagnosticRegistry.ts:12
+export type PendingLSPDiagnostic = {
+  serverName: string
+  files: DiagnosticFile[]
+  timestamp: number
+  attachmentSent: boolean  // ← 是否已注入对话上下文
+}
+</code></pre>
+<p><strong>源码参考：</strong> <code>src/services/lsp/LSPDiagnosticRegistry.ts:12</code></p>
+<p><code>attachmentSent</code> 字段是关键：LSP 的 <code>publishDiagnostics</code> 通知是异步推送的（语言服务器完成分析后主动推送），但 Agent 对话是轮次制的。<code>LSPDiagnosticRegistry</code> 把诊断暂存起来，在下一轮对话时通过 <code>passiveFeedback.ts</code> 以"附件"形式注入 Agent 的上下文——诊断从 IDE 跨越协议边界，变成了 Agent 的上下文输入。</p>
+<p><strong>图 8-2：LSP 诊断从 IDE 流向 Agent 上下文</strong></p>
+<pre><code class="language-mermaid">sequenceDiagram
+    participant LS as Language Server&lt;br/&gt;（rust-analyzer/pyright）
+    participant LC as LSPClient.ts&lt;br/&gt;stdio + JSON-RPC
+    participant DR as LSPDiagnosticRegistry
+    participant PF as passiveFeedback.ts
+    participant CTX as Agent 对话上下文
+
+    LS-&gt;&gt;LC: publishDiagnostics 通知（JSON-RPC）
+    LC-&gt;&gt;PF: 转发诊断数据
+    PF-&gt;&gt;DR: registerPendingLSPDiagnostic()&lt;br/&gt;attachmentSent = false
+    Note over DR: 缓存等待注入时机
+    CTX-&gt;&gt;DR: 新一轮对话开始
+    DR-&gt;&gt;CTX: 注入诊断附件&lt;br/&gt;attachmentSent → true
+</code></pre>
+<p><em>图注：LSP 诊断的注入是异步的——语言服务器推送诊断的时机与 Agent 查询的时机不同步。DiagnosticRegistry 充当缓冲区，在合适的时机把诊断转化为 Agent 的上下文输入。<code>attachmentSent</code> 标记防止重复注入。</em></p>
 <hr />
-<h2 id="源码实例-2变体agenttoolrunagentts子-agent-的不同退出语义"><a class="header" href="#源码实例-2变体agenttoolrunagentts子-agent-的不同退出语义">源码实例 2（变体）：AgentTool/runAgent.ts——子 Agent 的不同退出语义</a></h2>
-<p>主循环的第二个实例出现在子 Agent 的执行器中。<code>AgentTool/runAgent.ts:748</code> 同样使用 <code>query()</code> 驱动循环：</p>
-<pre><code class="language-typescript">// src/tools/AgentTool/runAgent.ts:748-756（子 Agent 循环入口，精简版）
-for await (const message of query({
-  messages: initialMessages,
-  systemPrompt: agentSystemPrompt,
-  userContext: resolvedUserContext,
-  systemContext: resolvedSystemContext,
-  canUseTool,
-  toolUseContext: agentToolUseContext,
-  querySource,
-  maxTurns: maxTurns ?? agentDefinition.maxTurns,
-})) {
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/tools/AgentTool/runAgent.ts:748</code></p>
-<p>表面上看，子 Agent 的循环和主 Agent 几乎相同——都用 <code>for await</code> 消费 <code>query()</code> 的输出。<strong>关键区别在于 max_turns_reached 的处理方式</strong>：</p>
-<pre><code class="language-typescript">// src/tools/AgentTool/runAgent.ts:773-786（超轮次处理）
-if (message.attachment.type === 'max_turns_reached') {
-  logForDebugging(
-    `[Agent: ${agentDefinition.agentType}] 达到最大轮次限制 (${message.attachment.maxTurns})`,
-  )
-  break  // ← 子 Agent：break，优雅降级
-}
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/tools/AgentTool/runAgent.ts:786</code></p>
-<p>再对比主 Agent 在同一情况下的处理（<code>src/QueryEngine.ts:870</code>）：</p>
-<pre><code class="language-typescript">// src/QueryEngine.ts:868-872（主 Agent 超轮次处理）
-errors: [
-  `Reached maximum number of turns (${message.attachment.maxTurns})`,
-],
-// ...
-return  // ← 主 Agent：return，终止生成器
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:870</code></p>
-<p><strong>为什么主 Agent 用 <code>return</code>（终止）而子 Agent 用 <code>break</code>（退出循环但继续执行后续代码）？</strong></p>
-<p>这个差异体现了两个不同的"调用方期望"：</p>
-<ul>
-<li>主 Agent 是 SDK 的顶层入口——超过轮次意味着任务彻底失败，调用方应该收到错误信息并停止等待。<code>return</code> 终止生成器，向 SDK 调用者发出"任务结束，带错误"的信号。</li>
-<li>子 Agent 是一个工具的内部实现——超过轮次不一定意味着完全失败，子 Agent 可能已经完成了大部分工作。<code>break</code> 退出循环后，代码还会继续执行"整理已收集的结果、向父 Agent 汇报"等收尾逻辑。<strong>调用者（<code>AgentTool</code>）而非被调用者决定"超轮次是否等于失败"。</strong></li>
-</ul>
-<div class="table-wrapper"><table><thead><tr><th>维度</th><th>主 Agent（QueryEngine）</th><th>子 Agent（runAgent）</th></tr></thead><tbody>
-<tr><td>超轮次处理</td><td><code>return</code>（终止生成器）</td><td><code>break</code>（退出循环）</td></tr>
-<tr><td>对调用方的语义</td><td>任务彻底失败，带错误消息</td><td>优雅降级，收集已有结果</td></tr>
-<tr><td>谁决定失败语义</td><td>QueryEngine 自身</td><td>AgentTool（子 Agent 的调用者）</td></tr>
-<tr><td>源码位置</td><td><code>QueryEngine.ts:870</code></td><td><code>runAgent.ts:786</code></td></tr>
+<h2 id="模式剖析两种双界面的不同形态"><a class="header" href="#模式剖析两种双界面的不同形态">模式剖析：两种"双界面"的不同形态</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>Bridge（CCR 协议）</th><th>LSP（JSON-RPC 协议）</th></tr></thead><tbody>
+<tr><td><strong>通信方向</strong></td><td>Agent → IDE（推送输出）</td><td>IDE → Agent（反馈诊断）</td></tr>
+<tr><td><strong>协议类型</strong></td><td>自定义 CCR 协议（SSE + WebSocket）</td><td>标准 JSON-RPC（stdio）</td></tr>
+<tr><td><strong>选型理由</strong></td><td>Claude.ai 有专属消息格式和会话管理</td><td>复用所有 LSP 兼容语言服务器</td></tr>
+<tr><td><strong>连接管理</strong></td><td>指数退避重连，心跳保活</td><td>懒启动，文件类型路由</td></tr>
+<tr><td><strong>失败处理</strong></td><td><code>BackoffConfig</code> 分类退避</td><td>重试 + crash 回调</td></tr>
+<tr><td><strong>认证</strong></td><td>OAuth JWT，需要 Claude.ai 订阅</td><td>无认证（本地子进程）</td></tr>
+<tr><td><strong>关联源码</strong></td><td><code>bridgeMain.ts:141</code>, <code>bridgeEnabled.ts:32</code></td><td><code>LSPClient.ts:51</code>, <code>LSPServerManager.ts:16</code></td></tr>
 </tbody></table>
 </div>
-<p>这个对比揭示了复用 <code>query()</code> 的设计意图：<strong>核心循环逻辑（while(true) + needsFollowUp）被共享，但生命周期语义（超轮次时该怎么办）由各自的调用层决定。</strong></p>
-<p><strong>图 8-3：主 Agent 与子 Agent 超轮次的不同生命周期</strong></p>
-<pre><code class="language-mermaid">flowchart TD
-    subgraph 主 Agent（QueryEngine）
-        direction TB
-        QE1["for await query()"] --&gt; QE2{max_turns_reached?}
-        QE2 --&gt;|否| QE3[继续消费消息]
-        QE2 --&gt;|是| QE4["return（终止生成器）"]
-        QE4 --&gt; QE5["SDK 调用者收到 errors 字段\n（任务彻底失败）"]
-    end
-
-    subgraph 子 Agent（runAgent）
-        direction TB
-        RA1["for await query()"] --&gt; RA2{max_turns_reached?}
-        RA2 --&gt;|否| RA3[继续消费消息]
-        RA2 --&gt;|是| RA4["break（退出循环）"]
-        RA4 --&gt; RA5[继续执行收尾逻辑]
-        RA5 --&gt; RA6["AgentTool 决定\n是否视为失败"]
-    end
-</code></pre>
-<p>主 Agent（左）超轮次后直接 <code>return</code>，生成器终止，SDK 调用者立即收到错误；子 Agent（右）超轮次后 <code>break</code>，循环退出但函数继续执行，收尾逻辑由父调用者（<code>AgentTool</code>）负责——<strong>相同的 <code>query()</code> 核心，不同的调用层决定生命周期结局。</strong></p>
-<hr />
-<h2 id="源码实例-3重试与中断循环的两个安全阀"><a class="header" href="#源码实例-3重试与中断循环的两个安全阀">源码实例 3：重试与中断——循环的两个安全阀</a></h2>
-<p>为什么不用……？如果 API 返回 429（超出频率限制）或 500（服务器错误），循环该怎么办？如果用户在第 10 轮工具调用时按下 Ctrl+C，系统又该怎么停止？</p>
-<p>主循环有两个互补的安全阀——它们从不同方向保护循环的稳定性。</p>
-<p><strong>安全阀一：API 重试（对内透明）</strong></p>
-<p>当底层 API 请求失败并触发重试时，<code>queryLoop</code> 会产出一个 <code>api_retry</code> 类型的系统消息（<code>src/QueryEngine.ts:946</code>）：</p>
-<pre><code class="language-typescript">// src/QueryEngine.ts:943-951（API 重试事件，精简版）
-if (message.subtype === 'api_error') {
-  yield {
-    type: 'system',
-    subtype: 'api_retry' as const,
-    attempt: message.retryAttempt,
-    max_retries: message.maxRetries,
-    retry_delay_ms: message.retryInMs,
-    error_status: message.error.status ?? null,
-    error: categorizeRetryableAPIError(message.error),
-    session_id: getSessionId(),
-    uuid: message.uuid,
-  }
-}
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:946</code></p>
-<p>注意这段代码的设计：<strong>重试本身由底层处理，<code>QueryEngine</code> 只是将重试事件透传给 SDK 调用者</strong>。<code>attempt</code>、<code>max_retries</code>、<code>retry_delay_ms</code> 字段让 UI 层可以显示"正在重试（第 2 次，共 3 次）"的进度提示，而不需要 SDK 调用者自己实现重试逻辑。重试对循环来说是透明的——它不影响 <code>needsFollowUp</code> 的值，循环在重试成功后继续正常执行。</p>
-<p><strong>安全阀二：外部中断（对外显式）</strong></p>
-<p>中断机制则相反——它是显式的，由外部主动触发（<code>src/QueryEngine.ts:1158</code>）：</p>
-<pre><code class="language-typescript">// src/QueryEngine.ts:1158-1160
-interrupt(): void {
-  this.abortController.abort()
-}
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:1158</code></p>
-<p>一行代码，却有深远影响。<code>QueryEngine</code> 在构造时初始化 <code>AbortController</code>（<code>src/QueryEngine.ts:203</code>）：</p>
-<pre><code class="language-typescript">// src/QueryEngine.ts:203
-this.abortController = config.abortController ?? createAbortController()
-</code></pre>
-<p><strong>源码参考：</strong> <code>src/QueryEngine.ts:203</code></p>
-<p>这个 <code>AbortController</code> 通过参数链路传入 <code>query()</code> → <code>queryLoop()</code> → API 调用层。当 <code>interrupt()</code> 被调用时，<code>this.abortController.abort()</code> 会触发 <code>AbortSignal</code>，所有正在等待的网络请求立即取消，<code>queryLoop</code> 内的 <code>for await</code> 循环收到取消信号后退出，主循环自然终止。</p>
-<p>整个中断路径是：用户按 Ctrl+C → REPL 调用 <code>queryEngine.interrupt()</code> → <code>abortController.abort()</code> → <code>AbortSignal</code> 传播到所有网络请求 → 流式响应中断 → <code>while(true)</code> 退出。</p>
-<p><strong>图 8-4：两个安全阀的工作方向</strong></p>
-<pre><code class="language-mermaid">flowchart TD
-    apiError["API 错误（429/500）"] --&gt;|触发重试| retry["底层重试机制"]
-    retry --&gt;|透明| loop["while(true) 主循环"]
-    retry --&gt;|产出事件| sdkCaller["SDK 调用者\n（可显示重试进度）"]
-
-    userStop["用户 Ctrl+C / Stop 按钮"] --&gt;|调用| interrupt["interrupt()"]
-    interrupt --&gt;|abort()| abortController["AbortController.abort()"]
-    abortController --&gt;|AbortSignal 传播| loop
-    loop --&gt;|收到中断信号| exit["循环退出"]
-</code></pre>
-<p>两个安全阀的方向相反：重试向内保护（对循环透明，让它在短暂失败后恢复）；中断向外响应（接收外部停止信号，立即停止循环）。</p>
-<hr />
-<h2 id="模式剖析可中断多轮工具调用循环"><a class="header" href="#模式剖析可中断多轮工具调用循环">模式剖析：可中断多轮工具调用循环</a></h2>
-<p>现在我们可以提炼这个在代码库中至少出现 3 次的模式了。</p>
-<p>把三个源码实例放在一起，核心结构清晰可见：</p>
-<ol>
-<li><strong>以 <code>while(true)</code> 驱动循环</strong>，循环条件不在循环头，而在循环体内部</li>
-<li><strong>以 <code>needsFollowUp</code> 旗标作为业务出口信号</strong>，由 AI 的行为决定，而非调用方预设</li>
-<li><strong>以 <code>AbortController</code> 作为外部中断通道</strong>，支持任意时刻的强制停止</li>
-<li><strong>以 <code>maxTurns</code> 作为轮次保护</strong>（<code>src/QueryEngine.ts:146</code>），防止无限循环</li>
-</ol>
-<p>这三道防线并不是各自独立的——<strong>业务出口（<code>needsFollowUp</code>）是正常路径，轮次限制（<code>maxTurns</code>）是资源保护，中断信号（<code>AbortController</code>）是紧急停止</strong>。三者共同确保循环的稳定性：正常情况走业务出口，资源超限走轮次限制，用户主动停止走中断信号。</p>
-<p><strong>图 8-5：三道防线保护机制</strong></p>
-<pre><code class="language-mermaid">flowchart TD
-    start[开始一轮 while 迭代] --&gt; api[发送 API 请求]
-    api --&gt;|"AbortSignal 触发"| abort["⚡ 紧急停止\n（interrupt() 触发）"]
-    api --&gt;|"API 响应成功"| stream[流式接收响应]
-    stream --&gt; check{needsFollowUp?}
-    check --&gt;|"false: AI 无工具调用"| normal["✅ 正常出口\n任务完成"]
-    check --&gt;|"true: AI 有工具调用"| execTool[执行工具，继续下一轮]
-    execTool --&gt; turnCheck{超过 maxTurns?}
-    turnCheck --&gt;|是| maxStop["🛡️ 轮次保护\n(maxTurns 限制)"]
-    turnCheck --&gt;|否| start
-
-    style normal fill:#e8f5e9,stroke:#388e3c
-    style abort fill:#ffebee,stroke:#c62828
-    style maxStop fill:#fff3e0,stroke:#e65100
-</code></pre>
-<p><strong>绿色路径</strong>（正常出口）是预期的大多数情况；<strong>红色路径</strong>（紧急停止）处理用户主动中断；<strong>橙色路径</strong>（轮次保护）处理 AI 陷入无限工具调用的边缘情况。</p>
+<p>两种实现的共同核心是<strong>协议适配器</strong>：Bridge 适配 CCR 后端的专属协议，LSP 适配开放的语言服务器协议——两者都让 Agent 的核心逻辑不需要知道外部接口的细节。Agent 只处理 <code>Message[]</code> 和工具调用，Bridge/LSP 层负责把这些与外部世界对接。</p>
 <hr />
 <h2 id="适用范围"><a class="header" href="#适用范围">适用范围</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>场景</th><th>适用</th><th>理由</th><th>替代方案</th></tr></thead><tbody>
-<tr><td>AI 多步工具调用（文件读写、代码执行、搜索）</td><td>✓</td><td>需要多轮对话驱动工具，出口由 AI 决定</td><td>N/A（本模式的核心应用场景）</td></tr>
-<tr><td>子 Agent 递归调用</td><td>✓</td><td><code>query()</code> 可复用，<code>runAgent.ts</code> 已验证</td><td>N/A</td></tr>
-<tr><td>需要随时中断的交互场景（REPL、CLI）</td><td>✓</td><td><code>interrupt()</code> 支持立即外部中止</td><td><code>Promise.race()</code>，但不支持流式生成器</td></tr>
-<tr><td>纯文本流式输出（无工具调用）</td><td>✗</td><td>不需要循环，一次 API 调用即可完成</td><td>直接 <code>for await</code> 消费流式响应</td></tr>
-<tr><td>需要精确 token 计费（避免重复计费）</td><td>✗（谨慎）</td><td>重试时 token 可能被重复计费（推断）</td><td>在调用层做幂等保护</td></tr>
-<tr><td>要求每轮结果持久化到数据库的场景</td><td>✗（需改造）</td><td>默认实现不含持久化钩子</td><td>在 <code>submitMessage</code> 消费循环中扩展</td></tr>
+<tr><td>Agent 需要同时服务终端和 Web 界面</td><td>✓</td><td>双界面桥接让核心不变，只增加适配层</td><td>为每种界面维护独立的 Agent 实例</td></tr>
+<tr><td>需要接入现有生态的标准协议（LSP、DAP 等）</td><td>✓</td><td>标准协议复用所有兼容实现，降低集成成本</td><td>自己实现协议解析</td></tr>
+<tr><td>连接不稳定的长连接服务</td><td>✓</td><td>BackoffConfig 模式提供结构化的重连策略</td><td>固定间隔重连（容易引起惊群）</td></tr>
+<tr><td>Agent 需要实时感知 IDE 的代码变化</td><td>✓</td><td>LSP 的 publishDiagnostics 推送适合实时反馈</td><td>轮询文件系统</td></tr>
+<tr><td>工具调用需要 IDE 端的用户确认</td><td>✓</td><td>BridgePermissionCallbacks 实现跨进程权限代理</td><td>仅支持终端确认</td></tr>
+<tr><td>离线环境（无 Claude.ai 账号）</td><td>✗</td><td>Bridge 需要 OAuth 订阅，无法离线使用</td><td>纯终端模式</td></tr>
+<tr><td>语言服务器启动时间 &gt; 5 秒</td><td>△</td><td>懒启动缓解了这一问题，但首次使用仍有延迟</td><td>预启动 + 等待就绪</td></tr>
 </tbody></table>
 </div>
-<p>值得注意的一个边界：<strong>纯流式输出场景（如生成一篇文章）不需要这个模式</strong>。如果 AI 不调用任何工具，<code>needsFollowUp</code> 始终为 <code>false</code>，循环只执行一轮就正常退出——这时的"循环"退化为单次请求，带来的是不必要的状态维护开销。</p>
 <hr />
 <h2 id="权衡与局限"><a class="header" href="#权衡与局限">权衡与局限</a></h2>
-<p>为什么不用……？主循环最大的隐患不是功能缺失，而是<strong>无限循环风险</strong>。</p>
-<p>考虑一个边缘场景：AI 写了一个工具调用，工具执行失败，AI 再次调用同一个工具……如果没有保护，这个循环可以永远运行下去。<code>maxTurns</code> 是唯一的硬性保护（<code>src/QueryEngine.ts:146</code>），它的默认值在不同调用场景下不同（推断：主循环默认约 10-50 轮，子 Agent 由 <code>agentDefinition.maxTurns</code> 定义）。<strong>如果 <code>maxTurns</code> 设置过大，恶意或错误的工具响应可以让系统空转数十轮，耗尽 token 预算。</strong></p>
-<p><strong><code>while(true)</code> 与 ESLint 的紧张关系</strong>。源码中的 <code>// eslint-disable-next-line no-constant-condition</code> 注释是一个信号——团队知道这是一个需要解释的选择。如果项目有严格的 lint 规则，每处 <code>while(true)</code> 都需要这行抑制注释，增加认知噪音。替代方案是改用 <code>while (needsFollowUp || isFirstTurn)</code>，但这样又把循环条件从循环体内转移到循环头，而循环头在首次进入时无法判断 <code>needsFollowUp</code> 的初始语义。<code>while(true)</code> 加内部出口，是两害取其轻的选择。</p>
-<p><strong>异步生成器的调试体验</strong>。<code>while(true)</code> 内嵌套 <code>yield*</code> 嵌套 <code>yield</code> 的三层生成器结构，在调试时需要理解生成器的暂停/恢复语义。当工具执行异常时，调用栈会跨越三层生成器，堆栈信息可读性差。这是把循环逻辑提取到独立函数（<code>queryLoop</code>）的代价——可测试性提升，但单步调试复杂度随之提升。</p>
-<p><strong><code>taskBudget</code>（token 预算）作为辅助保护</strong>（<code>src/QueryEngine.ts:148</code>）。除了 <code>maxTurns</code>，系统还支持 <code>taskBudget: { total: number }</code> 参数——按 token 使用量限制总消耗，而非按轮次计数。这是第四道防线，专门应对"每轮工具调用很少，但单次 AI 响应消耗大量 token"的场景。</p>
+<p><strong>Bridge 的延迟成本</strong>：每条消息都要经过 CCR 后端中转——Agent 在终端里输出的内容，要先发送到 Claude.ai 服务器，再推送到 Web 客户端。网络往返增加了 IDE 界面的延迟感，这与终端直接渲染的体验有本质差异。<code>BackoffConfig</code> 的 <code>connCapMs</code> 字段暗示了这个权衡：连接退避上限越高，重连越慢，用户等待时间越长。</p>
+<p><strong>LSP 的协议版本兼容性</strong>：LSP 规范在持续演化（当前 3.17），不同语言服务器实现的版本不同。<code>LSPServerInstance.ts</code> 里的 <code>LSP_ERROR_CONTENT_MODIFIED = -32801</code> 和 <code>MAX_RETRIES_FOR_TRANSIENT_ERRORS = 3</code> 说明 Claude Code 需要专门处理语言服务器的瞬时错误（如 rust-analyzer 仍在索引项目时的"内容修改"错误）。标准协议的代价是需要处理各种实现的不一致性。</p>
+<p><strong>feature 门控的维护成本</strong>：<code>isBridgeEnabled()</code> 中的 <code>feature('BRIDGE_MODE')</code> 门控（见第 3 章）意味着 Bridge 的 32 个文件在非 BRIDGE_MODE 构建中完全不存在。这保证了产物体积和安全隔离，但也意味着这 32 个文件只在 Ant 内部构建中能被完整测试。</p>
 <hr />
 <h2 id="与已知模式的对话"><a class="header" href="#与已知模式的对话">与已知模式的对话</a></h2>
-<p>这个模式与三个经典设计模式有表面的相似之处，但本质不同。</p>
-<p><strong>与 GoF 命令模式（Command Pattern）的比较</strong>。命令模式把操作封装为对象，由调用方决定何时执行。<code>Tool</code> 接口（详见第 10 章）确实是一种命令封装——工具就是一个可执行的命令对象。<strong>但命令模式中，执行结果不会反馈给命令发起者并影响下一个命令的选择。</strong> 在多轮工具调用循环中，每次工具执行结果都会被 AI 读取，AI 据此决定下一步调用什么——<strong>执行结果形成了一个反馈环（feedback loop）</strong>，这是传统命令模式中不存在的结构。</p>
-<p><strong>与 EIP 事件驱动消费者（Event-Driven Consumer）的比较</strong>。事件驱动消费者持续从消息源拉取消息并处理。<code>while(true)</code> 主循环外观上与之相似——它也在持续"消费"API 的响应。<strong>关键区别是消费者的角色</strong>：在 EIP 模式中，消费者被动处理消息；在本模式中，消费者（AI）不仅处理消息，还主动<strong>产出新的请求</strong>（工具调用结果 → 新 API 请求），形成了生产-消费的双向流动。</p>
-<div class="table-wrapper"><table><thead><tr><th>维度</th><th>可中断多轮工具调用循环</th><th>GoF 命令模式</th><th>EIP 事件驱动消费者</th></tr></thead><tbody>
-<tr><td>循环驱动者</td><td>AI（通过 tool_use 信号）</td><td>调用方（显式 execute）</td><td>外部事件源</td></tr>
-<tr><td>执行反馈</td><td>有（工具结果 → 影响下一步）</td><td>无（执行后丢弃）</td><td>有（但消费者不产出新消息）</td></tr>
-<tr><td>退出条件</td><td>AI 行为（无 tool_use）</td><td>调用方决定</td><td>消息队列为空</td></tr>
-<tr><td>外部中断</td><td>AbortController（显式）</td><td>不调用 execute（隐式）</td><td>停止消费者进程</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>维度</th><th>双界面桥接</th><th>GoF Bridge 模式</th><th>IPC（进程间通信）</th></tr></thead><tbody>
+<tr><td><strong>抽象目标</strong></td><td>同一 Agent 服务多种界面</td><td>抽象与实现分离（可独立变化）</td><td>进程间数据传输</td></tr>
+<tr><td><strong>方向</strong></td><td>双向（Agent↔IDE）</td><td>接口层 → 实现层（单向依赖）</td><td>双向，对等</td></tr>
+<tr><td><strong>协议选择</strong></td><td>按生态需求（自定义 or 标准）</td><td>无协议概念（同进程接口）</td><td>各异（socket/pipe/共享内存）</td></tr>
+<tr><td><strong>失败处理</strong></td><td>显式退避策略 + 心跳</td><td>无（同进程不存在连接失败）</td><td>通常由调用方处理</td></tr>
 </tbody></table>
 </div>
-<p><strong>Claude Code 的选择——<code>while(true)</code> + <code>needsFollowUp</code>——本质上是一个专门为"AI 工具调用"语义设计的新模式</strong>：让 AI 的输出（是否包含 tool_use）成为循环继续的唯一判断依据，同时保留外部中断通道。这个设计很难从已有模式名称推导出来，但一旦理解，就会觉得它"就该是这样的"。</p>
+<p><strong>与 GoF Bridge 模式的对话</strong>：GoF 的 Bridge 用于分离"接口层次"和"实现层次"，让两者可以独立变化。Claude Code 的 Bridge 是不同的概念——它是字面意义上的"桥梁"，连接两个独立的进程或系统。名字相同，但设计目标完全不同。更准确的 GoF 类比是 <strong>Adapter 模式</strong>：把 Agent 的输出格式适配成 CCR 协议，把 LSP 的诊断格式适配成 Agent 的上下文格式。</p>
+<p><strong>Bridge vs LSP 的协议选择哲学</strong>：Bridge 选择自定义协议，是因为 Claude.ai 的 CCR 后端和 Claude Code 是"有主合作"——两边都由 Anthropic 控制，可以共同演化协议。LSP 选择标准协议，是因为语言服务器是"开放生态"——Anthropic 无法控制 rust-analyzer、pyright 的实现。<strong>"控制什么就自定义什么，依赖什么就遵守什么"</strong>——这是双界面桥接协议选型的根本逻辑。</p>
 <hr />
 <h2 id="模式提炼"><a class="header" href="#模式提炼">模式提炼</a></h2>
-<h3 id="模式-1可中断多轮工具调用循环interruptible-multi-turn-tool-loop"><a class="header" href="#模式-1可中断多轮工具调用循环interruptible-multi-turn-tool-loop">模式 1：可中断多轮工具调用循环（Interruptible Multi-Turn Tool Loop）</a></h3>
-<p><strong>解决的问题</strong>：AI 工具调用不能在单次 API 请求内完成，需要在收到工具使用信号后自动继续对话，直到 AI 主动结束。</p>
-<p><strong>核心做法</strong>：用 <code>while(true)</code> + <code>needsFollowUp</code> 旗标驱动循环——每轮检测 AI 响应中是否包含 <code>ToolUseBlock</code>，有则继续（执行工具后再次请求），无则退出。以 <code>AbortController</code> 支持外部中断。</p>
-<p><strong>前置条件</strong>：AI API 支持 <code>tool_use</code> 类型的响应块（或等效的"继续"信号）；运行时支持异步生成器（<code>async *</code>）；调用方能传入 <code>AbortController</code> 引用。</p>
-<p><strong>源码证据</strong>：<code>src/query.ts:307</code>（<code>while(true)</code> 主循环）；<code>src/query.ts:558</code>（<code>needsFollowUp</code> 旗标初始化）；<code>src/query.ts:1062</code>（循环出口判断）</p>
+<h3 id="双界面桥接dual-interface-bridge"><a class="header" href="#双界面桥接dual-interface-bridge">双界面桥接（Dual-Interface Bridge）</a></h3>
+<p><strong>解决的问题</strong>：同一个 Agent 需要服务终端和 IDE/Web 两种界面，两种界面协议与消息格式互不兼容，核心层无法直接处理所有差异。</p>
+<p><strong>核心做法</strong>：在 Agent 进程内增加独立适配层（Bridge/LSP），每层只负责自己接口的协议翻译，核心层不感知外部界面。</p>
+<p><strong>源码证据</strong>：src/bridge/bridgeMain.ts:141，src/services/lsp/LSPClient.ts:51</p>
 <hr />
-<h3 id="模式-2三道防线循环保护three-gate-loop-guard"><a class="header" href="#模式-2三道防线循环保护three-gate-loop-guard">模式 2：三道防线循环保护（Three-Gate Loop Guard）</a></h3>
-<p><strong>解决的问题</strong>：多轮循环如果缺乏出口保护，可能因 AI 错误或恶意工具响应导致无限运行，耗尽 token 和时间。</p>
-<p><strong>核心做法</strong>：三道防线并行：① 业务出口（<code>needsFollowUp</code>，AI 行为驱动）；② 轮次限制（<code>maxTurns</code>，资源保护）；③ 外部中止（<code>AbortSignal</code>，紧急停止）。三者处理的场景互不重叠，共同覆盖所有退出路径。</p>
-<p><strong>前置条件</strong>：调用方能传入 <code>maxTurns</code> 配置和 <code>AbortController</code> 引用；系统能区分"正常结束"（无工具调用）和"超限结束"（maxTurns）以发出不同的下游信号。</p>
-<p><strong>源码证据</strong>：<code>src/QueryEngine.ts:870</code>（超轮次错误消息）；<code>src/QueryEngine.ts:1158</code>（<code>interrupt()</code> 方法）；<code>src/QueryEngine.ts:146</code>（<code>maxTurns</code> 配置项）</p>
-<hr />
-<h3 id="模式-3生成器委托薄壳generator-delegation-thin-shell"><a class="header" href="#模式-3生成器委托薄壳generator-delegation-thin-shell">模式 3：生成器委托薄壳（Generator Delegation Thin Shell）</a></h3>
-<p><strong>解决的问题</strong>：SDK 门面类（<code>QueryEngine</code>）需要管理跨轮次状态（消息历史、AbortController），又不想将循环逻辑与状态管理耦合在同一个函数中。</p>
-<p><strong>核心做法</strong>：SDK 层（<code>submitMessage</code>）作为薄壳，仅负责状态组装和格式转换；循环逻辑下沉到独立的 <code>queryLoop()</code>，通过 <code>yield*</code> 委托——调用方感知不到委托的存在，两层的职责却被清晰分离。</p>
-<p><strong>前置条件</strong>：语言支持异步生成器和 <code>yield*</code> 委托语法（TypeScript/JavaScript 均支持）；状态与循环逻辑的边界清晰可分。</p>
-<p><strong>源码证据</strong>：<code>src/QueryEngine.ts:209</code>（<code>submitMessage</code> 薄壳）；<code>src/QueryEngine.ts:675</code>（委托 <code>query()</code>）；<code>src/query.ts:230</code>（<code>yield* queryLoop()</code>）</p>
+<h3 id="指数退避持久连接backoff-persistent-connection"><a class="header" href="#指数退避持久连接backoff-persistent-connection">指数退避持久连接（Backoff Persistent Connection）</a></h3>
+<p><strong>解决的问题</strong>：面向外部服务的长连接在网络波动、服务重启、JWT 过期时会中断，固定间隔重连容易导致服务端惊群。</p>
+<p><strong>核心做法</strong>：用 BackoffConfig 分类管理连接失败与业务失败的退避延迟，区分可恢复错误（JWT 刷新）与致命错误（完整重连），心跳提供存活感知。</p>
+<p><strong>前置条件</strong>：连接是持久的长连接（非请求-响应模式），外部服务可能因多种原因中断（网络/认证/服务端维护），客户端数量多到需要防止惊群效应。</p>
+<p><strong>源码证据</strong>：src/bridge/bridgeMain.ts:59，src/bridge/bridgeMain.ts:202</p>
 <hr />
 <h2 id="你能做什么"><a class="header" href="#你能做什么">你能做什么</a></h2>
 <ul>
-<li>
-<p><strong>用 <code>while(true) + needsFollowUp</code> 替代递归调用</strong>，在自己的 AI 工具调用系统中实现主循环。递归在 20+ 轮工具调用时面临栈溢出风险，<code>while(true)</code> 零风险且支持流式 yield。</p>
-</li>
-<li>
-<p><strong>始终为主循环传入 <code>AbortController</code></strong>。即使当前不需要中断功能，提前设计好中断通道——比在需要时再接入容易得多。参考 <code>src/QueryEngine.ts:203</code> 的初始化方式。</p>
-</li>
-<li>
-<p><strong>实现三道防线</strong>，设置合理的 <code>maxTurns</code> 默认值（建议 ≤ 20 轮）。业务出口处理正常情况，轮次限制兜底无限循环，AbortController 响应用户停止。三道防线缺一不可。</p>
-</li>
-<li>
-<p><strong>区分主 Agent 和子 Agent 的退出语义</strong>：超轮次时，主 Agent 应返回带错误信息的结果（调用方已无法继续），子 Agent 应 <code>break</code> 并返回已收集的结果（调用方可以选择如何处理降级结果）。参考 <code>QueryEngine.ts:870</code> vs <code>runAgent.ts:786</code>。</p>
-</li>
-<li>
-<p><strong>把循环逻辑与状态管理分离</strong>：循环驱动（<code>while(true)</code> + 工具执行）提取为独立函数（参考 <code>query.ts:queryLoop</code>），状态管理（消息历史、AbortController）留在外层对象（参考 <code>QueryEngine</code>）。这让循环逻辑可以被多个场景复用（主 Agent、子 Agent 都能用同一个 <code>query()</code>）。</p>
-</li>
-<li>
-<p><strong>用异步生成器（<code>async *</code>）实现主循环</strong>。<code>for await</code> 的外层调用方可以随时 <code>break</code> 停止消费，内层循环感知到消费者停止后自然退出——这是 <code>while(true)</code> + <code>yield</code> 组合的关键优势，不需要额外的"停止标志位"。</p>
-</li>
-<li>
-<p><strong>如果你在构建需要监控循环状态的系统</strong>，参考 <code>src/QueryEngine.ts:946</code> 的 <code>api_retry</code> 事件设计——把重试次数、延迟时间、错误类型封装为可观测的事件，而非让调用方猜测内部状态。透明的重试事件让 UI 层可以显示"正在重试"进度，而不影响循环本身的逻辑。</p>
-</li>
+<li><strong>在 Agent 项目里为"输出给外部"和"从外部接收"设计两条独立管道</strong>：Bridge（推送）和 LSP（接收）的分离是好的架构示范——不要把推送逻辑和接收逻辑混在同一个适配层里</li>
+<li><strong>接入开放生态时优先考虑标准协议</strong>：LSP 选择 JSON-RPC + stdio 而非自定义协议，换来的是"所有 LSP 兼容语言服务器都可以直接接入"——复用现有生态的价值远超自定义协议的灵活性</li>
+<li><strong>设计 <code>BackoffConfig</code> 时区分"连接退避"和"业务退避"</strong>：网络连接失败和业务操作失败的恢复策略应该独立配置，不要用同一个参数控制两种截然不同的重试场景</li>
+<li><strong>长连接服务的心跳要返回分类结果，不要只用 true/false</strong>：参考 <code>heartbeatActiveWorkItems</code> 的四种返回值（ok / auth_failed / fatal / failed），让调用方能针对不同失败类型做出不同响应</li>
+<li><strong>用 <code>attachmentSent</code> 标记防止诊断重复注入</strong>：LSP 的 <code>PendingLSPDiagnostic</code> 模式——缓存异步推送的数据，在合适时机以"已处理/未处理"标记控制注入——可以推广到任何"异步事件 + 同步处理窗口"的场景</li>
+<li><strong>阅读 <code>bridgePermissionCallbacks.ts:10</code> 的 <code>cancelRequest</code> 设计</strong>：跨进程的"人在回路"不仅需要请求和响应，还需要取消通知——用户在 IDE 端取消操作时，Agent 侧需要知道以避免继续等待</li>
 </ul>
 <hr />
-<p>主循环的工具调用结果如何流式传输给调用方、每个 <code>yield</code> 产出的消息结构是什么——这是第 9 章的主题。工具接口的定义契约（<code>Tool</code> 类型如何约束每个工具的输入输出）将在第 10 章展开。</p>
+<p><em>第九章进入 Harness 控制层的心脏：<code>query.ts</code> 的 <code>while(true)</code> 循环是如何驱动"用户输入 → API 调用 → 工具执行 → 继续或停止"的完整生命周期的（详见第 9 章）。</em></p>
 
                     </main>
 
@@ -514,7 +421,7 @@ this.abortController = config.abortController ?? createAbortController()
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../part2/ch09.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../part3/part.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -528,7 +435,7 @@ this.abortController = config.abortController ?? createAbortController()
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../part2/ch09.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../part3/part.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

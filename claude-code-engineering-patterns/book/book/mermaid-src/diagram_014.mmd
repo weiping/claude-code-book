@@ -1,18 +1,12 @@
-flowchart LR
-    start([loadAllCommands 调用]) --> pa["Promise.all 并行加载"]
-    pa --> gs["getSkills(cwd)\n→ 4 个子来源"]
-    pa --> gpc["getPluginCommands()\n→ 插件命令"]
-    pa --> gwc["getWorkflowCommands(cwd)\n→ 工作流命令（WORKFLOW_SCRIPTS gate）"]
-
-    gs --> bs[bundledSkills]
-    gs --> bps[builtinPluginSkills]
-    gs --> sdc[skillDirCommands]
-    gs --> ps[pluginSkills]
-
-    bs --> merge["...spread 合并\n返回统一列表"]
-    bps --> merge
-    sdc --> merge
-    gwc --> merge
-    gpc --> merge
-    ps --> merge
-    cmds["COMMANDS()\n内置命令"] --> merge
+flowchart TD
+    subgraph 前置路由
+        R1[路由层判断类型] --> R2{条件匹配?}
+        R2 -->|是| R3[懒加载处理器]
+        R3 --> R4[立即处理并返回]
+        R2 -->|否| R5[下一条件]
+    end
+    subgraph GoF责任链
+        C1[Handler1] -->|pass-through| C2[Handler2]
+        C2 -->|pass-through| C3[Handler3]
+        C3 --> C4[处理或放弃]
+    end

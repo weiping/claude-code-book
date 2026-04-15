@@ -1,19 +1,19 @@
 spec: task
-name: "第38章：Marketplace 协议——官方注册表与第三方源"
-tags: [book-chapter, part-9]
+name: "第 38 章：PermissionRule 规则引擎——allowedTools 的 glob 匹配与优先级链"
+tags: [book-chapter, part-10]
 ---
 
 ## 意图
 
-揭示 `src/utils/plugins/marketplaceManager.ts`、`marketplaceHelpers.ts` 如何支持官方注册表和第三方 npm 源两种插件来源，以及索引协议、版本解析的实现细节。读者读完后能理解 Marketplace 的双源设计，并能为自己的插件生态设计类似的注册表协议。
+揭示 `src/utils/permissions/PermissionRule.ts`（40行）和 `permissions.ts` 中 allowedTools 规则如何通过 glob 模式匹配、前缀匹配、精确匹配三种算法处理工具权限，以及多来源规则（用户/项目/策略）冲突时的优先级解决机制。读者读完后能掌握规则引擎的匹配算法，并能在自己的系统中实现类似的多源规则优先级机制。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/utils/plugins/marketplaceManager.ts、marketplaceHelpers.ts
-- 前置依赖：第37章（插件生命周期，Marketplace 是发现阶段的数据来源）
+- 核心文件：src/utils/permissions/PermissionRule.ts（40行）、permissions.ts 中的 getAllowRules/getDenyRules
+- 前置依赖：第 37 章（三层防线，规则层是其中第二层）
 
 
 ## 约束
@@ -39,54 +39,53 @@ tags: [book-chapter, part-9]
 ## 边界
 
 ### 允许修改
-- book/src/part9/ch38.md
+- book/src/part10/ch38.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不重复第37章对生命周期的描述
-- 不展开插件包内部结构（第39章）
+- 不重复第 37 章对三层防线的全景描述
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch38_hunter_opening
-  假设 读者打开第38章
+  测试: ch34_hunter_opening
+  假设 读者打开第 38 章
   当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: 双源设计说明
-  测试: ch38_dual_source
-  假设 读者阅读注册表节
-  当 读者检查两种来源的说明
-  那么 章节有对比说明：官方注册表（固定 URL/索引格式）和第三方 npm 源（package.json 约定）的协议差异
+场景: 三种匹配算法说明
+  测试: ch34_three_match_algorithms
+  假设 读者阅读匹配算法节
+  当 读者检查 glob/前缀/精确三种匹配方式的说明
+  那么 章节有对比说明和具体示例（如 "Bash:*" 是 glob，"Bash:ls" 是精确匹配）
 
-场景: 版本解析逻辑说明
-  测试: ch38_version_resolution
-  假设 读者阅读版本解析节
-  当 读者追问"安装时如何确定版本号"
-  那么 章节展示版本解析的具体逻辑（semver 范围、固定版本、latest 标签）
+场景: 多源优先级说明
+  测试: ch34_multi_source_priority
+  假设 读者阅读优先级节
+  当 读者追问"用户规则和项目规则冲突时谁赢"
+  那么 章节展示多来源规则的优先级顺序（用户 > 项目 > 策略 或其他顺序）并有源码依据
 
 场景: 源码引用有效性
-  测试: ch38_source_anchors
+  测试: ch34_source_anchors
   层级: 集成
   假设 读者跟随章节中的源码引用
   当 读者在项目目录查找每处路径和行号
   那么 每处引用都实际存在于对应文件
 
 场景: 模式命名框存在
-  测试: ch38_pattern_box
+  测试: ch34_pattern_box
   假设 本章使用 hunter 风格
   当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"双源插件注册表"模式
+  那么 存在至少 1 个格式规范的模式命名框，提炼"多源规则优先级链"模式
 
 场景: 章末行动建议
-  测试: ch38_action_items
+  测试: ch34_action_items
   假设 读者读完本章
   当 读者检查"你能做什么"节
   那么 包含 5-8 条以行动动词开头的可操作建议
 
 场景: 不引用排除范围
-  测试: ch38_no_excluded_refs
+  测试: ch34_no_excluded_refs
   层级: 集成
   假设 DESIGN.md 列出了排除范围
   当 读者检查本章所有源码路径
@@ -94,7 +93,7 @@ tags: [book-chapter, part-9]
 
 
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch38_hunter_opening_format
+  测试: ch34_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -102,33 +101,33 @@ tags: [book-chapter, part-9]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch38_multi_instance_proof
+  测试: ch34_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch38_applicability_table
+  测试: ch34_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch38_tradeoffs_and_limits
+  测试: ch34_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch38_known_pattern_dialogue
+  测试: ch34_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch38_pattern_box_format
+  测试: ch34_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -138,7 +137,7 @@ tags: [book-chapter, part-9]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch38_reader_voice
+  测试: ch34_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -146,7 +145,7 @@ tags: [book-chapter, part-9]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch38_key_info_highlight
+  测试: ch34_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
@@ -154,6 +153,6 @@ tags: [book-chapter, part-9]
 
 ## 排除范围
 
-- 插件包内部结构（第39章）
-- 插件生命周期（第37章）
+- 三态处理器（第 39 章）
+- TrustDialog/denialTracking（第 40 章）
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）

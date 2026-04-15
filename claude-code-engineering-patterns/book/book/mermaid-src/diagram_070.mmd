@@ -1,19 +1,16 @@
 sequenceDiagram
-    participant User as 用户
-    participant QE as QueryEngine
-    participant Disk as JSONL 磁盘文件
-    participant API as Claude API
+    participant QE as QueryEngine.ask
+    participant BSFP as buildSideQuestionFallbackParams
+    participant FSP as fetchSystemPromptParts
 
-    User->>QE: 发送消息
-    QE->>Disk: 1. 写入 transcript（await）
-    Note over QE,Disk: 写入完成后才继续
-    QE->>API: 2. 发起 API 请求
-    
-    alt 进程在等待响应时崩溃
-        API--xQE: 进程被终止
-        Note over Disk: JSONL 文件仍完整保存用户消息
-    else 正常响应
-        API-->>QE: 返回 AI 响应
-        QE->>Disk: 3. 写入 AI 响应
-        QE-->>User: 4. 渲染输出
-    end
+    Note over QE: 主路径（正常会话）
+    QE->>FSP: fetchSystemPromptParts
+    FSP-->>QE: {defaultSystemPrompt, userContext, systemContext}
+    QE->>QE: 注入 coordinator extras
+    QE->>QE: 注入 memory-mechanics prompt
+
+    Note over BSFP: fallback 路径（resume 无快照）
+    BSFP->>FSP: fetchSystemPromptParts
+    FSP-->>BSFP: {defaultSystemPrompt, userContext, systemContext}
+    Note over BSFP: 无 extras，可能 cache miss
+    Note over BSFP: 功能可用 > 完全失败

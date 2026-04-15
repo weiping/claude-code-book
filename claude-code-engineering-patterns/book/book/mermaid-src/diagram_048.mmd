@@ -1,18 +1,16 @@
-flowchart LR
-    cmd[bash 命令 + 上下文]
+timeline
+    title 工具生命周期的两层保护
 
-    subgraph rules[规则引擎方案]
-        r1[字符串模式匹配] --> r2{匹配规则?}
-        r2 -->|是| r_deny[拒绝/询问]
-        r2 -->|否| r_allow[放行]
-        r3[⚠️ 枚举不完,语义盲区]
-    end
+    section 编译时（开发阶段）
+        ToolDef 类型检查 : 省略必填字段 → 编译错误
+        buildTool 泛型约束 : D extends AnyToolDef
+        BuiltTool 类型推断 : 保留 D 的具体类型
 
-    subgraph ai[AI 分类器方案]
-        a1[构建语义 transcript] --> a2[AI 模型推理]
-        a2 --> a3["classify_result\n{shouldBlock, reason}"]
-        a4[✓ 理解语义上下文]
-    end
+    section 模块加载时（启动阶段）
+        buildTool 执行 : spread TOOL_DEFAULTS + def
+        lazySchema 注册 : 延迟 Zod schema 初始化
 
-    cmd --> rules
-    cmd --> ai
+    section 运行时（调用阶段）
+        AI 生成 JSON : unknown 类型
+        safeParse 验证 : z.strictObject 拒绝额外字段
+        call 执行 : z.infer 类型安全的参数

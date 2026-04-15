@@ -1,10 +1,17 @@
-flowchart LR
-    call["调用方 - 需要 thinking 配置"] --> check{modelSupportsThinking?}
-    check -->|否| disabled["ThinkingConfig\n{ type: 'disabled' }"]
-    check -->|是| adaptive_check{modelSupportsAdaptiveThinking?}
-    adaptive_check -->|是| adaptive["ThinkingConfig\n{ type: 'adaptive' }\n模型自主决定 budget"]
-    adaptive_check -->|否| default_check{shouldEnableThinkingByDefault?}
-    default_check -->|否| disabled
-    default_check -->|是| budget{"有 budgetTokens\nMAX_THINKING_TOKENS?"}
-    budget -->|"有（env/config 设定）"| enabled["ThinkingConfig\n{ type: 'enabled', budgetTokens: N }"]
-    budget -->|"无"| adaptive2["ThinkingConfig\n{ type: 'adaptive' }"]
+flowchart TD
+    subgraph 主 Agent（QueryEngine）
+        direction TB
+        QE1["for await query()"] --> QE2{max_turns_reached?}
+        QE2 -->|否| QE3[继续消费消息]
+        QE2 -->|是| QE4["return（终止生成器）"]
+        QE4 --> QE5["SDK 调用者收到 errors 字段\n（任务彻底失败）"]
+    end
+
+    subgraph 子 Agent（runAgent）
+        direction TB
+        RA1["for await query()"] --> RA2{max_turns_reached?}
+        RA2 -->|否| RA3[继续消费消息]
+        RA2 -->|是| RA4["break（退出循环）"]
+        RA4 --> RA5[继续执行收尾逻辑]
+        RA5 --> RA6["AgentTool 决定\n是否视为失败"]
+    end

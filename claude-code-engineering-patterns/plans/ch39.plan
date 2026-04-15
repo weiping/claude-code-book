@@ -1,28 +1,31 @@
 # 第 39 章写作计划
 
-**批次**：批次 10b（来自 plans/batch.md）
-**章节**：ch39 — 第39章：Plugin 包结构——目录约定、package.json 契约与沙箱边界
+**批次**：批次 9b（来自 plans/batch.md）
+**章节**：ch39 — 权限处理器三态——interactive/coordinator/swarmWorker 的策略差异
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/services/plugins/pluginOperations.ts` 中插件包的目录结构约定、版本化缓存目录、package.json 契约，以及插件进程沙箱边界（CLAUDE_PLUGIN_ROOT 环境变量）的设计。
+揭示 `src/hooks/toolPermission/handlers/` 目录下 interactive/coordinator/swarmWorker 三种处理器的策略差异，以及它们如何在保持相同的"权限检查"接口下实现不同的行为。
 
 ## 通用约束
-**排除范围**：Plugin 生命周期（第37章）、Marketplace 协议（第38章）、stubs
+**排除范围**：第 37 章三层防线（不重复）、第 36 章 permissionSync（不展开）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「版本化目录隔离」（Versioned Directory Isolation）
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「上下文策略分叉」（Context-Aware Strategy Fork）
 **章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（版本化缓存目录 + CLAUDE_PLUGIN_ROOT 沙箱），适用范围表，与已知模式对话
+**必须**：≥2处实例（interactiveHandler vs swarmWorkerHandler），适用范围表，与已知模式对话
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
+
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/services/plugins/pluginOperations.ts | 版本化缓存目录(821行)、temp目录下载(923行)、try/finally清理(1010行)、manifest加载(987行) | 815-1015 |
+| 1 | src/hooks/toolPermission/handlers/interactiveHandler.ts | 函数签名(57行)、不返回Promise注释(53行)、clearClassifierIndicator(86行) | 44-90 |
+| 2 | src/hooks/toolPermission/handlers/coordinatorHandler.ts | 注释说明(17-24行)、handleCoordinatorPermission(26行) | 全文 |
+| 3 | src/hooks/toolPermission/handlers/swarmWorkerHandler.ts | handleSwarmWorkerPermission(40行)、fallthrough注释(38行) | 38-80 |
 
 ```bash
-grep -n "versioned\|cache.*dir\|CLAUDE_PLUGIN_ROOT\|sandbox\|temp.*dir\|manifest" src/services/plugins/pluginOperations.ts | head -15
+ls src/hooks/toolPermission/handlers/
 ```
 
 ## Spec 验收场景清单（E > A > B = C > D）
@@ -31,57 +34,74 @@ grep -n "versioned\|cache.*dir\|CLAUDE_PLUGIN_ROOT\|sandbox\|temp.*dir\|manifest
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：插件安装在哪个目录？更新后旧版本留还是删？插件可以读写哪些文件？Claude Code 通过版本化目录隔离和 CLAUDE_PLUGIN_ROOT 环境变量回答这三个问题。
+触发句：同样的工具使用请求，在 main agent 中弹出确认对话框，在 coordinator 中先等 hook 再弹框，在 swarm worker 中则通过邮箱转发给 Leader——三种处理器，三种策略，相同的接口。
 
 ### 节 39.1：问题
-- 核心主张：**插件更新不能覆盖正在运行的版本（可能导致崩溃）——版本化目录让每个版本有独立路径，更新只影响新会话**
-- 源码锚点：`src/services/plugins/pluginOperations.ts:821`（注释：版本不同时复制到新版本化缓存目录）
+- 核心主张：**相同的"应该用这个工具吗"问题，在不同的 Agent 角色下答案的获取方式完全不同——交互式 UI、自动化钩子检查、跨进程协商**
+- 源码锚点：`src/hooks/toolPermission/handlers/coordinatorHandler.ts:17`（注释说明 coordinator 的行为差异）
+- 包含元素：**图39-1** — 三种处理器策略对比表
+- 估计字数：600-800字
 
-### 节 39.2：源码实例1 — 版本化缓存目录设计
-- 核心主张：**每个插件版本安装在独立目录下（包含版本号），这样新旧版本可以共存，不需要原地升级**
-- 源码锚点：`src/services/plugins/pluginOperations.ts:821-830`（版本化目录逻辑）
-
-### 节 39.3：源码实例2 — temp 目录下载 + try/finally 清理
-- 核心主张：**远程插件先下载到临时目录，校验后才移动到最终目录——try/finally 保证 temp 目录总是被清理，即使安装失败**
+### 节 39.2：源码实例1 — interactiveHandler（UI 弹框，非 Promise）
+- 核心主张：**interactiveHandler 是同步设置回调的——它不返回 Promise，而是设置 UI 队列，让 React 异步渲染确认对话框**
 - 源码锚点：
-  - `src/services/plugins/pluginOperations.ts:923`（Remote plugin: download to temp directory first）
-  - `src/services/plugins/pluginOperations.ts:1010`（Use try/finally to ensure temp directory cleanup）
+  - `src/hooks/toolPermission/handlers/interactiveHandler.ts:53`（注释："This function does NOT return a Promise -- it sets up callbacks"）
+  - `src/hooks/toolPermission/handlers/interactiveHandler.ts:57`（`function handleInteractivePermission(`）
+  - `src/hooks/toolPermission/handlers/interactiveHandler.ts:86`（`clearClassifierIndicator` — 分类器 UI 指示器清理）
+- 概念层次：非 Promise 的设计（React 状态更新是异步的，设置队列比 await 更合适）、clearClassifierIndicator 的 UX 意义
+- 估计字数：900-1100字
 
-### 节 39.4-39.7：模式剖析/适用范围/权衡/对话
-- 模式：版本化目录隔离（每个版本独立路径）、temp-then-move 原子安装（先下载校验再移动）
+### 节 39.3：源码实例2 — swarmWorkerHandler（转发给 Leader）
+- 核心主张：**swarmWorkerHandler 尝试通过邮箱将权限请求转发给 Leader——如果失败（如 Leader 不可用），注释说明"fall through to interactive handling"**
+- 源码锚点：
+  - `src/hooks/toolPermission/handlers/swarmWorkerHandler.ts:38`（注释："so the caller can fall through to interactive handling"）
+  - `src/hooks/toolPermission/handlers/swarmWorkerHandler.ts:40`（`async function handleSwarmWorkerPermission(`）
+- 概念层次：优雅降级（Leader 不可用时 fallthrough 到 interactive）、邮箱转发的异步性
+- 估计字数：700-900字
+
+### 节 39.4：模式剖析
+- 核心主张：**三种处理器的本质是"上下文决定策略"——Agent 的角色（main/coordinator/swarmWorker）决定了权限获取方式**
+- 估计字数：500-700字
+
+### 节 39.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| 同一功能在不同运行上下文需要不同行为 | ✓ | 策略分叉封装上下文差异 | 到处写 if (isSwarmWorker)（难维护）|
+| 需要优雅降级（首选失败时自动 fallback）| ✓ | swarmWorker fallthrough 设计 | 抛出异常（用户体验差）|
+| 上下文判断逻辑非常复杂 | ✗（谨慎）| 三个 handler 难以测试完整的交互 | 统一函数 + context 参数（但复杂）|
+
+### 节 39.6：权衡与局限
+- 三个文件分散了相关逻辑、coordinator 和 interactive 有部分重复代码（hook 检查逻辑）
+- 估计字数：500-700字
+
+### 节 39.7：与已知模式的对话
+- 与 GoF 策略模式：最接近——可替换的算法族；差异是策略通常在构造时选择，本模式在每次调用时根据 Agent 角色动态路由
 
 ### 章末：模式提炼
 ```
-模式名称：版本化目录隔离（Versioned Directory Isolation）
-问题：插件更新会覆盖正在使用的文件，可能导致运行中的进程崩溃
-解决方案：每个版本安装在包含版本号的独立目录下，新旧版本共存，新会话使用新版本
-前置条件：有版本信息，文件系统支持多版本共存
-源码锚点：src/services/plugins/pluginOperations.ts:821 (版本化目录)
-```
-
-```
-模式名称：Temp-then-Move 原子安装（Temp-then-Move Atomic Install）
-问题：远程下载可能失败，失败时不应留下半安装状态
-解决方案：下载到临时目录，校验后 move 到最终位置，try/finally 保证 temp 清理
-前置条件：目标文件系统支持原子 rename（同分区 move）
-源码锚点：src/services/plugins/pluginOperations.ts:923 (temp download), :1010 (try/finally cleanup)
+模式名称：上下文策略分叉（Context-Aware Strategy Fork）
+问题：同一操作（权限检查）在不同 Agent 上下文（main/coordinator/swarmWorker）需要完全不同的实现
+解决方案：三个独立的 handler 函数，调用方根据 Agent 角色路由到对应 handler，每个 handler 可独立演化
+前置条件：能明确区分 Agent 角色（getAgentType/isSwarmWorker 等谓词）
+源码锚点：src/hooks/toolPermission/handlers/interactiveHandler.ts:53 (非Promise设计注释)
 ```
 
 ### 章末：你能做什么
-1. 用包含版本号的目录名隔离不同版本，让新旧版本可以共存
-2. 下载到 temp 目录后校验，校验通过后 move 到最终位置，而非直接下载到目标目录
-3. 用 try/finally 保证临时目录总是被清理，即使中途抛出异常
+1. 将"相同功能、不同上下文"的分叉逻辑提取到独立的 handler 函数，而非在单一函数内 if/else
+2. 为非 Promise 的异步 UI 设置函数写明确注释（"does NOT return a Promise"），防止调用方误用 await
+3. 为转发型处理器（swarmWorker）实现 fallthrough 降级，而非在失败时抛出异常
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图39-1 | 插件目录结构 | ASCII | 版本化目录层级 + temp-then-move 流程 | 39.1 |
+| 图39-1 | 三种权限处理器策略对比 | Markdown 表格 | interactive/coordinator/swarmWorker 的触发条件/实现方式/降级策略 | 35.1 |
 
 ## 写作前 checklist
 ```bash
-sed -n '821p' src/services/plugins/pluginOperations.ts  # 版本化目录注释
-sed -n '923p' src/services/plugins/pluginOperations.ts  # temp download
-sed -n '1010p' src/services/plugins/pluginOperations.ts # try/finally
+sed -n '17p' src/hooks/toolPermission/handlers/coordinatorHandler.ts  # 注释
+sed -n '53p' src/hooks/toolPermission/handlers/interactiveHandler.ts  # 非Promise注释
+sed -n '57p' src/hooks/toolPermission/handlers/interactiveHandler.ts  # 函数签名
+sed -n '38p' src/hooks/toolPermission/handlers/swarmWorkerHandler.ts  # fallthrough注释
 ```
 
 ## ⛔ Spec 一致性声明

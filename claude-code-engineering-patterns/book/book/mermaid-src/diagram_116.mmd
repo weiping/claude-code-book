@@ -1,21 +1,11 @@
-sequenceDiagram
-    participant C as 调用方
-    participant M as loadAndCacheMarketplace
-    participant G as cacheMarketplaceFromGit
-    participant H as cacheMarketplaceFromUrl
-    participant F as 文件系统
+flowchart TD
+    dialog[TrustDialog 弹出] --> choice{用户选择}
+    choice -->|Yes, trust| is_home{是否家目录?}
+    choice -->|No, exit| shutdown[退出进程]
 
-    C->>M: source={source:'github', repo:'anthropics/...'}
-    M->>G: SSH → 失败 → HTTPS 降级
-    G-->>M: 克隆到缓存目录
-    M-->>C: LoadedPluginMarketplace
+    is_home -->|是| session_mem[setSessionTrustAccepted\n会话内存，重启失效]
+    is_home -->|否| config_file[saveCurrentProjectConfig\n写入 ~/.claude.json]
 
-    C->>M: source={source:'url', url:'https://...'}
-    M->>H: axios.get(url, headers)
-    H-->>M: 写入 .json 缓存
-    M-->>C: LoadedPluginMarketplace
-
-    C->>M: source={source:'directory', path:'/local/...'}
-    M->>F: resolve(path) + 直接读取
-    F-->>M: marketplace.json
-    M-->>C: LoadedPluginMarketplace
+    session_mem --> continue[继续加载工作区]
+    config_file --> continue
+    config_file --> inherit[子目录自动继承]

@@ -1,116 +1,315 @@
 # 第 24 章写作计划
 
-**批次**：批次 6b（来自 plans/batch.md）
-**章节**：ch24 — 第24章：Frontmatter Hooks——Skill 与 Agent 的声明式钩子注册
+**批次**：批次 4b（来自 plans/batch.md）
+**章节**：ch24 — 27 个事件的生命周期地图——Hooks 全景
 **风格**：hunter（模式猎人）
 
-## 章节意图
-揭示 `src/utils/hooks/registerSkillHooks.ts` 和 `registerFrontmatterHooks.ts` 如何让用户通过 Markdown frontmatter 声明钩子，以及"声明式注册"与"命令式注册"在工程权衡上的差异。读者读完后能理解声明式钩子注册的边界与局限，并能在自己的系统中合理选择两种注册方式。
+---
+
+## 章节意图（从 spec `## 意图` 提取）
+
+从 `src/entrypoints/sdk/coreTypes.ts:25` 的 HOOK_EVENTS 数组（27 个事件）出发，完整绘制一个 AI 操作从 PreToolUse 到 SubagentStop 的钩子触发序列，以及每个事件的设计意图。读者读完后能完整描述 Hooks 生命周期地图，并能在自己的 Agent 系统中设计类似的事件体系。
+
+---
 
 ## 通用约束
-**排除范围**：Skill 加载完整流程（第14章）、hooksConfigSnapshot 机制（第23章）、stubs
+
+**通用必须**：
+- 每个核心概念有至少一处 `相对路径:行号` 格式的源码引用
+- 包含至少一个可渲染的 Mermaid 流程图或 ASCII 架构图
+- 跨章节引用使用"详见第 X 章"格式，不重复解释
+- 使用"我们"而非"用户"/"读者"建立对话感
+
+**通用禁止**：
+- 不得引用排除范围中的 stub 或未实现模块
+- 不得出现"介绍了…"等空洞表述
+- 不得对源码中没有依据的设计意图做无标注的猜测（必须标注「（推断）」）
+- 不得重复已在其他章节详细讲解的内容（用交叉引用代替）
+
+**排除范围**：
+- 执行器实现细节（第 25 章）
+- AsyncHookRegistry（第 26 章）
+- hooksConfigSnapshot（第 27 章）
+- src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
+
+---
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「声明式钩子注册」（Declarative Hook Registration）
-**章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（registerSkillHooks + registerFrontmatterHooks），适用范围表，与已知模式对话
-**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
+
+> STYLE_ID = hunter
+
+**开篇格式**：模式预告（150-200字，⛔不引源码）
+- 触发句：在 Claude Code 中，AI 每执行一次工具调用，就会触发至少 3 个 hook 事件——PreToolUse、PostToolUse 或 PostToolUseFailure。加上会话生命周期、子 Agent 管理、权限决策等，整个系统有 27 个精心命名的事件节点
+- 模式名预告：「可观测 Agent 事件总线」（Observable Agent Event Bus）
+- 价值承诺：理解这 27 个事件的分组逻辑，你就能设计一个"每个关键时刻都可以拦截"的 Agent 系统
+
+**章末结构**：模式提炼（3个命名模式）+ 你能做什么（5-8条）
+
+**风格专属必须**：≥2处实例（工具调用生命周期 + 子Agent生命周期），适用范围表，与业界模式对话（GoF 观察者模式、EIP 事件驱动消费者）
+
+**通用写作铁律**：⛔源码第一、⛔代码无裸露、⛔数据驱动（事件数量用27）、⛔术语标准化、⛔开篇最后写
+
+---
 
 ## 前置阅读清单
 
-| # | 文件路径 | 重点关注 | 行数 |
-|---|---------|---------|------|
-| 1 | src/utils/hooks/registerSkillHooks.ts | registerSkillHooks(主函数)、once:true 的 onHookSuccess 回调 | 全文(64行) |
-| 2 | src/utils/hooks/registerFrontmatterHooks.ts | registerFrontmatterHooks、Stop→SubagentStop 转换逻辑 | 全文(67行) |
-| 3 | src/utils/hooks/sessionHooks.ts | addSessionHook 接口 | 关键导出函数 |
+| # | 文件路径 | 重点关注 | 预计阅读行数 |
+|---|---------|---------|------------|
+| 1 | src/entrypoints/sdk/coreTypes.ts | HOOK_EVENTS 完整列表(25-52行) | 25-60 |
+| 2 | src/utils/hooks.ts | createBaseHookInput(301行)、getMatchingHooks(1603行)、getSessionEndHookTimeoutMs(176行)、shouldSkipHookDueToTrust(286行) | 176-320, 1600-1650 |
+| 3 | src/types/hooks.ts | isHookEvent(23行)、hook响应类型定义 | 全文（约100行内）|
 
+验证文件存在：
 ```bash
-ls src/utils/hooks/registerSkillHooks.ts src/utils/hooks/registerFrontmatterHooks.ts
+ls src/entrypoints/sdk/coreTypes.ts src/utils/hooks.ts src/types/hooks.ts
 ```
 
-## Spec 验收场景清单（E > A > B = C > D）
-所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
+---
+
+## Spec 验收场景清单
+
+**验收优先级**：E > A > B = C > D
+
+### A. 源码锚点组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| A1 | 源码引用有效性 | 每处引用实际存在 | 所有节 | ☑ |
+| A2 | 推断有标注 | "（推断）" | 模式剖析、权衡节 | ☑ |
+| A3 | 不引用排除范围 | 不引执行器(21章)、AsyncHookRegistry(22章) | 排除范围列出 | ☑ |
+| A4 | 不重复其他章 | 执行器→第 25 章，AsyncHookRegistry→第 26 章 | 交叉引用 | ☑ |
+
+### B. 语言精确性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| B1 | 禁止空洞表述 | 无"介绍了"等 | 全章 | ☑ |
+| B2 | 数据驱动 | 用27而非"20+" | 所有事件数量表达 | ☑ |
+| B3 | 术语标准化 | 首次标注（钩子（Hook）） | 所有术语 | ☑ |
+
+### C. 结构完整性组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| C1 | 概念递进层次 | hunter递进 | 全章骨架 | ☑ |
+| C2 | hunter专属结构 | 按spec结构 | 全章骨架 | ☑ |
+| C3 | 核心主张可提炼 | "可观测Agent事件总线" | 模式剖析 | ☑ |
+| C4 | 设计权衡 | 27个事件vs更少事件 | 权衡节 | ☑ |
+| C5 | 章末行动建议 | 5-8条 | 你能做什么 | ☑ |
+| C6 | 章节间链接 | 前→第 14 章(Tool)，后→第 25 章 | 开篇、章末 | ☑ |
+
+### D. 图表与代码组
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| D1 | 图表可渲染达标 | ≥2图，含序列图 | 节24.2序列图+节24.5对比表 | ☑ |
+| D2 | 图表标注格式 | 上标题下说明 | 所有图 | ☑ |
+| D3 | 代码≤25行 | 前后有说明 | 所有代码 | ☑ |
+| D4 | 源码注释引用 | 先引注释 | 节24.2 | ☑ |
+| D5 | hunter专属图表 | 适用范围表+模式框 | 节24.5+章末 | ☑ |
+
+### E. 风格符合性组（⛔最高优先级）
+
+| # | 场景名 | 核心要求 | 对应 plan 节 | 覆盖 |
+|---|--------|---------|-------------|------|
+| E1 | hunter开篇格式 | 模式预告150-200字，不引源码，含27个事件 | 开篇 | ☑ |
+| E2 | 读者对话感 | "我们"，有设问 | 全章 | ☑ |
+| E3 | 关键信息突出 | 加粗，表格对比 | 关键结论 | ☑ |
+
+---
 
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：用户不需要写一行 JavaScript，只需要在 Markdown 的 frontmatter 中声明 `hooks: { PreToolUse: [...] }`，Claude Code 就会在工具调用前触发这个 hook。这就是"声明式钩子注册"——把 hook 配置从代码降级为数据。
+模式预告：27 个精心命名的事件节点，覆盖了一个 AI Agent 从启动到关闭的每一个关键时刻——工具调用前后、子 Agent 创建/销毁、权限请求/拒绝、配置变更……这是"可观测 Agent 事件总线"模式的工程实现。
 
 ### 节 24.1：问题
-- 核心主张：**命令式注册（代码调用 registerHook）给用户带来了"必须写代码"的门槛，而大多数 hook 用例只需要简单的触发逻辑**
-- 源码锚点：`src/utils/hooks/registerSkillHooks.ts:1`（注释说明这是 session-scoped hooks，"persist for the duration of the session"）
-- 包含元素：**图24-1** — 声明式 vs 命令式注册对比表（配置位置/能力范围/适用场景）
-- 估计字数：600-800字
+- 核心主张：**AI Agent 的行为是不透明的——如果没有事件钩子，你既无法拦截危险操作，也无法收集执行数据**
+- 源码锚点：`src/entrypoints/sdk/coreTypes.ts:25`（HOOK_EVENTS 数组，27个事件）
+- 概念层次：
+  - 定义：Hook 事件 = 在特定执行节点触发、允许外部代码介入的信号
+  - 设计意图：为什么需要 27 个事件而不是 3-5 个？— 每个事件对应一种可独立拦截的决策点，粒度决定了可控性
+  - 实际案例：用户想阻止 AI 删除特定目录下的文件——PreToolUse 事件允许在工具执行前检查并拒绝
+- 权衡分析：为什么不直接在源码里插入检查点，而要用事件系统？— 解耦，外部系统不需要修改主代码就能拦截行为
+- 包含元素：27个事件分组表（10个分组）
+- **⛔内容密度规划**：
+  - 引入段：先描述"AI 删除文件我怎么阻止"的痛点场景
+  - 解读段：解释事件系统如何让这个痛点变成可编程的
+  - 散文/代码比：80%散文（主要是表格和分析）
+- 估计字数：700-900字（散文≥70%）
+- 对应spec场景：C1、事件数量具体化（ch20_event_count）
 
-### 节 24.2：源码实例1 — registerSkillHooks（技能级钩子注册）
-- 核心主张：**registerSkillHooks 遍历 HOOK_EVENTS 枚举，将 frontmatter 中每个事件的 matchers 转为 session hook——once:true 的 hook 在首次成功后自动注销**
+**27事件分组表**（必须包含在本节）：
+| 分组 | 事件名 | 数量 | 典型用途 |
+|------|--------|------|---------|
+| 工具生命周期 | PreToolUse, PostToolUse, PostToolUseFailure | 3 | 拦截/审计工具调用 |
+| 会话生命周期 | SessionStart, SessionEnd, Stop, StopFailure | 4 | 会话初始化/清理 |
+| 用户交互 | Notification, UserPromptSubmit | 2 | 消息拦截/审计 |
+| 子 Agent | SubagentStart, SubagentStop | 2 | 子Agent监控 |
+| 上下文压缩 | PreCompact, PostCompact | 2 | 压缩前后处理 |
+| 权限 | PermissionRequest, PermissionDenied | 2 | 权限决策介入 |
+| 系统配置 | Setup, ConfigChange, InstructionsLoaded | 3 | 配置变更响应 |
+| 任务 | TaskCreated, TaskCompleted, TeammateIdle | 3 | 任务管理 |
+| 用户问答 | Elicitation, ElicitationResult | 2 | 人机对话拦截 |
+| 文件/工作树 | WorktreeCreate, WorktreeRemove, CwdChanged, FileChanged | 4 | 环境变更感知 |
+
+### 节 24.2：源码实例1 — 工具调用生命周期（PreToolUse→PostToolUse/PostToolUseFailure）
+- 核心主张：**工具调用的三个事件（PreToolUse/PostToolUse/PostToolUseFailure）形成了一个"拦截-执行-汇报"的完整 AOP 切面**
 - 源码锚点：
-  - `src/utils/hooks/registerSkillHooks.ts:22`（`export function registerSkillHooks(`）
-  - `src/utils/hooks/registerSkillHooks.ts:30`（`for (const eventName of HOOK_EVENTS) {`——遍历所有事件）
-  - `src/utils/hooks/registerSkillHooks.ts:37`（once:true 的 onHookSuccess 回调——"one-shot hook"）
-  - `src/utils/hooks/registerSkillHooks.ts:50`（`addSessionHook(setAppState, sessionId, eventName, ...)`）
-- 概念层次：遍历 HOOK_EVENTS 的设计（穷举保证不遗漏）、once:true 的语义（自清理钩子）、sessionId 作用域
-- 估计字数：800-1000字
+  - `src/utils/hooks.ts:301`（`export function createBaseHookInput(` — 所有hook事件的通用输入基础）
+  - `src/utils/hooks.ts:1617`（`case 'PreToolUse':` — 事件匹配分支）
+  - `src/utils/hooks.ts:1603`（`export async function getMatchingHooks(` — 按事件名查找已注册hooks）
+  - `src/utils/hooks.ts:141`（emitHookStarted / emitHookResponse 导入）
+- 概念层次：
+  - 定义：PreToolUse = 工具调用前触发，可返回 block/allow；PostToolUse = 调用后触发，可修改结果；PostToolUseFailure = 调用失败时触发
+  - 设计意图：为什么 PreToolUse 支持 block？— 安全拦截的第一道防线，在工具运行前就可以阻止
+  - 实际案例：一次 BashTool 调用触发的事件序列（createBaseHookInput → getMatchingHooks → 执行 → emit）
+- 权衡分析：为什么成功和失败是两个事件（PostToolUse vs PostToolUseFailure）？— 允许不同的处理逻辑，失败时可能需要清理状态
+- 包含元素：**图24-1** — Mermaid 序列图，PreToolUse → 工具执行 → PostToolUse 的完整序列
+- **⛔内容密度规划**：
+  - 引入段："工具调用是 AI 行为中风险最高的环节，我们来看它是怎么被包围的"
+  - 解读段：解读 createBaseHookInput 的共同字段——session_id、tool_input、tool_name，这是所有工具钩子的最小公共接口
+  - 散文/代码比：2:1
+- 估计字数：900-1100字（散文≥60%）
+- 对应spec场景：A1、E1、生命周期序列图（ch20_lifecycle_diagram）、事件设计意图（ch20_event_intent）
 
-### 节 24.3：源码实例2 — registerFrontmatterHooks（Stop→SubagentStop 的语义转换）
-- 核心主张：**registerFrontmatterHooks 有一个关键转换：对 Agent 的 frontmatter hooks，`Stop` 事件自动转为 `SubagentStop`——因为子 Agent 完成时触发的是 SubagentStop，不是 Stop**
+### 节 24.3：源码实例2 — 会话/子Agent生命周期
+- 核心主张：**SessionEnd 有独立的超时配置（getSessionEndHookTimeoutMs），说明不同事件的"钩子时序要求"不同——会话结束时必须等待钩子完成，否则数据丢失**
 - 源码锚点：
-  - `src/utils/hooks/registerFrontmatterHooks.ts:18`（`export function registerFrontmatterHooks(`）
-  - `src/utils/hooks/registerFrontmatterHooks.ts:37`（isAgent 参数控制 Stop→SubagentStop 转换）
-  - `src/utils/hooks/registerFrontmatterHooks.ts:43`（注释说明原因："subagents trigger SubagentStop, not Stop"）
-- 概念层次：isAgent 参数的语义（技能 vs Agent 的生命周期差异）、Stop vs SubagentStop 的事件语义区别
-- 估计字数：700-900字
+  - `src/utils/hooks.ts:176`（`export function getSessionEndHookTimeoutMs()` — 独立超时配置）
+  - `src/utils/hooks.ts:286`（`export function shouldSkipHookDueToTrust()` — 安全检查）
+  - `src/entrypoints/sdk/coreTypes.ts:36`（SubagentStop — 子Agent停止事件）
+- 概念层次：
+  - 定义：SessionEnd 与其他事件的关键差异——会话结束时所有异步操作都在关闭中
+  - 设计意图：getSessionEndHookTimeoutMs 的独立配置说明 Anthropic 在设计时考虑了"会话关闭"的特殊性
+  - 实际案例：SubagentStart → AI执行任务 → SubagentStop 的子Agent监控链路
+- 权衡分析：为什么有 shouldSkipHookDueToTrust 安全检查？— 不可信的代码不应该能注册 hooks 拦截所有操作
+- 包含元素：会话/子Agent生命周期对比表
+- 估计字数：700-900字（散文≥60%）
+- 对应spec场景：A1、E1（多实例）
 
-### 节 24.4：模式剖析
-- 核心主张：**声明式注册的本质是"配置即规约"——hook 的触发逻辑由数据描述，框架负责解释，用户不需要了解执行细节**
-- 估计字数：500-700字
+### 节 24.4：模式剖析——可观测 Agent 事件总线
+- 核心主张：**可观测 Agent 事件总线的核心是"穷举关键时刻"——27个事件覆盖了 Agent 执行中每一个需要外部可见性的节点，不多不少**
+- 源码锚点：`src/entrypoints/sdk/coreTypes.ts:25`（HOOK_EVENTS，完整枚举）
+- 估计字数：500-700字（散文≥70%）
+- 对应spec场景：C2
 
 ### 节 24.5：适用范围
+
+**适用范围表**：
 | 场景 | 适用性 | 理由 | 替代方案 |
 |------|--------|------|---------|
-| 简单的触发逻辑（只需要指定事件+命令）| ✓ | frontmatter 表达力足够 | 命令式注册（但需要写代码）|
-| once:true 的单次触发钩子 | ✓ | 内建 onHookSuccess 自清理 | 手动在回调中 deregister |
-| 复杂条件判断（A触发后才注册B）| ✗ | frontmatter 是静态的，无法表达动态条件 | 命令式注册 |
-| 需要访问注册时的 JS 上下文 | ✗ | frontmatter 是数据，无法访问运行时状态 | 命令式注册（闭包捕获）|
+| 需要审计 AI 操作记录 | ✓ | PostToolUse 可记录所有工具调用结果 | 日志文件（但不可拦截）|
+| 需要阻止特定工具调用 | ✓ | PreToolUse 支持 block 返回 | 改源码（但破坏可维护性）|
+| 子 Agent 监控 | ✓ | SubagentStart/Stop 事件成对 | N/A |
+| 同步高频操作（每次击键触发）| ✗（谨慎）| Hook 执行有异步开销，高频时影响延迟（推断）| 内联检查 |
+| 需要 hook 修改核心数据结构 | ✗ | 事件总线是单向通知为主，修改能力有限 | 中间件链 |
+
+- 估计字数：400-600字
+- 对应spec场景：D5
 
 ### 节 24.6：权衡与局限
-- frontmatter 表达力有限（无法写条件逻辑）、遍历 HOOK_EVENTS 耦合于枚举（新增事件需要更新枚举）
+- 核心主张：**27个事件的最大风险是"事件膨胀"——随着功能增加，事件数量会继续增加，维护 HOOK_EVENTS 枚举的成本上升**
+- 源码锚点：`src/entrypoints/sdk/coreTypes.ts:25`（目前27个，硬编码为字符串字面量联合）
 - 估计字数：500-700字
+- 对应spec场景：C4
 
 ### 节 24.7：与已知模式的对话
-- 与 Spring Annotations（@EventListener）：相同——声明式绑定事件处理器；不同——注解是编译期，本模式是运行时解析 frontmatter
-- 与 CSS 选择器（声明式样式）：相同——配置数据描述"在什么时候做什么"；不同——CSS 有层叠优先级，本模式钩子是追加的
+- 核心主张：**可观测 Agent 事件总线与 GoF 观察者模式有根本差异——观察者关注"状态变化通知"，本模式关注"执行节点拦截"**
+- 概念层次：
+  - 与 GoF 观察者（Observer）：相同——发布-订阅；不同——观察者不能修改或阻止被观察行为，本模式的 PreToolUse 可以 block
+  - 与 EIP 事件驱动消费者（Event-Driven Consumer）：相同——事件驱动处理；不同——EIP 是异步解耦，本模式的 PreToolUse 是同步拦截
+  - 与 AOP（面向切面编程）：最接近——定义"切入点"（hook events）+ "通知"（hook执行）的思想完全一致
+- 估计字数：500-700字
+- 对应spec场景：与已知模式对话
 
 ### 章末：模式提炼
+
+**模式命名框 1**：
 ```
-模式名称：声明式钩子注册（Declarative Hook Registration）
-问题：用户需要注册 hook 但不想写代码，命令式注册门槛高
-解决方案：解析 Markdown frontmatter 的 hooks 字段，将其转为 session-scoped hooks 的注册调用
-前置条件：有统一的 hook 配置格式（HooksSettings 类型），有 addSessionHook 等命令式接口作为底层
-源码锚点：src/utils/hooks/registerSkillHooks.ts:30 (遍历HOOK_EVENTS), registerFrontmatterHooks.ts:37 (Stop→SubagentStop)
+模式名称：可观测 Agent 事件总线（Observable Agent Event Bus）
+问题：AI Agent 的行为不可审计、不可拦截，外部系统无法介入关键操作
+解决方案：在执行路径的关键节点预埋命名事件，允许外部注册处理器，其中部分事件支持阻断
+前置条件：Agent 框架有明确的执行路径和"钩子点"的设计意图
+源码锚点：src/entrypoints/sdk/coreTypes.ts:25 (HOOK_EVENTS 27个事件)
+```
+
+**模式命名框 2**：
+```
+模式名称：事件超时差异化（Event Timeout Differentiation）
+问题：不同生命周期节点对"等待 hook 完成"的容忍度不同（会话结束 vs 普通操作）
+解决方案：为关键事件（如 SessionEnd）配置独立的超时值，与其他事件区分
+前置条件：有事件优先级或时序语义的区别
+源码锚点：src/utils/hooks.ts:176 (getSessionEndHookTimeoutMs)
 ```
 
 ### 章末：你能做什么
-1. 实现 registerDeclarativeHooks 类型的函数，将配置数据转为命令式注册调用——两种注册方式共用底层
-2. 为一次性 hook（once:true）实现 onHookSuccess 自清理回调，而非让调用方手动管理
-3. 区分不同来源的 hook 生命周期语义（技能 hook 的 sessionId vs Agent hook 的 agentId）
-4. 在 Agent 上下文中自动转换 Stop→SubagentStop，让 frontmatter 配置更直觉化
-5. 遍历完整事件枚举（HOOK_EVENTS）注册所有声明的 hook，保证不遗漏
+1. 用字符串字面量联合类型定义 Agent 事件枚举（如 HOOK_EVENTS），而非数字 ID——便于调试和日志
+2. 为工具调用设计"前-后-失败"三元事件对（PreToolUse/PostToolUse/PostToolUseFailure），支持完整的 AOP 切面
+3. 为关键生命周期事件（如 SessionEnd）配置独立的超时值，区分"必须等待"和"可以超时"的 hook
+4. 实现 shouldSkipHookDueToTrust 类型的安全门禁，防止不可信代码注册 hooks
+5. 用 createBaseHookInput 定义所有 hook 事件的最小公共接口（session_id、事件名称），保证可追踪性
+6. 按功能分组（工具/会话/权限/任务等）组织事件枚举，让 hook 注册者能快速找到需要的事件
+7. 为需要阻断能力的事件（如 PreToolUse）单独设计"block 响应"格式，与只通知的事件区分
+
+---
 
 ## 图表清单
-| # | 标题 | 类型 | 描述 | 对应节 |
-|---|------|------|------|--------|
-| 图24-1 | 声明式 vs 命令式注册对比 | Markdown 表格 | 配置位置/能力范围/使用门槛/适用场景 | 24.1 |
+
+| # | 图表标题 | 类型 | 内容描述 | 对应节 |
+|---|---------|------|---------|--------|
+| 图24-1 | 工具调用 Hook 触发序列 | Mermaid sequenceDiagram | Claude Code → PreToolUse hook → 工具执行 → PostToolUse hook 的完整序列 | 20.2 |
+| 图24-2 | 27事件分组地图 | Markdown 表格 | 10个分组×N个事件，含典型用途 | 20.1 |
+
+---
+
+## 写作顺序
+
+1. ⛔ 重新读取完整 spec + DESIGN.md
+2. 读取前置文件（coreTypes.ts、hooks.ts）
+3. 写节24.1（问题节，含27事件分组表）
+4. 写节24.2（实例1：工具调用生命周期，含图24-1）
+5. 写节24.3（实例2：会话/子Agent生命周期）
+6. 写节24.4（模式剖析）
+7. 写节24.5（适用范围表）
+8. 写节24.6（权衡与局限）
+9. 写节24.7（与已知模式对话）
+10. 写章末模式命名框+你能做什么
+11. 最后补写开篇
+
+---
 
 ## 写作前 checklist
+
 ```bash
-sed -n '22p' src/utils/hooks/registerSkillHooks.ts   # registerSkillHooks
-sed -n '30p' src/utils/hooks/registerSkillHooks.ts   # for HOOK_EVENTS
-sed -n '37p' src/utils/hooks/registerSkillHooks.ts   # once:true
-sed -n '18p' src/utils/hooks/registerFrontmatterHooks.ts  # registerFrontmatterHooks
-sed -n '37p' src/utils/hooks/registerFrontmatterHooks.ts  # isAgent 判断
-sed -n '43p' src/utils/hooks/registerFrontmatterHooks.ts  # Stop→SubagentStop 注释
+sed -n '25p' src/entrypoints/sdk/coreTypes.ts   # HOOK_EVENTS =
+sed -n '176p' src/utils/hooks.ts                 # getSessionEndHookTimeoutMs
+sed -n '286p' src/utils/hooks.ts                 # shouldSkipHookDueToTrust
+sed -n '301p' src/utils/hooks.ts                 # createBaseHookInput
+sed -n '1603p' src/utils/hooks.ts                # getMatchingHooks
 ```
 
+---
+
 ## ⛔ Spec 一致性声明
-所有 16 项均 ✓，plan 审查通过。
+
+| # | 提取项 | 写入 plan | 对应节 |
+|---|--------|----------|--------|
+| 1 | 意图 | ✓ | 章节意图 |
+| 2 | 通用约束·必须 | ✓ | 通用约束→必须 |
+| 3 | 通用约束·禁止 | ✓ | 通用约束→禁止 |
+| 4 | 风格专属必须 | ✓ | 风格专属→必须 |
+| 5 | 风格专属禁止 | ✓ | 风格专属→禁止 |
+| 6 | 章节结构 | ✓ | 章节骨架 |
+| 7 | 源码引用格式 | ✓ | 所有节锚点 |
+| 8 | 图表格式 | ✓ | 图表清单 |
+| 9 | 边界路径 | ✓ | 排除范围 |
+| 10 | 验收优先级 | ✓ | E>A>B=C>D |
+| 11 | 验收场景·A | ✓ | Spec验收A组 |
+| 12 | 验收场景·B | ✓ | Spec验收B组 |
+| 13 | 验收场景·C | ✓ | Spec验收C组 |
+| 14 | 验收场景·D | ✓ | Spec验收D组 |
+| 15 | 验收场景·E | ✓ | Spec验收E组 |
+| 16 | 排除范围 | ✓ | 通用约束→排除范围 |
+
+**⛔ 所有项目均已勾选 ✓，plan 审查通过。**

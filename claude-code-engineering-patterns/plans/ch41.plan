@@ -1,31 +1,29 @@
 # 第 41 章写作计划
 
-**批次**：批次 11（来自 plans/batch.md）
-**章节**：ch41 — 第41章：从 CLI 到 Agent 平台——架构跃迁的路线图
+**批次**：批次 10a（来自 plans/batch.md）
+**章节**：ch41 — Plugin 生命周期——发现、安装、更新与卸载
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 Claude Code 的架构演化路径（CLI → 工具宿主 → Agent Harness → 多智能体平台），并为读者提供"在自己的产品中复现这条演化路径"的可操作指南。读者读完后能为自己的产品绘制架构跃迁路线图。
+揭示 `src/services/plugins/PluginInstallationManager.ts` 如何在后台自动检查并安装插件，以及 pending/installing/installed/failed 四个状态如何映射到 AppState 的 UI 更新。
 
 ## 通用约束
-**前置依赖**：第40章（12个模式图谱）
-**写作风格**：hunter 风格，但本章是终篇，语气更像"侦探结案"——回顾证据、得出结论、给出行动路径
+**排除范围**：Marketplace 协议（第 42 章）、插件包结构（第 43 章）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。触发句：这不是一个 CLI——这是一套演化中的 Agent Harness，每条架构跃迁都在源码中留有痕迹
-**章末**：架构跃迁路线图 + 最终你能做什么（5-8条，面向架构师的行动）
-**写作重点**：回顾证据（从书中各章节引用关键设计决策），得出演化规律，给出可操作的跃迁路线图
-**铁律**：⛔源码第一、⛔不重复其他章内容（引用章节号代替）、⛔开篇最后写
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「后台安装事件驱动 UI 更新」（Background Install Event-Driven UI）
+**章末**：2-3个模式命名框 + 你能做什么（5-8条）
+**必须**：≥2处实例（performBackgroundPluginInstallations + updateMarketplaceStatus），适用范围表，与已知模式对话
+**铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
-（本章不需要读新的源码，而是回顾书中各章的核心设计决策证据）
+| # | 文件路径 | 重点关注 | 行数 |
+|---|---------|---------|------|
+| 1 | src/services/plugins/PluginInstallationManager.ts | performBackgroundPluginInstallations(60行)、updateMarketplaceStatus(30行)、安装状态事件 switch(104行) | 全文 |
 
-**需要引用的关键证据**：
-1. Hook 事件从无到 27 个的演化痕迹（ch20）
-2. Task 类型从 1 种到 7 种的扩展（ch25）
-3. Swarm 从单进程到三种 Teammate 后端的演化（ch31）
-4. Tool 接口的 buildTool 统一契约如何支撑 58 个工具（ch10）
-5. CLAUDE.md 层级扫描作为"代码即配置"的设计意图（ch16）
+```bash
+wc -l src/services/plugins/PluginInstallationManager.ts
+```
 
 ## Spec 验收场景清单（E > A > B = C > D）
 所有 A1-A4、B1-B3、C1-C6、D1-D5、E1-E3 场景均已覆盖 ☑
@@ -33,86 +31,50 @@
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：从一个 CLI 工具到一套多智能体平台，Claude Code 没有重写——它在每次功能压力下演化，留下了接口膨胀、类型扩展、后端分叉的痕迹。这些痕迹是本书39章追踪的证据，也是这条演化路径的工程地图。
+触发句：插件安装是一个耗时的后台操作——下载、验证、注册需要几秒甚至几十秒。Claude Code 用事件驱动模型把安装进度实时映射到 UI 状态，而不是阻塞等待完成。
 
-### 节 41.1：四个架构层次的演化证据
-- **阶段一：CLI 工具**（第1-3章）——单进程、无任务系统、无钩子
-- **阶段二：工具宿主**（第10-14章）——buildTool 统一契约、MCP 协议化扩展、58个工具
-- **阶段三：Agent Harness**（第8-9章，第15-25章）——QueryEngine 多轮循环、Context Engineering、Task 系统、Hook 事件总线
-- **阶段四：多智能体平台**（第29-32章）——Swarm Leader-Teammate、跨进程权限协商
-- 包含元素：**图41-1** — 四阶段演化时间线（架构层次 vs 代码复杂度）
+### 节 41.1：问题
+- 核心主张：**后台安装操作与 UI 之间需要松耦合——安装器不应该知道 UI 的实现细节，UI 也不应该阻塞等待安装完成**
+- 源码锚点：`src/services/plugins/PluginInstallationManager.ts:2`（注释：背景安装管理器，映射安装事件到 AppState 更新）
+- 包含元素：**图41-1** — 安装状态流转（pending→installing→installed/failed）和 UI 更新时序
 
-### 节 41.2：演化规律提炼
-- 核心主张：**每次演化都遵循同一模式：单一职责 → 接口压力 → 抽象出新层次 → 新层次稳定后暴露新的扩展点**
-- 从 Hook 事件（3→27个）、Task 类型（1→7种）、Swarm 后端（1→3种）三个案例提炼规律
-- 估计字数：600-800字
+### 节 41.2：源码实例1 — performBackgroundPluginInstallations（事件流消费）
+- 核心主张：**performBackgroundPluginInstallations 先 diff 找出需要安装的内容，然后消费安装事件流，每个事件更新 AppState**
+- 源码锚点：`src/services/plugins/PluginInstallationManager.ts:60、66（diff）、83（初始化pending）、104（switch events）`
 
-### 节 41.3：你的产品如何复现这条路径
-- 给出五个架构跃迁的判断信号（"当你的 CLI 出现了X，是时候引入Y了"）
-- 信号1：工具调用超过 10 个 → 引入 buildTool 统一契约
-- 信号2：上下文管理代码散布各处 → 引入分层提示词组装
-- 信号3：需要钩入 AI 操作 → 引入 Hook 事件总线
-- 信号4：任务需要并发/后台化 → 引入 Task 系统
-- 信号5：需要协作或并行 → 引入 Swarm 架构
-- 包含元素：**图41-2** — 架构跃迁路线图决策树
+### 节 41.3：源码实例2 — updateMarketplaceStatus（AppState 更新模式）
+- 核心主张：**updateMarketplaceStatus 是一个 AppState 更新工厂——按 name 定位、spread 更新、不修改其他字段**
+- 源码锚点：`src/services/plugins/PluginInstallationManager.ts:30、40-43`
 
-### 节 41.4：与已知 Agent 框架的对比
-- 与 LangChain/AutoGen/CrewAI：Claude Code 的演化路径与这些框架的设计哲学有何差异？
-- 核心差异：Claude Code 是"在生产约束下演化的"，而非"从头设计的"——演化路径更真实，也更有参考价值
-- 估计字数：500-700字
+### 节 41.4-37.7：模式剖析/适用范围/权衡/与已知模式对话
+- 模式：事件驱动状态更新、安装状态机、后台操作透明化
+- 与 Observer 模式：安装器是发布者，AppState 更新器是订阅者
 
-### 章末：架构跃迁路线图（完整版）
+### 章末：模式提炼
 ```
-Stage 1: CLI Tool
-  └─ 工具：直接 shell 调用
-  └─ 缺失：统一工具接口、上下文管理、钩子系统
-
-Stage 2: Tool Host (第10-14章的模式)
-  ├─ 引入：buildTool 统一契约（ch10）
-  ├─ 引入：MCP 协议化扩展（ch13）
-  └─ 引入：声明式能力包 Skill（ch14）
-
-Stage 3: Agent Harness (第8-9章，第15-25章的模式)
-  ├─ 引入：可中断多轮工具调用循环（ch08）
-  ├─ 引入：分层提示词组装（ch15）
-  ├─ 引入：写入先于执行（ch17）
-  ├─ 引入：可观测 Agent 事件总线（ch20）
-  └─ 引入：辨别联合类型 Task 系统（ch25）
-
-Stage 4: Multi-Agent Platform (第29-36章的模式)
-  ├─ 引入：领导者-队友事件驱动协调（ch29）
-  ├─ 引入：可插拔运行后端（ch31）
-  └─ 引入：分层安全防线（ch33）
+模式名称：后台安装事件驱动 UI 更新（Background Install Event-Driven UI）
+问题：后台安装操作需要实时反映进度到 UI，但不能阻塞主线程
+解决方案：安装器产生事件流（installing/installed/failed），消费方 switch 处理每个事件更新 AppState
+前置条件：安装操作可以表达为事件序列
+源码锚点：src/services/plugins/PluginInstallationManager.ts:60 (performBackgroundPluginInstallations), :104 (switch events)
 ```
 
 ### 章末：你能做什么
-1. 识别当前产品处于哪个演化阶段，而非一次性引入所有层次
-2. 用 buildTool 统一工具契约作为"工具宿主"阶段的起点
-3. 用 Hook 事件总线作为"Agent Harness"阶段的入口——它不侵入现有逻辑，只添加观测点
-4. 在引入 Task 系统前先确保 Hook 系统稳定——Task 依赖 Hook 事件驱动生命周期
-5. 在进入多智能体阶段前先解决单智能体的安全和可靠性——Swarm 会放大单 Agent 的所有问题
+1. 用事件流而非回调传递安装进度，让消费方按需处理各阶段事件
+2. 在安装开始前先计算 diff（找出需要安装的内容），一次性初始化 pending 状态，避免 UI 闪烁
+3. 安装完成后自动刷新插件列表，修复"插件刚安装但工具还不可见"的 race condition
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图41-1 | 四阶段架构演化时间线 | Mermaid timeline | Stage1~Stage4 的关键事件和引入的模式 | 41.1 |
-| 图41-2 | 架构跃迁决策树 | Mermaid flowchart | 5个判断信号 → 引入对应的模式/系统 | 41.3 |
-
-## 写作顺序
-1. 回顾 DESIGN.md 的全书主张
-2. 整理 ch08/10/13/14/15/17/20/25/29/31/33 的章末模式（演化阶段的证据）
-3. 写节41.1（四阶段演化证据，含图41-1）
-4. 写节41.2（演化规律提炼）
-5. 写节41.3（跃迁决策树，含图41-2）
-6. 写节41.4（与已知框架对比）
-7. 写章末路线图
-8. 写你能做什么
-9. 最后补写开篇
+| 图41-1 | 插件安装状态机 | Mermaid stateDiagram | pending→installing→installed/failed | 37.1 |
 
 ## 写作前 checklist
 ```bash
-# 回顾各章演化证据
-grep -h "核心主张" plans/ch08.plan plans/ch10.plan plans/ch20.plan plans/ch25.plan plans/ch29.plan | head -10
+sed -n '2p' src/services/plugins/PluginInstallationManager.ts   # 注释
+sed -n '30p' src/services/plugins/PluginInstallationManager.ts  # updateMarketplaceStatus
+sed -n '60p' src/services/plugins/PluginInstallationManager.ts  # performBackgroundPluginInstallations
+sed -n '104p' src/services/plugins/PluginInstallationManager.ts # switch events
 ```
 
 ## ⛔ Spec 一致性声明

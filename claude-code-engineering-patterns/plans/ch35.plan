@@ -1,31 +1,32 @@
 # 第 35 章写作计划
 
-**批次**：批次 9b（来自 plans/batch.md）
-**章节**：ch35 — 第35章：权限处理器三态——interactive/coordinator/swarmWorker 的策略差异
+**批次**：批次 8a（来自 plans/batch.md）
+**章节**：ch35 — 三种 Teammate 后端——in-process/tmux/auto 的选型逻辑
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/hooks/toolPermission/handlers/` 目录下 interactive/coordinator/swarmWorker 三种处理器的策略差异，以及它们如何在保持相同的"权限检查"接口下实现不同的行为。
+揭示 `src/utils/swarm/backends/` 目录下 InProcessBackend.ts（339行）、TmuxBackend.ts（764行）、detection.ts（128行）三种 Teammate 运行后端的差异，以及 auto 模式如何在性能（in-process）与隔离性（tmux）之间做自动权衡。
 
 ## 通用约束
-**排除范围**：第33章三层防线（不重复）、第32章 permissionSync（不展开）、stubs
+**排除范围**：leaderPermissionBridge（第 34 章）、permissionSync（第 36 章）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「上下文策略分叉」（Context-Aware Strategy Fork）
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「可插拔运行后端」（Pluggable Runtime Backend）
 **章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（interactiveHandler vs swarmWorkerHandler），适用范围表，与已知模式对话
+**必须**：≥2处实例（InProcessBackend vs TmuxBackend），适用范围表，与已知模式对话（策略模式）
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
 
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/hooks/toolPermission/handlers/interactiveHandler.ts | 函数签名(57行)、不返回Promise注释(53行)、clearClassifierIndicator(86行) | 44-90 |
-| 2 | src/hooks/toolPermission/handlers/coordinatorHandler.ts | 注释说明(17-24行)、handleCoordinatorPermission(26行) | 全文 |
-| 3 | src/hooks/toolPermission/handlers/swarmWorkerHandler.ts | handleSwarmWorkerPermission(40行)、fallthrough注释(38行) | 38-80 |
+| 1 | src/utils/swarm/backends/detection.ts | isInsideTmuxSync(36行)、isInsideTmux(50行)、TMUX env var 注释(32-34行) | 全文 |
+| 2 | src/utils/swarm/backends/registry.ts | 后端选择逻辑、cachedBackend、getTeammateModeFromSnapshot | 全文 |
+| 3 | src/utils/swarm/backends/InProcessBackend.ts | InProcessBackend class(38行)、setContext(49行)、spawn(72行) | 38-90 |
+| 4 | src/utils/swarm/backends/TmuxBackend.ts | paneCreationLock(29行) | 19-55 |
 
 ```bash
-ls src/hooks/toolPermission/handlers/
+ls src/utils/swarm/backends/
 ```
 
 ## Spec 验收场景清单（E > A > B = C > D）
@@ -34,74 +35,85 @@ ls src/hooks/toolPermission/handlers/
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：同样的工具使用请求，在 main agent 中弹出确认对话框，在 coordinator 中先等 hook 再弹框，在 swarm worker 中则通过邮箱转发给 Leader——三种处理器，三种策略，相同的接口。
+触发句：当用户在 tmux 中启动 Claude Code 时，Teammate 会在新的 tmux 面板中运行；在交互终端外（CI/CD 环境）启动时，Teammate 会在同一进程内运行——这个自动选择是如何实现的？
 
 ### 节 35.1：问题
-- 核心主张：**相同的"应该用这个工具吗"问题，在不同的 Agent 角色下答案的获取方式完全不同——交互式 UI、自动化钩子检查、跨进程协商**
-- 源码锚点：`src/hooks/toolPermission/handlers/coordinatorHandler.ts:17`（注释说明 coordinator 的行为差异）
-- 包含元素：**图35-1** — 三种处理器策略对比表
+- 核心主张：**不同运行环境对 Teammate 后端的需求不同——交互终端需要可视化（tmux pane），CI/CD 需要性能（in-process）——单一后端无法覆盖所有场景**
+- 源码锚点：`src/utils/swarm/backends/detection.ts:32`（注释："We ONLY check the TMUX env var. We do NOT run tmux display-message as a fallback because that command will succeed if ANY tmux server is running on the system"）
+- 包含元素：**图35-1** — 三种后端对比表（性能/隔离性/可视化/适用环境）
 - 估计字数：600-800字
 
-### 节 35.2：源码实例1 — interactiveHandler（UI 弹框，非 Promise）
-- 核心主张：**interactiveHandler 是同步设置回调的——它不返回 Promise，而是设置 UI 队列，让 React 异步渲染确认对话框**
+### 节 35.2：源码实例1 — InProcessBackend（同进程，性能优先）
+- 核心主张：**InProcessBackend 必须在 spawn 前调用 setContext 注入 AppState——这不是构造函数注入，而是运行时注入，因为 Context 在 spawn 时才可用**
 - 源码锚点：
-  - `src/hooks/toolPermission/handlers/interactiveHandler.ts:53`（注释："This function does NOT return a Promise -- it sets up callbacks"）
-  - `src/hooks/toolPermission/handlers/interactiveHandler.ts:57`（`function handleInteractivePermission(`）
-  - `src/hooks/toolPermission/handlers/interactiveHandler.ts:86`（`clearClassifierIndicator` — 分类器 UI 指示器清理）
-- 概念层次：非 Promise 的设计（React 状态更新是异步的，设置队列比 await 更合适）、clearClassifierIndicator 的 UX 意义
+  - `src/utils/swarm/backends/InProcessBackend.ts:28`（注释："Unlike pane-based backends (tmux/iTerm2), in-process teammates run in the..."）
+  - `src/utils/swarm/backends/InProcessBackend.ts:38`（`export class InProcessBackend implements TeammateExecutor`）
+  - `src/utils/swarm/backends/InProcessBackend.ts:49`（setContext 注释："Must be set via setContext() before spawn() is called"）
+  - `src/utils/swarm/backends/InProcessBackend.ts:72`（spawn 函数）
+- 概念层次：in-process 的优势（无进程启动延迟）和代价（与主进程共享内存/崩溃影响主进程）
 - 估计字数：900-1100字
 
-### 节 35.3：源码实例2 — swarmWorkerHandler（转发给 Leader）
-- 核心主张：**swarmWorkerHandler 尝试通过邮箱将权限请求转发给 Leader——如果失败（如 Leader 不可用），注释说明"fall through to interactive handling"**
+### 节 35.3：源码实例2 — TmuxBackend + auto detection（进程隔离，可视化）
+- 核心主张：**TmuxBackend 用文件系统锁（paneCreationLock Promise 链）防止并行 spawn 时的竞态条件——tmux 命令不是原子性的，必须串行化**
 - 源码锚点：
-  - `src/hooks/toolPermission/handlers/swarmWorkerHandler.ts:38`（注释："so the caller can fall through to interactive handling"）
-  - `src/hooks/toolPermission/handlers/swarmWorkerHandler.ts:40`（`async function handleSwarmWorkerPermission(`）
-- 概念层次：优雅降级（Leader 不可用时 fallthrough 到 interactive）、邮箱转发的异步性
+  - `src/utils/swarm/backends/TmuxBackend.ts:28`（`let paneCreationLock: Promise<void> = Promise.resolve()`）
+  - `src/utils/swarm/backends/TmuxBackend.ts:29`（注释："Lock mechanism to prevent race conditions when spawning teammates in parallel"）
+  - `src/utils/swarm/backends/detection.ts:36`（`export function isInsideTmuxSync(): boolean`——仅检查 TMUX 环境变量）
+  - `src/utils/swarm/backends/registry.ts:22`（cachedDetectionResult — 检测结果缓存）
+- 概念层次：Promise 链作为轻量级锁、auto detection 的环境变量检查策略、缓存检测结果的必要性
 - 估计字数：700-900字
 
 ### 节 35.4：模式剖析
-- 核心主张：**三种处理器的本质是"上下文决定策略"——Agent 的角色（main/coordinator/swarmWorker）决定了权限获取方式**
+- 核心主张：**可插拔运行后端的本质是"环境感知策略选择"——在运行时检测环境，缓存选择结果，统一接口调用**
 - 估计字数：500-700字
 
 ### 节 35.5：适用范围
 | 场景 | 适用性 | 理由 | 替代方案 |
 |------|--------|------|---------|
-| 同一功能在不同运行上下文需要不同行为 | ✓ | 策略分叉封装上下文差异 | 到处写 if (isSwarmWorker)（难维护）|
-| 需要优雅降级（首选失败时自动 fallback）| ✓ | swarmWorker fallthrough 设计 | 抛出异常（用户体验差）|
-| 上下文判断逻辑非常复杂 | ✗（谨慎）| 三个 handler 难以测试完整的交互 | 统一函数 + context 参数（但复杂）|
+| 需要跨环境（交互/非交互）自适应的系统 | ✓ | auto 模式根据环境变量自动选择 | 配置文件手动指定（但用户体验差）|
+| 并发 spawn 多个 Teammate | ✓ | TmuxBackend 的 paneCreationLock 防竞态 | 串行 spawn（但慢）|
+| CI/CD 环境无交互终端 | ✓ | auto 检测非交互模式后选 in-process | 强制 tmux（在 CI 中不可用）|
+| 需要完全进程隔离（Teammate 崩溃不影响主进程）| ✓ | tmux/外部进程天然隔离 | in-process（但崩溃传播）|
+| 超低延迟任务分派（<10ms）| ✓ | in-process 无进程启动开销 | tmux（spawn tmux pane 需要数百ms）|
 
 ### 节 35.6：权衡与局限
-- 三个文件分散了相关逻辑、coordinator 和 interactive 有部分重复代码（hook 检查逻辑）
+- in-process 的内存共享风险、TmuxBackend 的 shell 初始化延迟（pane 创建后需等待 rc 文件加载）、检测结果缓存后不响应环境变化
 - 估计字数：500-700字
 
 ### 节 35.7：与已知模式的对话
-- 与 GoF 策略模式：最接近——可替换的算法族；差异是策略通常在构造时选择，本模式在每次调用时根据 Agent 角色动态路由
+- 与 GoF 策略模式：最接近——可替换的算法族，统一接口；差异是策略通常在编译时选择，本模式在运行时根据环境动态选择
+- 与 Abstract Factory：相同——创建不同系列的后端对象；差异是 Abstract Factory 通常有多个产品，本模式只有一个 Executor 接口
 
 ### 章末：模式提炼
 ```
-模式名称：上下文策略分叉（Context-Aware Strategy Fork）
-问题：同一操作（权限检查）在不同 Agent 上下文（main/coordinator/swarmWorker）需要完全不同的实现
-解决方案：三个独立的 handler 函数，调用方根据 Agent 角色路由到对应 handler，每个 handler 可独立演化
-前置条件：能明确区分 Agent 角色（getAgentType/isSwarmWorker 等谓词）
-源码锚点：src/hooks/toolPermission/handlers/interactiveHandler.ts:53 (非Promise设计注释)
+模式名称：可插拔运行后端（Pluggable Runtime Backend）
+问题：不同运行环境需要不同的执行模型（in-process vs 独立进程），但调用方代码不应该感知差异
+解决方案：定义统一的 TeammateExecutor 接口，auto detection 在启动时检测环境并缓存后端选择
+前置条件：后端选择条件可以在启动时确定（环境变量/平台检测）
+源码锚点：src/utils/swarm/backends/registry.ts (auto detection), src/utils/swarm/backends/detection.ts:36
 ```
 
 ### 章末：你能做什么
-1. 将"相同功能、不同上下文"的分叉逻辑提取到独立的 handler 函数，而非在单一函数内 if/else
-2. 为非 Promise 的异步 UI 设置函数写明确注释（"does NOT return a Promise"），防止调用方误用 await
-3. 为转发型处理器（swarmWorker）实现 fallthrough 降级，而非在失败时抛出异常
+1. 为不同运行环境定义统一的 Executor 接口，让调用方不感知后端差异
+2. 只检查环境变量（TMUX）而非执行外部命令来检测运行环境——更快更可靠
+3. 缓存后端检测结果（cachedDetectionResult），避免每次 spawn 时重复检测
+4. 用 Promise 链而非 mutex 实现轻量级串行化锁，防止并发 spawn 的竞态条件
+5. 在 InProcessBackend.spawn 中要求调用方先调用 setContext，而非在构造函数中——Context 可能在构造时不可用
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图35-1 | 三种权限处理器策略对比 | Markdown 表格 | interactive/coordinator/swarmWorker 的触发条件/实现方式/降级策略 | 35.1 |
+| 图35-1 | 三种后端对比 | Markdown 表格 | in-process/tmux/auto 的性能/隔离性/适用环境 | 31.1 |
 
 ## 写作前 checklist
 ```bash
-sed -n '17p' src/hooks/toolPermission/handlers/coordinatorHandler.ts  # 注释
-sed -n '53p' src/hooks/toolPermission/handlers/interactiveHandler.ts  # 非Promise注释
-sed -n '57p' src/hooks/toolPermission/handlers/interactiveHandler.ts  # 函数签名
-sed -n '38p' src/hooks/toolPermission/handlers/swarmWorkerHandler.ts  # fallthrough注释
+sed -n '32p' src/utils/swarm/backends/detection.ts    # TMUX 注释
+sed -n '36p' src/utils/swarm/backends/detection.ts    # isInsideTmuxSync
+sed -n '28p' src/utils/swarm/backends/InProcessBackend.ts  # 注释
+sed -n '38p' src/utils/swarm/backends/InProcessBackend.ts  # class
+sed -n '49p' src/utils/swarm/backends/InProcessBackend.ts  # setContext 注释
+sed -n '28p' src/utils/swarm/backends/TmuxBackend.ts  # paneCreationLock
+sed -n '29p' src/utils/swarm/backends/TmuxBackend.ts  # 竞态注释
 ```
 
 ## ⛔ Spec 一致性声明

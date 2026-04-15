@@ -1,24 +1,20 @@
-flowchart LR
-    tooldef["ToolDef&lt;D&gt;\n你声明的意图\ncall + description + inputSchema"]
-    defaults["TOOL_DEFAULTS\nfail-closed 默认值\n7个安全字段"]
-    factory["buildTool()"]
-    built["BuiltTool&lt;D&gt;\n完整契约对象\n必填 + 默认 + 覆盖"]
-
-    tooldef --> factory
-    defaults --> factory
-    factory --> built
-
-    subgraph mandatory["必填字段（省略=编译错误）"]
-        m1[call]
-        m2[description]
-        m3[inputSchema]
-    end
-
-    subgraph defaultable["可默认字段（省略=自动补齐）"]
-        d1["isConcurrencySafe: false"]
-        d2["isReadOnly: false"]
-        d3["toAutoClassifierInput: ''"]
-    end
-
-    mandatory --> tooldef
-    defaultable --> defaults
+flowchart TD
+    call["调用 getFastModeState(model, userEnabled)"] --> env{isFastModeEnabled
+CLAUDE_CODE_DISABLE_FAST_MODE=false?}
+    env -->|"否（env禁用）"| off1["返回 'off'"]
+    env -->|"是"| statsig{Statsig/GrowthBook
+是否封禁?}
+    statsig -->|是| off2["返回 'off'"]
+    statsig -->|否| sdk{非交互式 SDK 会话
+且非 KAIROS?}
+    sdk -->|是（且无 flagSettings）| off3["返回 'off'
+(SDK 不支持)"]
+    sdk -->|否| billing{extra_usage
+计费是否启用?}
+    billing -->|否| off4["返回 'off'"]
+    billing -->|是| user_pref{fastModeUserEnabled
+= true 且模型支持?}
+    user_pref -->|否| off5["返回 'off'"]
+    user_pref -->|是| cooldown{isFastModeCooldown?}
+    cooldown -->|是| cool["返回 'cooldown'"]
+    cooldown -->|否| on["返回 'on'"]

@@ -1,23 +1,10 @@
-sequenceDiagram
-    participant AI as Claude AI
-    participant Hook as Hook System
-    participant Tool as Tool Executor
-
-    AI->>Hook: PreToolUse\n{tool_name, tool_input, session_id}
-    Hook->>Hook: getMatchingHooks(匹配 tool_name)
-    alt 返回 block
-        Hook-->>AI: decision=block, reason=...
-        Note over AI: 终止工具调用
-    else 返回 approve / 无响应
-        Hook-->>AI: decision=approve (或默认通过)
-        AI->>Tool: 执行工具
-        alt 工具成功
-            Tool-->>AI: 返回结果
-            AI->>Hook: PostToolUse\n{tool_name, tool_result}
-            Hook-->>AI: additionalContext（可选）
-        else 工具失败
-            Tool-->>AI: 错误信息
-            AI->>Hook: PostToolUseFailure\n{tool_name, error}
-            Hook-->>AI: additionalContext（可选）
-        end
-    end
+flowchart TD
+    enter["autoCompactIfNeeded(messages, toolUseContext)"] --> cb{"consecutiveFailures\n>= 3?"}
+    cb -->|是| skip["return wasCompacted=false\n电路断路器燘断"]
+    cb -->|否| check["shouldAutoCompact()模块"]
+    check -->|不需要压缩| no_compact["return wasCompacted=false"]
+    check -->|需要压缩| sm["trySessionMemoryCompaction()尝试"]
+    sm -->|成功| sm_ok["return wasCompacted=true（SM压缩）"]
+    sm -->|失败或不适用| cc["compactConversation()传统压缩"]
+    cc -->|成功| cc_ok["return wasCompacted=true, failures=0"]
+    cc -->|失败| fail["return wasCompacted=false\nconsecutiveFailures++"]

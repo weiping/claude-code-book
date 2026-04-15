@@ -1,17 +1,10 @@
-sequenceDiagram
-    participant GF as getMemoryFiles
-    participant PM as processMemoryFile
-    participant R as result 数组
-
-    GF->>PM: Managed（/etc/claude-code/CLAUDE.md）
-    PM-->>R: 追加到 result 前部
-    GF->>PM: User（~/.claude/CLAUDE.md）
-    PM-->>R: 追加到 result
-    Note over GF: dirs.reverse() 从根目录向 CWD 处理
-    GF->>PM: Project（根目录 CLAUDE.md）
-    PM-->>R: 追加
-    GF->>PM: Project（子目录 CLAUDE.md）
-    PM-->>R: 追加
-    GF->>PM: Local（CWD 的 CLAUDE.local.md）
-    PM-->>R: 追加到 result 最末尾
-    Note over R: 最末尾 = 最高注意力 = 最高优先级
+flowchart LR
+    dcp[声明式能力包]
+    
+    dcp -->|策略接口\n运行时发现| strategy[GoF 策略模式]
+    dcp -->|结构/内容/行为分离| html[HTML/CSS/JS 模型]
+    dcp -->|注册/发现/执行| registry[服务注册发现]
+    
+    strategy --- diff1["差异：策略在运行时\n从文件系统发现"]
+    html --- diff2["差异：面向AI扩展\n而非Web页面"]
+    registry --- diff3["差异：注册中心\n在本地文件系统"]

@@ -157,63 +157,292 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="附录-d环境变量参考"><a class="header" href="#附录-d环境变量参考">附录 D：环境变量参考</a></h1>
-<p>本附录汇总 Claude Code 支持的环境变量，涵盖 API 连接、模型选择、功能控制及 SDK 集成。可独立查阅，适合配置调试与部署时快速检索。</p>
+<p>本附录汇总 Claude Code 支持的环境变量，涵盖 API 连接、模型选择、提供商路由、功能控制、遥测、MCP、SDK 集成及插件沙箱。可独立查阅，适合配置调试与部署时快速检索。</p>
 <hr />
 <h2 id="api-连接类"><a class="header" href="#api-连接类">API 连接类</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
-<tr><td><code>ANTHROPIC_API_KEY</code></td><td>string</td><td>Anthropic API 密钥，直连 claude.ai 时必填</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_BASE_URL</code></td><td>string (URL)</td><td>覆盖默认 API 基础 URL，适用于反向代理或私有部署</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_AUTH_TOKEN</code></td><td>string</td><td>替代 API Key 的认证 token，二选一使用</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_BEDROCK_BASE_URL</code></td><td>string (URL)</td><td>AWS Bedrock 自定义接入点 URL</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_VERTEX_PROJECT_ID</code></td><td>string</td><td>Google Vertex AI 项目 ID</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_FOUNDRY_API_KEY</code></td><td>string</td><td>Azure AI Foundry API 密钥</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_UNIX_SOCKET</code></td><td>string (路径)</td><td>通过 Unix domain socket 连接 API，适合本地代理场景</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_BETAS</code></td><td>string</td><td>启用 Beta 功能列表，多个功能用逗号分隔</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_CUSTOM_HEADERS</code></td><td>JSON string</td><td>注入自定义 HTTP 请求头，格式为 JSON 对象字符串</td><td>—</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>ANTHROPIC_API_KEY</code></td><td>string</td><td>—</td><td>Anthropic API 密钥，直连 claude.ai 时必填</td><td>第13章</td></tr>
+<tr><td><code>ANTHROPIC_BASE_URL</code></td><td>string (URL)</td><td><code>https://api.anthropic.com</code></td><td>覆盖默认 API 基础 URL，适用于反向代理或私有部署</td><td>第13章</td></tr>
+<tr><td><code>ANTHROPIC_AUTH_TOKEN</code></td><td>string</td><td>—</td><td>替代 API Key 的 Bearer Token，与 <code>ANTHROPIC_API_KEY</code> 二选一</td><td>第13章</td></tr>
+<tr><td><code>ANTHROPIC_BEDROCK_BASE_URL</code></td><td>string (URL)</td><td>—</td><td>AWS Bedrock 自定义接入点 URL（覆盖 <code>BEDROCK_BASE_URL</code>）</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_VERTEX_PROJECT_ID</code></td><td>string</td><td>—</td><td>Google Vertex AI 项目 ID</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_FOUNDRY_API_KEY</code></td><td>string</td><td>—</td><td>Azure AI Foundry API 密钥</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_FOUNDRY_BASE_URL</code></td><td>string (URL)</td><td>—</td><td>Azure AI Foundry 自定义接入点 URL</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_FOUNDRY_RESOURCE</code></td><td>string</td><td>—</td><td>Azure 资源名称（如 <code>my-resource</code>），Foundry 模式必填</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_UNIX_SOCKET</code></td><td>string (路径)</td><td>—</td><td>通过 Unix domain socket 连接 API，适合本地代理场景</td><td>第13章</td></tr>
+<tr><td><code>ANTHROPIC_BETAS</code></td><td>string</td><td>—</td><td>启用 Beta 功能列表，多个功能用逗号分隔</td><td>第13章</td></tr>
+<tr><td><code>ANTHROPIC_CUSTOM_HEADERS</code></td><td>JSON string</td><td>—</td><td>注入自定义 HTTP 请求头，格式为 JSON 对象字符串</td><td>第13章</td></tr>
+<tr><td><code>API_TIMEOUT_MS</code></td><td>number</td><td>—</td><td>API 请求超时时间（毫秒），超时报错时 UI 会提示本变量</td><td>第13章</td></tr>
+<tr><td><code>HTTP_PROXY</code> / <code>HTTPS_PROXY</code></td><td>string (URL)</td><td>—</td><td>出站 HTTP/HTTPS 代理，自动传递给子进程</td><td>第13章</td></tr>
+<tr><td><code>NO_PROXY</code></td><td>string</td><td>—</td><td>不走代理的主机列表，逗号分隔</td><td>第13章</td></tr>
+<tr><td><code>NODE_EXTRA_CA_CERTS</code></td><td>string (路径)</td><td>—</td><td>附加受信任 CA 证书文件路径（PEM 格式）</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_CLIENT_CERT</code></td><td>string (路径)</td><td>—</td><td>客户端 TLS 证书路径（mTLS 场景）</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_CLIENT_KEY</code></td><td>string (路径)</td><td>—</td><td>客户端 TLS 私钥路径（mTLS 场景）</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_CLIENT_KEY_PASSPHRASE</code></td><td>string</td><td>—</td><td>客户端 TLS 私钥密码短语</td><td>第13章</td></tr>
 </tbody></table>
 </div>
 <hr />
 <h2 id="模型选择类"><a class="header" href="#模型选择类">模型选择类</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
-<tr><td><code>ANTHROPIC_MODEL</code></td><td>string</td><td>覆盖主对话默认模型（如 <code>claude-3-5-sonnet-20241022</code>）</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_SMALL_FAST_MODEL</code></td><td>string</td><td>覆盖小型/快速任务使用的模型</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_DEFAULT_HAIKU_MODEL</code></td><td>string</td><td>覆盖默认 Haiku 系列模型</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_DEFAULT_SONNET_MODEL</code></td><td>string</td><td>覆盖默认 Sonnet 系列模型</td><td>—</td></tr>
-<tr><td><code>ANTHROPIC_DEFAULT_OPUS_MODEL</code></td><td>string</td><td>覆盖默认 Opus 系列模型</td><td>—</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>ANTHROPIC_MODEL</code></td><td>string</td><td>—</td><td>覆盖主对话默认模型（如 <code>claude-opus-4-5</code>）</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_SMALL_FAST_MODEL</code></td><td>string</td><td>—</td><td>覆盖小型/快速任务使用的模型</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION</code></td><td>string</td><td>—</td><td>专门用于小型快速模型（Haiku）的 AWS 区域覆盖</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_DEFAULT_HAIKU_MODEL</code></td><td>string</td><td>—</td><td>覆盖默认 Haiku 系列模型标识符</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_DEFAULT_SONNET_MODEL</code></td><td>string</td><td>—</td><td>覆盖默认 Sonnet 系列模型标识符</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_DEFAULT_OPUS_MODEL</code></td><td>string</td><td>—</td><td>覆盖默认 Opus 系列模型标识符</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_CUSTOM_MODEL_OPTION</code></td><td>string</td><td>—</td><td>自定义模型选项值，与 <code>_NAME</code>/<code>_DESCRIPTION</code> 配合使用</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_CUSTOM_MODEL_OPTION_NAME</code></td><td>string</td><td>—</td><td>自定义模型选项在 UI 中显示的名称</td><td>第11章</td></tr>
+<tr><td><code>ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION</code></td><td>string</td><td>—</td><td>自定义模型选项描述文本</td><td>第11章</td></tr>
+<tr><td><code>CLAUDE_CODE_SUBAGENT_MODEL</code></td><td>string</td><td>—</td><td>覆盖子 Agent 使用的模型，不影响主 Agent</td><td>第11章</td></tr>
+<tr><td><code>CLAUDE_CODE_AUTO_MODE_MODEL</code></td><td>string</td><td>—</td><td>自动模式下使用的专用模型</td><td>第11章</td></tr>
+<tr><td><code>FALLBACK_FOR_ALL_PRIMARY_MODELS</code></td><td>bool</td><td>false</td><td>所有主模型均启用降级回退逻辑</td><td>第11章</td></tr>
 </tbody></table>
 </div>
 <hr />
-<h2 id="插件沙箱类"><a class="header" href="#插件沙箱类">插件沙箱类</a></h2>
+<h2 id="提供商选择类"><a class="header" href="#提供商选择类">提供商选择类</a></h2>
 <blockquote>
-<p>以下变量由 Claude Code 在启动 MCP/LSP 子进程时自动注入，插件代码可直接读取。</p>
+<p>三个云提供商互斥：同时只应设置其中一个 <code>USE_*</code> 标志。</p>
 </blockquote>
-<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
-<tr><td><code>CLAUDE_PLUGIN_ROOT</code></td><td>string (路径)</td><td>插件安装目录（<strong>只读</strong>），每次插件版本更新后路径会变化</td><td>第39章</td></tr>
-<tr><td><code>CLAUDE_PLUGIN_DATA</code></td><td>string (路径)</td><td>插件持久化数据目录（<strong>可读写</strong>），跨版本升级后继续存在</td><td>第39章</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>CLAUDE_CODE_USE_BEDROCK</code></td><td>bool</td><td>false</td><td>启用 AWS Bedrock 作为 API 提供商</td><td>第11章</td></tr>
+<tr><td><code>CLAUDE_CODE_USE_VERTEX</code></td><td>bool</td><td>false</td><td>启用 Google Vertex AI 作为 API 提供商</td><td>第11章</td></tr>
+<tr><td><code>CLAUDE_CODE_USE_FOUNDRY</code></td><td>bool</td><td>false</td><td>启用 Azure AI Foundry 作为 API 提供商</td><td>第11章</td></tr>
+<tr><td><code>CLAUDE_CODE_SKIP_BEDROCK_AUTH</code></td><td>bool</td><td>false</td><td>跳过 Bedrock 凭证检查（用于自定义认证代理）</td><td>第11章</td></tr>
+<tr><td><code>CLAUDE_CODE_SKIP_VERTEX_AUTH</code></td><td>bool</td><td>false</td><td>跳过 Vertex AI 凭证检查</td><td>第11章</td></tr>
+<tr><td><code>CLAUDE_CODE_SKIP_FOUNDRY_AUTH</code></td><td>bool</td><td>false</td><td>跳过 Foundry 凭证检查</td><td>第11章</td></tr>
+<tr><td><code>AWS_DEFAULT_REGION</code></td><td>string</td><td>—</td><td>AWS 默认区域，影响 Bedrock 接入点选择</td><td>第11章</td></tr>
+<tr><td><code>AWS_BEARER_TOKEN_BEDROCK</code></td><td>string</td><td>—</td><td>Bedrock 专用 Bearer Token 认证</td><td>第11章</td></tr>
+<tr><td><code>BEDROCK_BASE_URL</code></td><td>string (URL)</td><td>—</td><td>Bedrock 基础 URL（被 <code>ANTHROPIC_BEDROCK_BASE_URL</code> 覆盖）</td><td>第11章</td></tr>
+<tr><td><code>VERTEX_BASE_URL</code></td><td>string (URL)</td><td>—</td><td>Vertex AI 基础 URL 覆盖</td><td>第11章</td></tr>
+<tr><td><code>GOOGLE_CLOUD_PROJECT</code></td><td>string</td><td>—</td><td>Google Cloud 项目 ID，Vertex AI 场景下使用</td><td>第11章</td></tr>
+<tr><td><code>CLOUD_ML_REGION</code></td><td>string</td><td>—</td><td>Vertex AI 所在 Google Cloud 区域</td><td>第11章</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="思考推理控制类"><a class="header" href="#思考推理控制类">思考/推理控制类</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>MAX_THINKING_TOKENS</code></td><td>number</td><td>—</td><td>覆盖扩展思考允许使用的最大 token 数；设为 0 等同于禁用</td><td>第12章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_THINKING</code></td><td>bool</td><td>false</td><td>禁用扩展思考功能（Claude 3.7+ 的 extended thinking）</td><td>第12章</td></tr>
+<tr><td><code>DISABLE_INTERLEAVED_THINKING</code></td><td>bool</td><td>false</td><td>禁用交错思考（thinking 与工具调用交替进行）</td><td>第12章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING</code></td><td>bool</td><td>false</td><td>禁用自适应思考预算调整逻辑</td><td>第12章</td></tr>
+<tr><td><code>CLAUDE_CODE_EFFORT_LEVEL</code></td><td>string</td><td>—</td><td>设置推理努力程度（如 <code>low</code> / <code>medium</code> / <code>high</code>）</td><td>第12章</td></tr>
+<tr><td><code>CLAUDE_CODE_ALWAYS_ENABLE_EFFORT</code></td><td>bool</td><td>false</td><td>强制启用 effort 参数，即使模型不支持也传递</td><td>第12章</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="上下文与压缩类"><a class="header" href="#上下文与压缩类">上下文与压缩类</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code></td><td>number</td><td>~80</td><td>覆盖上下文自动压缩触发阈值（百分比）</td><td>第22章</td></tr>
+<tr><td><code>DISABLE_COMPACT</code></td><td>bool</td><td>false</td><td>完全禁用压缩功能（含手动 <code>/compact</code> 命令）</td><td>第22章</td></tr>
+<tr><td><code>DISABLE_AUTO_COMPACT</code></td><td>bool</td><td>false</td><td>仅禁用自动压缩，保留手动压缩能力</td><td>第22章</td></tr>
+<tr><td><code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code></td><td>number</td><td>—</td><td>覆盖最大上下文 token 数（默认从模型能力读取）</td><td>第22章</td></tr>
+<tr><td><code>CLAUDE_CODE_MAX_OUTPUT_TOKENS</code></td><td>number</td><td>—</td><td>覆盖最大输出 token 数</td><td>第22章</td></tr>
+<tr><td><code>CLAUDE_CODE_AUTO_COMPACT_WINDOW</code></td><td>number</td><td>—</td><td>自动压缩窗口大小设置</td><td>第22章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_PRECOMPACT_SKIP</code></td><td>bool</td><td>false</td><td>禁用压缩前跳过逻辑，强制每次都压缩</td><td>第22章</td></tr>
+<tr><td><code>CLAUDE_AFTER_LAST_COMPACT</code></td><td>string</td><td>—</td><td>记录上次压缩后的时间戳（运行时内部注入）</td><td>第22章</td></tr>
+<tr><td><code>API_MAX_INPUT_TOKENS</code></td><td>number</td><td>—</td><td>微压缩（micro-compact）触发阈值，超过则删减历史消息</td><td>第22章</td></tr>
+<tr><td><code>API_TARGET_INPUT_TOKENS</code></td><td>number</td><td>—</td><td>微压缩保留目标 token 数</td><td>第22章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_1M_CONTEXT</code></td><td>bool</td><td>false</td><td>禁用 100 万 token 超长上下文功能</td><td>第22章</td></tr>
+<tr><td><code>ENABLE_CLAUDE_CODE_SM_COMPACT</code></td><td>bool</td><td>false</td><td>启用 SM 压缩实验功能</td><td>第22章</td></tr>
+<tr><td><code>DISABLE_CLAUDE_CODE_SM_COMPACT</code></td><td>bool</td><td>false</td><td>禁用 SM 压缩实验功能</td><td>第22章</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="swarm--协调器类"><a class="header" href="#swarm--协调器类">Swarm / 协调器类</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>CLAUDE_CODE_COORDINATOR_MODE</code></td><td>bool</td><td>false</td><td>启用协调器模式，当前实例作为 Swarm 编排节点</td><td>第33章</td></tr>
+<tr><td><code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS</code></td><td>bool</td><td>false</td><td>启用实验性多 Agent 团队协作功能</td><td>第33章</td></tr>
+<tr><td><code>CLAUDE_CODE_PLAN_V2_AGENT_COUNT</code></td><td>number</td><td>—</td><td>Plan v2 模式下并发 Agent 数量</td><td>第33章</td></tr>
+<tr><td><code>CLAUDE_CODE_PLAN_V2_EXPLORE_AGENT_COUNT</code></td><td>number</td><td>—</td><td>Plan v2 探索阶段 Agent 数量</td><td>第33章</td></tr>
+<tr><td><code>CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY</code></td><td>number</td><td>—</td><td>工具调用最大并发数</td><td>第33章</td></tr>
 </tbody></table>
 </div>
 <hr />
 <h2 id="功能控制类"><a class="header" href="#功能控制类">功能控制类</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
-<tr><td><code>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC</code></td><td>bool</td><td>禁用非必要网络请求，包括官方插件注册表查询和遥测上报</td><td>第38章</td></tr>
-<tr><td><code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code></td><td>number</td><td>覆盖上下文自动压缩触发阈值（百分比，默认约 80）</td><td>—</td></tr>
-<tr><td><code>CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR</code></td><td>bool</td><td>Bash 工具执行后自动恢复原始工作目录，防止 <code>cd</code> 污染会话</td><td>—</td></tr>
-<tr><td><code>CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD</code></td><td>string (路径)</td><td>额外的 <code>CLAUDE.md</code> 搜索目录，多路径用 <code>:</code> 分隔</td><td>—</td></tr>
-<tr><td><code>CLAUDE_CODE_ADDITIONAL_PROTECTION</code></td><td>bool</td><td>启用额外安全保护层（具体机制为内部实现）</td><td>—</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC</code></td><td>bool</td><td>false</td><td>禁用非必要网络请求（插件注册表查询、遥测上报等）</td><td>第41章</td></tr>
+<tr><td><code>CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR</code></td><td>bool</td><td>false</td><td>Bash 工具执行后自动恢复原始工作目录，防止 <code>cd</code> 污染会话</td><td>第14章</td></tr>
+<tr><td><code>CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD</code></td><td>string (路径)</td><td>—</td><td>额外的 <code>CLAUDE.md</code> 搜索目录，多路径用 <code>:</code> 分隔</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ADDITIONAL_PROTECTION</code></td><td>bool</td><td>false</td><td>启用额外安全保护层（内部实现机制）</td><td>第37章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_COMMAND_INJECTION_CHECK</code></td><td>bool</td><td>false</td><td>禁用 Bash 命令注入检查（<strong>高风险</strong>，不建议生产使用）</td><td>第37章</td></tr>
+<tr><td><code>BASH_MAX_OUTPUT_LENGTH</code></td><td>number</td><td>—</td><td>Bash 工具单次输出最大字符数</td><td>第14章</td></tr>
+<tr><td><code>TASK_MAX_OUTPUT_LENGTH</code></td><td>number</td><td>—</td><td>Task 工具单次输出最大字符数</td><td>第29章</td></tr>
+<tr><td><code>CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS</code></td><td>number</td><td>—</td><td>文件读取工具单次返回最大 token 数</td><td>第14章</td></tr>
+<tr><td><code>DISABLE_COST_WARNINGS</code></td><td>bool</td><td>false</td><td>禁用 API 费用超额警告提示</td><td>—</td></tr>
+<tr><td><code>DISABLE_PROMPT_CACHING</code></td><td>bool</td><td>false</td><td>禁用所有模型的 Prompt 缓存</td><td>第13章</td></tr>
+<tr><td><code>DISABLE_PROMPT_CACHING_HAIKU</code></td><td>bool</td><td>false</td><td>仅禁用 Haiku 系列的 Prompt 缓存</td><td>第13章</td></tr>
+<tr><td><code>DISABLE_PROMPT_CACHING_SONNET</code></td><td>bool</td><td>false</td><td>仅禁用 Sonnet 系列的 Prompt 缓存</td><td>第13章</td></tr>
+<tr><td><code>DISABLE_PROMPT_CACHING_OPUS</code></td><td>bool</td><td>false</td><td>仅禁用 Opus 系列的 Prompt 缓存</td><td>第13章</td></tr>
+<tr><td><code>ENABLE_PROMPT_CACHING_1H_BEDROCK</code></td><td>bool</td><td>false</td><td>在 Bedrock 上启用 1 小时长效 Prompt 缓存</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS</code></td><td>bool</td><td>false</td><td>禁用系统提示中注入的 Git 相关操作指导</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_AUTO_MEMORY</code></td><td>bool</td><td>false</td><td>禁用自动记忆功能</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_BACKGROUND_TASKS</code></td><td>bool</td><td>false</td><td>禁用后台任务执行</td><td>第29章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_FAST_MODE</code></td><td>bool</td><td>false</td><td>禁用快速模式（强制使用完整推理路径）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_ATTACHMENTS</code></td><td>bool</td><td>false</td><td>禁用文件附件功能</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_CLAUDE_MDS</code></td><td>bool</td><td>false</td><td>禁用 CLAUDE.md 配置文件加载</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY</code></td><td>bool</td><td>false</td><td>禁用反馈调查弹出</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_TERMINAL_TITLE</code></td><td>bool</td><td>false</td><td>禁用动态设置终端窗口标题</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_MOUSE</code></td><td>bool</td><td>false</td><td>禁用鼠标事件捕获</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_MOUSE_CLICKS</code></td><td>bool</td><td>false</td><td>仅禁用鼠标点击事件</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_VIRTUAL_SCROLL</code></td><td>bool</td><td>false</td><td>禁用虚拟滚动（调试 UI 渲染时有用）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_MESSAGE_ACTIONS</code></td><td>bool</td><td>false</td><td>禁用消息右键操作菜单</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK</code></td><td>bool</td><td>false</td><td>禁用非流式响应降级逻辑</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS</code></td><td>bool</td><td>false</td><td>禁用所有实验性 Beta 功能</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_POLICY_SKILLS</code></td><td>bool</td><td>false</td><td>禁用策略技能注入</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_ADVISOR_TOOL</code></td><td>bool</td><td>false</td><td>禁用 Advisor 工具</td><td>—</td></tr>
+<tr><td><code>DISABLE_TELEMETRY</code></td><td>bool</td><td>false</td><td>完全禁用遥测上报（使隐私级别升至 no-telemetry）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ENABLE_TELEMETRY</code></td><td>bool</td><td>false</td><td>显式启用遥测（覆盖默认关闭状态）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ENABLE_TASKS</code></td><td>bool</td><td>false</td><td>启用任务管理功能</td><td>第29章</td></tr>
+<tr><td><code>CLAUDE_CODE_ENABLE_CFC</code></td><td>bool</td><td>false</td><td>启用 Continuous Function Calling 功能</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ENABLE_FINE_GRAINED_TOOL_STREAMING</code></td><td>bool</td><td>false</td><td>启用细粒度工具流式传输</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION</code></td><td>bool</td><td>false</td><td>启用提示词建议功能</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ENABLE_XAA</code></td><td>bool</td><td>false</td><td>启用 XAA 跨 Agent 认证功能</td><td>第33章</td></tr>
+<tr><td><code>CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING</code></td><td>bool</td><td>false</td><td>SDK 模式下启用文件检查点</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ENABLE_TOKEN_USAGE_ATTACHMENT</code></td><td>bool</td><td>false</td><td>将 token 用量附加到消息中</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_GLOB_HIDDEN</code></td><td>bool</td><td>false</td><td>Glob 匹配时包含隐藏文件（以 <code>.</code> 开头）</td><td>第14章</td></tr>
+<tr><td><code>CLAUDE_CODE_GLOB_NO_IGNORE</code></td><td>bool</td><td>false</td><td>Glob 匹配时忽略 <code>.gitignore</code> 等排除规则</td><td>第14章</td></tr>
+<tr><td><code>CLAUDE_CODE_GLOB_TIMEOUT_SECONDS</code></td><td>number</td><td>—</td><td>Glob 操作超时时间（秒）</td><td>第14章</td></tr>
+<tr><td><code>CLAUDE_CODE_USE_NATIVE_FILE_SEARCH</code></td><td>bool</td><td>false</td><td>使用系统原生文件搜索代替内置实现</td><td>第14章</td></tr>
+<tr><td><code>USE_BUILTIN_RIPGREP</code></td><td>bool</td><td>false</td><td>强制使用内置 ripgrep 而非系统 PATH 中的版本</td><td>第14章</td></tr>
+<tr><td><code>EMBEDDED_SEARCH_TOOLS</code></td><td>bool</td><td>false</td><td>启用内嵌搜索工具</td><td>第14章</td></tr>
+<tr><td><code>ENABLE_TOOL_SEARCH</code></td><td>bool</td><td>false</td><td>启用工具搜索功能</td><td>第14章</td></tr>
+<tr><td><code>ENABLE_LSP_TOOL</code></td><td>bool</td><td>false</td><td>启用 LSP（Language Server Protocol）工具</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_USE_POWERSHELL_TOOL</code></td><td>bool</td><td>false</td><td>在 Windows 上使用 PowerShell 工具替代 Bash</td><td>第14章</td></tr>
+<tr><td><code>CLAUDE_CODE_PWSH_PARSE_TIMEOUT_MS</code></td><td>number</td><td>—</td><td>PowerShell 命令解析超时（毫秒）</td><td>第14章</td></tr>
+<tr><td><code>CLAUDE_CODE_TWO_STAGE_CLASSIFIER</code></td><td>bool</td><td>false</td><td>启用两阶段安全分类器</td><td>第37章</td></tr>
+<tr><td><code>SLASH_COMMAND_TOOL_CHAR_BUDGET</code></td><td>number</td><td>—</td><td>Slash 命令工具的字符预算上限</td><td>—</td></tr>
+<tr><td><code>MAX_STRUCTURED_OUTPUT_RETRIES</code></td><td>number</td><td>—</td><td>结构化输出解析失败的最大重试次数</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_MAX_RETRIES</code></td><td>number</td><td>—</td><td>API 请求最大重试次数</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_UNATTENDED_RETRY</code></td><td>bool</td><td>false</td><td>无人值守模式下自动重试（不提示用户）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_PLAN_MODE_REQUIRED</code></td><td>bool</td><td>false</td><td>强制进入 Plan 模式，不能直接执行</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_PLAN_MODE_INTERVIEW_PHASE</code></td><td>bool</td><td>false</td><td>Plan 模式启用访谈阶段</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_VERIFY_PLAN</code></td><td>bool</td><td>false</td><td>执行前要求用户验证计划</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_RESUME_INTERRUPTED_TURN</code></td><td>bool</td><td>false</td><td>启动时自动恢复被中断的对话轮次</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_PROACTIVE</code></td><td>bool</td><td>false</td><td>启用主动建议功能</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_AUTO_BACKGROUND_TASKS</code></td><td>bool</td><td>false</td><td>自动将长任务移入后台执行</td><td>第29章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING</code></td><td>bool</td><td>false</td><td>禁用文件变更检查点（减少磁盘写入）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_IDLE_THRESHOLD_MINUTES</code></td><td>number</td><td>—</td><td>空闲检测阈值（分钟），超过则触发空闲回调</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_IDLE_TOKEN_THRESHOLD</code></td><td>number</td><td>—</td><td>基于 token 数的空闲触发阈值</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_SIMPLE</code></td><td>bool</td><td>false</td><td>启用简化模式（禁用部分高级功能）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_BRIEF</code></td><td>bool</td><td>false</td><td>启用简洁输出模式</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_STREAMLINED_OUTPUT</code></td><td>bool</td><td>false</td><td>启用流式精简输出格式</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_STRICT</code></td><td>bool</td><td>false</td><td>严格模式，不允许任何隐式操作</td><td>第37章</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="遥测--可观测性类"><a class="header" href="#遥测--可观测性类">遥测 / 可观测性类</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>OTEL_TRACES_EXPORTER</code></td><td>string</td><td>—</td><td>OpenTelemetry Traces 导出器（<code>console</code> / <code>otlp</code> 等）</td><td>—</td></tr>
+<tr><td><code>OTEL_METRICS_EXPORTER</code></td><td>string</td><td>—</td><td>OpenTelemetry Metrics 导出器</td><td>—</td></tr>
+<tr><td><code>OTEL_LOGS_EXPORTER</code></td><td>string</td><td>—</td><td>OpenTelemetry Logs 导出器</td><td>—</td></tr>
+<tr><td><code>OTEL_EXPORTER_OTLP_ENDPOINT</code></td><td>string (URL)</td><td>—</td><td>OTLP 导出端点 URL</td><td>—</td></tr>
+<tr><td><code>OTEL_EXPORTER_OTLP_HEADERS</code></td><td>string</td><td>—</td><td>OTLP 请求头（格式：<code>key=value,key2=value2</code>）</td><td>—</td></tr>
+<tr><td><code>OTEL_EXPORTER_OTLP_PROTOCOL</code></td><td>string</td><td>—</td><td>OTLP 协议（<code>grpc</code> / <code>http/protobuf</code> / <code>http/json</code>）</td><td>—</td></tr>
+<tr><td><code>OTEL_LOG_TOOL_CONTENT</code></td><td>bool</td><td>false</td><td>OTEL Logs 中记录工具输入/输出内容</td><td>—</td></tr>
+<tr><td><code>OTEL_LOG_TOOL_DETAILS</code></td><td>bool</td><td>false</td><td>OTEL Logs 中记录工具调用详情</td><td>—</td></tr>
+<tr><td><code>OTEL_LOG_USER_PROMPTS</code></td><td>bool</td><td>false</td><td>OTEL Logs 中记录用户提示词（<strong>隐私敏感</strong>）</td><td>—</td></tr>
+<tr><td><code>OTEL_METRIC_EXPORT_INTERVAL</code></td><td>number</td><td>—</td><td>Metrics 导出间隔（毫秒）</td><td>—</td></tr>
+<tr><td><code>OTEL_TRACES_EXPORT_INTERVAL</code></td><td>number</td><td>—</td><td>Traces 导出间隔（毫秒）</td><td>—</td></tr>
+<tr><td><code>OTEL_LOGS_EXPORT_INTERVAL</code></td><td>number</td><td>—</td><td>Logs 导出间隔（毫秒）</td><td>—</td></tr>
+<tr><td><code>ANT_OTEL_TRACES_EXPORTER</code></td><td>string</td><td>—</td><td>内部覆盖 <code>OTEL_TRACES_EXPORTER</code> 的 Anthropic 私有变量</td><td>—</td></tr>
+<tr><td><code>ANT_OTEL_METRICS_EXPORTER</code></td><td>string</td><td>—</td><td>内部覆盖 <code>OTEL_METRICS_EXPORTER</code> 的 Anthropic 私有变量</td><td>—</td></tr>
+<tr><td><code>ANT_OTEL_LOGS_EXPORTER</code></td><td>string</td><td>—</td><td>内部覆盖 <code>OTEL_LOGS_EXPORTER</code> 的 Anthropic 私有变量</td><td>—</td></tr>
+<tr><td><code>ANT_OTEL_EXPORTER_OTLP_ENDPOINT</code></td><td>string (URL)</td><td>—</td><td>内部 OTLP 端点变量</td><td>—</td></tr>
+<tr><td><code>ANT_OTEL_EXPORTER_OTLP_HEADERS</code></td><td>string</td><td>—</td><td>内部 OTLP 请求头变量</td><td>—</td></tr>
+<tr><td><code>ANT_OTEL_EXPORTER_OTLP_PROTOCOL</code></td><td>string</td><td>—</td><td>内部 OTLP 协议变量</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_OTEL_FLUSH_TIMEOUT_MS</code></td><td>number</td><td>—</td><td>OTEL 数据刷新超时（毫秒）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_OTEL_SHUTDOWN_TIMEOUT_MS</code></td><td>number</td><td>—</td><td>OTEL 关闭等待超时（毫秒）</td><td>—</td></tr>
+<tr><td><code>DISABLE_TELEMETRY</code></td><td>bool</td><td>false</td><td>完全禁用遥测（见"功能控制类"）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ENHANCED_TELEMETRY_BETA</code></td><td>bool</td><td>false</td><td>启用增强遥测 Beta 功能</td><td>—</td></tr>
+<tr><td><code>ENABLE_ENHANCED_TELEMETRY_BETA</code></td><td>bool</td><td>false</td><td>同上，另一种写法</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_JSONL_TRANSCRIPT</code></td><td>string (路径)</td><td>—</td><td>将对话记录导出为 JSONL 文件路径</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_SESSION_LOG</code></td><td>string (路径)</td><td>—</td><td>Session 级别日志输出路径</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DEBUG_LOGS_DIR</code></td><td>string (路径)</td><td>—</td><td>调试日志目录</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_DEBUG_LOG_LEVEL</code></td><td>string</td><td>—</td><td>调试日志级别（如 <code>debug</code> / <code>info</code> / <code>warn</code>）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_DEBUG</code></td><td>bool</td><td>false</td><td>启用通用调试输出</td><td>—</td></tr>
+<tr><td><code>DEBUG</code></td><td>string</td><td>—</td><td>标准 Node.js debug 命名空间过滤器</td><td>—</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="mcp-集成类"><a class="header" href="#mcp-集成类">MCP 集成类</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>MCP_TIMEOUT</code></td><td>number</td><td>30000</td><td>MCP 服务器连接超时（毫秒）</td><td>—</td></tr>
+<tr><td><code>MCP_TOOL_TIMEOUT</code></td><td>number</td><td>~27.8h</td><td>MCP 工具调用超时（毫秒，默认极大以支持长任务）</td><td>—</td></tr>
+<tr><td><code>MAX_MCP_OUTPUT_TOKENS</code></td><td>number</td><td>25000</td><td>MCP 工具单次输出最大 token 数</td><td>—</td></tr>
+<tr><td><code>MCP_SERVER_CONNECTION_BATCH_SIZE</code></td><td>number</td><td>—</td><td>MCP 服务器批量连接数</td><td>—</td></tr>
+<tr><td><code>MCP_REMOTE_SERVER_CONNECTION_BATCH_SIZE</code></td><td>number</td><td>—</td><td>远程 MCP 服务器批量连接数</td><td>—</td></tr>
+<tr><td><code>ENABLE_MCP_LARGE_OUTPUT_FILES</code></td><td>bool</td><td>false</td><td>允许 MCP 工具返回大文件内容</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_MCP_INSTR_DELTA</code></td><td>string</td><td>—</td><td>MCP 工具指令差量注入</td><td>—</td></tr>
+<tr><td><code>ENABLE_CLAUDEAI_MCP_SERVERS</code></td><td>bool</td><td>false</td><td>启用 claude.ai 平台 MCP 服务器</td><td>—</td></tr>
+<tr><td><code>MCP_CLIENT_SECRET</code></td><td>string</td><td>—</td><td>MCP OAuth 客户端密钥</td><td>—</td></tr>
+<tr><td><code>MCP_OAUTH_CALLBACK_PORT</code></td><td>number</td><td>—</td><td>MCP OAuth 回调端口</td><td>—</td></tr>
+<tr><td><code>MCP_OAUTH_CLIENT_METADATA_URL</code></td><td>string (URL)</td><td>—</td><td>MCP OAuth 客户端元数据 URL</td><td>—</td></tr>
+<tr><td><code>MCP_XAA_IDP_CLIENT_SECRET</code></td><td>string</td><td>—</td><td>MCP XAA 身份提供商客户端密钥</td><td>—</td></tr>
 </tbody></table>
 </div>
 <hr />
 <h2 id="sdk-集成类"><a class="header" href="#sdk-集成类">SDK 集成类</a></h2>
-<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
-<tr><td><code>CLAUDE_AGENT_SDK_CLIENT_APP</code></td><td>string</td><td>SDK 调用方应用标识，用于遥测和日志区分</td><td>—</td></tr>
-<tr><td><code>CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS</code></td><td>bool</td><td>禁用内置 Agent 定义，完全由调用方提供 Agent 配置</td><td>—</td></tr>
-<tr><td><code>CLAUDE_AGENT_SDK_MCP_NO_PREFIX</code></td><td>bool</td><td>MCP 工具注册时不添加服务器名前缀，避免命名冲突</td><td>—</td></tr>
-<tr><td><code>CLAUDE_AGENT_SDK_VERSION</code></td><td>string</td><td>SDK 版本标识，注入到请求元数据中</td><td>—</td></tr>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>CLAUDE_AGENT_SDK_CLIENT_APP</code></td><td>string</td><td>—</td><td>SDK 调用方应用标识，用于遥测和日志区分</td><td>—</td></tr>
+<tr><td><code>CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS</code></td><td>bool</td><td>false</td><td>禁用内置 Agent 定义，完全由调用方提供 Agent 配置</td><td>—</td></tr>
+<tr><td><code>CLAUDE_AGENT_SDK_MCP_NO_PREFIX</code></td><td>bool</td><td>false</td><td>MCP 工具注册时不添加服务器名前缀，避免命名冲突</td><td>—</td></tr>
+<tr><td><code>CLAUDE_AGENT_SDK_VERSION</code></td><td>string</td><td>—</td><td>SDK 版本标识，注入到请求元数据中</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS</code></td><td>bool</td><td>false</td><td>以事件形式发射 Session 状态变化（SDK 场景使用）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_EMIT_TOOL_USE_SUMMARIES</code></td><td>bool</td><td>false</td><td>发射工具调用摘要事件</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES</code></td><td>bool</td><td>false</td><td>SDK 流中包含未完成的消息片段</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_EXTRA_BODY</code></td><td>JSON string</td><td>—</td><td>附加到 API 请求 body 的 JSON 字段</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_EXTRA_METADATA</code></td><td>JSON string</td><td>—</td><td>附加到请求的元数据 JSON</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_ATTRIBUTION_HEADER</code></td><td>string</td><td>—</td><td>请求归因标识头，标记调用来源</td><td>第13章</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="插件--marketplace-类"><a class="header" href="#插件--marketplace-类">插件 / Marketplace 类</a></h2>
+<blockquote>
+<p>以下变量由 Claude Code 在启动 MCP/LSP 子进程时自动注入，插件代码可直接读取。</p>
+</blockquote>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>CLAUDE_PLUGIN_ROOT</code></td><td>string (路径)</td><td>—</td><td>插件安装目录（<strong>只读</strong>），每次插件版本更新后路径会变化</td><td>第43章</td></tr>
+<tr><td><code>CLAUDE_PLUGIN_DATA</code></td><td>string (路径)</td><td>—</td><td>插件持久化数据目录（<strong>可读写</strong>），跨版本升级后继续存在</td><td>第43章</td></tr>
+<tr><td><code>CLAUDE_CODE_PLUGIN_CACHE_DIR</code></td><td>string (路径)</td><td>—</td><td>插件 ZIP 缓存目录，与 <code>CLAUDE_CODE_PLUGIN_USE_ZIP_CACHE</code> 配合</td><td>第43章</td></tr>
+<tr><td><code>CLAUDE_CODE_PLUGIN_SEED_DIR</code></td><td>string (路径)</td><td>—</td><td>插件种子 Marketplace 目录，启动时预注册</td><td>第43章</td></tr>
+<tr><td><code>CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS</code></td><td>number</td><td>120000</td><td>Git 拉取插件更新的超时时间（毫秒）</td><td>第43章</td></tr>
+<tr><td><code>CLAUDE_CODE_PLUGIN_USE_ZIP_CACHE</code></td><td>bool</td><td>false</td><td>从 ZIP 缓存安装插件，不走 Git 克隆</td><td>第43章</td></tr>
+<tr><td><code>FORCE_AUTOUPDATE_PLUGINS</code></td><td>bool</td><td>false</td><td>忽略版本检查，强制更新所有插件</td><td>第43章</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_POLICY_SKILLS</code></td><td>bool</td><td>false</td><td>禁用通过策略注入的技能（见"功能控制类"）</td><td>第41章</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="配置与会话类"><a class="header" href="#配置与会话类">配置与会话类</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>变量名</th><th>类型</th><th>默认值</th><th>说明</th><th>相关章节</th></tr></thead><tbody>
+<tr><td><code>CLAUDE_CONFIG_DIR</code></td><td>string (路径)</td><td><code>~/.claude</code></td><td>覆盖 Claude Code 配置目录路径</td><td>—</td></tr>
+<tr><td><code>CLAUDE_ENV_FILE</code></td><td>string (路径)</td><td>—</td><td>Hook 脚本写入 Bash exports 的临时 env 文件路径（运行时注入）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR</code></td><td>number</td><td>—</td><td>从指定文件描述符读取 API Key（安全传参）</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_API_KEY_HELPER_TTL_MS</code></td><td>number</td><td>—</td><td>API Key Helper 缓存 TTL（毫秒）</td><td>第13章</td></tr>
+<tr><td><code>CLAUDE_CODE_OAUTH_TOKEN</code></td><td>string</td><td>—</td><td>OAuth Access Token</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_OAUTH_REFRESH_TOKEN</code></td><td>string</td><td>—</td><td>OAuth Refresh Token</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_OAUTH_CLIENT_ID</code></td><td>string</td><td>—</td><td>OAuth 客户端 ID</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_OAUTH_SCOPES</code></td><td>string</td><td>—</td><td>OAuth 请求的权限范围，逗号分隔</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR</code></td><td>number</td><td>—</td><td>从文件描述符读取 OAuth Token</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_SESSION_ACCESS_TOKEN</code></td><td>string</td><td>—</td><td>Session 级别访问 Token</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_WEBSOCKET_AUTH_FILE_DESCRIPTOR</code></td><td>number</td><td>—</td><td>从文件描述符读取 WebSocket 认证信息</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ORGANIZATION_UUID</code></td><td>string</td><td>—</td><td>组织 UUID，用于多租户场景</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ACCOUNT_UUID</code></td><td>string</td><td>—</td><td>账户 UUID</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ACCOUNT_TAGGED_ID</code></td><td>string</td><td>—</td><td>账户带标签的 ID</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_USER_EMAIL</code></td><td>string</td><td>—</td><td>用户邮箱，注入到会话元数据</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_TAGS</code></td><td>string</td><td>—</td><td>会话标签，逗号分隔，用于遥测分类</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_SESSION_NAME</code></td><td>string</td><td>—</td><td>会话显示名称</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_SESSION_KIND</code></td><td>string</td><td>—</td><td>会话类型标识</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_CONTAINER_ID</code></td><td>string</td><td>—</td><td>容器 ID，容器化部署时使用</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_REMOTE</code></td><td>bool</td><td>false</td><td>标记当前为远程会话</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE</code></td><td>string</td><td>—</td><td>远程环境类型（如 <code>ssh</code> / <code>container</code>）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ENVIRONMENT_KIND</code></td><td>string</td><td>—</td><td>环境种类（如 <code>local</code> / <code>ci</code> / <code>sandbox</code>）</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_ENTRYPOINT</code></td><td>string</td><td>—</td><td>入口点标识，记录启动来源</td><td>—</td></tr>
+<tr><td><code>CLAUDE_CODE_IS_COWORK</code></td><td>bool</td><td>false</td><td>标记当前为协作（Cowork）会话</td><td>—</td></tr>
 </tbody></table>
 </div>
 <hr />
 <blockquote>
-<p><strong>版本说明：</strong> 本参考基于 Claude Code v2.1.88 源码（<code>src/</code> 目录）中的环境变量读取点整理，仅列出已验证存在的变量。部分变量的具体默认值或行为可能随版本变更。</p>
+<p><strong>版本说明：</strong> 本参考基于 Claude Code v2.1.88 源码（<code>src/</code> 目录）中的环境变量读取点整理，仅列出已验证存在的变量。部分变量的具体默认值或行为可能随版本变更。未注明默认值（<code>—</code>）的变量，未设置时通常意味着功能关闭或使用代码内硬编码默认值。</p>
 </blockquote>
 
                     </main>

@@ -1,19 +1,17 @@
-sequenceDiagram
-    participant App as 应用启动
-    participant Snap as hooksConfigSnapshot
-    participant Settings as settings.json
-    participant Session as 会话执行中
-
-    App->>Snap: captureHooksConfigSnapshot()
-    Snap->>Settings: 读取当前配置（含策略过滤）
-    Settings-->>Snap: HooksSettings（快照）
-    Note over Snap: initialHooksConfig = 快照
-    Session->>Snap: getHooksConfigFromSnapshot()
-    Snap-->>Session: 返回快照（不读磁盘）
-    Note over Settings: 用户修改 settings.json
-    Session->>Snap: getHooksConfigFromSnapshot()
-    Snap-->>Session: 仍返回原快照（隔离）
-    App->>Snap: updateHooksConfigSnapshot()
-    Snap->>Settings: resetSettingsCache() + 重新读取
-    Settings-->>Snap: 新的 HooksSettings
-    Note over Snap: initialHooksConfig = 新快照
+flowchart TD
+    subgraph 个人记忆层
+        A["MEMORY.md（索引）"] --> B["topic files（主题文件）"]
+        B --> C["scanMemoryFiles\n按时间扫描"]
+    end
+    subgraph 团队记忆层
+        D["team/MEMORY.md（共享索引）"] --> E["team/topic files（共享主题文件）"]
+    end
+    subgraph 会话注入
+        F["loadMemoryPrompt()"]
+        F -->|"auto only"| G["buildMemoryLines\n仅注入行为指引"]
+        F -->|"team enabled"| H["buildCombinedMemoryPrompt\n合并 auto + team 两目录"]
+        F -->|"KAIROS 模式"| I["buildAssistantDailyLogPrompt\n日志追加模式"]
+    end
+    A --> F
+    D --> F
+    C --> J["recall / extraction\n召回与提取"]

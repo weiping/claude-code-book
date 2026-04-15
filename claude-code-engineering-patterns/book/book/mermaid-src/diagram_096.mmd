@@ -1,16 +1,24 @@
-flowchart LR
-    subgraph 本地
-        UI[任务面板 UI]
-        State["RemoteAgentTaskState\n（镜像状态）"]
-        Poller["startRemoteSessionPolling\n1s 轮询"]
-    end
-    subgraph 远程
-        API["Claude.ai API\n/v1/sessions/{id}/events"]
-        Agent["远程 Agent 进程\n（云端执行）"]
+graph TD
+    TaskState["TaskState（联合类型）"]
+    
+    subgraph 7种具体类型
+        LST["LocalShellTask\ntype: 'local_bash'\n特有: command"]
+        LAT["LocalAgentTask\ntype: 'local_agent'\n特有: agentId, messages"]
+        RAT["RemoteAgentTask\ntype: 'remote_agent'\n特有: 远程端点"]
+        IPT["InProcessTeammateTask\ntype: 'in_process_teammate'\n特有: 进程内上下文"]
+        LWT["LocalWorkflowTask\ntype: 'local_workflow'\n特有: 工作流步骤"]
+        MMT["MonitorMcpTask\ntype: 'monitor_mcp'\n特有: MCP服务标识"]
+        DT["DreamTask\ntype: 'dream'\n特有: 异步载荷"]
     end
 
-    UI -->|"读取"| State
-    Poller -->|"更新"| State
-    Poller -->|"pollRemoteSessionEvents\n(sessionId, lastEventId)"| API
-    API -->|"newEvents + sessionStatus"| Poller
-    Agent -->|"产生事件"| API
+    subgraph TaskStateBase共有字段
+        BASE["id / type / status\ndescription / startTime\noutputFile / notified"]
+    end
+    
+    subgraph 5种共享状态
+        STATUS["pending → running\n→ completed / failed / killed"]
+    end
+
+    TaskState --> LST & LAT & RAT & IPT & LWT & MMT & DT
+    LST & LAT & RAT & IPT & LWT & MMT & DT --> BASE
+    BASE --> STATUS

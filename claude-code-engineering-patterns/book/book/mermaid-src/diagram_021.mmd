@@ -1,18 +1,13 @@
-mindmap
-    root(模型路由三层设计)
-        分层模型路由
-            getSmallFastModel
-            getMainLoopModel
-            getBestModel
-            语义接口隔离调用方
-        优先级覆盖链
-            会话/启动覆盖最高
-            环境变量次之
-            用户设置第三
-            内置默认兜底
-            白名单过滤无效值
-        全局状态运行时覆盖
-            STATE.mainLoopModelOverride
-            会话生命周期
-            不持久化
-            路由函数主动拉取
+sequenceDiagram
+    participant LS as Language Server<br/>（rust-analyzer/pyright）
+    participant LC as LSPClient.ts<br/>stdio + JSON-RPC
+    participant DR as LSPDiagnosticRegistry
+    participant PF as passiveFeedback.ts
+    participant CTX as Agent 对话上下文
+
+    LS->>LC: publishDiagnostics 通知（JSON-RPC）
+    LC->>PF: 转发诊断数据
+    PF->>DR: registerPendingLSPDiagnostic()<br/>attachmentSent = false
+    Note over DR: 缓存等待注入时机
+    CTX->>DR: 新一轮对话开始
+    DR->>CTX: 注入诊断附件<br/>attachmentSent → true

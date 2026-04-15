@@ -1,8 +1,13 @@
-stateDiagram-v2
-    [*] --> normal : 会话开始
-    normal --> warning : tokenUsage >= threshold - 20000\n（isAboveWarningThreshold）
-    warning --> error_state : 同一阈值触发\n（isAboveErrorThreshold）
-    error_state --> autocompact_triggered : tokenUsage >= threshold - 13000\n（isAboveAutoCompactThreshold）
-    autocompact_triggered --> normal : 压缩成功，token 大幅减少
-    autocompact_triggered --> blocking : 压缩失败，tokenUsage >= effectiveWindow - 3000\n（isAtBlockingLimit）
-    blocking --> [*] : 新请求被拒绝
+graph LR
+    subgraph 权威范围
+        A["机构层\n（Managed）\n不可排除"]
+        B["个人全局层\n（User）\n可 claudeMdExcludes"]
+        C["项目层\n（Project）\n可 claudeMdExcludes"]
+        D["个人私有层\n（Local）\n可 claudeMdExcludes"]
+    end
+    subgraph 优先级
+        A -->|最低优先级| B
+        B --> C
+        C --> D
+        D -->|最高优先级| end_note["CWD 最近的文件\n最后加载"]
+    end

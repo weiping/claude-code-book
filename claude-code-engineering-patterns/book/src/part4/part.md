@@ -1,8 +1,13 @@
-<div class="part-page">
-  <div class="part-label">PART IV</div>
-  <div class="part-number">第四篇</div>
-  <div class="part-title">上下文工程：控制 AI 的信息视野</div>
-  <div class="part-rule"></div>
-  <div class="part-desc">送给 AI 的每一个 Token 都是工程决策。提示词分层装配、CLAUDE.md 优先级、会话快照、自动压缩与三层记忆架构——这一篇完整回答「AI 看到什么」。</div>
-  <div class="part-chapters">第 15—19 章</div>
-</div>
+# 第四篇：模型层——API 通信与推理控制
+
+> *目的：理解模型层的三个子系统——模型管理、推理控制、API 通信——如何封装与 Anthropic API 的全部交互细节*
+
+本篇从模型选择路由出发，经过推理深度三轴设计，到达 API 通信层的重试与缓存策略。
+
+---
+
+## 本章导航
+
+- [第 11 章：模型自动选择——Opus、Sonnet 与 Haiku 的路由逻辑](ch11.md)
+- [第 12 章：推理深度控制——Effort、Fast Mode 与 Thinking 的三轴设计](ch12.md)
+- [第 13 章：API 通信层——Anthropic 客户端、重试机制与提示词缓存策略](ch13.md)

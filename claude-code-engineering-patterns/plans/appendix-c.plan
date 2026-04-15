@@ -1,27 +1,135 @@
-# 附录 C：关键类型索引
+# 附录 C 写作计划：关键类型索引
 
 **类型**：附录
 **风格**：reference（精炼参考，无论全书 STYLE_ID 是什么）
-**目标长度**：视内容而定，表格为主
+**目标长度**：~1500 字（以表格为主）
+
+## 章节意图
+
+本附录汇总全书引用的核心 TypeScript 类型，供快速定位类型定义、字段结构及首次出现位置。可独立查阅，无需按顺序阅读正文。
+
+## 通用约束
+
+**通用必须**：
+- 每个类型必须有 `src/相对路径:行号` 格式的源码锚点
+- "首次出现"章节号必须与正文章节实际首次详细分析的位置一致
+- 类型字段摘要必须从源码定义中提取，不得凭记忆
+
+**通用禁止**：
+- 不得编造不存在的类型名
+- 不得列出正文中从未提及的类型
+- 不得使用"介绍了"等空洞表述
+
+**排除范围**：无
+
+## ⛔ 风格专属写作要求
+
+**风格**：reference（精炼参考）
+- 不需要模式提炼、权衡分析
+- 条目按分类分组，每组内按字母排序
+- 每个条目一行表格行，自包含可查阅
+- 不需要"为什么不选 B"的分析
 
 ## 数据提取清单
 
-> ⛔ 附录内容必须从已完成的章节中提取，不得凭记忆编写。
-
-**内容描述**：全书引用的核心 TypeScript 类型速查。列：类型名 | 定义文件 | 主要字段摘要 | 首次出现章节。关键类型：Tool、Task、TaskType、TaskStatus、HookEvent、PermissionMode 等
+> ⛔ 附录内容必须从已完成的章节中提取，不得凭记忆编写。每条数据必须有源码锚点或章节出处。
 
 | # | 提取来源 | 提取方法 | 目标数据 |
 |---|---------|---------|---------|
-| 1 | 全部 ch*.md | 搜索相关内容 | 表格数据行 |
-| 2 | 源码文件 | grep 搜索 | 验证和补全 |
+| 1 | `src/Tool.ts` | `grep -n 'export.*type\|export.*interface\|Tool<\|ToolDef\|BuiltTool\|ToolUseContext\|ToolPermissionContext'` | `Tool`、`ToolDef`、`BuiltTool`、`ToolUseContext`、`ToolPermissionContext`、`DefaultableToolKeys` 类型定义 |
+| 2 | `src/tasks/` | `grep -rn 'TaskType\|TaskStatus\|TaskState\|interface.*Task\|LocalAgentTask\|RemoteAgentTask\|DreamTask'` | `Task`、`TaskType`、`TaskStatus`、`TaskState` 枚举和接口及其子类型 |
+| 3 | `src/utils/hooks.ts` + `src/entrypoints/sdk/coreTypes.ts` + `src/entrypoints/agentSdkTypes.ts` | `grep -n 'HookEvent\|HookCommand\|HookInput\|HookOutput\|AsyncHookRegistry'` | `HookEvent`、`HookCommand`、`AsyncHookRegistry` 类型 |
+| 4 | `src/utils/permissions/` | `grep -rn 'PermissionMode\|PermissionResult\|PermissionDecision\|PermissionRule'` | `PermissionMode`、`PermissionResult`、`PermissionDecision` 类型 |
+| 5 | `src/state/AppStateStore.ts` | `grep -n 'AppState\|DeepImmutable\|AppStateStore'` | `AppState` 类型及主要字段 |
+| 6 | `src/QueryEngine.ts` | `grep -n 'State\|QueryEngine\|CacheSafeParams\|StreamingToolExecutor'` | `State`（query 循环状态）、`CacheSafeParams`、`StreamingToolExecutor` |
+| 7 | 已写完的 `book/src/appendix-c.md` | 完整读取 | 已收录的类型、分类方式、表格列定义（作为基线数据） |
+| 8 | 全部 ch*.md | `grep -rh 'Tool\|Task\|HookEvent\|PermissionMode\|AppState\|CacheSafeParams' book/src/part*/*.md | grep '第' | head -30` | 各类型首次出现的章节号 |
 
 ## 结构骨架
 
-1. 说明本附录用途和查阅场景（~50字）
-2. 速查表（主体内容）
-3. 说明表格生成时间（基于哪个版本的源码）
+### 说明段（~60 字）
+本附录汇总全书引用的核心 TypeScript 类型，供快速定位类型定义、字段结构及首次出现位置。可独立查阅，无需按顺序阅读正文。
+
+### 类型索引表（主体）
+
+按体系分组，每组内按字母排序：
+
+**Tool 体系**：
+| 类型名 | 定义文件 | 主要字段/值 | 首次出现 |
+|--------|----------|------------|---------|
+| `Tool` | `src/Tool.ts` | `name`, `description`, `execute`, `isAllowed`, `isEnabled`, `isMcp` | 第 14 章 |
+| `BuiltTool<D>` | `src/Tool.ts:783` | `buildTool()` 工厂函数的泛型返回类型 | 第 14 章 |
+| `ToolPermissionContext` | `src/Tool.ts` | 工具权限检查上下文 | 第 15 章 |
+| `ToolUseContext` | `src/Tool.ts` | 工具调用执行上下文 | 第 14 章 |
+
+**Task 体系**：
+| 类型名 | 定义文件 | 主要字段/值 | 首次出现 |
+|--------|----------|------------|---------|
+| `Task` / `TaskType` / `TaskStatus` | `src/tasks/` | 联合类型状态机 | 第 29 章 |
+| `LocalAgentTaskState` | `src/tasks/` | 前台/后台切换 | 第 30 章 |
+| `RemoteAgentTaskState` | `src/tasks/` | 轮询远程会话 | 第 31 章 |
+| `DreamTaskState` | `src/tasks/` | 自主执行状态 | 第 32 章 |
+
+**Hook 体系**：
+| 类型名 | 定义文件 | 主要字段/值 | 首次出现 |
+|--------|----------|------------|---------|
+| `HookEvent` | `src/entrypoints/sdk/coreTypes.ts` | 27 个事件枚举 | 第 24 章 |
+| `HookCommand` | `src/utils/hooks.ts` | 钩子命令定义 | 第 24 章 |
+| `AsyncHookRegistry` | `src/utils/hooks/` | 异步钩子注册表 | 第 26 章 |
+
+**权限体系**：
+| 类型名 | 定义文件 | 主要字段/值 | 首次出现 |
+|--------|----------|------------|---------|
+| `PermissionMode` | `src/utils/permissions/` | default/plan/auto/accept 四种模式 | 第 15 章 |
+| `PermissionResult` | `src/utils/permissions/` | allowed/denied/ask | 第 15 章 |
+| `PermissionDecision` | `src/utils/permissions/` | 权限决策结果 | 第 37 章 |
+
+**状态与上下文**：
+| 类型名 | 定义文件 | 主要字段/值 | 首次出现 |
+|--------|----------|------------|---------|
+| `AppState` | `src/state/AppStateStore.ts` | 全局应用状态（DeepImmutable） | 第 2 章 |
+| `State` | `src/QueryEngine.ts` | 查询循环状态 | 第 9 章 |
+| `CacheSafeParams` | `src/services/api/claude.ts` | 缓存安全参数 | 第 13 章 |
+| `StreamingToolExecutor` | `src/` | 流式工具执行器 | 第 10 章 |
+
+### 版本说明（~30 字）
+基于 Claude Code v2.1.88（重建版）源码提取。
+
+## 关键类型清单（必须覆盖，来自 DESIGN.md）
+
+| # | 类型名 | 定义文件 | 首次出现章节 | 已收录 |
+|---|--------|---------|-------------|--------|
+| 1 | `Tool` | `src/Tool.ts` | 第 14 章 | ☐ |
+| 2 | `Task` | `src/tasks/` | 第 29 章 | ☐ |
+| 3 | `TaskType` | `src/tasks/` | 第 29 章 | ☐ |
+| 4 | `TaskStatus` | `src/tasks/` | 第 29 章 | ☐ |
+| 5 | `HookEvent` | `src/entrypoints/sdk/coreTypes.ts` | 第 24 章 | ☐ |
+| 6 | `HookCommand` | `src/utils/hooks.ts` | 第 24 章 | ☐ |
+| 7 | `PermissionMode` | `src/utils/permissions/` | 第 15 章 | ☐ |
+| 8 | `PermissionResult` | `src/utils/permissions/` | 第 15 章 | ☐ |
+| 9 | `ToolUseContext` | `src/Tool.ts` | 第 14 章 | ☐ |
+| 10 | `AppState` | `src/state/AppStateStore.ts` | 第 2 章 | ☐ |
+| 11 | `State`（query 循环状态） | `src/QueryEngine.ts` | 第 9 章 | ☐ |
+| 12 | `CacheSafeParams` | `src/services/api/claude.ts` | 第 13 章 | ☐ |
+
+**补充类型**（正文频繁引用，建议收录）：
+- `BuiltTool<D>` / `ToolDef` — 第 14 章
+- `ToolPermissionContext` — 第 15 章
+- `AsyncHookRegistry` — 第 26 章
+- `StreamingToolExecutor` — 第 10 章
+- Discriminated Union 相关类型（TaskState 变体）— 第 29 章
+
+## 表格列定义
+
+- **类型名**：TypeScript type/interface 名称（含泛型参数，如 `BuiltTool<D>`）
+- **定义文件**：`src/相对路径` 或含行号（`src/Tool.ts:783`）
+- **主要字段/值**：列举 3-6 个核心字段名或枚举值
+- **首次出现**：正文中首次详细分析的章节号
 
 ## 写作前验证
-- [ ] 已从各章节提取原始数据
-- [ ] 每条数据已验证源码锚点有效性
-- [ ] 按字母/分类排序完成
+- [ ] 已从源码文件提取所有关键类型的定义位置和主要字段
+- [ ] 已从正文章节确认每个类型首次详细分析的章节号
+- [ ] 已按体系分组，每组内按字母排序
+- [ ] 每个"首次出现"章节号已验证：在该章正文中确实有对该类型的详细分析
+- [ ] 每个类型的源码位置（文件:行号）已验证存在
+- [ ] DESIGN.md 12 个必须覆盖的类型全部收录

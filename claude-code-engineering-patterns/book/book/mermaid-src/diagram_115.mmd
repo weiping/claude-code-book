@@ -1,28 +1,22 @@
-flowchart LR
-    subgraph declared [声明层]
-        official["官方（隐式注入）\nofficialMarketplace.ts"]
-        user["用户声明（第三方）\nextraKnownMarketplaces"]
-    end
+sequenceDiagram
+    participant Classifier
+    participant Permissions as permissions.ts
+    participant DenialTracking as denialTracking.ts
+    participant Storage as AppState/localDenialTracking
 
-    subgraph protocol [协议层 MarketplaceSource]
-        github["github\n克隆 GitHub 仓库"]
-        git["git\n克隆任意 Git"]
-        url["url\nHTTP 下载 JSON"]
-        file["file\n本地文件"]
-        dir["directory\n本地目录"]
-        npm["npm\n（计划中）"]
-    end
+    Classifier->>Permissions: 分类器拒绝（deny）
+    Permissions->>DenialTracking: recordDenial(state)
+    DenialTracking-->>Permissions: newState（+1/+1）
+    Permissions->>Storage: persistDenialState(newState)
+    Permissions->>DenialTracking: shouldFallbackToPrompting(newState)?
+    DenialTracking-->>Permissions: false（未达阈值）
+    Permissions-->>Caller: deny decision
 
-    official -->|sourceIsFallback=true| github
-    user --> github
-    user --> git
-    user --> url
-    user --> file
-    user --> dir
-    user -->|TODO| npm
+    Note over Permissions: 再次拒绝...
 
-    github --> cache["~/.claude/plugins/marketplaces/\n缓存目录"]
-    git --> cache
-    url --> cache
-    file -->|"直接读取"| cache
-    dir -->|"直接读取"| cache
+    Classifier->>Permissions: 分类器拒绝（连续第3次）
+    Permissions->>DenialTracking: recordDenial(state)
+    DenialTracking-->>Permissions: newState（consecutive=3）
+    Permissions->>DenialTracking: shouldFallbackToPrompting(newState)?
+    DenialTracking-->>Permissions: true（达到阈值3）
+    Permissions-->>Caller: ask decision（降级到交互模式）

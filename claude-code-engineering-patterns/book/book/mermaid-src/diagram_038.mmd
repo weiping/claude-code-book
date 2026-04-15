@@ -1,16 +1,10 @@
 flowchart LR
-    subgraph 三重困难
-        P1["① 接口一致性无法强制\n开发者可绕过类型检查"]
-        P2["② 安全默认值依赖记忆\nisConcurrencySafe 填错就是 bug"]
-        P3["③ AI 参数运行时类型消失\nTypeScript 不保护 JSON 输入"]
-    end
-
-    subgraph 工厂契约解法
-        S1["buildTool()\n编译时强制必填字段\n省略=编译错误"]
-        S2["TOOL_DEFAULTS fail-closed\n不安全能力默认关闭\n显式声明才能开启"]
-        S3["z.strictObject\n运行时验证 AI 参数\n额外字段直接拒绝"]
-    end
-
-    P1 -->|解决| S1
-    P2 -->|解决| S2
-    P3 -->|解决| S3
+    call["调用方 - 需要 thinking 配置"] --> check{modelSupportsThinking?}
+    check -->|否| disabled["ThinkingConfig\n{ type: 'disabled' }"]
+    check -->|是| adaptive_check{modelSupportsAdaptiveThinking?}
+    adaptive_check -->|是| adaptive["ThinkingConfig\n{ type: 'adaptive' }\n模型自主决定 budget"]
+    adaptive_check -->|否| default_check{shouldEnableThinkingByDefault?}
+    default_check -->|否| disabled
+    default_check -->|是| budget{"有 budgetTokens\nMAX_THINKING_TOKENS?"}
+    budget -->|"有（env/config 设定）"| enabled["ThinkingConfig\n{ type: 'enabled', budgetTokens: N }"]
+    budget -->|"无"| adaptive2["ThinkingConfig\n{ type: 'adaptive' }"]

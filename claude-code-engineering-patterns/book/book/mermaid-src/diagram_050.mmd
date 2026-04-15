@@ -1,11 +1,16 @@
-flowchart TD
-    tool[工具调用请求]
+flowchart LR
+    subgraph 三重困难
+        P1["① 展示与逻辑分离维护\n两个 map 容易不同步"]
+        P2["② 副作用混入计算\n测试需 mock 整个上下文"]
+        P3["③ auto 模式对外可见\n每个端点手动过滤"]
+    end
 
-    tool --> check1{在白名单中?}
-    check1 -->|是| allow_fast[直接放行\nisAutoModeAllowlistedTool = true]
-    check1 -->|否| check2{toAutoClassifierInput\n返回空字符串?}
-    check2 -->|是| allow_skip[跳过安全检查\n写入 transcript 时忽略]
-    check2 -->|否| classify[构建 transcript\n调用 AI 分类器]
-    classify --> result["ClassifierResult\n{shouldBlock, confidence, reason}"]
-    result -->|shouldBlock=false| allow_final[放行]
-    result -->|shouldBlock=true| deny[拒绝或询问用户]
+    subgraph 可组合决策链解法
+        S1["PermissionModeConfig\n展示+external 合并一个结构体"]
+        S2["getNextPermissionMode 纯函数\n计算与副作用完全分离"]
+        S3["external: default\nauto 在映射层消失"]
+    end
+
+    P1 -->|解决| S1
+    P2 -->|解决| S2
+    P3 -->|解决| S3

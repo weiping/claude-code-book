@@ -1,28 +1,31 @@
 # 第 37 章写作计划
 
-**批次**：批次 10a（来自 plans/batch.md）
-**章节**：ch37 — 第37章：Plugin 生命周期——发现、安装、更新与卸载
+**批次**：批次 9a（来自 plans/batch.md）
+**章节**：ch37 — 权限系统全景——拦截→规则→确认的三层防线
 **风格**：hunter（模式猎人）
 
 ## 章节意图
-揭示 `src/services/plugins/PluginInstallationManager.ts` 如何在后台自动检查并安装插件，以及 pending/installing/installed/failed 四个状态如何映射到 AppState 的 UI 更新。
+从全局视角描述 Claude Code 的完整安全架构：PreToolUse 拦截层（Hook 事件）、PermissionRule 规则层（`src/utils/permissions/permissions.ts`，1486行）、用户确认层（interactiveHandler）三者如何协同，以及任意一层失守时的降级策略。
 
 ## 通用约束
-**排除范围**：Marketplace 协议（第38章）、插件包结构（第39章）、stubs
+**排除范围**：PermissionRule 规则引擎 glob 匹配细节（第 38 章）、三态处理器（第 39 章）、TrustDialog（第 40 章）、stubs
 
 ## ⛔ 风格专属写作要求
-**开篇**：模式预告150-200字，⛔不引源码。核心模式：「后台安装事件驱动 UI 更新」（Background Install Event-Driven UI）
+**开篇**：模式预告150-200字，⛔不引源码。核心模式：「分层安全防线」（Layered Security Fence）
 **章末**：2-3个模式命名框 + 你能做什么（5-8条）
-**必须**：≥2处实例（performBackgroundPluginInstallations + updateMarketplaceStatus），适用范围表，与已知模式对话
+**必须**：≥2处实例（checkRuleBasedPermissions + PreToolUse 拦截层），适用范围表，与已知模式对话
 **铁律**：⛔源码第一、⛔代码无裸露、⛔开篇最后写
 
 ## 前置阅读清单
+
 | # | 文件路径 | 重点关注 | 行数 |
 |---|---------|---------|------|
-| 1 | src/services/plugins/PluginInstallationManager.ts | performBackgroundPluginInstallations(60行)、updateMarketplaceStatus(30行)、安装状态事件 switch(104行) | 全文 |
+| 1 | src/utils/permissions/permissions.ts | checkRuleBasedPermissions(1071行)——1a~1f的多段检查、getAllowRules(122行)、getDenyRules(213行) | 1071-1140, 116-240 |
+| 2 | src/utils/permissions/permissions.ts | createPermissionRequestMessage(137行)、getDenyRuleForTool(287行)、fallback 逻辑 | 137-160, 285-310 |
 
 ```bash
-wc -l src/services/plugins/PluginInstallationManager.ts
+wc -l src/utils/permissions/permissions.ts
+sed -n '1071p' src/utils/permissions/permissions.ts
 ```
 
 ## Spec 验收场景清单（E > A > B = C > D）
@@ -31,50 +34,87 @@ wc -l src/services/plugins/PluginInstallationManager.ts
 ## 章节骨架
 
 ### 开篇（最后补写，⛔不引源码）
-触发句：插件安装是一个耗时的后台操作——下载、验证、注册需要几秒甚至几十秒。Claude Code 用事件驱动模型把安装进度实时映射到 UI 状态，而不是阻塞等待完成。
+触发句：Claude Code 的安全机制不是单一的"允许/拒绝"开关，而是三层依次检查的防线——每一层都有自己的失守策略，确保在没有任何规则命中时，系统默认保护用户。
 
 ### 节 37.1：问题
-- 核心主张：**后台安装操作与 UI 之间需要松耦合——安装器不应该知道 UI 的实现细节，UI 也不应该阻塞等待安装完成**
-- 源码锚点：`src/services/plugins/PluginInstallationManager.ts:2`（注释：背景安装管理器，映射安装事件到 AppState 更新）
-- 包含元素：**图37-1** — 安装状态流转（pending→installing→installed/failed）和 UI 更新时序
+- 核心主张：**单层权限检查的问题是"单点故障"——一旦用户配置了错误的规则，整个安全系统就失效；三层防线让每一层都是最后一道防线**
+- 源码锚点：`src/utils/permissions/permissions.ts:395`（注释："tool use before the fallback auto-deny kicks in"——默认拒绝的兜底）
+- 包含元素：**图37-1** — Mermaid 流程图，三层防线（PreToolUse Hook → 规则匹配 → 用户确认）的协同流程
+- 估计字数：600-800字
 
-### 节 37.2：源码实例1 — performBackgroundPluginInstallations（事件流消费）
-- 核心主张：**performBackgroundPluginInstallations 先 diff 找出需要安装的内容，然后消费安装事件流，每个事件更新 AppState**
-- 源码锚点：`src/services/plugins/PluginInstallationManager.ts:60、66（diff）、83（初始化pending）、104（switch events）`
+### 节 37.2：源码实例1 — checkRuleBasedPermissions 的分段检查
+- 核心主张：**checkRuleBasedPermissions 的检查逻辑有明确的 1a~1f 步骤注释——每步对应一种规则来源，顺序体现了优先级：tool-level deny → tool-level ask → content-specific rules**
+- 源码锚点：
+  - `src/utils/permissions/permissions.ts:1071`（`export async function checkRuleBasedPermissions(`）
+  - `src/utils/permissions/permissions.ts:1080`（1a 注释："Entire tool is denied by rule"）
+  - `src/utils/permissions/permissions.ts:1092`（1b 注释："Entire tool has an ask rule"）
+  - `src/utils/permissions/permissions.ts:1110`（1c 注释："Tool-specific permission check"）
+  - `src/utils/permissions/permissions.ts:1120`（1d 注释："Tool implementation denied"）
+  - `src/utils/permissions/permissions.ts:1134`（1f 注释："Content-specific ask rules from tool.checkPermissions"）
+- 概念层次：各步骤的检查对象不同（整个工具 vs 内容级别）、getDenyRuleForTool vs tool.checkPermissions 的职责分工
+- 估计字数：900-1100字
 
-### 节 37.3：源码实例2 — updateMarketplaceStatus（AppState 更新模式）
-- 核心主张：**updateMarketplaceStatus 是一个 AppState 更新工厂——按 name 定位、spread 更新、不修改其他字段**
-- 源码锚点：`src/services/plugins/PluginInstallationManager.ts:30、40-43`
+### 节 37.3：源码实例2 — 降级策略（没有规则匹配时的行为）
+- 核心主张：**当 checkRuleBasedPermissions 返回 null 时，调用方应该降级到用户确认——null 不是"允许"，而是"规则层无法决定，请上层裁决"**
+- 源码锚点：
+  - `src/utils/permissions/permissions.ts:116`（`export function getAllowRules(`）
+  - `src/utils/permissions/permissions.ts:213`（`export function getDenyRules(`）
+  - `src/utils/permissions/permissions.ts:137`（`export function createPermissionRequestMessage(`——生成权限请求文本）
+  - `src/utils/permissions/permissions.ts:531`（接受编辑模式的逻辑分支）
+- 概念层次：null 返回值的语义（规则层无决定 → 交给上层）、accept-edits 模式下的自动批准、默认拒绝兜底
+- 估计字数：700-900字
 
-### 节 37.4-37.7：模式剖析/适用范围/权衡/与已知模式对话
-- 模式：事件驱动状态更新、安装状态机、后台操作透明化
-- 与 Observer 模式：安装器是发布者，AppState 更新器是订阅者
+### 节 37.4：模式剖析
+- 核心主张：**三层安全防线的本质是"责任分离 + 默认保守"——每层只负责自己的检查范围，任何层无法决策时向上委托，最终兜底是用户确认**
+- 估计字数：500-700字
+
+### 节 37.5：适用范围
+| 场景 | 适用性 | 理由 | 替代方案 |
+|------|--------|------|---------|
+| Agent 操作有高安全风险（文件删除/网络请求）| ✓ | 多层防线确保没有单点故障 | 单层规则（但配置错误=全失败）|
+| 需要用户自定义安全规则 | ✓ | 规则层允许 glob 模式自定义 | 硬编码规则（不灵活）|
+| 快速迭代的 AI 功能（工具频繁添加）| ✓ | 新工具默认触发用户确认（保守）| 默认允许（但安全风险高）|
+| 完全自动化无人值守场景 | ✗（谨慎）| 用户确认层需要人工操作 | bypassPermissions 模式（但高风险）|
+
+### 节 37.6：权衡与局限
+- 检查链过长导致延迟（每层都有 IO）、规则优先级难以推断（多个规则命中时的顺序）、用户确认层被 bypassPermissions 完全绕过时的风险
+- 估计字数：500-700字
+
+### 节 37.7：与已知模式的对话
+- 与 GoF 责任链（Chain of Responsibility）：最接近——请求沿链传递，每个节点决定处理或转发；差异是责任链通常有一个处理者接管，本模式是多层都检查但有明确的 null 语义
+- 与 POSA 拦截器（Interceptor）：相同——在操作前拦截并决策；差异是 Interceptor 通常是 AOP 概念，本模式是显式的多步函数调用链
 
 ### 章末：模式提炼
 ```
-模式名称：后台安装事件驱动 UI 更新（Background Install Event-Driven UI）
-问题：后台安装操作需要实时反映进度到 UI，但不能阻塞主线程
-解决方案：安装器产生事件流（installing/installed/failed），消费方 switch 处理每个事件更新 AppState
-前置条件：安装操作可以表达为事件序列
-源码锚点：src/services/plugins/PluginInstallationManager.ts:60 (performBackgroundPluginInstallations), :104 (switch events)
+模式名称：分层安全防线（Layered Security Fence）
+问题：Agent 操作安全检查需要覆盖多种来源（Hook规则/工具规则/用户确认），单一函数难以维护
+解决方案：三层依次检查（Hook拦截→规则匹配→用户确认），每层返回 null 表示"无法决策，请上层处理"
+前置条件：有明确的检查顺序语义（拦截层优先于规则层，规则层优先于用户确认）
+源码锚点：src/utils/permissions/permissions.ts:1071 (checkRuleBasedPermissions), :395 (fallback auto-deny)
 ```
 
 ### 章末：你能做什么
-1. 用事件流而非回调传递安装进度，让消费方按需处理各阶段事件
-2. 在安装开始前先计算 diff（找出需要安装的内容），一次性初始化 pending 状态，避免 UI 闪烁
-3. 安装完成后自动刷新插件列表，修复"插件刚安装但工具还不可见"的 race condition
+1. 设计多层安全防线时，让每层只负责"自己范围内的决策"，无法决策时返回 null 而非默认允许
+2. 在检查函数中用明确的步骤注释（1a/1b/1c）标注每个检查点的语义，便于理解和调试
+3. 将"生成权限请求消息"（createPermissionRequestMessage）抽为独立函数，确保所有层使用一致的用户提示
+4. 为最底层实现"默认保守"兜底——没有规则命中时触发用户确认，而非默认允许
+5. 区分"整个工具级别的规则"（getDenyRuleForTool）和"内容级别的规则"（tool.checkPermissions），两者职责不同
 
 ## 图表清单
 | # | 标题 | 类型 | 描述 | 对应节 |
 |---|------|------|------|--------|
-| 图37-1 | 插件安装状态机 | Mermaid stateDiagram | pending→installing→installed/failed | 37.1 |
+| 图37-1 | 三层安全防线 | Mermaid flowchart | PreToolUse Hook → checkRuleBasedPermissions(1a-1f) → 用户确认 → 执行 | 33.1 |
 
 ## 写作前 checklist
 ```bash
-sed -n '2p' src/services/plugins/PluginInstallationManager.ts   # 注释
-sed -n '30p' src/services/plugins/PluginInstallationManager.ts  # updateMarketplaceStatus
-sed -n '60p' src/services/plugins/PluginInstallationManager.ts  # performBackgroundPluginInstallations
-sed -n '104p' src/services/plugins/PluginInstallationManager.ts # switch events
+sed -n '395p' src/utils/permissions/permissions.ts   # fallback auto-deny 注释
+sed -n '1071p' src/utils/permissions/permissions.ts  # checkRuleBasedPermissions
+sed -n '1080p' src/utils/permissions/permissions.ts  # 1a deny
+sed -n '1092p' src/utils/permissions/permissions.ts  # 1b ask
+sed -n '1110p' src/utils/permissions/permissions.ts  # 1c tool-specific
+sed -n '1120p' src/utils/permissions/permissions.ts  # 1d denied
+sed -n '116p' src/utils/permissions/permissions.ts   # getAllowRules
+sed -n '213p' src/utils/permissions/permissions.ts   # getDenyRules
 ```
 
 ## ⛔ Spec 一致性声明

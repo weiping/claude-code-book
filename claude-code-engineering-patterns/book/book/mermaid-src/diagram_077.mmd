@@ -1,13 +1,19 @@
-flowchart TD
-    enter["shouldAutoCompact(messages, model, querySource)"] --> g1{"querySource == session_memory\n或 compact?"}
-    g1 -->|是| dead_lock["return false\n（防递归死锁）"]
-    g1 -->|否| g2{"marble_origami\n且 CONTEXT_COLLAPSE?"}
-    g2 -->|是| module_state["return false\n（防主线程状态破坏）"]
-    g2 -->|否| g3{"isAutoCompactEnabled\n== false?"}
-    g3 -->|是| disabled["return false\n（用户已禁用）"]
-    g3 -->|否| g4{"contextCollapse\n已启用?"}
-    g4 -->|是| collapse_owns["return false\n（contextCollapse 是主控）"]
-    g4 -->|否| check["calculateTokenWarningState\n实际检查 token 用量"]
-    check --> result{"isAboveAutoCompactThreshold?"}
-    result -->|是| trigger["return true\n触发压缩"]
-    result -->|否| normal["return false\n正常状态"]
+sequenceDiagram
+    participant User as 用户
+    participant QE as QueryEngine
+    participant Disk as JSONL 磁盘文件
+    participant API as Claude API
+
+    User->>QE: 发送消息
+    QE->>Disk: 1. 写入 transcript（await）
+    Note over QE,Disk: 写入完成后才继续
+    QE->>API: 2. 发起 API 请求
+    
+    alt 进程在等待响应时崩溃
+        API--xQE: 进程被终止
+        Note over Disk: JSONL 文件仍完整保存用户消息
+    else 正常响应
+        API-->>QE: 返回 AI 响应
+        QE->>Disk: 3. 写入 AI 响应
+        QE-->>User: 4. 渲染输出
+    end

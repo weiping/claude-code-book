@@ -1,8 +1,14 @@
 flowchart TD
-    API["Anthropic API\nSSE 字节流"] --> adapt["适配层\nqueryModel()\nclaude.ts:1017"]
-    adapt -->|"yield StreamEvent\nyield AssistantMessage"| loop["循环层\nquery() → queryLoop()\nquery.ts:219, 241"]
-    loop -->|"yield* 或 yield SDKMessage"| consume["消费层\nask() / submitMessage()\nexecAgentHook()"]
-    consume -->|"for await"| user["调用方\nREPL / SDK / Hook"]
-
-    backpressure["⬇ 背压方向（消费者控制节奏）"] -.->|"next() 驱动"| loop
-    backpressure -.->|"next() 驱动"| adapt
+    start([调用 resolveAppliedEffort]) --> env{getEffortEnvOverride\n读取 CLAUDE_CODE_EFFORT_LEVEL}
+    env -->|"null（env='unset'/'auto'）"| none["返回 undefined\n不发送 effort 参数"]
+    env -->|"有具体值（如 'low'）"| max1{resolved === 'max'\n且模型不支持 max?}
+    env -->|"undefined（未设置）"| app{appStateEffortValue\n不为 undefined?}
+    app -->|"是（用户显式设置）"| max2{resolved === 'max'\n且模型不支持 max?}
+    app -->|"否"| model_def["getDefaultEffortForModel(model)\n按订阅者/模型类型"]
+    model_def --> max3{resolved === 'max'\n且模型不支持 max?}
+    max1 -->|"是"| downgrade["降级为 'high'\n（静默处理）"]
+    max1 -->|"否"| r1["返回 env 指定值"]
+    max2 -->|"是"| downgrade
+    max2 -->|"否"| r2["返回 appState 值"]
+    max3 -->|"是"| downgrade
+    max3 -->|"否"| r3["返回模型默认值"]

@@ -1,0 +1,18 @@
+timeline
+    title Claude Code 架构演化路径
+    section 阶段1 CLI 工具
+        单进程 Shell 调用 : 无 Task 系统
+        简单的工具调用接口 : 无 Hook 事件
+    section 阶段2 工具宿主
+        buildTool 统一契约 : Tool.ts:783
+        60+ 工具统一接口 : MCP 协议适配
+        技能系统 SkillTool : CLAUDE.md 层级扫描
+    section 阶段3 Agent Harness
+        QueryEngine 多轮循环 : QueryEngine.ts:675
+        分层提示词上下文 : 写入先于执行
+        Task 系统 7 种类型 : tasks/types.ts:12
+        Hook 事件总线 27 个 : hooksConfigManager.ts:29
+    section 阶段4 多智能体平台
+        Swarm 3 套后端 : swarm/backends/registry.ts
+        领导者-队友协调 : 跨进程权限协商
+        可插拔运行时后端 : ITermBackend/TmuxBackend

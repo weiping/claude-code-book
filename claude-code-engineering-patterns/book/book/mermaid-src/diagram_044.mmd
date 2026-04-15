@@ -1,20 +1,18 @@
-stateDiagram-v2
-    [*] --> default1
+flowchart TD
+    START["API 调用失败"] --> EC{"错误分类"}
 
-    default1 --> acceptEdits: Shift+Tab（普通用户）
-    default1 --> bypassPermissions: Shift+Tab（ant 用户，bypass 可用）
-    default1 --> auto: Shift+Tab（ant 用户，auto 可用）
+    EC -->|"用户主动取消\nAPIUserAbortError"| ABORT["立即抛出\n不重试"]
+    EC -->|"认证错误 401/403"| AUTH["刷新 OAuth token\n重新获取 client"]
+    EC -->|"速率限制 429"| RL{"Fast Mode\n是否激活？"}
+    EC -->|"服务过载 529"| OL{"前台请求？\nshouldRetry529"}
+    EC -->|"其他 API 错误"| OTHER["指数退避\ngetRetryDelay"]
 
-    acceptEdits --> plan: Shift+Tab
-    plan --> bypassPermissions: Shift+Tab（bypass 可用）
-    plan --> auto: Shift+Tab（auto 可用）
-    plan --> default1: Shift+Tab（其他）
-    bypassPermissions --> auto: Shift+Tab（auto 可用）
-    bypassPermissions --> default1: Shift+Tab（其他）
-    dontAsk --> default1: （UI 尚未暴露）
-    auto --> default1: Shift+Tab（default case）
+    RL -->|"是，短 Retry-After"| FAST_RETRY["等待 + 保持 Fast Mode\n（保护缓存命中率）"]
+    RL -->|"是，长 Retry-After"| COOLDOWN["进入 Fast Mode 冷却\n切换到标准速度模型"]
+    RL -->|"否"| RETRY429["指数退避重试"]
 
-    note right of auto
-        external: default
-        对外 API 不可见
-    end note
+    OL -->|"是"| RETRY529["最多重试 MAX_529_RETRIES=3 次\n超出后触发模型降级"]
+    OL -->|"否，后台请求"| DROP["立即放弃\n避免级联放大"]
+
+    AUTH & FAST_RETRY & COOLDOWN & RETRY429 & RETRY529 & OTHER -->|"yield SystemAPIErrorMessage"| YIELD["用户看到重试提示"]
+    YIELD --> START

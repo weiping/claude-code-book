@@ -6,7 +6,7 @@
 
 ## 章节意图（从 spec `## 意图` 提取）
 
-为全书提供导航地图：读者读完后应能说清 Claude Code 由哪些子系统组成、各子系统如何连接、代码库的物理组织逻辑是什么，以及 Bun/TypeScript/Ink 等技术选型各自解决了什么工程问题。不是功能介绍，而是让读者在深入任何单一子系统之前，先建立可定位的全局坐标系。对应 DESIGN.md 一句话主张：建立 Claude Code 完整架构认知——7 大子系统职责边界、技术选型动机、源码组织逻辑。
+为全书提供导航地图：读者读完后应能说清 Claude Code 的三层架构（交互层、Harness 控制层、模型层）由哪些子系统组成、各子系统如何连接、代码库的物理组织逻辑是什么，以及 Bun/TypeScript/Ink 等技术选型各自解决了什么工程问题。不是功能介绍，而是让读者在深入任何单一子系统之前，先建立可定位的全局坐标系。对应 DESIGN.md 一句话主张：建立 Claude Code 完整架构认知——三层架构与十大子系统职责边界、技术选型动机、源码组织逻辑。
 
 ## 通用约束（从 spec `## 约束` 提取，不含风格专属项）
 
@@ -100,7 +100,7 @@ ls src/main.tsx src/Tool.ts src/bootstrap/state.ts src/Task.ts src/QueryEngine.t
 
 | # | 场景名 | 核心要求（从 spec 提取） | 对应 plan 节 | 覆盖 |
 |---|--------|----------------------|-------------|------|
-| C1 | 七大子系统全景图存在 | 包含一个图表展示七大子系统连接关系 | 节 1.2（Mermaid 架构图） | ☐ |
+| C1 | 十大子系统（交互层4个 + Harness控制层十大 + 模型层3个 = 三层架构全景）全景图存在 | 包含一个图表展示十大子系统（交互层4个 + Harness控制层十大 + 模型层3个 = 三层架构全景）连接关系 | 节 1.2（Mermaid 架构图） | ☐ |
 | C2 | ⛔ 风格专属结构 | hunter：模式预告开篇→问题→源码实例→模式剖析→适用范围→权衡与局限→与已知模式对话→你能做什么 | 骨架整体结构与 spec 一致 | ☐ |
 | C3 | 每个子系统有向后引用 | "深入分析见第 N 章"格式 | 节 1.4-1.6（每个子系统介绍后附引用） | ☐ |
 | C4 | 技术选型权衡说明 | Bun/TypeScript/Ink 每项有"选 A 不选 B"理由 | 节 1.3（技术选型权衡） | ☐ |
@@ -152,8 +152,8 @@ ls src/main.tsx src/Tool.ts src/bootstrap/state.ts src/Task.ts src/QueryEngine.t
 - 对应 spec 场景：ch01_source_anchors、ch01_concrete_numbers
 - 向后引用：bootstrap 详细实现"详见第 2 章"，feature() 机制"详见第 3 章"
 
-### 节 1.2：源码实例 1——七大子系统全景图与目录约定
-- 核心主张：Claude Code 的 37 个顶层目录映射到 7 大功能子系统，它们通过"目录即注册表"约定组织——每个目录下的文件自动注册为该子系统的一部分（对应验收场景 C1、C3）
+### 节 1.2：源码实例 1——十大子系统（交互层4个 + Harness控制层十大 + 模型层3个 = 三层架构全景）全景图与目录约定
+- 核心主张：Claude Code 的 37 个顶层目录映射到 三层架构（交互层/Harness/模型层）下的子系统，它们通过"目录即注册表"约定组织——每个目录下的文件自动注册为该子系统的一部分（对应验收场景 C1、C3）
 - 源码锚点：
   - `src/Tool.ts:783` — `export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D>`（已验证）
   - `src/Task.ts:6-13` — TaskType 7 种类型定义（已验证）
@@ -163,8 +163,8 @@ ls src/main.tsx src/Tool.ts src/bootstrap/state.ts src/Task.ts src/QueryEngine.t
 - 概念层次：定义（每个子系统是什么）→ 设计意图（为什么这样分）→ 实际案例（工具目录中的 58 个工具）
 - 权衡分析：为什么用目录约定而非显式注册表？——降低新增功能的门槛（只需创建目录和文件），但牺牲了编译期完整性检查
 - 包含元素：
-  - **Mermaid 架构图**：七大子系统（REPL/UI、查询引擎、Tool 系统、Hook 引擎、Task 系统、Swarm、上下文工程）的连接关系
-  - **ASCII 目录结构图**：展示 src/ 下的 37 个目录如何分组到 7 大子系统
+  - **Mermaid 架构图**：十大子系统（交互层4个 + Harness控制层十大 + 模型层3个 = 三层架构全景）（REPL/UI、查询引擎、Tool 系统、Hook 引擎、Task 系统、Swarm、上下文工程）的连接关系
+  - **ASCII 目录结构图**：展示 src/ 下的 37 个目录如何分组到 三层架构与十大子系统
   - **表格**：子系统 | 目录 | 核心文件 | 章节引用
 - **⛔ 内容密度规划**：
   - 引入段要点：预告"目录结构就是架构文档"，展示如何从目录名推断子系统职责
@@ -172,7 +172,7 @@ ls src/main.tsx src/Tool.ts src/bootstrap/state.ts src/Task.ts src/QueryEngine.t
   - 散文与代码比例目标：至少 2 句散文/行代码
 - 估计字数：1500-2000 字（其中散文 ≥ 60%）
 - 对应 spec 场景：ch01_subsystem_diagram、ch01_forward_links、ch01_concrete_numbers
-- 向后引用：Tool 系统"详见第 10 章"，Hook 引擎"详见第 20 章"，Task 系统"详见第 25 章"，Swarm"详见第 29 章"
+- 向后引用：Tool 系统"详见第 14 章"，Hook 引擎"详见第 24 章"，Task 系统"详见第 29 章"，Swarm"详见第 33 章"
 
 ### 节 1.3：源码实例 2——技术选型的三重约束
 - 核心主张：Bun/TypeScript/Ink 三项技术选型分别解决了"启动延迟"、"类型安全 + 生态兼容"和"终端 UI 表达力"三个正交约束——每一项选型都排除了替代方案（对应验收场景 ch01_tech_tradeoffs）
@@ -279,15 +279,15 @@ ls src/main.tsx src/Tool.ts src/bootstrap/state.ts src/Task.ts src/QueryEngine.t
 | # | 图表标题 | 类型 | 内容描述 | 对应节 |
 |---|---------|------|---------|--------|
 | 图1-1 | Claude Code 启动序列 | Mermaid sequenceDiagram | profileCheckpoint → startMdmRawRead → startKeychainPrefetch → imports → Commander.js → launchRepl | 1.1 |
-| 图1-2 | 七大子系统连接关系 | Mermaid flowchart | REPL/UI → 查询引擎 → Tool/Hook/Task/Swarm → 上下文工程 | 1.2 |
-| 图1-3 | 源码目录到子系统映射 | ASCII box-arrow | 37 个 src/ 子目录按功能分组到 7 大子系统 | 1.2 |
+| 图1-2 | 十大子系统（交互层4个 + Harness控制层十大 + 模型层3个 = 三层架构全景）连接关系 | Mermaid flowchart | REPL/UI → 查询引擎 → Tool/Hook/Task/Swarm → 上下文工程 | 1.2 |
+| 图1-3 | 源码目录到子系统映射 | ASCII box-arrow | 37 个 src/ 子目录按功能分组到 三层架构与十大子系统 | 1.2 |
 | 图1-4 | 分层注册表四变体对比 | 表格 | 子系统/注册机制/入口类型/实例数量 | 1.4 |
 
 ## 写作顺序
 
 1. ⛔ **确认完整 spec 与风格规则**：重新读取完整 spec 文件和 DESIGN.md 中的 STYLE_ID=hunter，确认全部 16 项 spec 要素已在 plan 中反映
 2. 先写节 1.1（问题——入口文件与启动序列，逻辑起点）
-3. 然后写节 1.2（七大子系统全景图，依赖 1.1 建立的入口文件认知）
+3. 然后写节 1.2（十大子系统（交互层4个 + Harness控制层十大 + 模型层3个 = 三层架构全景）全景图，依赖 1.1 建立的入口文件认知）
 4. 写节 1.3（技术选型，依赖 1.2 建立的子系统划分）
 5. 写节 1.4（模式剖析——四变体对比，依赖 1.1-1.3 建立的具体案例）
 6. 写节 1.5（适用范围表）和节 1.6（权衡与局限）

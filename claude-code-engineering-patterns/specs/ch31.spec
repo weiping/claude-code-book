@@ -1,19 +1,19 @@
 spec: task
-name: "第31章：三种 Teammate 后端——in-process/tmux/auto 的选型逻辑"
-tags: [book-chapter, part-7]
+name: "第 31 章：RemoteAgentTask——远程任务的通信架构"
+tags: [book-chapter, part-8]
 ---
 
 ## 意图
 
-揭示 `src/utils/swarm/backends/` 目录下 InProcessBackend.ts（339行）、TmuxBackend.ts（764行）、detection.ts（128行）三种 Teammate 运行后端的差异，以及 auto 模式如何在性能（in-process）与隔离性（tmux）之间做自动权衡。读者读完后能理解三种后端的架构差异，并能在自己的多 Agent 系统中做有依据的后端选型。
+揭示 `src/tasks/RemoteAgentTask/RemoteAgentTask.tsx`（246行）如何把本地任务模型扩展到远程执行，以及在 SSE/WebSocket/轮询三种通信方式中如何选型。读者读完后能理解远程 Agent 任务的通信架构设计，并能在自己的分布式 Agent 系统中做有依据的通信方式选型。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/utils/swarm/backends/InProcessBackend.ts（339行）、TmuxBackend.ts（764行）、detection.ts（128行）、registry.ts
-- 前置依赖：第29章（Swarm 架构，明确 Teammate 角色）
+- 核心文件：src/tasks/RemoteAgentTask/RemoteAgentTask.tsx（246行）
+- 前置依赖：第 29 章（Task 系统）、第 30 章（本地 Agent Task 对比参照）
 
 
 ## 约束
@@ -39,53 +39,54 @@ tags: [book-chapter, part-7]
 ## 边界
 
 ### 允许修改
-- book/src/part7/ch31.md
+- book/src/part8/ch31.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不重复第29章对 Swarm 架构总览的描述
+- 不重复第 30 章对本地进程模型的描述
+- 不展开 src/remote/（如属排除范围则标注推断）
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch31_hunter_opening
-  假设 读者打开第31章
+  测试: ch27_hunter_opening
+  假设 读者打开第 31 章
   当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: 三种后端对比表
-  测试: ch31_backend_comparison
-  假设 读者阅读后端对比节
-  当 读者检查三种后端的说明
-  那么 章节有对比表格，列出 in-process/tmux/auto 各自的性能、隔离性、适用场景
+场景: 通信方式对比
+  测试: ch27_communication_comparison
+  假设 读者阅读通信架构节
+  当 读者追问"为什么选用当前的通信方式"
+  那么 章节展示实际使用的通信方式及其选型理由（与 SSE/WebSocket/轮询的对比）
 
-场景: auto 选择算法说明
-  测试: ch31_auto_detection
-  假设 读者阅读 auto 模式节
-  当 读者检查 detection.ts 的自动选择逻辑
-  那么 章节展示 auto 模式选择 in-process 还是 tmux 的判断条件（如：是否在交互终端、是否有 tmux 环境）
+场景: 本地 vs 远程差异说明
+  测试: ch27_local_vs_remote
+  假设 读者阅读对比节
+  当 读者检查远程任务与本地任务的差异
+  那么 章节有对比说明：哪些设计复用自 LocalAgentTask，哪些是远程场景特有的处理
 
 场景: 源码引用有效性
-  测试: ch31_source_anchors
+  测试: ch27_source_anchors
   层级: 集成
   假设 读者跟随章节中的源码引用
   当 读者在项目目录查找每处路径和行号
   那么 每处引用都实际存在于对应文件
 
 场景: 模式命名框存在
-  测试: ch31_pattern_box
+  测试: ch27_pattern_box
   假设 本章使用 hunter 风格
   当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"可插拔运行后端"模式
+  那么 存在至少 1 个格式规范的模式命名框，提炼"远程任务代理"模式
 
 场景: 章末行动建议
-  测试: ch31_action_items
+  测试: ch27_action_items
   假设 读者读完本章
   当 读者检查"你能做什么"节
   那么 包含 5-8 条以行动动词开头的可操作建议
 
 场景: 不引用排除范围
-  测试: ch31_no_excluded_refs
+  测试: ch27_no_excluded_refs
   层级: 集成
   假设 DESIGN.md 列出了排除范围
   当 读者检查本章所有源码路径
@@ -93,7 +94,7 @@ tags: [book-chapter, part-7]
 
 
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch31_hunter_opening_format
+  测试: ch27_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -101,33 +102,33 @@ tags: [book-chapter, part-7]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch31_multi_instance_proof
+  测试: ch27_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch31_applicability_table
+  测试: ch27_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch31_tradeoffs_and_limits
+  测试: ch27_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch31_known_pattern_dialogue
+  测试: ch27_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch31_pattern_box_format
+  测试: ch27_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -137,7 +138,7 @@ tags: [book-chapter, part-7]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch31_reader_voice
+  测试: ch27_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -145,7 +146,7 @@ tags: [book-chapter, part-7]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch31_key_info_highlight
+  测试: ch27_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
@@ -153,6 +154,7 @@ tags: [book-chapter, part-7]
 
 ## 排除范围
 
-- leaderPermissionBridge（第30章）
-- permissionSync（第32章）
+- LocalAgentTask 内部实现（第 30 章）
+- DreamTask（第 32 章）
+- Swarm 多智能体协作（第29-32章）
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）

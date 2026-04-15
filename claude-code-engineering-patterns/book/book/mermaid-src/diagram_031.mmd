@@ -1,9 +1,8 @@
 flowchart TD
-    apiError["API 错误（429/500）"] -->|触发重试| retry["底层重试机制"]
-    retry -->|透明| loop["while(true) 主循环"]
-    retry -->|产出事件| sdkCaller["SDK 调用者\n（可显示重试进度）"]
+    API["Anthropic API\nSSE 字节流"] --> adapt["适配层\nqueryModel()\nclaude.ts:1017"]
+    adapt -->|"yield StreamEvent\nyield AssistantMessage"| loop["循环层\nquery() → queryLoop()\nquery.ts:219, 241"]
+    loop -->|"yield* 或 yield SDKMessage"| consume["消费层\nask() / submitMessage()\nexecAgentHook()"]
+    consume -->|"for await"| user["调用方\nREPL / SDK / Hook"]
 
-    userStop["用户 Ctrl+C / Stop 按钮"] -->|调用| interrupt["interrupt()"]
-    interrupt -->|abort()| abortController["AbortController.abort()"]
-    abortController -->|AbortSignal 传播| loop
-    loop -->|收到中断信号| exit["循环退出"]
+    backpressure["⬇ 背压方向（消费者控制节奏）"] -.->|"next() 驱动"| loop
+    backpressure -.->|"next() 驱动"| adapt

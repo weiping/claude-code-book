@@ -1,25 +1,12 @@
-graph TD
-    subgraph schema [Schema 层（类型契约）]
-        MSource["MarketplaceSource\n判别联合类型"]
-        PSource["PluginSourceSchema\n含 version 版本字段"]
-    end
-
-    subgraph declare [声明层（谁来源）]
-        implicit["隐式：官方 Marketplace\n(sourceIsFallback=true)"]
-        explicit["显式：第三方 Marketplace\n(extraKnownMarketplaces)"]
-    end
-
-    subgraph fetch [获取层（如何获取）]
-        load["loadAndCacheMarketplace\nswitch(source.source)"]
-        github_impl["cacheMarketplaceFromGit\nSSH/HTTPS 双降级"]
-        url_impl["cacheMarketplaceFromUrl\naxios.get"]
-        local_impl["本地文件读取\n无网络"]
-    end
-
-    MSource --> load
-    implicit --> load
-    explicit --> load
-    load -->|github/git| github_impl
-    load -->|url| url_impl
-    load -->|file/directory| local_impl
-    load -->|"npm (TODO)"| npm_err["throw Error\n未实现"]
+stateDiagram-v2
+    [*] --> init: 启动
+    init --> snapshot: initializeVersionedPlugins\n（V1→V2迁移 + 快照）
+    snapshot --> installed: addInstalledPlugin\n（安装写入磁盘）
+    installed --> diverged: updateInstallationPathOnDisk\n（后台更新仅写磁盘）
+    diverged --> synced: 用户重启 / reload-plugins\n（快照与磁盘重新同步）
+    installed --> scope_removed: removePluginInstallation\n（按 scope 移除）
+    scope_removed --> last_scope: isLastScope = true\n（所有 scope 都移除）
+    scope_removed --> installed: isLastScope = false\n（其他 scope 仍在）
+    last_scope --> cleanup: markPluginVersionOrphaned\n+ deletePluginOptions\n+ deletePluginDataDir
+    cleanup --> [*]
+    synced --> installed

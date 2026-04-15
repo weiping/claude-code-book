@@ -1,25 +1,22 @@
-sequenceDiagram
-    participant Caller
-    participant Handler
-    participant UI as React_UI
-    participant Hook
-    participant Classifier
-
-    Caller->>Handler: handleInteractivePermission(params, resolve)
-    Handler->>UI: ctx.pushToQueue(callbacks)
-    Handler->>Hook: void runHooks()（后台启动）
-    Handler->>Classifier: void executeAsyncClassifier()（后台启动）
-    Handler-->>Caller: return void（立即返回）
-
-    Note over Caller: 等待外部 Promise...
-
-    alt 用户先响应
-        UI->>Handler: onAllow() / onReject()（claim()成功）
-        Handler->>Caller: resolve(decision)
-    else Hook 先响应
-        Hook->>Handler: hookDecision（claim()成功）
-        Handler->>Caller: resolve(hookDecision)
-    else Classifier 先响应
-        Classifier->>Handler: classifierResult（claim()成功）
-        Handler->>Caller: resolve(classifierResult)
+flowchart LR
+    subgraph team-lead 进程
+        L[Leader Agent]
+        LMB["Leader Mailbox\n（inbox 文件）"]
     end
+    subgraph teammate-1 进程
+        T1[Teammate 1]
+        T1S["Stop Hook\n（任务完成触发）"]
+    end
+    subgraph teammate-2 进程
+        T2[Teammate 2]
+        T2S["Stop Hook\n（任务完成触发）"]
+    end
+    subgraph 文件系统
+        TF["TeamFile\n（leadAgentId/members）"]
+    end
+
+    T1 -->|"启动时读取"| TF
+    T2 -->|"启动时读取"| TF
+    T1S -->|"writeToMailbox\n(idle notification)"| LMB
+    T2S -->|"writeToMailbox\n(idle notification)"| LMB
+    L -->|"读取 mailbox\n等待 idle 通知"| LMB

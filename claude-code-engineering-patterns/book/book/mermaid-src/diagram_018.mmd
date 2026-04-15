@@ -1,15 +1,22 @@
-flowchart TD
-    start([调用 getMainLoopModel]) --> A{getMainLoopModelOverride\n不为 undefined?}
-    A -->|是: 会话/启动覆盖| R1["返回覆盖模型\n（来自 STATE.mainLoopModelOverride）"]
-    A -->|否| B{process.env.ANTHROPIC_MODEL\n不为空?}
-    B -->|是: 环境变量| allow1{isModelAllowed?}
-    allow1 -->|否| C
-    allow1 -->|是| R2["返回环境变量指定的模型"]
-    B -->|否| C{settings.model\n不为空?}
-    C -->|是: 用户设置| allow2{isModelAllowed?}
-    allow2 -->|否| D
-    allow2 -->|是| R3["返回用户保存的模型"]
-    C -->|否| D[getDefaultMainLoopModel]
-    D --> E{isMaxSubscriber\n或 TeamPremium?}
-    E -->|是| R4["返回 Opus（最高层订阅）"]
-    E -->|否| R5["返回 Sonnet（默认）"]
+sequenceDiagram
+    participant boot as CLI 启动
+    participant cmd as commands.ts
+    participant skills as getSkills()
+    participant dir as src/commands/ 目录
+    participant user as 用户输入 /clear
+
+    boot->>cmd: getCommands(cwd)
+    cmd->>cmd: loadAllCommands(cwd) 首次调用
+    cmd->>skills: getSkills(cwd) + getPluginCommands() 并行
+    skills->>dir: 扫描技能目录 I/O
+    dir-->>skills: skillDirCommands 返回
+    skills-->>cmd: 4 组 skills 汇总
+    cmd->>cmd: spread 合并 7 个来源
+    cmd->>cmd: memoize 缓存结果
+    cmd->>cmd: 过滤 availability + isEnabled
+    cmd-->>boot: 可见命令列表
+    Note over cmd: 第二次调用直接返回缓存
+    user->>boot: 输入 /clear
+    boot->>dir: clear.load() = import clear.js
+    dir-->>boot: 实现模块
+    boot-->>user: 执行命令

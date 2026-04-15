@@ -156,24 +156,30 @@
 
                 <div id="content" class="content">
                     <main>
-                        <div class="part-page">
-  <div class="part-label">PART VII</div>
-  <div class="part-number">第七篇</div>
-  <div class="part-title">Swarm：多智能体协作架构</div>
-  <div class="part-rule"></div>
-  <div class="part-desc">单 Agent 的边界在这里被打破。Leader-Teammate 模型、三种 Teammate 后端（in-process / tmux / auto）、跨进程权限协商桥接——多智能体协作的工程地基。</div>
-  <div class="part-chapters">第 29—32 章</div>
-</div>
+                        <h1 id="第七篇hooks-引擎harness-的核心"><a class="header" href="#第七篇hooks-引擎harness-的核心">第七篇：Hooks 引擎——Harness 的核心</a></h1>
+<blockquote>
+<p><em>目的：深入理解 Harness·Hooks 引擎子系统——独立的用户扩展接口，贯穿工具执行、会话生命周期和智能体协作全流程</em></p>
+</blockquote>
+<p>本篇从 Hook 事件全景出发，经过多态执行器设计、异步注册表实现、配置快照隔离，到达声明式钩子注册。</p>
+<hr />
+<h2 id="本章导航"><a class="header" href="#本章导航">本章导航</a></h2>
+<ul>
+<li><a href="ch24.html">第 24 章：20+ 事件的生命周期地图——Hooks 全景</a></li>
+<li><a href="ch25.html">第 25 章：四种执行器——<code>command/prompt/agent/http</code> 的多态设计</a></li>
+<li><a href="ch26.html">第 26 章：AsyncHookRegistry——异步钩子的注册、超时与并发控制</a></li>
+<li><a href="ch27.html">第 27 章：hooksConfigSnapshot——配置快照隔离模式</a></li>
+<li><a href="ch28.html">第 28 章：Frontmatter Hooks——Skill 与 Agent 的声明式钩子注册</a></li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../part6/ch28.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../part6/ch23.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../part7/ch29.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../part7/ch24.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -183,11 +189,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../part6/ch28.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../part6/ch23.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../part7/ch29.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../part7/ch24.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

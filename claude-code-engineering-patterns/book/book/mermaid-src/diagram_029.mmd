@@ -1,12 +1,27 @@
-flowchart TD
-    caller[SDK 调用者] -->|"for await"| submitMessage["QueryEngine.submitMessage()\n src/QueryEngine.ts:209"]
-    submitMessage -->|"for await"| query["query()\nsrc/query.ts:219"]
-    query -->|"yield*"| queryLoop["queryLoop()\nsrc/query.ts:241"]
-    queryLoop --> whileTrue["while(true)\nsrc/query.ts:307"]
-    whileTrue --> apiCall[发送 API 请求]
-    apiCall --> streaming[流式接收响应]
-    streaming --> needsFollowUp{needsFollowUp?}
-    needsFollowUp -->|true: 有 tool_use 块| execTool[执行工具]
-    execTool --> whileTrue
-    needsFollowUp -->|"false: 无 tool_use"| exit[退出 while]
-    exit --> terminal[返回 Terminal]
+flowchart LR
+    subgraph SSE["Anthropic API SSE 流"]
+        e1["message_start"]
+        e2["content_block_start\n(text/tool_use)"]
+        e3["content_block_delta\n(增量内容)"]
+        e4["message_stop"]
+    end
+
+    subgraph QM["queryModel()\nsrc/services/api/claude.ts:1017"]
+        sm["switch(part.type)\n状态机"]
+        acc["累积构建\npartialMessage"]
+        asm["assembleAssistantMessage"]
+    end
+
+    subgraph Consumer["上层消费者"]
+        stream["StreamEvent\n(逐片处理)"]
+        final["AssistantMessage\n(完整消息)"]
+    end
+
+    e1 --> sm
+    e2 --> sm
+    e3 --> sm
+    e4 --> sm
+    sm --> acc
+    acc --> asm
+    asm -->|"yield 流式片段"| stream
+    asm -->|"yield 完整消息"| final

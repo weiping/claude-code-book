@@ -157,7 +157,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="附录-ahook-事件速查表"><a class="header" href="#附录-ahook-事件速查表">附录 A：Hook 事件速查表</a></h1>
-<p>本附录列出 Claude Code 支持的全部 27 个 Hook 事件，供快速查阅。每个事件包含触发时机、输入格式、退出码语义和典型用途。完整的钩子系统设计分析见第 20-22 章。</p>
+<p>本附录列出 Claude Code 支持的全部 27 个 Hook 事件，供快速查阅。每个事件包含触发时机、输入格式、退出码语义和典型用途。完整的钩子系统设计分析见第 24-26 章。</p>
 <p><strong>源码来源</strong>：<code>src/utils/hooks/hooksConfigManager.ts</code>（事件定义与描述）</p>
 <hr />
 <h2 id="工具调用类5-个"><a class="header" href="#工具调用类5-个">工具调用类（5 个）</a></h2>
@@ -169,37 +169,36 @@
 <tr><td><code>PermissionRequest</code></td><td>显示权限确认对话框时</td><td><code>tool_name</code>, <code>tool_input</code>, <code>tool_use_id</code></td><td>0=使用钩子决策（如有）；其他=仅报错给用户</td><td>自定义权限逻辑，输出 JSON 决策</td></tr>
 </tbody></table>
 </div>
-<p><strong>matcher 字段</strong>：<code>PreToolUse/PostToolUse/PostToolUseFailure/PermissionDenied/PermissionRequest</code> 支持按 <code>tool_name</code> 过滤，只对特定工具触发。</p>
+<p><strong>matcher 字段</strong>：以上 5 个事件均支持按 <code>tool_name</code> 过滤，只对特定工具触发。</p>
 <hr />
 <h2 id="会话生命周期类5-个"><a class="header" href="#会话生命周期类5-个">会话生命周期类（5 个）</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>事件名</th><th>触发时机</th><th>输入 JSON 字段</th><th>退出码语义</th><th>典型用途</th></tr></thead><tbody>
-<tr><td><code>SessionStart</code></td><td>新会话开始时</td><td><code>source</code>（会话来源）</td><td>0=stdout 传给 Claude；其他=仅报错给用户</td><td>注入初始上下文、配置检查</td></tr>
-<tr><td><code>SessionEnd</code></td><td>会话即将结束时</td><td><code>reason</code>（结束原因）</td><td>0=正常完成；其他=报错给用户</td><td>会话摘要、清理工作</td></tr>
+<tr><td><code>SessionStart</code></td><td>新会话开始时</td><td><code>source</code>（<code>startup</code> / <code>resume</code> / <code>clear</code> / <code>compact</code>）</td><td>0=stdout 传给 Claude；阻断错误被忽略；其他=仅报错给用户</td><td>注入初始上下文、配置检查</td></tr>
+<tr><td><code>SessionEnd</code></td><td>会话即将结束时</td><td><code>reason</code>（<code>clear</code> / <code>logout</code> / <code>prompt_input_exit</code> / <code>other</code>）</td><td>0=正常完成；其他=报错给用户</td><td>会话摘要、清理工作</td></tr>
 <tr><td><code>Stop</code></td><td>Claude 即将结束响应前</td><td>—（无特定字段）</td><td>0=不显示；2=报错给模型并继续对话；其他=仅报错给用户</td><td>响应后处理</td></tr>
-<tr><td><code>StopFailure</code></td><td>因 API 错误（限流/认证失败等）结束时</td><td><code>error</code></td><td>Fire-and-forget：钩子输出和退出码均被忽略</td><td>错误监控（不可阻断）</td></tr>
-<tr><td><code>Setup</code></td><td>仓库初始化和维护时</td><td><code>trigger</code>（<code>init</code> 或 <code>maintenance</code>）</td><td>0=stdout 传给 Claude；其他=仅报错给用户</td><td>项目初始化脚本、依赖检查</td></tr>
+<tr><td><code>StopFailure</code></td><td>因 API 错误结束时</td><td><code>error</code>（<code>rate_limit</code> / <code>authentication_failed</code> / <code>billing_error</code> / <code>server_error</code> 等）</td><td>Fire-and-forget：钩子输出和退出码均被忽略</td><td>错误监控（不可阻断）</td></tr>
+<tr><td><code>Setup</code></td><td>仓库初始化和维护时</td><td><code>trigger</code>（<code>init</code> 或 <code>maintenance</code>）</td><td>0=stdout 传给 Claude；阻断错误被忽略；其他=仅报错给用户</td><td>项目初始化脚本、依赖检查</td></tr>
 </tbody></table>
 </div>
 <hr />
-<h2 id="用户交互类3-个"><a class="header" href="#用户交互类3-个">用户交互类（3 个）</a></h2>
+<h2 id="用户交互类2-个"><a class="header" href="#用户交互类2-个">用户交互类（2 个）</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>事件名</th><th>触发时机</th><th>输入 JSON 字段</th><th>退出码语义</th><th>典型用途</th></tr></thead><tbody>
 <tr><td><code>UserPromptSubmit</code></td><td>用户提交 prompt 时</td><td>原始 prompt 文本</td><td>0=stdout 传给 Claude；2=拦截并清除 prompt；其他=仅报错给用户</td><td>prompt 预处理、敏感词过滤</td></tr>
-<tr><td><code>Notification</code></td><td>系统发送通知时</td><td><code>message</code>, <code>notification_type</code></td><td>0=不显示；其他=仅报错给用户</td><td>自定义通知转发（如发到 Slack）</td></tr>
-<tr><td><code>PermissionDenied</code></td><td>（见工具调用类）</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td><code>Notification</code></td><td>系统发送通知时</td><td><code>message</code>, <code>notification_type</code>（<code>permission_prompt</code> / <code>idle_prompt</code> / <code>auth_success</code> / <code>elicitation_dialog</code> 等）</td><td>0=不显示；其他=仅报错给用户</td><td>自定义通知转发（如发到 Slack）</td></tr>
 </tbody></table>
 </div>
 <hr />
 <h2 id="压缩类2-个"><a class="header" href="#压缩类2-个">压缩类（2 个）</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>事件名</th><th>触发时机</th><th>输入 JSON 字段</th><th>退出码语义</th><th>典型用途</th></tr></thead><tbody>
-<tr><td><code>PreCompact</code></td><td>对话压缩前</td><td>压缩详情（含 <code>trigger</code>）</td><td>0=stdout 追加为自定义压缩指令；2=阻止压缩；其他=仅报错给用户</td><td>自定义压缩摘要策略</td></tr>
+<tr><td><code>PreCompact</code></td><td>对话压缩前</td><td>压缩详情（含 <code>trigger</code>：<code>manual</code> 或 <code>auto</code>）</td><td>0=stdout 追加为自定义压缩指令；2=阻止压缩；其他=继续压缩但仅报错给用户</td><td>自定义压缩摘要策略</td></tr>
 <tr><td><code>PostCompact</code></td><td>对话压缩后</td><td>压缩详情 + 摘要内容</td><td>0=stdout 展示给用户；其他=仅报错给用户</td><td>压缩后通知</td></tr>
 </tbody></table>
 </div>
 <hr />
-<h2 id="多智能体协作类4-个"><a class="header" href="#多智能体协作类4-个">多智能体协作类（4 个）</a></h2>
+<h2 id="多智能体协作类5-个"><a class="header" href="#多智能体协作类5-个">多智能体协作类（5 个）</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>事件名</th><th>触发时机</th><th>输入 JSON 字段</th><th>退出码语义</th><th>典型用途</th></tr></thead><tbody>
-<tr><td><code>SubagentStart</code></td><td>Agent 工具调用启动子 Agent 时</td><td><code>agent_id</code>, <code>agent_type</code></td><td>0=stdout 传给子 Agent；其他=仅报错给用户</td><td>子 Agent 上下文注入</td></tr>
-<tr><td><code>SubagentStop</code></td><td>子 Agent 完成后</td><td><code>agent_id</code>, <code>agent_type</code>, <code>agent_transcript_path</code></td><td>0=不显示；2=报错给子 Agent 继续运行；其他=仅报错给用户</td><td>子 Agent 结果审计</td></tr>
+<tr><td><code>SubagentStart</code></td><td>Agent 工具调用启动子 Agent 时</td><td><code>agent_id</code>, <code>agent_type</code></td><td>0=stdout 传给子 Agent；阻断错误被忽略；其他=仅报错给用户</td><td>子 Agent 上下文注入</td></tr>
+<tr><td><code>SubagentStop</code></td><td>子 Agent 完成后</td><td><code>agent_id</code>, <code>agent_type</code>, <code>agent_transcript_path</code></td><td>0=不显示；2=报错给子 Agent 并继续运行；其他=仅报错给用户</td><td>子 Agent 结果审计</td></tr>
 <tr><td><code>TeammateIdle</code></td><td>队友即将空闲时</td><td><code>teammate_name</code>, <code>team_name</code></td><td>0=不显示；2=报错给队友阻止空闲（队友继续工作）；其他=仅报错给用户</td><td>防止队友提前退出</td></tr>
 <tr><td><code>TaskCreated</code></td><td>任务被创建时</td><td><code>task_id</code>, <code>task_subject</code>, <code>task_description</code>, <code>teammate_name</code>, <code>team_name</code></td><td>0=不显示；2=报错给模型并阻止创建；其他=仅报错给用户</td><td>任务审批流程</td></tr>
 <tr><td><code>TaskCompleted</code></td><td>任务被标记完成时</td><td><code>task_id</code>, <code>task_subject</code>, <code>task_description</code>, <code>teammate_name</code>, <code>team_name</code></td><td>0=不显示；2=报错给模型并阻止完成；其他=仅报错给用户</td><td>完成条件验证</td></tr>
@@ -208,19 +207,19 @@
 <hr />
 <h2 id="mcp-交互类2-个"><a class="header" href="#mcp-交互类2-个">MCP 交互类（2 个）</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>事件名</th><th>触发时机</th><th>输入 JSON 字段</th><th>退出码语义</th><th>典型用途</th></tr></thead><tbody>
-<tr><td><code>Elicitation</code></td><td>MCP 服务器请求用户输入时</td><td><code>mcp_server_name</code>, <code>message</code>, <code>requested_schema</code></td><td>0=使用钩子响应；2=拒绝请求；其他=仅报错给用户</td><td>自动回填 MCP 输入</td></tr>
+<tr><td><code>Elicitation</code></td><td>MCP 服务器请求用户输入时</td><td><code>mcp_server_name</code>, <code>message</code>, <code>requested_schema</code></td><td>0=使用钩子响应（<code>accept</code>/<code>decline</code>/<code>cancel</code> + <code>content</code>）；2=拒绝请求；其他=仅报错给用户</td><td>自动回填 MCP 输入</td></tr>
 <tr><td><code>ElicitationResult</code></td><td>用户响应 MCP 输入后</td><td><code>mcp_server_name</code>, <code>action</code>, <code>content</code>, <code>mode</code>, <code>elicitation_id</code></td><td>0=使用钩子响应覆盖；2=响应变为 decline；其他=仅报错给用户</td><td>响应后处理</td></tr>
 </tbody></table>
 </div>
 <hr />
 <h2 id="配置与文件系统类6-个"><a class="header" href="#配置与文件系统类6-个">配置与文件系统类（6 个）</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>事件名</th><th>触发时机</th><th>输入 JSON 字段</th><th>退出码语义</th><th>典型用途</th></tr></thead><tbody>
-<tr><td><code>ConfigChange</code></td><td>会话期间配置文件变更时</td><td><code>source</code>（配置来源）, <code>file_path</code></td><td>0=允许变更；2=阻止变更应用到会话；其他=仅报错给用户</td><td>配置变更审计</td></tr>
-<tr><td><code>InstructionsLoaded</code></td><td>加载 CLAUDE.md 或规则文件时</td><td><code>file_path</code>, <code>memory_type</code>, <code>load_reason</code>, <code>globs</code>, <code>trigger_file_path</code>, <code>parent_file_path</code></td><td>0=正常；其他=仅报错给用户</td><td><strong>仅观测，不可阻断</strong></td></tr>
+<tr><td><code>ConfigChange</code></td><td>会话期间配置文件变更时</td><td><code>source</code>（<code>user_settings</code> / <code>project_settings</code> / <code>local_settings</code> / <code>policy_settings</code> / <code>skills</code>）, <code>file_path</code></td><td>0=允许变更；2=阻止变更应用到会话；其他=仅报错给用户</td><td>配置变更审计</td></tr>
+<tr><td><code>InstructionsLoaded</code></td><td>加载 CLAUDE.md 或规则文件时</td><td><code>file_path</code>, <code>memory_type</code>, <code>load_reason</code>（<code>session_start</code> / <code>nested_traversal</code> / <code>path_glob_match</code> / <code>include</code> / <code>compact</code>）, <code>globs</code>, <code>trigger_file_path</code>, <code>parent_file_path</code></td><td>0=正常；其他=仅报错给用户</td><td><strong>仅观测，不可阻断</strong></td></tr>
 <tr><td><code>WorktreeCreate</code></td><td>创建隔离 Worktree 时</td><td><code>name</code>（建议的 worktree slug）</td><td>0=成功，stdout 必须包含绝对路径；其他=创建失败</td><td>自定义 worktree 初始化</td></tr>
 <tr><td><code>WorktreeRemove</code></td><td>删除 Worktree 时</td><td><code>worktree_path</code>（绝对路径）</td><td>0=成功；其他=仅报错给用户</td><td>自定义清理逻辑</td></tr>
-<tr><td><code>CwdChanged</code></td><td>工作目录切换后</td><td><code>old_cwd</code>, <code>new_cwd</code></td><td>0=正常；其他=仅报错给用户</td><td>目录切换时更新环境变量（写入 <code>CLAUDE_ENV_FILE</code>）</td></tr>
-<tr><td><code>FileChanged</code></td><td>被监听的文件变更时</td><td><code>file_path</code></td><td>0=正常；其他=仅报错给用户</td><td>自动触发重新分析</td></tr>
+<tr><td><code>CwdChanged</code></td><td>工作目录切换后</td><td><code>old_cwd</code>, <code>new_cwd</code></td><td>0=正常；其他=仅报错给用户</td><td>目录切换时更新环境变量（写入 <code>CLAUDE_ENV_FILE</code>）；可返回 <code>hookSpecificOutput.watchPaths</code> 注册文件监控</td></tr>
+<tr><td><code>FileChanged</code></td><td>被监听的文件变更时</td><td><code>file_path</code>, <code>event</code>（<code>change</code> / <code>add</code> / <code>unlink</code>）</td><td>0=正常；其他=仅报错给用户</td><td>自动触发重新分析；可返回 <code>hookSpecificOutput.watchPaths</code> 动态更新监控列表</td></tr>
 </tbody></table>
 </div>
 <hr />
@@ -228,18 +227,18 @@
 <div class="table-wrapper"><table><thead><tr><th>退出码</th><th>通用语义</th><th>注意</th></tr></thead><tbody>
 <tr><td><code>0</code></td><td>成功，根据事件类型决定 stdout 去向</td><td>部分事件 0 表示不显示，部分表示传给模型</td></tr>
 <tr><td><code>2</code></td><td>阻断操作，stderr 报告给模型或用户</td><td>只有部分事件支持 exit 2 的阻断语义</td></tr>
-<tr><td>其他（1, 非0）</td><td>报错，但通常不阻断</td><td>stderr 仅展示给用户，操作继续</td></tr>
+<tr><td>其他</td><td>报错，但通常不阻断</td><td>stderr 仅展示给用户，操作继续</td></tr>
 </tbody></table>
 </div>
-<p><strong>注</strong>：<code>StopFailure</code> 和 <code>InstructionsLoaded</code> 是 Fire-and-forget 事件，忽略退出码。</p>
+<p><strong>Fire-and-forget 事件</strong>：<code>StopFailure</code> 和 <code>InstructionsLoaded</code> 忽略退出码和钩子输出。</p>
 <hr />
-<p><em>基于 <code>src/utils/hooks/hooksConfigManager.ts</code> v2.1.88 提取，共 27 个事件。</em></p>
+<p><em>基于 <code>src/utils/hooks/hooksConfigManager.ts</code> v2.1.88 提取，共 27 个事件（5 + 5 + 2 + 2 + 5 + 2 + 6）。</em></p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="part10/ch41.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="part12/ch45.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
@@ -253,7 +252,7 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="part10/ch41.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="part12/ch45.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 

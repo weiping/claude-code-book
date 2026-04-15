@@ -1,19 +1,19 @@
 spec: task
-name: "第21章：四种执行器——command/prompt/agent/http 的多态设计"
-tags: [book-chapter, part-5]
+name: "第 21 章：会话持久化——转录、快照与断点续写"
+tags: [book-chapter, part-6]
 ---
 
 ## 意图
 
-揭示 `src/utils/hooks.ts` 的 `executeHooks()`（第1952行）如何用多态设计将"运行 shell 命令"、"调用 AI"、"启动 Agent"、"发 HTTP 请求"四种行为统一在同一个 Hook 接口下，以及 execAgentHook.ts、execHttpHook.ts、execPromptHook.ts 的专属实现。读者读完后能识别多态执行器模式，并能在自己的扩展系统中应用开放-封闭原则。
+揭示 `src/utils/sessionStorage.ts`（5105行）如何在进程重启后恢复会话状态，以及"写入先于执行"这一持久化模式在 Agent 系统中如何保证可靠性。读者读完后能理解 Agent 会话持久化的核心挑战和解决思路，并能将"写入先于执行"模式用于自己的可恢复 Agent 设计。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/utils/hooks.ts（第1952行 executeHooks）、src/utils/hooks/execAgentHook.ts（339行）、execHttpHook.ts（242行）、execPromptHook.ts（211行）
-- 前置依赖：第20章（Hook 事件体系）
+- 核心文件：src/utils/sessionStorage.ts（5105行）
+- 前置依赖：第 8 章（QueryEngine 使用 sessionStorage 保存会话状态）
 
 
 ## 约束
@@ -39,54 +39,54 @@ tags: [book-chapter, part-5]
 ## 边界
 
 ### 允许修改
-- book/src/part5/ch21.md
+- book/src/part6/ch21.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不重复第20章对 HookEvent 全景的描述
-- 不展开 AsyncHookRegistry 内部实现（第22章）
+- 不展开 AutoCompact 触发机制（第 22 章）
+- 不展开记忆系统三层架构（第 23 章）
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch21_hunter_opening
-  假设 读者打开第21章
+  测试: ch17_hunter_opening
+  假设 读者打开第 21 章
   当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: 四种执行器对比表
-  测试: ch21_executor_comparison
-  假设 读者阅读执行器对比节
-  当 读者检查四种执行器的说明
-  那么 章节有对比表格，列出 command/prompt/agent/http 各自的输入、输出、使用场景
+场景: 写入先于执行模式说明
+  测试: ch17_write_before_execute
+  假设 读者阅读持久化模式节
+  当 读者检查"写入先于执行"的实现
+  那么 章节展示具体代码证据：会话状态在操作执行前写入磁盘，而非执行后
 
-场景: 开放-封闭原则体现
-  测试: ch21_open_closed_principle
-  假设 读者阅读架构设计节
-  当 读者追问"如何添加第五种执行器"
-  那么 章节通过源码分析说明多态设计如何使新增执行器无需修改 executeHooks 主逻辑
+场景: 断点续写流程说明
+  测试: ch17_resume_flow
+  假设 读者阅读断点续写节
+  当 读者检查进程重启后的恢复流程
+  那么 章节展示恢复时如何读取持久化状态、重建会话上下文的步骤
 
 场景: 源码引用有效性
-  测试: ch21_source_anchors
+  测试: ch17_source_anchors
   层级: 集成
   假设 读者跟随章节中的源码引用
   当 读者在项目目录查找每处路径和行号
   那么 每处引用都实际存在于对应文件
 
 场景: 模式命名框存在
-  测试: ch21_pattern_box
+  测试: ch17_pattern_box
   假设 本章使用 hunter 风格
   当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"多态执行器"模式
+  那么 存在至少 1 个格式规范的模式命名框，提炼"写入先于执行"持久化模式
 
 场景: 章末行动建议
-  测试: ch21_action_items
+  测试: ch17_action_items
   假设 读者读完本章
   当 读者检查"你能做什么"节
   那么 包含 5-8 条以行动动词开头的可操作建议
 
 场景: 不引用排除范围
-  测试: ch21_no_excluded_refs
+  测试: ch17_no_excluded_refs
   层级: 集成
   假设 DESIGN.md 列出了排除范围
   当 读者检查本章所有源码路径
@@ -94,7 +94,7 @@ tags: [book-chapter, part-5]
 
 
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch21_hunter_opening_format
+  测试: ch17_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -102,33 +102,33 @@ tags: [book-chapter, part-5]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch21_multi_instance_proof
+  测试: ch17_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch21_applicability_table
+  测试: ch17_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch21_tradeoffs_and_limits
+  测试: ch17_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch21_known_pattern_dialogue
+  测试: ch17_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch21_pattern_box_format
+  测试: ch17_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -138,7 +138,7 @@ tags: [book-chapter, part-5]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch21_reader_voice
+  测试: ch17_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -146,7 +146,7 @@ tags: [book-chapter, part-5]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch21_key_info_highlight
+  测试: ch17_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
@@ -154,6 +154,6 @@ tags: [book-chapter, part-5]
 
 ## 排除范围
 
-- AsyncHookRegistry 内部实现（第22章）
-- hooksConfigSnapshot（第23章）
+- AutoCompact 触发机制（第 22 章）
+- 记忆系统三层架构（第 23 章）
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）

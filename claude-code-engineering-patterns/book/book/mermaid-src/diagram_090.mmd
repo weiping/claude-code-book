@@ -1,15 +1,14 @@
-stateDiagram-v2
-    [*] --> pending : 任务创建
-    pending --> running : 开始执行
-    running --> completed : 执行成功
-    running --> failed : 执行出错
-    running --> killed : 被强制终止
-    completed --> [*]
-    failed --> [*]
-    killed --> [*]
-    
-    note right of killed
-        killed = 主动干预（用户/系统停止）
-        failed = 执行出错
-        两者共同构成"不正常终端状态"
-    end note
+flowchart TD
+    Input["写入键 key"] --> L1["第一层：sanitizePathKey 字符串清洗"]
+    L1 --> C1{"含 Null 字节？"}
+    C1 -->|"是"| E["throw PathTraversalError"]
+    C1 -->|"否"| C2{"URL 编码穿越？"}
+    C2 -->|"是"| E
+    C2 -->|"否"| C3{"Unicode NFKC 规范化穿越？"}
+    C3 -->|"是"| E
+    C3 -->|"否"| C4{"含反斜杠？"}
+    C4 -->|"是"| E
+    C4 -->|"否"| L2["第二层：realpathDeepestExisting 符号链接解析"]
+    L2 --> C5{"真实路径在 teamDir 内？"}
+    C5 -->|"否"| E
+    C5 -->|"是"| OK["✓ 安全写入"]

@@ -1,23 +1,25 @@
 sequenceDiagram
-    participant Startup as 启动流程
-    participant Manager as PluginInstallationManager
-    participant Reconciler as reconcileMarketplaces
-    participant AppState
+    participant Caller
+    participant Handler
+    participant UI as React_UI
+    participant Hook
+    participant Classifier
 
-    Startup->>Manager: performBackgroundPluginInstallations(setAppState)
-    Manager->>Reconciler: diffMarketplaces(declared, materialized)
-    Reconciler-->>Manager: diff（missing + sourceChanged）
-    Manager->>AppState: setAppState（批量设置 pending 状态）
+    Caller->>Handler: handleInteractivePermission(params, resolve)
+    Handler->>UI: ctx.pushToQueue(callbacks)
+    Handler->>Hook: void runHooks()（后台启动）
+    Handler->>Classifier: void executeAsyncClassifier()（后台启动）
+    Handler-->>Caller: return void（立即返回）
 
-    loop 安装事件流
-        Reconciler->>Manager: onProgress({type: 'installing', name})
-        Manager->>AppState: updateMarketplaceStatus(installing)
-        Reconciler->>Manager: onProgress({type: 'installed', name})
-        Manager->>AppState: updateMarketplaceStatus(installed)
-    end
+    Note over Caller: 等待外部 Promise...
 
-    alt 有新安装
-        Manager->>AppState: refreshActivePlugins（清除缓存，重建连接）
-    else 仅更新
-        Manager->>AppState: needsRefresh = true（通知用户手动刷新）
+    alt 用户先响应
+        UI->>Handler: onAllow() / onReject()（claim()成功）
+        Handler->>Caller: resolve(decision)
+    else Hook 先响应
+        Hook->>Handler: hookDecision（claim()成功）
+        Handler->>Caller: resolve(hookDecision)
+    else Classifier 先响应
+        Classifier->>Handler: classifierResult（claim()成功）
+        Handler->>Caller: resolve(classifierResult)
     end

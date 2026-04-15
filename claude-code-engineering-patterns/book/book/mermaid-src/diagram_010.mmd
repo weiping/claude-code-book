@@ -1,10 +1,28 @@
-flowchart TD
-    input["用户输入 (字符串 or ContentBlockParam)"] --> mode_check{mode?}
-    mode_check -->|"feature flag + Ultraplan 关键词"| ultraplan["Ultraplan 分支 → processSlashCommand"]
-    mode_check -->|"mode === bash"| bash_branch["Bash 分支 → processBashCommand"]
-    mode_check -->|"startsWith 斜杠"| slash_branch["斜杠命令分支 → processSlashCommand"]
-    mode_check -->|其他| text_branch["普通文本分支 → processTextPrompt"]
-    ultraplan --> attach_skip[附件提取: 跳过]
-    bash_branch --> attach_bash[附件提取: 执行]
-    slash_branch --> attach_slash[附件提取: 执行]
-    text_branch --> attach_text[附件提取: 执行]
+graph TD
+    REPL["REPL.tsx\n5005 行\n主组件"]
+
+    subgraph local["本地 useState（必须在 REPL 内）"]
+        Q["toolUseConfirmQueue\n阻塞工具执行的 Promise 队列"]
+        SQ["sandboxPermissionRequestQueue\n沙箱权限队列"]
+        PQ["promptQueue\n异步提示请求队列"]
+    end
+
+    subgraph app["AppState（全局共享）"]
+        SP["speculation\nSpeculationState"]
+        MSG["messages"]
+        TASK["tasks"]
+        PERM["toolPermissionContext"]
+    end
+
+    subgraph hooks["会话 Hooks（本地绑定）"]
+        RS["useRemoteSession"]
+        DC["useDirectConnect"]
+        SSH["useSSHSession"]
+    end
+
+    REPL --> local
+    REPL --> app
+    REPL --> hooks
+
+    Q -->|"resolve 回调传给 query loop"| REPL
+    SP -->|"onSubmit 读取并 accept/abort"| REPL

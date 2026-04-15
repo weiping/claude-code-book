@@ -1,8 +1,13 @@
-<div class="part-page">
-  <div class="part-label">PART I</div>
-  <div class="part-number">第一篇</div>
-  <div class="part-title">地图与地基</div>
-  <div class="part-rule"></div>
-  <div class="part-desc">建立全局架构认知——七大子系统的边界划分、Bun / TypeScript / Ink 的选型逻辑，以及代码库从 60 MB 调试文件中呈现的物理组织结构。读完这一篇，你将拥有一张 Claude Code 的导航地图。</div>
-  <div class="part-chapters">第 1—3 章</div>
-</div>
+# 第一篇：地图与地基
+
+> *目的：建立全局架构认知，再深入细节*
+
+本篇建立 Claude Code 的整体架构认知，从宏观的三层架构到具体的全局状态管理和构建时特性开关。
+
+---
+
+## 本章导航
+
+- [第 1 章：系统总体架构——Claude Code 的结构地图](ch01.md)
+- [第 2 章：Bootstrap 与全局状态——50+ 函数背后的单例设计](ch02.md)
+- [第 3 章：构建时特性开关——`bun:bundle feature()` 的死代码消除](ch03.md)

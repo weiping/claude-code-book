@@ -1,19 +1,19 @@
 spec: task
-name: "第16章：CLAUDE.md 注入——层级化指令的加载与优先级"
-tags: [book-chapter, part-4]
+name: "第 16 章：AI 分类器替代规则引擎——yolo-classifier 的设计哲学"
+tags: [book-chapter, part-5]
 ---
 
 ## 意图
 
-揭示 `src/memdir/memdir.ts`（507行）如何从当前目录向上扫描 CLAUDE.md 文件、合并多层级指令，以及层级优先级规则如何在团队协作场景中防止指令冲突。读者读完后能理解"层级化配置扫描"模式，并能在自己的工具中实现类似的多层级配置合并机制。
+揭示 Claude Code 为何用 AI 模型（`src/utils/permissions/autoModeState.ts`、`bashClassifier.ts`）而非规则集来判断"这个操作是否安全"，以及 `toAutoClassifierInput()` 接口（Tool.ts:556）如何让每个工具自定义安全判断的输入。读者读完后能分析"AI 分类器 vs 规则引擎"的工程成本与收益，并能在自己的系统中做有依据的选型决策。
 
 ## 已定决策
 
 - ⛔ 写作风格：hunter（模式猎人）（从 DESIGN.md 读取，写作时必须遵循 writing-styles.md 中 hunter 风格的全部专属规则）
 - ⛔ 章节结构：`## [模式预告开篇]` → `## 问题` → `## 源码实例 1` → `## 源码实例 2（变体）` → `## 模式剖析` → `## 适用范围` → `## 权衡与局限` → `## 与已知模式的对话` → `## 你能做什么`
 - 源码引用格式：`src/相对路径:行号`
-- 核心文件：src/memdir/memdir.ts（507行）、paths.ts、memoryScan.ts
-- 前置依赖：第15章（fetchSystemPromptParts 调用 memdir 加载 CLAUDE.md）
+- 核心文件：src/utils/permissions/autoModeState.ts、bashClassifier.ts、classifierDecision.ts
+- 前置依赖：第 15 章（PermissionMode，分类器是其中一个决策层）
 
 
 ## 约束
@@ -39,54 +39,54 @@ tags: [book-chapter, part-4]
 ## 边界
 
 ### 允许修改
-- book/src/part4/ch16.md
+- book/src/part5/ch16.md
 
 ### 禁止做
 - 不修改 DESIGN.md 或其他章节文件
-- 不展开记忆系统三层架构（第19章）
-- 不重复第15章对提示词组装顺序的描述
+- 不重复第 15 章对 PermissionMode 四层的完整描述
+- 不展开第 37 章的全局安全架构
 
 ## 完成条件
 
 场景: hunter 风格开篇
-  测试: ch16_hunter_opening
-  假设 读者打开第16章
+  测试: ch12_hunter_opening
+  假设 读者打开第 16 章
   当 读者阅读第一屏内容
   那么 ⛔ 开篇不直接引用任何源码路径或行号，而是以问题场景+模式预告+价值承诺三要素切入（150-200字）
 
-场景: 目录扫描路径说明
-  测试: ch16_directory_scan
-  假设 读者阅读扫描逻辑节
-  当 读者检查 CLAUDE.md 的查找路径
-  那么 章节展示从当前目录向上扫描的路径逻辑，以及哪些目录会被跳过
+场景: AI 分类器 vs 规则引擎对比
+  测试: ch12_classifier_vs_rules
+  假设 读者阅读核心对比节
+  当 读者追问"为什么用 AI 分类器而不用规则引擎"
+  那么 章节有明确的对比分析，包含两种方案的成本（精确度、延迟、可维护性）对比
 
-场景: 优先级合并规则说明
-  测试: ch16_merge_priority
-  假设 读者阅读优先级节
-  当 读者追问"多个 CLAUDE.md 内容冲突时谁优先"
-  那么 章节有明确的优先级规则（如：子目录优先级高于父目录）并有源码依据
+场景: toAutoClassifierInput 接口说明
+  测试: ch12_classifier_input_interface
+  假设 读者阅读工具集成节
+  当 读者检查 toAutoClassifierInput 的作用
+  那么 章节展示该方法如何让工具自定义提供给分类器的输入文本，以及默认返回空字符串的含义
 
 场景: 源码引用有效性
-  测试: ch16_source_anchors
+  测试: ch12_source_anchors
   层级: 集成
   假设 读者跟随章节中的源码引用
   当 读者在项目目录查找每处路径和行号
   那么 每处引用都实际存在于对应文件
 
 场景: 模式命名框存在
-  测试: ch16_pattern_box
+  测试: ch12_pattern_box
   假设 本章使用 hunter 风格
   当 读者检查章末
-  那么 存在至少 1 个格式规范的模式命名框，提炼"层级化配置扫描"模式
+  那么 存在至少 1 个格式规范的模式命名框，提炼"模型即规则引擎"模式
 
 场景: 章末行动建议
-  测试: ch16_action_items
+  测试: ch12_action_items
   假设 读者读完本章
   当 读者检查"你能做什么"节
   那么 包含 5-8 条以行动动词开头的可操作建议
 
 场景: 不引用排除范围
-  测试: ch16_no_excluded_refs
+  测试: ch12_no_excluded_refs
   层级: 集成
   假设 DESIGN.md 列出了排除范围
   当 读者检查本章所有源码路径
@@ -94,7 +94,7 @@ tags: [book-chapter, part-4]
 
 
 场景: ⛔ hunter 开篇格式（最高优先级）
-  测试: ch16_hunter_opening_format
+  测试: ch12_hunter_opening_format
   假设 读者打开本章
   当 读者阅读第一屏内容（开篇节）
   那么 ⛔ 开篇不直接引用任何源码路径或行号
@@ -102,33 +102,33 @@ tags: [book-chapter, part-4]
   那么 全章未混用其他风格的写作手法
 
 场景: 多实例证明模式普遍性
-  测试: ch16_multi_instance_proof
+  测试: ch12_multi_instance_proof
   假设 本章提炼了一个工程模式
   当 读者检查源码实例节
   那么 存在至少 2 处不同位置（不同文件或不同函数）的源码实例，证明该模式在代码库中反复出现
   那么 每个实例说明与第一个实例的关键区别
 
 场景: 适用范围表存在
-  测试: ch16_applicability_table
+  测试: ch12_applicability_table
   假设 本章提炼了一个工程模式
   当 读者检查"适用范围"节
   那么 存在一个表格，列出该模式适用（✓）和不适用（✗）的场景，每行附理由和替代方案
 
 场景: 权衡与局限分析
-  测试: ch16_tradeoffs_and_limits
+  测试: ch12_tradeoffs_and_limits
   假设 本章提炼了一个工程模式
   当 读者检查"权衡与局限"节
   那么 章节说明了该模式的适用边界、潜在失败风险、性能影响和替代方案
 
 场景: 与已知模式的对话
-  测试: ch16_known_pattern_dialogue
+  测试: ch12_known_pattern_dialogue
   假设 本章提炼了一个工程模式
   当 读者检查"与已知模式的对话"节
   那么 章节将本章模式与至少一个业界已知模式（如 GoF 设计模式、POSA 架构模式、EIP 集成模式）做了对比
   那么 对比说明了相同点和不同点
 
 场景: 模式命名框格式规范
-  测试: ch16_pattern_box_format
+  测试: ch12_pattern_box_format
   假设 本章使用 hunter 风格
   当 读者检查模式剖析节或章末
   那么 存在至少 1 个模式命名框，格式为：
@@ -138,7 +138,7 @@ tags: [book-chapter, part-4]
     源码锚点：[文件:行号 或 函数名]
 
 场景: 读者对话感
-  测试: ch16_reader_voice
+  测试: ch12_reader_voice
   假设 本章使用 hunter 风格
   当 读者检查章节中的代词和叙述方式
   那么 使用"我们"而非"用户"或"读者"
@@ -146,7 +146,7 @@ tags: [book-chapter, part-4]
   那么 复杂逻辑前有预告性文字
 
 场景: 关键信息突出
-  测试: ch16_key_info_highlight
+  测试: ch12_key_info_highlight
   假设 本章有关键结论或重要设计决策
   当 读者快速扫读本章
   那么 关键结论用 **加粗** 标注，不埋在段落中间
@@ -154,6 +154,6 @@ tags: [book-chapter, part-4]
 
 ## 排除范围
 
-- 记忆系统三层架构（第19章）
-- 提示词组装完整流程（第15章）
+- PermissionMode 完整四层描述（第 15 章）
+- 第 37 章的全局安全架构
 - src/assistant/、src/ssh/、src/server/、src/proactive/（排除范围 stub）
